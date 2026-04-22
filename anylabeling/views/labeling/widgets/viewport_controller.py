@@ -47,6 +47,7 @@ from typing import TYPE_CHECKING
 
 from PyQt6 import QtCore
 from PyQt6.QtCore import QPointF
+from PyQt6.QtWidgets import QScrollArea
 
 if TYPE_CHECKING:
     from PyQt6.QtWidgets import QWidget
@@ -226,7 +227,13 @@ class ViewportController:
         #
         # We ask the parent scroll area for the scrollbar values because the
         # Canvas itself does not hold them.
+        # Note: QScrollArea.setWidget() reparents the canvas to the viewport
+        # widget, so we must walk up the parent chain to find the QScrollArea.
         scroll_area = canvas.parentWidget()
+        while scroll_area is not None and not isinstance(
+            scroll_area, QScrollArea
+        ):
+            scroll_area = scroll_area.parentWidget()
         if scroll_area is None:
             return None
 
@@ -298,6 +305,10 @@ class ViewportController:
 
         # --- 2. Scroll to the saved centre ---
         scroll_area = canvas.parentWidget()
+        while scroll_area is not None and not isinstance(
+            scroll_area, QScrollArea
+        ):
+            scroll_area = scroll_area.parentWidget()
         if scroll_area is None:
             return
 
