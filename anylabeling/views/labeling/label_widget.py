@@ -91,6 +91,7 @@ from .widgets import (
     SearchBar,
     ToolBar,
     UniqueLabelQListWidget,
+    ViewportController,
     ZoomWidget,
     NavigatorDialog,
 )
@@ -1116,6 +1117,16 @@ class LabelingWidget(LabelDialog):
             checked=self._config["keep_prev_scale"],
             enabled=True,
         )
+        keep_prev_viewport = action(
+            self.tr("Keep Previous Viewport"),
+            lambda x: self._config.update({"keep_prev_viewport": x}),
+            tip=self.tr(
+                "Keep previous zoom scale and view position when switching images"
+            ),
+            checkable=True,
+            checked=self._config.get("keep_prev_viewport", False),
+            enabled=True,
+        )
         keep_prev_brightness = action(
             self.tr("Keep Previous Brightness"),
             lambda x: self._config.update({"keep_prev_brightness": x}),
@@ -2067,6 +2078,7 @@ class LabelingWidget(LabelDialog):
                 zoom_org,
                 None,
                 keep_prev_scale,
+                keep_prev_viewport,
                 keep_prev_brightness,
                 keep_prev_contrast,
                 None,
@@ -2439,6 +2451,7 @@ class LabelingWidget(LabelDialog):
             Qt.Orientation.Horizontal: {},
             Qt.Orientation.Vertical: {},
         }  # key=filename, value=scroll_value
+        self.viewport_controller = ViewportController()
 
         if filename is not None and osp.isdir(filename):
             self.import_image_folder(filename, load=False)
@@ -5166,11 +5179,15 @@ class LabelingWidget(LabelDialog):
         self.scroll_values[orientation][self.filename] = value
         self.update_navigator_viewport()
 
-    def set_zoom(self, value):
+    def set_zoom(self, value, block_signals=False):
         self.actions.fit_width.setChecked(False)
         self.actions.fit_window.setChecked(False)
         self.zoom_mode = self.MANUAL_ZOOM
+        if block_signals:
+            self.zoom_widget.blockSignals(True)
         self.zoom_widget.setValue(value)
+        if block_signals:
+            self.zoom_widget.blockSignals(False)
         self.zoom_values[self.filename] = (self.zoom_mode, value)
         if hasattr(self, "navigator_dialog"):
             self.navigator_dialog.set_zoom_value(value)
@@ -5369,6 +5386,14 @@ class LabelingWidget(LabelDialog):
             self.file_list_widget.update()
             return False
 
+        # ① Save viewport of the image we are leaving
+        self.viewport_controller.on_file_leaving(
+            filename=self.viewport_controller.last_loaded,
+            canvas=self.canvas,
+            zoom_widget=self.zoom_widget,
+            zoom_mode=self.zoom_mode,
+        )
+
         self.reset_state()
         self.canvas.setEnabled(False)
 
@@ -5502,19 +5527,34 @@ class LabelingWidget(LabelDialog):
             self.set_clean()
         self.canvas.setEnabled(True)
 
-        # set zoom values
+        # set zoom / viewport values
         is_initial_load = not self.zoom_values
-        if self.filename in self.zoom_values:
+        restored_state = self.viewport_controller.on_file_loaded(
+            filename=self.filename,
+            canvas=self.canvas,
+            zoom_widget=self.zoom_widget,
+            keep_prev_viewport=self._config.get("keep_prev_viewport", False),
+        )
+        if restored_state is not None:
+            self.zoom_mode = restored_state.zoom_mode
+            self.zoom_values[self.filename] = (
+                restored_state.zoom_mode,
+                restored_state.zoom_value,
+            )
+        elif self.filename in self.zoom_values:
             self.zoom_mode = self.zoom_values[self.filename][0]
             self.set_zoom(self.zoom_values[self.filename][1])
         elif is_initial_load or not self._config["keep_prev_scale"]:
             self.adjust_scale(initial=True)
-        # set scroll values
-        for orientation in self.scroll_values:
-            if self.filename in self.scroll_values[orientation]:
-                self.set_scroll(
-                    orientation, self.scroll_values[orientation][self.filename]
-                )
+
+        # Legacy scroll values (fallback when viewport_controller has no state)
+        if restored_state is None:
+            for orientation in self.scroll_values:
+                if self.filename in self.scroll_values[orientation]:
+                    self.set_scroll(
+                        orientation,
+                        self.scroll_values[orientation][self.filename],
+                    )
 
         # set brightness contrast values
         brightness, contrast = self.brightness_contrast_values.get(

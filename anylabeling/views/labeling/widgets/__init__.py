@@ -28,4 +28,5 @@ from .popup import Popup
 from .toolbar import ToolBar
 from .unique_label_qlist_widget import UniqueLabelQListWidget
 from .vqa_dialog import VQADialog
+from .viewport_controller import ViewportController
 from .zoom_widget import ZoomWidget
