@@ -94,6 +94,8 @@ from .widgets import (
     ViewportController,
     ZoomWidget,
     NavigatorDialog,
+    KeypointFillMode,
+    KeypointToolWindow,
 )
 
 LABEL_COLORMAP = utils.label_colormap()
@@ -174,6 +176,14 @@ class LabelingWidget(LabelDialog):
         self._runtime_shape_color_shift = int(
             self._config.get("shift_auto_shape_color", 0)
         )
+
+        # Initialize Keypoint Fill Mode
+        self.keypoint_fill_mode = KeypointFillMode(
+            shapes_getter=lambda: self.canvas.shapes,
+            status_callback=self.status,
+            tr_callback=self.tr,
+        )
+        self.keypoint_tool_window = None
         self._settings_controller = None
         self._settings_dialog = None
         self._settings_runtime_applier = SettingsRuntimeApplier(self)
@@ -816,6 +826,22 @@ class LabelingWidget(LabelDialog):
             "digit9",
             enabled=False,
         )
+        enter_keypoint_fill_mode = action(
+            self.tr("Enter Keypoint Fill Mode"),
+            self.enter_keypoint_fill_mode,
+            shortcuts.get("enter_keypoint_fill_mode", "K"),
+            None,
+            self.tr("Fill missing keypoints for selected person"),
+            enabled=True,
+        )
+        toggle_keypoint_tool_window = action(
+            self.tr("Toggle Keypoint Tool Window"),
+            self.toggle_keypoint_tool_window,
+            shortcuts.get("toggle_keypoint_tool_window", "Ctrl+K"),
+            None,
+            self.tr("Open keypoint fill tool window"),
+            enabled=True,
+        )
         edit_mode = action(
             self.tr("Edit Object"),
             self.set_edit_mode,
@@ -1257,6 +1283,16 @@ class LabelingWidget(LabelDialog):
             icon=None,
             checkable=True,
             checked=self._config["show_linking"],
+            enabled=True,
+            auto_trigger=True,
+        )
+        show_selected_label_only = action(
+            self.tr("Show Selected Label Only"),
+            lambda x: self.set_canvas_params("show_selected_label_only", x),
+            tip=self.tr("Show labels only for selected shapes"),
+            icon=None,
+            checkable=True,
+            checked=self._config.get("show_selected_label_only", False),
             enabled=True,
             auto_trigger=True,
         )
@@ -1734,6 +1770,8 @@ class LabelingWidget(LabelDialog):
             digit_shortcut_7=digit_shortcut_7,
             digit_shortcut_8=digit_shortcut_8,
             digit_shortcut_9=digit_shortcut_9,
+            enter_keypoint_fill_mode=enter_keypoint_fill_mode,
+            toggle_keypoint_tool_window=toggle_keypoint_tool_window,
             upload_image_flags_file=upload_image_flags_file,
             upload_label_flags_file=upload_label_flags_file,
             upload_shape_attrs_file=upload_shape_attrs_file,
@@ -1791,6 +1829,7 @@ class LabelingWidget(LabelDialog):
             show_degrees=show_degrees,
             show_attributes=show_attributes,
             show_linking=show_linking,
+            show_selected_label_only=show_selected_label_only,
             show_navigator=show_navigator,
             zoom_actions=zoom_actions,
             open_next_image=open_next_image,
@@ -1888,6 +1927,8 @@ class LabelingWidget(LabelDialog):
                 digit_shortcut_7,
                 digit_shortcut_8,
                 digit_shortcut_9,
+                enter_keypoint_fill_mode,
+                toggle_keypoint_tool_window,
                 edit_mode,
                 brightness_contrast,
                 toggle_annotation_checked,
@@ -1916,6 +1957,8 @@ class LabelingWidget(LabelDialog):
             self.actions.digit_shortcut_9,
         ):
             self.addAction(digit_action)
+        self.addAction(self.actions.enter_keypoint_fill_mode)
+        self.addAction(self.actions.toggle_keypoint_tool_window)
         self.addAction(self.actions.toggle_annotation_checked)
 
         self.canvas.vertex_selected.connect(
@@ -1980,6 +2023,8 @@ class LabelingWidget(LabelDialog):
                 save_visualization_video,
                 None,
                 digit_shortcut_manager,
+                enter_keypoint_fill_mode,
+                toggle_keypoint_tool_window,
                 label_manager,
                 gid_manager,
                 shape_manager,
@@ -2095,6 +2140,7 @@ class LabelingWidget(LabelDialog):
                 show_degrees,
                 show_attributes,
                 show_linking,
+                show_selected_label_only,
                 show_groups,
                 hide_selected_polygons,
                 show_hidden_polygons,
@@ -2968,6 +3014,12 @@ class LabelingWidget(LabelDialog):
         self.load_shapes(self.canvas.shapes, update_last_label=False)
         self.actions.undo.setEnabled(self.canvas.is_shape_restorable)
         self.set_dirty()
+        # Refresh keypoint fill mode after undo
+        if (
+            hasattr(self, "keypoint_fill_mode")
+            and self.keypoint_fill_mode.is_active
+        ):
+            self.keypoint_fill_mode.refresh()
 
     def get_label_file_list(self):
         label_file_list = []
@@ -3329,9 +3381,151 @@ class LabelingWidget(LabelDialog):
         self.digit_to_label = label
         self.toggle_draw_mode(edit=False, create_mode=create_mode)
 
+    def enter_keypoint_fill_mode(self):
+        """Enter keypoint fill mode.
+
+        If a person rectangle with group_id is selected, enter single-person mode.
+        Otherwise, open the tool window (batch mode).
+        """
+        selected = getattr(self.canvas, "selected_shapes", [])
+        person_shape = None
+        for shape in selected:
+            if (
+                getattr(shape, "label", None) == "person"
+                and getattr(shape, "group_id", None) is not None
+                and getattr(shape, "shape_type", None) == "rectangle"
+            ):
+                person_shape = shape
+                break
+
+        if person_shape:
+            # Single mode: fill for selected person directly
+            if self.keypoint_fill_mode.activate(person_shape.group_id):
+                if hasattr(self, "gid_filter_combobox") and self.gid_filter_combobox:
+                    combo = self.gid_filter_combobox.gid_box
+                    gid_text = str(person_shape.group_id)
+                    target_index = 0
+                    for i in range(combo.count()):
+                        if combo.itemText(i) == gid_text:
+                            target_index = i
+                            break
+                    combo.blockSignals(True)
+                    combo.setCurrentIndex(target_index)
+                    combo.blockSignals(False)
+                    self.gid_selection_changed(target_index)
+                self.toggle_draw_mode(edit=False, create_mode="point")
+        else:
+            # Batch mode: open tool window
+            if self.keypoint_tool_window is None:
+                self.keypoint_tool_window = KeypointToolWindow(
+                    fill_mode=self.keypoint_fill_mode,
+                    label_widget=self,
+                    parent=self,
+                )
+                self.canvas.new_shape.connect(self.keypoint_tool_window.refresh_all)
+
+            self.keypoint_tool_window.refresh_all()
+            person_data = self.keypoint_tool_window.content_widget._get_person_data()
+            if not person_data:
+                self.status(
+                    self.tr("No objects with group_id found in the image"), 2000
+                )
+                return
+
+            incomplete_gids = [
+                gid for gid, data in person_data.items()
+                if data["completed"] < data["total"]
+            ]
+            if incomplete_gids:
+                self.keypoint_tool_window.content_widget.switch_to_person(
+                    min(incomplete_gids)
+                )
+            else:
+                first_gid = min(person_data.keys())
+                self.keypoint_tool_window.content_widget.switch_to_person(first_gid)
+
+            self.keypoint_tool_window.show()
+            self.keypoint_tool_window.raise_()
+
+    def exit_keypoint_fill_mode(self):
+        """Exit keypoint fill mode and restore full visibility."""
+        if self.keypoint_fill_mode.is_active:
+            self.keypoint_fill_mode.deactivate()
+
+            if hasattr(self, "gid_filter_combobox") and self.gid_filter_combobox:
+                combo = self.gid_filter_combobox.gid_box
+                combo.blockSignals(True)
+                combo.setCurrentIndex(0)
+                combo.blockSignals(False)
+                self.gid_selection_changed(0)
+
+            self.set_edit_mode()
+
+    def _check_auto_activate_keypoint_fill(self) -> None:
+        """Check and auto-activate keypoint fill mode if enabled."""
+        if not self._config.get("auto_activate_keypoint_fill", False):
+            return
+
+        # Ensure tool window exists
+        if self.keypoint_tool_window is None:
+            self.keypoint_tool_window = KeypointToolWindow(
+                fill_mode=self.keypoint_fill_mode,
+                label_widget=self,
+                parent=self,
+            )
+            self.canvas.new_shape.connect(self.keypoint_tool_window.refresh_all)
+
+        # Force refresh to get latest data for the new image
+        self.keypoint_tool_window.refresh_all()
+        person_data = self.keypoint_tool_window.content_widget._get_person_data()
+
+        # If exactly one group_id is present, auto-activate
+        if len(person_data) == 1:
+            gid = list(person_data.keys())[0]
+            logger.info(f"Auto-activating keypoint fill mode for gid: {gid}")
+            self.keypoint_tool_window.content_widget.switch_to_person(gid)
+            if not self.keypoint_tool_window.isVisible():
+                self.keypoint_tool_window.show()
+                self.keypoint_tool_window.raise_()
+
+    def toggle_keypoint_tool_window(self):
+        """Toggle the keypoint tool window visibility."""
+        if self.keypoint_tool_window is None:
+            self.keypoint_tool_window = KeypointToolWindow(
+                fill_mode=self.keypoint_fill_mode,
+                label_widget=self,
+                parent=self,
+            )
+            self.canvas.new_shape.connect(self.keypoint_tool_window.refresh_all)
+
+        if self.keypoint_tool_window.isVisible():
+            self.keypoint_tool_window.hide()
+        else:
+            self.keypoint_tool_window.show()
+            self.keypoint_tool_window.raise_()
+            self.keypoint_tool_window.refresh_all()
+
+    def switch_to_prev_person(self):
+        """Switch to previous person in batch mode."""
+        if self.keypoint_tool_window:
+            self.keypoint_tool_window.content_widget.switch_to_prev_person()
+
+    def switch_to_next_person(self):
+        """Switch to next person in batch mode."""
+        if self.keypoint_tool_window:
+            self.keypoint_tool_window.content_widget.switch_to_next_person()
+
     def toggle_draw_mode(
         self, edit=True, create_mode="rectangle", disable_auto_labeling=True
     ):
+        # Exit keypoint fill mode if switching away from point mode
+        if (
+            hasattr(self, "keypoint_fill_mode")
+            and self.keypoint_fill_mode.is_active
+        ):
+            if edit or create_mode != "point":
+                self.exit_keypoint_fill_mode()
+
         # Disable auto labeling if needed
         if (
             disable_auto_labeling
@@ -4789,6 +4983,24 @@ class LabelingWidget(LabelDialog):
 
         position MUST be in global coordinates.
         """
+        # Keypoint fill mode: auto-assign label and group_id for new points
+        if (
+            hasattr(self, "keypoint_fill_mode")
+            and self.keypoint_fill_mode.is_active
+        ):
+            shape = self.canvas.shapes[-1] if self.canvas.shapes else None
+            if shape and getattr(shape, "shape_type", None) == "point":
+                label, group_id = self.keypoint_fill_mode.get_next_label_and_group_id()
+                if label and group_id is not None:
+                    shape.label = label
+                    shape.group_id = group_id
+                    self.add_label(shape)
+                    self.canvas.shapes_backups.pop()
+                    self.canvas.store_shapes()
+                    self.keypoint_fill_mode.advance()
+                    self.set_dirty()
+                    return
+
         items = self.unique_label_list.selectedItems()
         text = None
         if items:
@@ -5592,6 +5804,13 @@ class LabelingWidget(LabelDialog):
 
         if self.compare_view_manager.is_active():
             self.compare_view_manager.load_compare_for_file(self.filename)
+
+        # Refresh keypoint tool window on image change
+        if self.keypoint_tool_window is not None:
+            self.keypoint_tool_window.refresh_all()
+
+        # Auto-activate keypoint fill mode if enabled and single object found
+        self._check_auto_activate_keypoint_fill()
 
         return True
 

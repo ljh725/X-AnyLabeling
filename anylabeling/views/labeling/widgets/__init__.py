@@ -28,5 +28,7 @@ from .popup import Popup
 from .toolbar import ToolBar
 from .unique_label_qlist_widget import UniqueLabelQListWidget
 from .vqa_dialog import VQADialog
+from .keypoint_fill_mode import KeypointFillMode
+from .keypoint_tool_window import KeypointToolWindow
 from .viewport_controller import ViewportController
 from .zoom_widget import ZoomWidget

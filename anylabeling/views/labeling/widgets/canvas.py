@@ -183,6 +183,7 @@ class Canvas(
         self.show_degrees = False
         self.show_attributes = True
         self.show_linking = True
+        self.show_selected_label_only = False
 
         # Set cross line options.
         self.cross_line_show = True
@@ -1304,9 +1305,12 @@ class Canvas(
                     and self.h_shape_is_selected
                     and not self.moving_shape
                 ):
-                    self.selection_changed.emit(
-                        [x for x in self.selected_shapes if x != self.h_hape]
-                    )
+                    # [修复] show_selected_label_only 模式下，禁用"点击取消选中"行为
+                    # 使标签持续显示直到选中其他对象
+                    if not getattr(self, 'show_selected_label_only', False):
+                        self.selection_changed.emit(
+                            [x for x in self.selected_shapes if x != self.h_hape]
+                        )
 
         self.store_moving_shape()
 
@@ -1492,7 +1496,12 @@ class Canvas(
                             self.selection_changed.emit([shape])
                         self.h_shape_is_selected = False
                     else:
-                        self.h_shape_is_selected = True
+                        # [修复] show_selected_label_only 模式下，不自动取消选中
+                        # 使标签持续显示直到选中其他对象
+                        if getattr(self, 'show_selected_label_only', False):
+                            self.h_shape_is_selected = False
+                        else:
+                            self.h_shape_is_selected = True
                     self.calculate_offsets(point)
                     return
         self.deselect_shape()
@@ -2615,6 +2624,8 @@ class Canvas(
             for shape in self.shapes:
                 if not shape.visible:
                     continue
+                if self.show_selected_label_only and not shape.selected:
+                    continue
                 d_react = shape.point_size / shape.scale
                 if not shape.visible:
                     continue
@@ -2725,7 +2736,7 @@ class Canvas(
 
             pen = QtGui.QPen(QtGui.QColor("#000000"), 8, Qt.PenStyle.SolidLine)
             p.setPen(pen)
-            for _, _, text_pos, label_text in labels:
+            for shape, _, text_pos, label_text in labels:
                 if not shape.visible:
                     continue
                 p.drawText(text_pos, label_text)

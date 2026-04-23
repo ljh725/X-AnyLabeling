@@ -14,6 +14,7 @@ auto_use_last_label: false
 auto_use_last_gid: false
 auto_highlight_shape: true
 auto_switch_to_edit_mode: true
+auto_activate_keypoint_fill: false
 exif_scan_enabled: true
 show_groups: false
 show_masks: true
@@ -23,6 +24,7 @@ show_scores: true
 show_degrees: false
 show_shapes: true
 show_linking: true
+show_selected_label_only: false
 show_attributes: true
 logger_level: info
 system_clipboard: false
@@ -178,6 +180,8 @@ shortcuts:
   edit_digit_shortcut: Alt+D
   edit_group_id: Alt+G
   edit_labels: Alt+L
+  enter_keypoint_fill_mode: K
+  toggle_keypoint_tool_window: Ctrl+K
   edit_shapes: Alt+S
   open_settings: Ctrl+0
   toggle_keep_prev_mode: Ctrl+P
