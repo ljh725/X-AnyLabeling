@@ -84,6 +84,7 @@ from .widgets import (
     LabelListWidget,
     LabelListWidgetItem,
     DigitShortcutDialog,
+    DigitShortcutPageManager,
     LabelModifyDialog,
     GroupIDModifyDialog,
     OverviewDialog,
@@ -175,6 +176,14 @@ class LabelingWidget(LabelDialog):
         self.drawing_digit_shortcuts = self._config.get("digit_shortcuts", {})
         self._runtime_shape_color_shift = int(
             self._config.get("shift_auto_shape_color", 0)
+        )
+
+        # Initialize Digit Shortcut Page Manager
+        self.digit_page_manager = DigitShortcutPageManager(
+            config=self._config,
+            shortcuts=self.drawing_digit_shortcuts,
+            status_callback=self.status,
+            tr_callback=self.tr,
         )
 
         # Initialize Keypoint Fill Mode
@@ -991,6 +1000,14 @@ class LabelingWidget(LabelDialog):
             icon="edit",
             tip=self.tr(
                 "Manage Digit Shortcuts: Assign Drawing Modes and Labels to Number Keys"
+            ),
+        )
+        switch_digit_page = action(
+            self.tr("Switch Digit Shortcut Page"),
+            self.switch_digit_shortcut_page,
+            shortcuts["switch_digit_page"],
+            tip=self.tr(
+                "Switch to the next digit shortcut page"
             ),
         )
         label_manager = action(
@@ -1860,6 +1877,7 @@ class LabelingWidget(LabelDialog):
             open_paddleocr=open_paddleocr,
             toggle_auto_labeling_widget=toggle_auto_labeling_widget,
             digit_shortcut_manager=digit_shortcut_manager,
+            switch_digit_page=switch_digit_page,
             label_manager=label_manager,
             gid_manager=gid_manager,
             shape_manager=shape_manager,
@@ -1975,6 +1993,7 @@ class LabelingWidget(LabelDialog):
             self.actions.digit_shortcut_9,
         ):
             self.addAction(digit_action)
+        self.addAction(self.actions.switch_digit_page)
         self.addAction(self.actions.enter_keypoint_fill_mode)
         self.addAction(self.actions.toggle_keypoint_tool_window)
         self.addAction(self.actions.switch_to_prev_person)
@@ -3192,6 +3211,9 @@ class LabelingWidget(LabelDialog):
         result = digit_shortcut_dialog.exec()
         if result == QtWidgets.QDialog.DialogCode.Accepted:
             self._config["digit_shortcuts"] = self.drawing_digit_shortcuts
+            self.digit_page_manager.update_shortcuts(
+                self.drawing_digit_shortcuts
+            )
             save_config(self._config)
 
     def label_manager(self):
@@ -3390,7 +3412,8 @@ class LabelingWidget(LabelDialog):
         if self.drawing_digit_shortcuts is None:
             return
 
-        data = self.drawing_digit_shortcuts.get(digit_num, None)
+        actual_index = self.digit_page_manager.get_actual_index(digit_num)
+        data = self.drawing_digit_shortcuts.get(actual_index, None)
         if not data:
             return
 
@@ -3402,6 +3425,13 @@ class LabelingWidget(LabelDialog):
 
         self.digit_to_label = label
         self.toggle_draw_mode(edit=False, create_mode=create_mode)
+
+    def switch_digit_shortcut_page(self):
+        """Switch to the next digit shortcut page."""
+        self.digit_page_manager.switch_page()
+        self.digit_page_manager.show_page_switch_status(
+            self._config["shortcuts"].get("switch_digit_page", "F1")
+        )
 
     def enter_keypoint_fill_mode(self):
         """Enter keypoint fill mode.

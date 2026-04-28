@@ -11,6 +11,7 @@ from .crosshair_settings_dialog import CrosshairSettingsDialog
 from .file_dialog_preview import FileDialogPreview
 from .filter_label_widget import GroupIDFilterComboBox, LabelFilterComboBox
 from .shape_dialog import ShapeModifyDialog
+from .digit_shortcut_page_manager import DigitShortcutPageManager
 from .label_dialog import (
     DigitShortcutDialog,
     GroupIDModifyDialog,

@@ -2,10 +2,10 @@ import os
 import re
 import json
 
-from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtGui import QFont, QColor, QIntValidator
-from PyQt6.QtCore import QCoreApplication, Qt
-from PyQt6.QtWidgets import (
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtGui import QFont, QColor, QIntValidator
+from PyQt5.QtCore import QCoreApplication, Qt
+from PyQt5.QtWidgets import (
     QColorDialog,
     QTableWidgetItem,
     QTableWidget,
@@ -15,19 +15,12 @@ from PyQt6.QtWidgets import (
 
 from anylabeling.views.labeling import utils
 from anylabeling.views.labeling.logger import logger
-from anylabeling.views.labeling.shape import Shape
 from anylabeling.views.labeling.widgets.popup import Popup
 from anylabeling.views.labeling.utils.qt import new_icon_path
 from anylabeling.views.labeling.utils.style import (
-    get_cancel_btn_style,
-    get_dialog_style,
     get_ok_btn_style,
-    get_settings_combo_style,
     get_spinbox_style,
-    get_table_item_bg_color,
-    get_table_item_disabled_bg_color,
 )
-from anylabeling.views.labeling.utils.theme import get_theme
 
 # TODO(unknown):
 # - Calculate optimal position so as not to go out of screen area.
@@ -42,13 +35,47 @@ def natural_sort_key(s):
 class ColoredComboBox(QtWidgets.QComboBox):
     def __init__(self, parent=None):
         super(ColoredComboBox, self).__init__(parent)
-        self.setStyleSheet(get_settings_combo_style())
+        self.mode_colors = {
+            "polygon": QtGui.QColor("#D81B60"),  # Magenta
+            "rectangle": QtGui.QColor("#1E88E5"),  # Bright Blue
+            "rotation": QtGui.QColor("#8E24AA"),  # Purple
+            "circle": QtGui.QColor("#00C853"),  # Bright Green
+            "line": QtGui.QColor("#FF6D00"),  # Bright Orange
+            "point": QtGui.QColor("#00ACC1"),  # Teal
+            "linestrip": QtGui.QColor("#6D4C41"),  # Brown
+        }
 
     def addModeItem(self, text, userData=None):
         self.addItem(text, userData)
+        if text in self.mode_colors:
+            index = self.count() - 1
+            self.setItemData(
+                index, self.mode_colors[text], QtCore.Qt.ForegroundRole
+            )
 
-    def wheelEvent(self, event):
-        event.ignore()
+    def paintEvent(self, event):
+        painter = QtWidgets.QStylePainter(self)
+        painter.setPen(self.palette().color(QtGui.QPalette.Text))
+
+        # Draw the combobox frame, button, etc.
+        opt = QtWidgets.QStyleOptionComboBox()
+        self.initStyleOption(opt)
+        painter.drawComplexControl(QtWidgets.QStyle.CC_ComboBox, opt)
+
+        # Draw the current text with proper color
+        current_text = self.currentText()
+        if current_text in self.mode_colors:
+            painter.setPen(self.mode_colors[current_text])
+
+        # Draw the text
+        opt.currentText = current_text
+        rect = self.style().subElementRect(
+            QtWidgets.QStyle.SE_ComboBoxFocusRect, opt, self
+        )
+        rect.adjust(2, 0, -2, 0)  # adjust the text rectangle
+        painter.drawText(
+            rect, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, current_text
+        )
 
 
 class DigitShortcutDialog(QtWidgets.QDialog):
@@ -56,6 +83,16 @@ class DigitShortcutDialog(QtWidgets.QDialog):
 
     # Constants
     PAGE_SIZE: int = 10
+    AVAILABLE_MODES = [
+        "polygon",
+        "rectangle",
+        "rotation",
+        "circle",
+        "line",
+        "point",
+        "linestrip",
+        "point_fit_rect",
+    ]
 
     def __init__(self, parent=None):
         """
@@ -68,9 +105,9 @@ class DigitShortcutDialog(QtWidgets.QDialog):
 
         self.parent = parent
         self.page_size = self.PAGE_SIZE
-        self.available_modes = Shape.get_supported_shape()
-
-        # Copy shortcuts from parent with normalized keys
+        self.available_modes = self.AVAILABLE_MODES
+        
+        # Copy shortcuts from parent
         self.digit_shortcuts = {}
         if (
             hasattr(self.parent, "drawing_digit_shortcuts")
@@ -88,13 +125,60 @@ class DigitShortcutDialog(QtWidgets.QDialog):
 
         self.setWindowTitle(self.tr("Digit Shortcut Manager"))
         self.setModal(True)
-        self.setMinimumSize(520, 560)
+        self.setMinimumSize(500, 435)
         self.setWindowFlags(
-            self.windowFlags()
-            & ~QtCore.Qt.WindowType.WindowContextHelpButtonHint
+            self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint
         )
 
-        self.setStyleSheet(get_dialog_style())
+        self.setStyleSheet(
+            f"""
+                QDialog {{
+                    background-color: #f5f5f7;
+                    border-radius: 10px;
+                }}
+                QLabel {{
+                    color: #1d1d1f;
+                    font-size: 13px;
+                }}
+                QComboBox {{
+                    padding: 2px 6px;
+                    background: white;
+                    border: 1px solid #d2d2d7;
+                    border-radius: 4px;
+                    min-height: 20px;
+                    selection-background-color: #0071e3;
+                }}
+                QComboBox::drop-down {{
+                    subcontrol-origin: padding;
+                    subcontrol-position: center right;
+                    width: 20px;
+                    border: none;
+                }}
+                QComboBox::down-arrow {{
+                    image: url({new_icon_path("caret-down", "svg")});
+                    width: 12px;
+                    height: 12px;
+                }}
+                QLineEdit {{
+                    padding: 2px 6px;
+                    background: white;
+                    border: 1px solid #d2d2d7;
+                    border-radius: 4px;
+                    min-height: 20px;
+                    selection-background-color: #0071e3;
+                }}
+                QLineEdit:disabled {{
+                    background: #f0f0f0;
+                    color: #999999;
+                }}
+                QHeaderView::section {{
+                    background-color: #f0f0f0;
+                    padding: 5px;
+                    border: 1px solid #d2d2d7;
+                    font-weight: bold;
+                }}
+        """
+        )
 
         # Create layout with proper spacing
         layout = QtWidgets.QVBoxLayout()
@@ -110,22 +194,19 @@ class DigitShortcutDialog(QtWidgets.QDialog):
         header_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         layout.addWidget(header_label)
 
-        # Pagination controls
         controls_layout = QtWidgets.QHBoxLayout()
         controls_layout.setSpacing(12)
 
         self.prev_button = QtWidgets.QPushButton(self.tr("Previous Page"))
         self.prev_button.setFixedHeight(28)
         self.prev_button.clicked.connect(self.show_previous_page)
-        self.prev_button.setStyleSheet(get_cancel_btn_style())
 
         self.next_button = QtWidgets.QPushButton(self.tr("Next Page"))
         self.next_button.setFixedHeight(28)
         self.next_button.clicked.connect(self.show_next_page)
-        self.next_button.setStyleSheet(get_cancel_btn_style())
 
         self.page_label = QtWidgets.QLabel()
-        self.page_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.page_label.setAlignment(QtCore.Qt.AlignCenter)
         self.page_label.setStyleSheet("font-weight: 500;")
 
         controls_layout.addWidget(self.prev_button)
@@ -143,28 +224,23 @@ class DigitShortcutDialog(QtWidgets.QDialog):
         self.table.setHorizontalHeaderLabels(
             [self.tr("Digit"), self.tr("Drawing Mode"), self.tr("Label")]
         )
-        self.table.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.NoSelection
-        )
-        self.table.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.table.horizontalHeader().setSectionResizeMode(
-            0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+            0, QtWidgets.QHeaderView.ResizeToContents
         )
         self.table.horizontalHeader().setSectionResizeMode(
-            1, QtWidgets.QHeaderView.ResizeMode.Stretch
+            1, QtWidgets.QHeaderView.Stretch
         )
         self.table.horizontalHeader().setSectionResizeMode(
-            2, QtWidgets.QHeaderView.ResizeMode.Stretch
+            2, QtWidgets.QHeaderView.Stretch
         )
         self.table.verticalHeader().setVisible(False)
-        self.table.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
+        self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 
-        # Populate table structure (data loaded per page)
+        # Populate table
         for row in range(self.page_size):
             digit_item = QtWidgets.QTableWidgetItem()
-            digit_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            digit_item.setTextAlignment(QtCore.Qt.AlignCenter)
             self.table.setItem(row, 0, digit_item)
 
             # Mode combobox column
@@ -177,24 +253,12 @@ class DigitShortcutDialog(QtWidgets.QDialog):
             mode_combo.currentIndexChanged.connect(
                 lambda idx, r=row: self.on_mode_changed(r, idx)
             )
-            mode_combo.setFixedHeight(30)
-            combo_container = QtWidgets.QWidget()
-            combo_layout = QtWidgets.QHBoxLayout(combo_container)
-            combo_layout.setContentsMargins(6, 0, 6, 0)
-            combo_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter)
-            combo_layout.addWidget(mode_combo)
-            self.table.setCellWidget(row, 1, combo_container)
+            self.table.setCellWidget(row, 1, mode_combo)
 
             # Label text field
             label_edit = QtWidgets.QLineEdit()
-            label_edit.setFixedHeight(30)
             label_edit.setEnabled(False)
-            label_container = QtWidgets.QWidget()
-            label_layout = QtWidgets.QHBoxLayout(label_container)
-            label_layout.setContentsMargins(6, 0, 6, 0)
-            label_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter)
-            label_layout.addWidget(label_edit)
-            self.table.setCellWidget(row, 2, label_container)
+            self.table.setCellWidget(row, 2, label_edit)
 
         layout.addWidget(self.table)
         self.load_page(self.current_page)
@@ -204,16 +268,67 @@ class DigitShortcutDialog(QtWidgets.QDialog):
         button_layout.setSpacing(8)
 
         self.reset_button = QtWidgets.QPushButton(self.tr("Reset"))
+        self.reset_button.setFixedSize(100, 32)
         self.reset_button.clicked.connect(self.reset_settings)
-        self.reset_button.setStyleSheet(get_cancel_btn_style())
+        self.reset_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #f5f5f7;
+                color: #1d1d1f;
+                border: 1px solid #d2d2d7;
+                border-radius: 6px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #e5e5e5;
+            }
+            QPushButton:pressed {
+                background-color: #d5d5d5;
+            }
+            """
+        )
 
         ok_button = QtWidgets.QPushButton(self.tr("OK"))
+        ok_button.setFixedSize(100, 32)
         ok_button.clicked.connect(self.save_settings)
-        ok_button.setStyleSheet(get_ok_btn_style())
+        ok_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #0071e3;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #0077ED;
+            }
+            QPushButton:pressed {
+                background-color: #0068D0;
+            }
+            """
+        )
 
         cancel_button = QtWidgets.QPushButton(self.tr("Cancel"))
+        cancel_button.setFixedSize(100, 32)
         cancel_button.clicked.connect(self.reject)
-        cancel_button.setStyleSheet(get_cancel_btn_style())
+        cancel_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #f5f5f7;
+                color: #1d1d1f;
+                border: 1px solid #d2d2d7;
+                border-radius: 6px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #e5e5e5;
+            }
+            QPushButton:pressed {
+                background-color: #d5d5d5;
+            }
+            """
+        )
 
         button_layout.addWidget(self.reset_button)
         button_layout.addStretch()
@@ -227,12 +342,12 @@ class DigitShortcutDialog(QtWidgets.QDialog):
         self.move_to_center()
 
         # Set compact row heights
-        self.table.verticalHeader().setDefaultSectionSize(44)
+        self.table.verticalHeader().setDefaultSectionSize(28)
 
     def _init_page_state(self):
         """
         Initialize page state from parent's page manager.
-
+        
         This ensures the dialog opens on the same page as the main widget,
         fixing the state synchronization issue.
         """
@@ -243,28 +358,22 @@ class DigitShortcutDialog(QtWidgets.QDialog):
             self.current_page = page_manager.current_page
         else:
             # Fallback to legacy attribute access
-            parent_pages = (
-                getattr(self.parent, "digit_pages", 1)
-                if self.parent
-                else 1
-            )
+            parent_pages = getattr(self.parent, "digit_pages", 2) if self.parent else 2
             try:
                 parent_pages = int(parent_pages)
             except (TypeError, ValueError):
-                parent_pages = 1
+                parent_pages = 2
             self.pages = max(1, parent_pages)
-
+            
             initial_page = (
-                getattr(self.parent, "digit_shortcut_page", 0)
-                if self.parent
-                else 0
+                getattr(self.parent, "digit_shortcut_page", 0) if self.parent else 0
             )
             try:
                 initial_page = int(initial_page)
             except (TypeError, ValueError):
                 initial_page = 0
             self.current_page = min(max(0, initial_page), self.pages - 1)
-
+        
         # Ensure pages covers all existing shortcuts
         if self.digit_shortcuts:
             try:
@@ -274,18 +383,10 @@ class DigitShortcutDialog(QtWidgets.QDialog):
             except (TypeError, ValueError):
                 pass
 
-    def _get_combo(self, row):
-        container = self.table.cellWidget(row, 1)
-        return container.findChild(QtWidgets.QComboBox)
-
-    def _get_label_edit(self, row):
-        container = self.table.cellWidget(row, 2)
-        return container.findChild(QtWidgets.QLineEdit)
-
-    def on_mode_changed(self, row, index):
+    def on_mode_changed(self, digit, index):
         """Enable/disable label field based on mode selection"""
-        combo = self._get_combo(row)
-        label_edit = self._get_label_edit(row)
+        combo = self.table.cellWidget(digit, 1)
+        label_edit = self.table.cellWidget(digit, 2)
 
         # Enable label field only if a valid mode is selected
         mode = combo.itemData(index)
@@ -293,11 +394,13 @@ class DigitShortcutDialog(QtWidgets.QDialog):
 
         if mode is None:
             label_edit.clear()
+            label_edit.setStyleSheet("")
             label_edit.setPlaceholderText("")
-            label_edit.setStyleSheet("")
         else:
+            # Reset style but add a placeholder to indicate requirement
+            # 这里提示用户支持多标签，用 , 或 ; 分隔同时选择形状后必须填写内容
             label_edit.setStyleSheet("")
-            label_edit.setPlaceholderText(self.tr("Required"))
+            label_edit.setPlaceholderText(self.tr("Required (支持多标签，用 , 或 ; 分隔)"))
 
     def update_page_controls(self):
         """Update pagination controls and feedback label."""
@@ -323,17 +426,14 @@ class DigitShortcutDialog(QtWidgets.QDialog):
         start_index = self.current_page * self.page_size
         for row in range(self.page_size):
             actual_index = start_index + row
-            mode_combo = self._get_combo(row)
-            label_edit = self._get_label_edit(row)
+            mode_combo = self.table.cellWidget(row, 1)
+            label_edit = self.table.cellWidget(row, 2)
 
             mode = mode_combo.currentData()
             label = label_edit.text().strip()
 
             if mode is not None:
-                self.digit_shortcuts[actual_index] = {
-                    "mode": mode,
-                    "label": label,
-                }
+                self.digit_shortcuts[actual_index] = {"mode": mode, "label": label}
             elif actual_index in self.digit_shortcuts:
                 self.digit_shortcuts.pop(actual_index, None)
 
@@ -351,14 +451,12 @@ class DigitShortcutDialog(QtWidgets.QDialog):
             digit_item = self.table.item(row, 0)
             if digit_item is None:
                 digit_item = QtWidgets.QTableWidgetItem()
-                digit_item.setTextAlignment(
-                    QtCore.Qt.AlignmentFlag.AlignCenter
-                )
+                digit_item.setTextAlignment(QtCore.Qt.AlignCenter)
                 self.table.setItem(row, 0, digit_item)
             digit_item.setText(str(actual_index))
 
-            mode_combo = self._get_combo(row)
-            label_edit = self._get_label_edit(row)
+            mode_combo = self.table.cellWidget(row, 1)
+            label_edit = self.table.cellWidget(row, 2)
 
             mode_combo.blockSignals(True)
             label_edit.blockSignals(True)
@@ -407,16 +505,14 @@ class DigitShortcutDialog(QtWidgets.QDialog):
             self,
             self.tr("Confirm Reset"),
             self.tr(
-                "Are you sure you want to reset all shortcuts? "
-                "This cannot be undone."
+                "Are you sure you want to reset all shortcuts? This cannot be undone."
             ),
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
-            QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
         )
 
         # Only proceed if user confirmed
-        if confirm == QtWidgets.QMessageBox.StandardButton.Yes:
+        if confirm == QtWidgets.QMessageBox.Yes:
             self.digit_shortcuts.clear()
             self.load_page(0)
 
@@ -430,20 +526,19 @@ class DigitShortcutDialog(QtWidgets.QDialog):
         for page_index in range(self.pages):
             self.load_page(page_index)
             for row in range(self.page_size):
-                label_edit = self._get_label_edit(row)
+                label_edit = self.table.cellWidget(row, 2)
                 label_edit.setStyleSheet("")
 
             for row in range(self.page_size):
-                mode_combo = self._get_combo(row)
-                label_edit = self._get_label_edit(row)
+                mode_combo = self.table.cellWidget(row, 1)
+                label_edit = self.table.cellWidget(row, 2)
                 mode = mode_combo.currentData()
                 label = label_edit.text().strip()
 
                 if mode is not None and not label:
                     error_info = (page_index, row)
-                    t = get_theme()
                     label_edit.setStyleSheet(
-                        f"border: 2px solid {t['error']};"
+                        "border: 2px solid #FF3B30; background-color: #FFEEEE;"
                     )
                     break
 
@@ -459,10 +554,9 @@ class DigitShortcutDialog(QtWidgets.QDialog):
                 self,
                 self.tr("Validation Error"),
                 self.tr(
-                    "Shortcut {index} requires a label when a "
-                    "drawing mode is selected."
+                    "Shortcut {index} requires a label when a drawing mode is selected."
                 ).format(index=actual_index),
-                QtWidgets.QMessageBox.StandardButton.Ok,
+                QtWidgets.QMessageBox.Ok,
             )
             return
 
@@ -478,7 +572,7 @@ class DigitShortcutDialog(QtWidgets.QDialog):
 
         if hasattr(self.parent, "drawing_digit_shortcuts"):
             self.parent.drawing_digit_shortcuts = result
-
+        
         # Sync page state back to parent's page manager
         if hasattr(self.parent, "digit_page_manager"):
             self.parent.digit_page_manager.update_shortcuts(result)
@@ -497,12 +591,16 @@ class DigitShortcutDialog(QtWidgets.QDialog):
 
     def move_to_center(self):
         """Move dialog to center of the screen"""
-        screen = QtWidgets.QApplication.primaryScreen().geometry()
+        screen = QtWidgets.QApplication.desktop().screenGeometry()
         size = self.geometry()
         self.move(
             (screen.width() - size.width()) // 2,
             (screen.height() - size.height()) // 2,
         )
+
+
+# NOTE: DigitRenameShortcutDialog has been moved to digit_rename_manager.py
+# Import it from there for backward compatibility
 
 
 class GroupIDModifyDialog(QtWidgets.QDialog):
@@ -573,8 +671,8 @@ class GroupIDModifyDialog(QtWidgets.QDialog):
         self.setWindowTitle(self.tr("Group ID Change Manager"))
         self.setWindowFlags(
             self.windowFlags()
-            | Qt.WindowType.WindowMinimizeButtonHint
-            | Qt.WindowType.WindowMaximizeButtonHint
+            | Qt.WindowMinimizeButtonHint
+            | Qt.WindowMaximizeButtonHint
         )
 
         self.resize(960, 480)
@@ -592,25 +690,30 @@ class GroupIDModifyDialog(QtWidgets.QDialog):
         # Set table to be adaptive
         self.table_widget.horizontalHeader().setStretchLastSection(True)
         self.table_widget.horizontalHeader().setSectionResizeMode(
-            0, QtWidgets.QHeaderView.ResizeMode.Fixed
+            0, QtWidgets.QHeaderView.Fixed
         )
         for idx in range(len(title_list[:])):
             self.table_widget.setColumnWidth(idx, 260)
 
         # Table style
-        self.table_widget.setStyleSheet(get_dialog_style() + """
+        self.table_widget.setStyleSheet(
+            """
             QTableWidget {
                 border: none;
                 border-radius: 8px;
+                background-color: #FAFAFA;
                 outline: none;
                 selection-background-color: transparent;
                 show-decoration-selected: 0;
+                gridline-color: #EBEBEB;
             }
             QTableWidget::item {
                 padding: 8px;
+                border-bottom: 1px solid #EBEBEB;
             }
             QTableWidget::item:selected {
                 background-color: transparent;
+                color: #000000;
                 border: none;
             }
             QTableWidget::item:focus {
@@ -621,32 +724,48 @@ class GroupIDModifyDialog(QtWidgets.QDialog):
             QTableWidget::focus {
                 outline: none;
             }
-            """)
+            QHeaderView::section {
+                background-color: #F5F5F7;
+                padding: 12px 8px;
+                border: none;
+                font-weight: 600;
+                color: #1d1d1f;
+            }
+            QTableWidget QLineEdit {
+                padding: 2px 8px;
+                margin: 2px 4px;
+                border: 1px solid #D8D8D8;
+                border-radius: 6px;
+                background: white;
+                selection-background-color: #0071e3;
+                min-width: 200px;
+            }
+            QTableWidget QLineEdit:focus {
+                border: 3px solid #60A5FA;
+                outline: none;
+            }
+            QTableView QTableCornerButton::section {
+                background-color: #FAFAFA;
+                border: none;
+            }
+            QHeaderView {
+                background-color: #FAFAFA;
+            }
+            QHeaderView::section:vertical {
+                background-color: #FAFAFA;
+                color: #666666;
+                font-weight: 500;
+                padding: 8px;
+                border: none;
+                border-right: 1px solid #EBEBEB;
+            }
+            """
+        )
 
-        from anylabeling.views.labeling.utils.theme import get_theme as _gt
-
-        _t = _gt()
         self.table_widget.verticalHeader().setStyleSheet(
-            f"QHeaderView::section {{"
-            f" background-color: {_t['surface']};"
-            f" color: {_t['text_secondary']};"
-            f" font-size: 13px;"
-            f" border: none;"
-            f" border-right: 1px solid {_t['border']};"
-            f" border-bottom: 1px solid {_t['border']};"
-            f"}}"
+            "color: #666666; font-size: 13px;"
         )
-        self.table_widget.setStyleSheet(
-            self.table_widget.styleSheet() + f" QTableCornerButton::section {{"
-            f" background-color: {_t['surface']};"
-            f" border: none;"
-            f" border-right: 1px solid {_t['border']};"
-            f" border-bottom: 1px solid {_t['border']};"
-            f" }}"
-        )
-        self.table_widget.verticalHeader().setDefaultAlignment(
-            Qt.AlignmentFlag.AlignCenter
-        )
+        self.table_widget.verticalHeader().setDefaultAlignment(Qt.AlignCenter)
         self.table_widget.verticalHeader().setFixedWidth(50)
 
         layout.addWidget(self.table_widget)
@@ -688,7 +807,7 @@ class GroupIDModifyDialog(QtWidgets.QDialog):
     def move_to_center(self):
         """Move the dialog to the center of the screen."""
         qr = self.frameGeometry()
-        cp = self.screen().availableGeometry().center()
+        cp = QtWidgets.QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
 
         self.move(qr.topLeft())
@@ -700,26 +819,23 @@ class GroupIDModifyDialog(QtWidgets.QDialog):
 
             # Ori Group-ID
             old_gid_item = QTableWidgetItem(str(group_id))
-            old_gid_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            old_gid_item.setTextAlignment(Qt.AlignCenter)
             old_gid_item.setFlags(
-                old_gid_item.flags() ^ QtCore.Qt.ItemFlag.ItemIsEditable
+                old_gid_item.flags() ^ QtCore.Qt.ItemIsEditable
             )
 
             # New Group-ID
             line_edit = QtWidgets.QLineEdit(self.table_widget)
             line_edit.setValidator(QIntValidator(0, 9999, self))
             line_edit.setPlaceholderText("Enter new ID")
-            line_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            line_edit.setAlignment(Qt.AlignCenter)
             line_edit.setFixedHeight(28)
-            line_edit.textChanged.connect(
-                lambda text, r=i: self._on_gid_value_changed(r, text)
-            )
 
             # Create a widget to hold the line edit and center it vertically
             container = QtWidgets.QWidget()
             layout = QtWidgets.QHBoxLayout(container)
             layout.setContentsMargins(4, 4, 4, 4)
-            layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.setAlignment(Qt.AlignCenter)
             layout.addWidget(line_edit)
 
             # Delete Group by ID
@@ -733,7 +849,7 @@ class GroupIDModifyDialog(QtWidgets.QDialog):
             delete_container = QtWidgets.QWidget()
             delete_layout = QtWidgets.QHBoxLayout(delete_container)
             delete_layout.setContentsMargins(4, 4, 4, 4)
-            delete_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            delete_layout.setAlignment(Qt.AlignCenter)
             delete_layout.addWidget(delete_gid_checkbox)
 
             self.table_widget.setItem(i, 0, old_gid_item)
@@ -744,25 +860,27 @@ class GroupIDModifyDialog(QtWidgets.QDialog):
             self.table_widget.setRowHeight(i, 50)
 
     def on_delete_checkbox_changed(self, row, state):
-        """Deactivate linedit when checkbox is checked."""
+        """Deactivate linedit when checkbox is checked"""
         container = self.table_widget.cellWidget(row, 1)
         value_item = container.layout().itemAt(0).widget()
 
-        if state == QtCore.Qt.CheckState.Checked:
-            value_item.clear()
-            value_item.setPlaceholderText("")
-            value_item.setReadOnly(True)
-            value_item.setStyleSheet("background-color: lightgray;")
-        else:
-            value_item.setPlaceholderText(self.tr("Enter new ID"))
-            value_item.setReadOnly(False)
-            value_item.setStyleSheet("")
-
-    def _on_gid_value_changed(self, row, text):
-        """Disable delete checkbox when new group ID is entered."""
         delete_container = self.table_widget.cellWidget(row, 2)
         delete_checkbox = delete_container.layout().itemAt(0).widget()
-        delete_checkbox.setEnabled(not bool(text))
+
+        if state == QtCore.Qt.Checked:
+            value_item.clear()
+            value_item.setReadOnly(True)
+            value_item.setStyleSheet("background-color: lightgray;")
+            delete_checkbox.setCheckable(True)
+        else:
+            value_item.setReadOnly(False)
+            value_item.setStyleSheet("background-color: white;")
+            delete_checkbox.setCheckable(False)
+
+        if value_item.text():
+            delete_checkbox.setCheckable(False)
+        else:
+            delete_checkbox.setCheckable(True)
 
     def update_range(self):
         from_value = (
@@ -830,6 +948,7 @@ class GroupIDModifyDialog(QtWidgets.QDialog):
         if self.modify_group_id(
             updated_gid_info, deleted_gid_info, start_index, end_index
         ):
+
             # Update original gid info
             self.gid_info = new_gid_info
 
@@ -925,7 +1044,7 @@ class LabelColorButton(QtWidgets.QWidget):
         )
 
     def mousePressEvent(self, event):
-        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+        if event.button() == QtCore.Qt.LeftButton:
             self.parent.change_color(self)
 
 
@@ -960,8 +1079,8 @@ class LabelModifyDialog(QtWidgets.QDialog):
         self.setWindowTitle(self.tr("Label Change Manager"))
         self.setWindowFlags(
             self.windowFlags()
-            | Qt.WindowType.WindowMinimizeButtonHint
-            | Qt.WindowType.WindowMaximizeButtonHint
+            | Qt.WindowMinimizeButtonHint
+            | Qt.WindowMaximizeButtonHint
         )
         self.resize(700, 400)
         self.move_to_center()
@@ -971,30 +1090,23 @@ class LabelModifyDialog(QtWidgets.QDialog):
         self.table_widget.setColumnCount(len(title_list))
         self.table_widget.setHorizontalHeaderLabels(title_list)
         self.table_widget.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.DoubleClicked
+            QtWidgets.QAbstractItemView.DoubleClicked
         )
-        self.table_widget.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.NoSelection
-        )
-        self.table_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        self.table_widget.verticalHeader().setDefaultSectionSize(40)
 
         # Set header font and alignment
         for i in range(len(title_list)):
             self.table_widget.horizontalHeaderItem(i).setFont(
-                QFont("Arial", 8, QFont.Weight.Bold)
+                QFont("Arial", 8, QFont.Bold)
             )
             self.table_widget.horizontalHeaderItem(i).setTextAlignment(
-                QtCore.Qt.AlignmentFlag.AlignCenter
+                QtCore.Qt.AlignCenter
             )
             if i == 0:
                 self.table_widget.horizontalHeaderItem(i).setToolTip(
                     self.tr("Double-click to copy label text")
                 )
 
-        self.table_widget.setContextMenuPolicy(
-            Qt.ContextMenuPolicy.CustomContextMenu
-        )
+        self.table_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table_widget.customContextMenuRequested.connect(
             self.show_context_menu
         )
@@ -1051,7 +1163,7 @@ class LabelModifyDialog(QtWidgets.QDialog):
 
     def move_to_center(self):
         qr = self.frameGeometry()
-        cp = self.screen().availableGeometry().center()
+        cp = QtWidgets.QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
@@ -1064,9 +1176,7 @@ class LabelModifyDialog(QtWidgets.QDialog):
             self.table_widget.insertRow(i)
 
             class_item = QTableWidgetItem(label)
-            class_item.setFlags(
-                class_item.flags() ^ QtCore.Qt.ItemFlag.ItemIsEditable
-            )
+            class_item.setFlags(class_item.flags() ^ QtCore.Qt.ItemIsEditable)
             class_item.setToolTip(self.tr("Double-click to copy label text"))
 
             delete_checkbox = QCheckBox()
@@ -1078,33 +1188,18 @@ class LabelModifyDialog(QtWidgets.QDialog):
                 )
             )
 
-            value_edit = QtWidgets.QLineEdit()
-            value_edit.setText(info["value"] if info["value"] else "")
-            t = get_theme()
-            _base_style = (
-                f"QLineEdit {{"
-                f" border: none;"
-                f" border-radius: 0;"
-                f" background: transparent;"
-                f" padding: 0 8px;"
-                f" color: {t['text']};"
-                f"}}"
-                f"QLineEdit:focus {{"
-                f" background-color: {t['background_secondary']};"
-                f"}}"
+            value_item = QTableWidgetItem(
+                info["value"] if info["value"] else ""
             )
-            if info["delete"]:
-                value_edit.setReadOnly(True)
-                value_edit.setStyleSheet(
-                    _base_style
-                    + f"QLineEdit {{ background-color: {t['surface']};"
-                    f" color: {t['text_secondary']}; }}"
-                )
-            else:
-                value_edit.setStyleSheet(_base_style)
-
-            value_edit.textChanged.connect(
-                lambda text, r=i: self.on_value_edit_changed(r, text)
+            value_item.setFlags(
+                value_item.flags() & ~QtCore.Qt.ItemIsEditable
+                if info["delete"]
+                else value_item.flags() | QtCore.Qt.ItemIsEditable
+            )
+            value_item.setBackground(
+                QtGui.QColor("lightgray")
+                if info["delete"]
+                else QtGui.QColor("white")
             )
 
             visible_checkbox = QCheckBox()
@@ -1118,7 +1213,7 @@ class LabelModifyDialog(QtWidgets.QDialog):
             visible_container = QtWidgets.QWidget()
             visible_layout = QtWidgets.QHBoxLayout(visible_container)
             visible_layout.setContentsMargins(0, 0, 0, 0)
-            visible_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            visible_layout.setAlignment(Qt.AlignCenter)
             visible_layout.addWidget(visible_checkbox)
 
             color = QColor(*info["color"])
@@ -1127,12 +1222,9 @@ class LabelModifyDialog(QtWidgets.QDialog):
             color_button.setParent(self.table_widget)
             self.table_widget.setItem(i, 0, class_item)
             self.table_widget.setCellWidget(i, 1, delete_checkbox)
-            self.table_widget.setCellWidget(i, 2, value_edit)
+            self.table_widget.setItem(i, 2, value_item)
             self.table_widget.setCellWidget(i, 3, visible_container)
             self.table_widget.setCellWidget(i, 4, color_button)
-
-    def _get_value_edit(self, row):
-        return self.table_widget.cellWidget(row, 2)
 
     def change_color(self, button):
         row = self.table_widget.indexAt(button.pos()).row()
@@ -1150,29 +1242,22 @@ class LabelModifyDialog(QtWidgets.QDialog):
             button.set_color(color)
 
     def on_delete_checkbox_changed(self, row, state):
-        t = get_theme()
-        _base = (
-            f"QLineEdit {{"
-            f" border: none; border-radius: 0;"
-            f" background: transparent; padding: 0 8px;"
-            f" color: {t['text']};"
-            f"}}"
-            f"QLineEdit:focus {{ background-color: {t['background_secondary']}; }}"
-        )
-        value_edit = self._get_value_edit(row)
-        if state == QtCore.Qt.CheckState.Checked:
-            value_edit.setReadOnly(True)
-            value_edit.setStyleSheet(
-                _base + f"QLineEdit {{ background-color: {t['surface']};"
-                f" color: {t['text_secondary']}; }}"
-            )
-        else:
-            value_edit.setReadOnly(False)
-            value_edit.setStyleSheet(_base)
-
-    def on_value_edit_changed(self, row, text):
+        value_item = self.table_widget.item(row, 2)
         delete_checkbox = self.table_widget.cellWidget(row, 1)
-        delete_checkbox.setEnabled(not bool(text))
+
+        if state == QtCore.Qt.Checked:
+            value_item.setFlags(value_item.flags() & ~QtCore.Qt.ItemIsEditable)
+            value_item.setBackground(QtGui.QColor("lightgray"))
+            delete_checkbox.setCheckable(True)
+        else:
+            value_item.setFlags(value_item.flags() | QtCore.Qt.ItemIsEditable)
+            value_item.setBackground(QtGui.QColor("white"))
+            delete_checkbox.setCheckable(False)
+
+        if value_item.text():
+            delete_checkbox.setCheckable(False)
+        else:
+            delete_checkbox.setCheckable(True)
 
     def on_visible_checkbox_changed(self, row, state):
         pass
@@ -1205,7 +1290,7 @@ class LabelModifyDialog(QtWidgets.QDialog):
         select_all_action = menu.addAction(self.tr("Select All"))
         deselect_all_action = menu.addAction(self.tr("Deselect All"))
 
-        action = menu.exec(self.table_widget.mapToGlobal(pos))
+        action = menu.exec_(self.table_widget.mapToGlobal(pos))
         if action == select_all_action:
             self.select_all_visible()
         elif action == deselect_all_action:
@@ -1243,10 +1328,10 @@ class LabelModifyDialog(QtWidgets.QDialog):
         for i in range(total_num):
             label = self.table_widget.item(i, 0).text()
             delete_checkbox = self.table_widget.cellWidget(i, 1)
-            value_edit = self._get_value_edit(i)
+            value_item = self.table_widget.item(i, 2)
 
             is_delete = delete_checkbox.isChecked()
-            new_value = value_edit.text()
+            new_value = value_item.text()
 
             visible_container = self.table_widget.cellWidget(i, 3)
             visible_checkbox = visible_container.layout().itemAt(0).widget()
@@ -1428,7 +1513,7 @@ class LabelQLineEdit(QtWidgets.QLineEdit):
 
     # QT Overload
     def keyPressEvent(self, e):
-        if e.key() in [QtCore.Qt.Key.Key_Up, QtCore.Qt.Key.Key_Down]:
+        if e.key() in [QtCore.Qt.Key_Up, QtCore.Qt.Key_Down]:
             self.list_widget.keyPressEvent(e)
         else:
             super(LabelQLineEdit, self).keyPressEvent(e)
@@ -1470,7 +1555,7 @@ class LabelDialog(QtWidgets.QDialog):
                 QtCore.QRegularExpression(r"\d*"), None
             )
         )
-        self.edit_group_id.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.edit_group_id.setAlignment(QtCore.Qt.AlignCenter)
 
         # Add difficult checkbox
         self.edit_difficult = QtWidgets.QCheckBox(self.tr("useDifficult"))
@@ -1512,13 +1597,12 @@ class LabelDialog(QtWidgets.QDialog):
 
         # buttons
         self.button_box = bb = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok
-            | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
-            QtCore.Qt.Orientation.Horizontal,
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel,
+            QtCore.Qt.Horizontal,
             self,
         )
-        bb.button(bb.StandardButton.Ok).setIcon(utils.new_icon("done"))
-        bb.button(bb.StandardButton.Cancel).setIcon(utils.new_icon("undo"))
+        bb.button(bb.Ok).setIcon(utils.new_icon("done"))
+        bb.button(bb.Cancel).setIcon(utils.new_icon("undo"))
         bb.accepted.connect(self.validate)
         bb.rejected.connect(self.reject)
 
@@ -1538,11 +1622,11 @@ class LabelDialog(QtWidgets.QDialog):
         self.label_list = QtWidgets.QListWidget()
         if self._fit_to_content["row"]:
             self.label_list.setHorizontalScrollBarPolicy(
-                QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+                QtCore.Qt.ScrollBarAlwaysOff
             )
         if self._fit_to_content["column"]:
             self.label_list.setVerticalScrollBarPolicy(
-                QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+                QtCore.Qt.ScrollBarAlwaysOff
             )
         self._sort_labels = sort_labels
         if labels:
@@ -1551,7 +1635,7 @@ class LabelDialog(QtWidgets.QDialog):
             self.sort_labels()
         else:
             self.label_list.setDragDropMode(
-                QtWidgets.QAbstractItemView.DragDropMode.InternalMove
+                QtWidgets.QAbstractItemView.InternalMove
             )
         self.label_list.currentItemChanged.connect(self.label_selected)
         self.label_list.itemDoubleClicked.connect(self.label_double_clicked)
@@ -1569,16 +1653,12 @@ class LabelDialog(QtWidgets.QDialog):
         # completion
         completer = QtWidgets.QCompleter()
         if completion == "startswith":
-            completer.setCompletionMode(
-                QtWidgets.QCompleter.CompletionMode.InlineCompletion
-            )
+            completer.setCompletionMode(QtWidgets.QCompleter.InlineCompletion)
             # Default settings.
             # completer.setFilterMode(QtCore.Qt.MatchStartsWith)
         elif completion == "contains":
-            completer.setCompletionMode(
-                QtWidgets.QCompleter.CompletionMode.PopupCompletion
-            )
-            completer.setFilterMode(QtCore.Qt.MatchFlag.MatchContains)
+            completer.setCompletionMode(QtWidgets.QCompleter.PopupCompletion)
+            completer.setFilterMode(QtCore.Qt.MatchContains)
         else:
             raise ValueError(f"Unsupported completion: {completion}")
         completer.setModel(self.label_list.model())
@@ -1620,7 +1700,7 @@ class LabelDialog(QtWidgets.QDialog):
             )
 
     def keyPressEvent(self, event):
-        if event.key() == QtCore.Qt.Key.Key_Delete:
+        if event.key() == QtCore.Qt.Key_Delete:
             if hasattr(self, "linking_list") and self.linking_list is not None:
                 selected_items = self.linking_list.selectedItems()
                 if selected_items:
@@ -1658,21 +1738,17 @@ class LabelDialog(QtWidgets.QDialog):
     def add_label_history(self, label, update_last_label=True):
         if update_last_label:
             self._last_label = label
-        if self.label_list.findItems(label, QtCore.Qt.MatchFlag.MatchExactly):
+        if self.label_list.findItems(label, QtCore.Qt.MatchExactly):
             return
         self.label_list.addItem(label)
         if self._sort_labels:
             self.sort_labels()
-        items = self.label_list.findItems(
-            label, QtCore.Qt.MatchFlag.MatchExactly
-        )
+        items = self.label_list.findItems(label, QtCore.Qt.MatchExactly)
         if items:
             self.label_list.setCurrentItem(items[0])
 
     def remove_label_history(self, label):
-        items = self.label_list.findItems(
-            label, QtCore.Qt.MatchFlag.MatchExactly
-        )
+        items = self.label_list.findItems(label, QtCore.Qt.MatchExactly)
         if not items:
             logger.warning(f"Skipping empty items.")
             return
@@ -1817,9 +1893,7 @@ class LabelDialog(QtWidgets.QDialog):
             self.edit_group_id.clear()
         else:
             self.edit_group_id.setText(str(group_id))
-        items = self.label_list.findItems(
-            text, QtCore.Qt.MatchFlag.MatchFixedString
-        )
+        items = self.label_list.findItems(text, QtCore.Qt.MatchFixedString)
 
         if items:
             if len(items) != 1:
@@ -1827,12 +1901,14 @@ class LabelDialog(QtWidgets.QDialog):
             self.label_list.setCurrentItem(items[0])
             row = self.label_list.row(items[0])
             self.edit.completer().setCurrentRow(row)
-        self.edit.setFocus(QtCore.Qt.FocusReason.PopupFocusReason)
+        self.edit.setFocus(QtCore.Qt.PopupFocusReason)
 
         if move:
             if move_mode == "auto":
                 cursor_pos = QtGui.QCursor.pos()
-                screen = QtWidgets.QApplication.screenAt(cursor_pos).geometry()
+                screen = QtWidgets.QApplication.desktop().screenGeometry(
+                    cursor_pos
+                )
                 dialog_frame_size = self.frameGeometry()
                 # Calculate the ideal top-left corner position for the dialog based on the mouse click
                 ideal_pos = cursor_pos
@@ -1851,16 +1927,19 @@ class LabelDialog(QtWidgets.QDialog):
                 self.move(ideal_pos)
             elif move_mode == "center":
                 # Calculate the center position to move the dialog to
+                screen = QtWidgets.QApplication.desktop().screenNumber(
+                    QtWidgets.QApplication.desktop().cursor().pos()
+                )
                 centerPoint = (
-                    QtWidgets.QApplication.screenAt(QtGui.QCursor.pos())
-                    .geometry()
+                    QtWidgets.QApplication.desktop()
+                    .screenGeometry(screen)
                     .center()
                 )
                 qr = self.frameGeometry()
                 qr.moveCenter(centerPoint)
                 self.move(qr.topLeft())
 
-        if self.exec():
+        if self.exec_():
             return (
                 self.edit.text(),
                 self.get_flags(),
@@ -1870,3 +1949,4 @@ class LabelDialog(QtWidgets.QDialog):
                 self.get_kie_linking(),
             )
         return None, None, None, None, False, []
+
