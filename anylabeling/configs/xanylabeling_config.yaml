@@ -24,7 +24,7 @@ show_scores: true
 show_degrees: false
 show_shapes: true
 show_linking: true
-show_selected_label_only: false
+label_on_selection: false
 show_attributes: true
 logger_level: info
 system_clipboard: false
@@ -168,7 +168,7 @@ shortcuts:
   create_line: null
   create_point: null
   create_linestrip: null
-  edit_polygon: Ctrl+J
+  edit_polygon: B
   delete_polygon: Delete
   duplicate_polygon: Ctrl+D
   copy_polygon: Ctrl+C
@@ -182,6 +182,8 @@ shortcuts:
   edit_labels: Alt+L
   enter_keypoint_fill_mode: K
   toggle_keypoint_tool_window: Ctrl+K
+  switch_to_prev_person: Ctrl+Shift+[
+  switch_to_next_person: Ctrl+Shift+]
   edit_shapes: Alt+S
   open_settings: Ctrl+0
   toggle_keep_prev_mode: Ctrl+P
@@ -203,14 +205,14 @@ shortcuts:
   toggle_compare_view: Ctrl+Alt+C
 
   auto_label: Ctrl+A
-  auto_run: Ctrl+B
+  auto_run: Ctrl++Shift+B
   loop_thru_labels: Ctrl+Shift+N
   loop_select_labels: Ctrl+Shift+C
 
   auto_labeling_add_point: Q
   auto_labeling_remove_point: E
   auto_labeling_run: I
-  auto_labeling_clear: B
+  auto_labeling_clear: Ctrl+B
   auto_labeling_finish_object: F
 
 # Auto labeling

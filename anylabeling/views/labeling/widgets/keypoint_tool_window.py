@@ -142,11 +142,9 @@ class KeypointDockContent(QtWidgets.QWidget):
         self.person_list.itemClicked.connect(self._on_person_clicked)
         self.keypoint_list.itemClicked.connect(self._on_keypoint_clicked)
 
-        # Refresh when new shape is created
-        if hasattr(self.label_widget, "canvas"):
-            canvas = self.label_widget.canvas
-            if hasattr(canvas, "new_shape"):
-                canvas.new_shape.connect(self.refresh_all)
+        # NOTE: canvas.new_shape -> refresh_all is wired externally by
+        # LabelWidget when it creates the KeypointToolWindow instance.
+        # Do NOT connect it here to avoid duplicate emissions.
 
         # Fill mode signals
         if hasattr(self.fill_mode, "mode_activated"):

@@ -842,6 +842,22 @@ class LabelingWidget(LabelDialog):
             self.tr("Open keypoint fill tool window"),
             enabled=True,
         )
+        switch_to_prev_person = action(
+            self.tr("Switch to Previous Person"),
+            self.switch_to_prev_person,
+            shortcuts.get("switch_to_prev_person", "Ctrl+Shift+["),
+            None,
+            self.tr("Switch to previous person in keypoint tool"),
+            enabled=True,
+        )
+        switch_to_next_person = action(
+            self.tr("Switch to Next Person"),
+            self.switch_to_next_person,
+            shortcuts.get("switch_to_next_person", "Ctrl+Shift+]"),
+            None,
+            self.tr("Switch to next person in keypoint tool"),
+            enabled=True,
+        )
         edit_mode = action(
             self.tr("Edit Object"),
             self.set_edit_mode,
@@ -1286,13 +1302,13 @@ class LabelingWidget(LabelDialog):
             enabled=True,
             auto_trigger=True,
         )
-        show_selected_label_only = action(
-            self.tr("Show Selected Label Only"),
-            lambda x: self.set_canvas_params("show_selected_label_only", x),
+        label_on_selection = action(
+            self.tr("Label on Selection"),
+            lambda x: self.set_canvas_params("label_on_selection", x),
             tip=self.tr("Show labels only for selected shapes"),
             icon=None,
             checkable=True,
-            checked=self._config.get("show_selected_label_only", False),
+            checked=self._config.get("label_on_selection", False),
             enabled=True,
             auto_trigger=True,
         )
@@ -1772,6 +1788,8 @@ class LabelingWidget(LabelDialog):
             digit_shortcut_9=digit_shortcut_9,
             enter_keypoint_fill_mode=enter_keypoint_fill_mode,
             toggle_keypoint_tool_window=toggle_keypoint_tool_window,
+            switch_to_prev_person=switch_to_prev_person,
+            switch_to_next_person=switch_to_next_person,
             upload_image_flags_file=upload_image_flags_file,
             upload_label_flags_file=upload_label_flags_file,
             upload_shape_attrs_file=upload_shape_attrs_file,
@@ -1829,7 +1847,7 @@ class LabelingWidget(LabelDialog):
             show_degrees=show_degrees,
             show_attributes=show_attributes,
             show_linking=show_linking,
-            show_selected_label_only=show_selected_label_only,
+            label_on_selection=label_on_selection,
             show_navigator=show_navigator,
             zoom_actions=zoom_actions,
             open_next_image=open_next_image,
@@ -1959,6 +1977,8 @@ class LabelingWidget(LabelDialog):
             self.addAction(digit_action)
         self.addAction(self.actions.enter_keypoint_fill_mode)
         self.addAction(self.actions.toggle_keypoint_tool_window)
+        self.addAction(self.actions.switch_to_prev_person)
+        self.addAction(self.actions.switch_to_next_person)
         self.addAction(self.actions.toggle_annotation_checked)
 
         self.canvas.vertex_selected.connect(
@@ -2025,6 +2045,8 @@ class LabelingWidget(LabelDialog):
                 digit_shortcut_manager,
                 enter_keypoint_fill_mode,
                 toggle_keypoint_tool_window,
+                switch_to_prev_person,
+                switch_to_next_person,
                 label_manager,
                 gid_manager,
                 shape_manager,
@@ -2140,7 +2162,7 @@ class LabelingWidget(LabelDialog):
                 show_degrees,
                 show_attributes,
                 show_linking,
-                show_selected_label_only,
+                label_on_selection,
                 show_groups,
                 hide_selected_polygons,
                 show_hidden_polygons,
@@ -6380,6 +6402,12 @@ class LabelingWidget(LabelDialog):
         if self.no_shape():
             for action in self.actions.on_shapes_present:
                 action.setEnabled(False)
+        # Refresh keypoint fill mode after shape deletion
+        if (
+            hasattr(self, "keypoint_fill_mode")
+            and self.keypoint_fill_mode.is_active
+        ):
+            self.keypoint_fill_mode.refresh()
 
     def copy_shape(self):
         self.canvas.end_move(copy=True)

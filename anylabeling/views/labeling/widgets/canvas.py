@@ -183,7 +183,7 @@ class Canvas(
         self.show_degrees = False
         self.show_attributes = True
         self.show_linking = True
-        self.show_selected_label_only = False
+        self.label_on_selection = False
 
         # Set cross line options.
         self.cross_line_show = True
@@ -1266,6 +1266,7 @@ class Canvas(
                 self.prev_point = pos
                 self.prev_pan_point = ev.position()
                 self.repaint()
+                self.repaint()
         elif (
             ev.button() == QtCore.Qt.MouseButton.RightButton and self.editing()
         ):
@@ -1305,12 +1306,10 @@ class Canvas(
                     and self.h_shape_is_selected
                     and not self.moving_shape
                 ):
-                    # [修复] show_selected_label_only 模式下，禁用"点击取消选中"行为
-                    # 使标签持续显示直到选中其他对象
-                    if not getattr(self, 'show_selected_label_only', False):
-                        self.selection_changed.emit(
-                            [x for x in self.selected_shapes if x != self.h_hape]
-                        )
+                    # 点击已选中对象，取消选中
+                    self.selection_changed.emit(
+                        [x for x in self.selected_shapes if x != self.h_hape]
+                    )
 
         self.store_moving_shape()
 
@@ -1423,30 +1422,31 @@ class Canvas(
                 self.calculate_offsets(point)
                 return
             shape.highlight_vertex(index, shape.MOVE_VERTEX)
-            if shape.shape_type == "rotation":
-                self.set_hiding()
-                if shape not in self.selected_shapes:
-                    if multiple_selection_mode:
-                        self.selection_changed.emit(
-                            self.selected_shapes + [shape]
-                        )
-                    else:
-                        self.selection_changed.emit([shape])
-                    self.h_shape_is_selected = False
+            # [修复] 统一处理所有类型的顶点选择
+            # 包括 point、rectangle、polygon、rotation 等
+            self.set_hiding()
+            if shape not in self.selected_shapes:
+                if multiple_selection_mode:
+                    self.selection_changed.emit(
+                        self.selected_shapes + [shape]
+                    )
                 else:
-                    self.h_shape_is_selected = True
-                self.calculate_offsets(point)
-                return
-        elif (
-            self.selected_cuboid_face()
-            and self.h_hape is not None
-            and self.h_hape.shape_type == "cuboid"
-        ):
+                    self.selection_changed.emit([shape])
+                self.h_shape_is_selected = False
+            else:
+                # 重复点击已选中对象，取消选中
+                self.h_shape_is_selected = True
+            self.calculate_offsets(point)
+            return
+        elif self.selected_cuboid_face():
+            # [修复] 处理立方体面选择
             shape = self.h_hape
             self.set_hiding()
             if shape not in self.selected_shapes:
                 if multiple_selection_mode:
-                    self.selection_changed.emit(self.selected_shapes + [shape])
+                    self.selection_changed.emit(
+                        self.selected_shapes + [shape]
+                    )
                 else:
                     self.selection_changed.emit([shape])
                 self.h_shape_is_selected = False
@@ -1454,33 +1454,30 @@ class Canvas(
                 self.h_shape_is_selected = True
             self.calculate_offsets(point)
             return
-
         else:
+            # [修复] 普通形状选择逻辑
             for shape in reversed(self.shapes):
+                if not self.is_visible(shape):
+                    continue
                 shape_selectable = False
                 if shape.shape_type in ["point", "line", "linestrip"]:
-                    if (
-                        self.is_visible(shape)
-                        and shape.nearest_vertex(
-                            point, self.epsilon * 3 / self.scale
-                        )
-                        is not None
-                    ):
+                    if shape.nearest_vertex(
+                        point, self.epsilon * 3 / self.scale
+                    ) is not None:
                         shape_selectable = True
                 elif (
                     shape.shape_type == "cuboid"
-                    and self.is_visible(shape)
                     and len(shape.points) == 8
                 ):
                     front_path = self.cuboid_face_path(
                         shape, CUBOID_FACE_FRONT
                     )
                     shape_selectable = (
-                        front_path is not None and front_path.contains(point)
+                        front_path is not None
+                        and front_path.contains(point)
                     )
                 elif (
-                    self.is_visible(shape)
-                    and len(shape.points) > 1
+                    len(shape.points) > 1
                     and shape.contains_point(point)
                 ):
                     shape_selectable = True
@@ -1496,9 +1493,7 @@ class Canvas(
                             self.selection_changed.emit([shape])
                         self.h_shape_is_selected = False
                     else:
-                        # [修复] show_selected_label_only 模式下，不自动取消选中
-                        # 使标签持续显示直到选中其他对象
-                        if getattr(self, 'show_selected_label_only', False):
+                        if getattr(self, 'label_on_selection', False):
                             self.h_shape_is_selected = False
                         else:
                             self.h_shape_is_selected = True
@@ -2624,7 +2619,7 @@ class Canvas(
             for shape in self.shapes:
                 if not shape.visible:
                     continue
-                if self.show_selected_label_only and not shape.selected:
+                if self.label_on_selection and not shape.selected:
                     continue
                 d_react = shape.point_size / shape.scale
                 if not shape.visible:
