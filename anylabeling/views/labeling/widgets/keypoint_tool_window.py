@@ -139,8 +139,12 @@ class KeypointDockContent(QtWidgets.QWidget):
         layout.addWidget(self.keypoint_list)
 
     def _connect_signals(self) -> None:
-        self.person_list.itemClicked.connect(self._on_person_clicked)
+        self.person_list.itemClicked.connect(self._on_person_selected)
+        self.person_list.itemDoubleClicked.connect(self._on_person_activated)
         self.keypoint_list.itemClicked.connect(self._on_keypoint_clicked)
+
+        # 鼠标滚轮切换组 ID
+        self.person_list.installEventFilter(self)
 
         # NOTE: canvas.new_shape -> refresh_all is wired externally by
         # LabelWidget when it creates the KeypointToolWindow instance.
@@ -153,6 +157,22 @@ class KeypointDockContent(QtWidgets.QWidget):
             self.fill_mode.mode_deactivated.connect(self._on_fill_mode_deactivated)
         if hasattr(self.fill_mode, "current_label_changed"):
             self.fill_mode.current_label_changed.connect(self._on_label_changed)
+
+    def eventFilter(self, obj: object, event: QtCore.QEvent) -> bool:
+        """拦截 person_list 的滚轮事件，向上/向下切换组 ID.
+
+        滚轮切换时默认不进入补全模式；
+        仅当“自动锁定目标”勾选后才自动进入补全模式。
+        """
+        if obj is self.person_list and event.type() == QtCore.QEvent.Type.Wheel:
+            delta = event.angleDelta().y()
+            auto_activate = self.auto_activate_enabled
+            if delta > 0:
+                self.switch_to_prev_person(activate=auto_activate)
+            elif delta < 0:
+                self.switch_to_next_person(activate=auto_activate)
+            return True
+        return super().eventFilter(obj, event)
 
     # ---------- Data Layer (内联原 data_view / data_operation) ----------
 
@@ -216,9 +236,9 @@ class KeypointDockContent(QtWidgets.QWidget):
 
     # ---------- Public Actions ----------
 
-    def switch_to_person(self, group_id: int) -> None:
-        """切换到指定 person 对象并激活补标模式."""
-        logger.debug(f"Switching to person with group_id: {group_id}")
+    def switch_to_person(self, group_id: int, activate: bool = True) -> None:
+        """切换到指定 person 对象."""
+        logger.debug(f"Switching to person with group_id: {group_id}, activate={activate}")
 
         # 退出当前 fill mode
         if self.fill_mode.is_active:
@@ -226,49 +246,62 @@ class KeypointDockContent(QtWidgets.QWidget):
 
         # 设置筛选
         self._sync_gid_filter(group_id)
+        self.current_group_id = group_id
 
-        # 激活 fill mode
-        success = self.fill_mode.activate(group_id)
-        if success:
-            self.label_widget.toggle_draw_mode(edit=False, create_mode="point")
-            self.current_group_id = group_id
-            self._update_current_person_info()
+        # 同步列表选中状态
+        for i in range(self.person_list.count()):
+            item = self.person_list.item(i)
+            if item.data(Qt.ItemDataRole.UserRole) == group_id:
+                self.person_list.setCurrentItem(item)
+                break
+
+        if activate:
+            # 激活 fill mode
+            success = self.fill_mode.activate(group_id)
+            if success:
+                self.label_widget.toggle_draw_mode(edit=False, create_mode="point")
+                self._update_current_person_info()
+            else:
+                self._update_current_person_info()
+                self._show_hint(f"Group {group_id}: 所有关键点已完成", complete=True)
         else:
-            self.current_group_id = group_id
             self._update_current_person_info()
-            self._show_hint(f"Group {group_id}: 所有关键点已完成", complete=True)
 
-    def switch_to_prev_person(self) -> None:
+        # 将焦点还给画布，用户无需再点击一下就能继续标注
+        if hasattr(self.label_widget, "canvas"):
+            self.label_widget.canvas.setFocus()
+
+    def switch_to_prev_person(self, activate: bool = True) -> None:
         """切换到上一个人."""
         person_data = self._get_person_data()
         if not person_data:
             return
         sorted_gids = sorted(person_data.keys())
         if self.current_group_id is None:
-            self.switch_to_person(sorted_gids[-1])
+            self.switch_to_person(sorted_gids[-1], activate=activate)
         else:
             try:
                 idx = sorted_gids.index(self.current_group_id)
                 prev_idx = (idx - 1) % len(sorted_gids)
-                self.switch_to_person(sorted_gids[prev_idx])
+                self.switch_to_person(sorted_gids[prev_idx], activate=activate)
             except ValueError:
-                self.switch_to_person(sorted_gids[0])
+                self.switch_to_person(sorted_gids[0], activate=activate)
 
-    def switch_to_next_person(self) -> None:
+    def switch_to_next_person(self, activate: bool = True) -> None:
         """切换到下一个人."""
         person_data = self._get_person_data()
         if not person_data:
             return
         sorted_gids = sorted(person_data.keys())
         if self.current_group_id is None:
-            self.switch_to_person(sorted_gids[0])
+            self.switch_to_person(sorted_gids[0], activate=activate)
         else:
             try:
                 idx = sorted_gids.index(self.current_group_id)
                 next_idx = (idx + 1) % len(sorted_gids)
-                self.switch_to_person(sorted_gids[next_idx])
+                self.switch_to_person(sorted_gids[next_idx], activate=activate)
             except ValueError:
-                self.switch_to_person(sorted_gids[0])
+                self.switch_to_person(sorted_gids[0], activate=activate)
 
     def refresh_all(self) -> None:
         """刷新全部数据显示."""
@@ -416,7 +449,24 @@ class KeypointDockContent(QtWidgets.QWidget):
 
     # ---------- Event Handlers ----------
 
-    def _on_person_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
+    def _on_person_selected(self, item: QtWidgets.QListWidgetItem) -> None:
+        """单击：仅切换画面目标（设置 gid filter），不进入补全模式."""
+        gid = item.data(Qt.ItemDataRole.UserRole)
+        if gid is None:
+            return
+        # 若当前处于补全模式则先退出，避免状态冲突
+        if self.fill_mode.is_active:
+            self.fill_mode.deactivate()
+        self._sync_gid_filter(gid)
+        self.current_group_id = gid
+        self._update_current_person_info()
+
+        # 将焦点还给画布，用户无需再点击一下就能继续标注
+        if hasattr(self.label_widget, "canvas"):
+            self.label_widget.canvas.setFocus()
+
+    def _on_person_activated(self, item: QtWidgets.QListWidgetItem) -> None:
+        """双击：切换画面目标并进入补全模式."""
         gid = item.data(Qt.ItemDataRole.UserRole)
         if gid is not None:
             self.switch_to_person(gid)
