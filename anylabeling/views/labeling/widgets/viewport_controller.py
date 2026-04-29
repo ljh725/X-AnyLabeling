@@ -194,6 +194,30 @@ class ViewportController:
         self._states.clear()
         self._last_loaded = None
 
+    def clear_state(self, filename: str) -> bool:
+        """清除指定图片的视口状态。
+
+        如果清除的文件是 ``_last_loaded``，则同时置空 ``_last_loaded``，
+        防止 ``keep_prev_viewport`` 继承已失效的状态。
+        """
+        if filename not in self._states:
+            return False
+        del self._states[filename]
+        if self._last_loaded == filename:
+            self._last_loaded = None
+        return True
+
+    def clear_states(self, filenames) -> int:
+        """批量清除多张图片的视口状态。
+
+        返回实际清除的数量。
+        """
+        count = 0
+        for filename in filenames:
+            if self.clear_state(filename):
+                count += 1
+        return count
+
     # --------------------------------------------------------------------- #
     # Internal helpers
     # --------------------------------------------------------------------- #

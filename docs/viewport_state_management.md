@@ -2,7 +2,9 @@
 
 ## 1. 功能概述
 
-X-AnyLabeling 的 Viewport（视口）状态管理功能用于在切换图片时保持用户的视图状态（包括缩放比例和视图位置）。该功能通过 `ViewportController` 类实现，将每张图片的视口状态存储在内存字典中，实现前后图片之间窗口状态的持久化。
+X-AnyLabeling 的 Viewport（视口）状态管理功能用于在切换图片时保持用户的视图状态（包括缩放比例和视图位置）。该功能通过 `ViewportController` 类实现，将每张图片的视口状态存储在内存字典中，并在图片切换时按策略恢复。
+
+当前版本除自动保存/恢复外，还支持用户手动重置视图状态，用于在批量浏览图片时快速丢弃缓存的缩放和视口位置，回到默认视图。
 
 ## 2. 核心组件
 
@@ -24,7 +26,7 @@ class ViewportState:
     center_y: float     # 视图中心点在图像坐标系中的 Y 坐标
 ```
 
-### 2.2 状态保存与恢复流程
+### 2.2 状态保存、恢复与重置流程
 
 **保存时机** (`on_file_leaving` 方法):
 - 在 `LabelWidget.load_file()` 开始时调用（第 5623-5629 行）
@@ -33,6 +35,11 @@ class ViewportState:
 **恢复时机** (`on_file_loaded` 方法):
 - 在 `LabelWidget.load_file()` 结束时调用（第 5766-5777 行）
 - 根据策略选择最佳可用状态并应用到画布
+
+**重置时机**（手动命令）:
+- 用户可通过顶部 `View` 菜单手动重置视图状态
+- 用户可通过文件列表右键菜单按文件范围重置视图状态
+- 用户可通过画布右键菜单直接重置当前/后续/全部图像视图状态
 
 ## 3. 状态保持策略
 
@@ -64,6 +71,31 @@ keep_prev_viewport: false  # 默认关闭
 **UI 控制**:
 - 菜单路径: View → Keep Previous Viewport
 - 代码位置: `label_widget.py` 第 1162-1171 行
+
+### 3.3 手动重置策略
+
+当前支持 3 种重置范围：
+
+1. **重置当前图像视图**
+   - 清除当前图片的视口状态缓存
+   - 如果当前图片正在显示，立即恢复默认视图
+
+2. **重置从当前到末尾图像视图**
+   - 以当前图片在 `image_list` 中的位置为起点
+   - 清除从当前图片到列表末尾的全部视图状态缓存
+   - 如果当前图片在范围内，立即恢复默认视图
+
+3. **重置所有图像视图**
+   - 清除当前会话中所有图片的视图状态缓存
+   - 当前图片如正在显示，也会立即恢复默认视图
+
+这里的“视图状态”不是单一字典，而是 3 份缓存的组合：
+
+1. `viewport_controller._states`
+2. `LabelWidget.zoom_values`
+3. `LabelWidget.scroll_values`
+
+重置操作会同步清理这三处数据，避免清掉 `_states` 后又从旧的 `zoom_values` 或 `scroll_values` 回退恢复。
 
 ## 4. 坐标转换机制
 
@@ -133,11 +165,16 @@ LabelWidget.load_file(filename)
 |------|------|------|
 | 状态保存 | `label_widget.py` | 5623-5629 |
 | 状态恢复 | `label_widget.py` | 5766-5777 |
-| 策略解析 | `viewport_controller.py` | 262-276 |
-| 坐标捕获 | `viewport_controller.py` | 201-260 |
-| 坐标应用 | `viewport_controller.py` | 278-335 |
-| UI 菜单 | `label_widget.py` | 1162-1171 |
-| 菜单注册 | `label_widget.py` | 2148 |
+| 单文件状态清理 | `viewport_controller.py` | 197-208 |
+| 批量状态清理 | `viewport_controller.py` | 210-219 |
+| 策略解析 | `viewport_controller.py` | 286-300 |
+| 坐标捕获 | `viewport_controller.py` | 225-284 |
+| 坐标应用 | `viewport_controller.py` | 302-359 |
+| View 菜单动作定义 | `label_widget.py` | 1195-1211 |
+| View 菜单注册 | `label_widget.py` | 2172-2227 |
+| 画布右键菜单注册 | `label_widget.py` | 2235-2270 |
+| 文件列表右键菜单 | `label_widget.py` | 3763-3795 |
+| 统一重置入口 | `label_widget.py` | 5993-6090 |
 
 ## 6. 边界情况处理
 
@@ -157,6 +194,10 @@ LabelWidget.load_file(filename)
 - `is_initial_load = not self.zoom_values`
 - 首次加载或无状态时调用 `adjust_scale(initial=True)`
 
+### 6.5 手动重置但没有历史缓存
+- 即使当前图片此前没有缓存的视口状态，只要用户执行“重置当前图像视图”，仍会立即恢复默认视图
+- 这样可以保证菜单操作有可见反馈，而不是因为“没有可删缓存”而表现为无变化
+
 ## 7. 与其他功能的交互
 
 ### 7.1 与 Keep Previous Scale 的关系
@@ -168,45 +209,44 @@ LabelWidget.load_file(filename)
 - 当 `ViewportController` 无状态时，回退到旧版滚动值
 - 代码位置: `label_widget.py` 第 5784-5791 行
 
+### 7.2 与手动重置的关系
+- 手动重置时会同步清除 `zoom_values` 和 `scroll_values`
+- 这样后续再次加载图片时，不会回退到旧的缩放值或滚动条位置
+
 ### 7.3 与 Navigator Widget 的关系
 - 视口变化时更新导航器视口矩形
 - 代码位置: `label_widget.py` 第 5180-5206 行
 
-## 8. 扩展性设计
+## 8. UI 入口
 
-### 8.1 添加新的清除功能
+### 8.1 顶部菜单
 
-如需添加清除视口状态的功能（如清除当前/所有/后续图片的状态）：
+顶部 `View` 菜单中新增子菜单：
 
-1. **在 `ViewportController` 中添加方法**:
-   ```python
-   def clear_state(self, filename: str) -> None:
-       """清除指定图片的视口状态"""
-       self._states.pop(filename, None)
-   
-   def clear_all_states(self) -> None:
-       """清除所有视口状态"""
-       self._states.clear()
-   
-   def clear_states_from(self, filename: str, image_list: list[str]) -> None:
-       """清除从指定图片开始及之后的所有状态"""
-       if filename in image_list:
-           idx = image_list.index(filename)
-           for img in image_list[idx:]:
-               self._states.pop(img, None)
-   ```
+1. `重置图像视图`
+2. `重置当前图像视图`
+3. `重置从当前到末尾图像视图`
+4. `重置所有图像视图`
 
-2. **在 `LabelWidget` 中添加菜单项**:
-   - 在 View 菜单下添加子菜单
-   - 绑定到上述方法
+### 8.2 文件列表右键菜单
 
-### 8.2 持久化存储
+在文件列表中右键某个文件项时，菜单会新增：
 
-当前状态仅保存在内存中，关闭程序后丢失。如需持久化：
+1. `重置该图像视图`
+2. `重置从该图像到末尾的视图`
+3. `重置所有图像视图`
 
-1. 在 `LabelWidget.closeEvent()` 中保存 `_states` 到配置文件
-2. 在启动时从配置文件加载
-3. 注意：状态数据量可能较大，需考虑性能
+文件列表空白区域不会弹出这些重置项，必须作用于具体文件项。
+
+### 8.3 画布右键菜单
+
+当鼠标位于图像画布区域并点击右键时，菜单中也会新增：
+
+1. `重置当前图像视图`
+2. `重置从当前到末尾图像视图`
+3. `重置所有图像视图`
+
+无论当前是否选中了 shape，这 3 个入口都会出现在画布右键菜单中。
 
 ## 9. 调试与监控
 
@@ -225,14 +265,39 @@ print(viewport_controller.last_loaded)
 | 切换图片后视图未恢复 | 状态未保存或恢复失败 | 检查 `_capture()` 返回值 |
 | 视图位置偏移 | 图像尺寸变化导致坐标映射错误 | 检查坐标转换公式 |
 | 滚动条未更新 | QScrollArea 查找失败 | 检查父控件链 |
+| 点击重置后无变化 | 当前图片没有回到默认视图 | 检查 `_reset_image_views_for_files()` 是否命中当前文件 |
+| 文件列表右键没有重置项 | 右键位置不在具体文件项上 | 确认点击的是文件项而非空白区域 |
+| 画布右键没有重置项 | 使用了不同菜单分支 | 检查 `self.canvas.menus[0]` 和 `self.canvas.menus[1]` 是否都已注册 |
 
-## 10. 版本历史
+## 10. 当前实现说明
+
+### 10.1 默认恢复行为
+
+当前图片被手动重置时，恢复逻辑为：
+
+1. 将 `zoom_mode` 设为 `FIT_WINDOW`
+2. 调用 `adjust_scale(initial=True)` 恢复默认缩放
+3. 将水平/垂直滚动条恢复到最小值
+4. 调用 `paint_canvas()` 刷新画面与导航器视口
+
+因此，用户执行“重置当前图像视图”后，通常会看到画面缩放回适应窗口，并回到默认起始位置。
+
+### 10.2 状态反馈
+
+重置操作不会弹出确认框，而是通过状态栏显示中文提示，例如：
+
+1. `已重置当前图像的 1 个图像视图状态`
+2. `已重置从当前到末尾的 12 个图像视图状态`
+3. `已重置全部的 84 个图像视图状态`
+
+## 11. 版本历史
 
 - **v4.0.0-beta.4**: 引入 `ViewportController` 类，替代旧版滚动值保存逻辑
 - **改进**: 使用图像坐标系，支持跨尺寸图片和窗口 resize
+- **2026-04-29**: 新增手动重置图像视图能力，支持顶部菜单、文件列表右键菜单和画布右键菜单
 
 ---
 
-*文档版本: 1.0*  
+*文档版本: 1.1*  
 *适用版本: X-AnyLabeling 4.0.0-beta.4+*  
-*最后更新: 2026-04-23*
+*最后更新: 2026-04-29*

@@ -350,6 +350,12 @@ class LabelingWidget(LabelDialog):
         self.file_list_widget.customContextMenuRequested.connect(
             self.pop_file_list_menu
         )
+        self.file_list_widget.viewport().setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self.file_list_widget.viewport().customContextMenuRequested.connect(
+            self.pop_file_list_menu
+        )
         file_list_layout = QtWidgets.QVBoxLayout()
         file_list_layout.setContentsMargins(0, 0, 0, 0)
         file_list_layout.setSpacing(0)
@@ -1184,6 +1190,24 @@ class LabelingWidget(LabelDialog):
             ),
             checkable=True,
             checked=self._config.get("keep_prev_viewport", False),
+            enabled=True,
+        )
+        reset_current_image_view = action(
+            self.tr("重置当前图像视图"),
+            self.reset_current_image_view,
+            tip=self.tr("重置当前图像的视口状态"),
+            enabled=True,
+        )
+        reset_views_from_current_to_end = action(
+            self.tr("重置从当前到末尾图像视图"),
+            self.reset_views_from_current_to_end,
+            tip=self.tr("重置当前图像及其后续图像的视口状态"),
+            enabled=True,
+        )
+        reset_all_image_views = action(
+            self.tr("重置所有图像视图"),
+            self.reset_all_image_views,
+            tip=self.tr("重置所有图像的视口状态"),
             enabled=True,
         )
         keep_prev_brightness = action(
@@ -2151,6 +2175,17 @@ class LabelingWidget(LabelDialog):
                 export_vlm_r1_ovd_annotation,
             ),
         )
+        reset_image_views_menu = QtWidgets.QMenu(
+            self.tr("重置图像视图"), self.menus.view
+        )
+        utils.add_actions(
+            reset_image_views_menu,
+            (
+                reset_current_image_view,
+                reset_views_from_current_to_end,
+                reset_all_image_views,
+            ),
+        )
         utils.add_actions(
             self.menus.view,
             (
@@ -2187,6 +2222,8 @@ class LabelingWidget(LabelDialog):
                 show_hidden_polygons,
                 group_selected_shapes,
                 ungroup_selected_shapes,
+                None,
+                reset_image_views_menu,
             ),
         )
 
@@ -2202,6 +2239,24 @@ class LabelingWidget(LabelDialog):
             (
                 action("&Copy here", self.copy_shape),
                 action("&Move here", self.move_shape),
+            ),
+        )
+        self.canvas.menus[0].addSeparator()
+        utils.add_actions(
+            self.canvas.menus[0],
+            (
+                reset_current_image_view,
+                reset_views_from_current_to_end,
+                reset_all_image_views,
+            ),
+        )
+        self.canvas.menus[1].addSeparator()
+        utils.add_actions(
+            self.canvas.menus[1],
+            (
+                reset_current_image_view,
+                reset_views_from_current_to_end,
+                reset_all_image_views,
             ),
         )
         (
@@ -3717,11 +3772,27 @@ class LabelingWidget(LabelDialog):
         copy_path_action = menu.addAction(
             utils.new_icon("copy", "svg"), self.tr("Copy File Path")
         )
-        action = menu.exec(self.file_list_widget.mapToGlobal(point))
+        menu.addSeparator()
+        reset_this_image_view = menu.addAction(self.tr("重置该图像视图"))
+        reset_from_this_to_end = menu.addAction(
+            self.tr("重置从该图像到末尾的视图")
+        )
+        reset_all_views = menu.addAction(self.tr("重置所有图像视图"))
+        action = menu.exec(self.file_list_widget.viewport().mapToGlobal(point))
         if action == copy_name_action:
             self.copy_file_path(osp.basename(item.text()))
         elif action == copy_path_action:
             self.copy_file_path(item.text())
+        elif action == reset_this_image_view:
+            self._reset_image_views_for_files(
+                [item.text()], self.tr("该图像")
+            )
+        elif action == reset_from_this_to_end:
+            target_file = item.text()
+            filenames = self._get_files_from_target_to_end(target_file)
+            self._reset_image_views_for_files(filenames, self.tr("该图像到末尾"))
+        elif action == reset_all_views:
+            self.reset_all_image_views()
 
     def copy_file_path(self, file_path):
         popup = Popup(
@@ -5914,6 +5985,109 @@ class LabelingWidget(LabelDialog):
         # The epsilon does not seem to work too well here.
         w = self.central_widget().width() - 2.0
         return w / self.canvas.pixmap.width()
+
+    # ------------------------------------------------------------------ #
+    # Viewport state reset helpers
+    # ------------------------------------------------------------------ #
+
+    def _clear_view_state_for_files(self, filenames):
+        """清除指定文件列表的视图状态。
+
+        同时清理 viewport_controller、zoom_values 和 scroll_values，
+        防止后续从旧缓存恢复。
+
+        Returns:
+            实际清理的文件数量。
+        """
+        count = 0
+        for filename in filenames:
+            removed = self.viewport_controller.clear_state(filename)
+            zoom_removed = self.zoom_values.pop(filename, None) is not None
+            h_removed = (
+                self.scroll_values[Qt.Orientation.Horizontal].pop(
+                    filename, None
+                )
+                is not None
+            )
+            v_removed = (
+                self.scroll_values[Qt.Orientation.Vertical].pop(
+                    filename, None
+                )
+                is not None
+            )
+            if removed or zoom_removed or h_removed or v_removed:
+                count += 1
+        return count
+
+    def _get_files_from_target_to_end(self, target_file):
+        """获取从 target_file 到 image_list 末尾的所有文件。"""
+        if target_file not in self.fn_to_index:
+            return []
+        idx = self.fn_to_index[target_file]
+        return self.image_list[idx:]
+
+    def _get_files_from_current_to_end(self):
+        """获取从当前文件到 image_list 末尾的所有文件。"""
+        if self.filename is None or self.filename not in self.fn_to_index:
+            return []
+        return self._get_files_from_target_to_end(self.filename)
+
+    def _reset_image_views_for_files(self, filenames, scope_label):
+        """统一重置指定文件列表的视图状态并给出状态栏反馈。
+
+        如果目标范围包含当前正在显示的图片，则立即恢复默认视图。
+        """
+        if not filenames:
+            self.status(self.tr("没有可重置的图像视图状态"), 3000)
+            return
+
+        should_reset_current = self.filename in filenames and self.filename is not None
+        cleared = self._clear_view_state_for_files(filenames)
+        if cleared == 0 and not should_reset_current:
+            self.status(
+                self.tr("未找到可重置的 {scope} 图像视图状态").format(
+                    scope=scope_label
+                ),
+                3000,
+            )
+            return
+
+        if should_reset_current and not self.image.isNull():
+            self.zoom_mode = self.FIT_WINDOW
+            self.adjust_scale(initial=True)
+            h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
+            v_bar = self.scroll_bars[Qt.Orientation.Vertical]
+            if h_bar is not None:
+                h_bar.setValue(h_bar.minimum())
+            if v_bar is not None:
+                v_bar.setValue(v_bar.minimum())
+            self.paint_canvas()
+
+        self.status(
+            self.tr("已重置 {scope} 的 {count} 个图像视图状态").format(
+                scope=scope_label, count=cleared
+            ),
+            3000,
+        )
+
+    def reset_current_image_view(self):
+        """重置当前图像的视图状态。"""
+        if self.filename is None:
+            self.status(self.tr("请先打开一张图片"), 3000)
+            return
+        self._reset_image_views_for_files(
+            [self.filename], self.tr("当前图像")
+        )
+
+    def reset_views_from_current_to_end(self):
+        """重置从当前图像到末尾的所有图像视图状态。"""
+        filenames = self._get_files_from_current_to_end()
+        self._reset_image_views_for_files(filenames, self.tr("从当前到末尾"))
+
+    def reset_all_image_views(self):
+        """重置所有图像的视图状态。"""
+        filenames = list(self.image_list)
+        self._reset_image_views_for_files(filenames, self.tr("全部"))
 
     # QT Overload
     def closeEvent(self, event):
