@@ -2,21 +2,25 @@
 Inspector Panel — the main dock widget that houses the data inspection UI.
 
 This is the top-level container.  It:
-- Holds the FlatIndex, ValidationEngine, IssueListWidget, and EditableTableWidget.
-- Orchestrates the scan → validate → display pipeline.
-- Emits navigation signals that the parent label_widget connects to.
-- Emits edit signals for bidirectional table ↔ canvas sync.
+- Holds the FlatIndex, ValidationEngine, IssueListWidget, EditableTableWidget,
+  RuleConfigWidget, and export controls.
+- Orchestrates scan → validate → display, rule config, and file export.
+- Emits navigation and edit signals that the parent label_widget connects to.
 
 Usage (in label_widget.py)::
 
     from .widgets.inspector import InspectorPanel
 
     self.inspector_panel = InspectorPanel(allowed_labels={...})
-    self.inspector_panel.issue_navigate_requested.connect(self._on_inspector_navigate)
+    self.inspector_panel.issue_navigate_requested.connect(
+        self._on_inspector_navigate
+    )
     self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.inspector_panel)
 """
 
 import logging
+import os
+import os.path as osp
 from typing import Any, Callable, Dict, List, Optional, Set
 
 from PyQt6 import QtCore, QtGui, QtWidgets
@@ -35,13 +39,14 @@ from .validation_engine import (
 )
 from .issue_list_widget import IssueListWidget
 from .editable_table_widget import EditableTableWidget
+from .rule_config_widget import RuleConfigWidget
+from .export_manager import ExportManager, ExportResult
 
 logger = logging.getLogger(__name__)
 
 
 class InspectorPanel(QtWidgets.QDockWidget):
-    """
-    Dock panel for annotation data quality inspection.
+    """Dock panel for annotation data quality inspection.
 
     Signals:
         issue_navigate_requested(file_path: str, shape_index: int)
@@ -83,6 +88,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._extra_rules: List[ValidationRule] = extra_rules or []
         self._flat_index = FlatIndex()
         self._engine = self._build_engine(self._extra_rules)
+        self._export_manager = ExportManager()
 
         # ── UI: tab widget ───────────────────────────────────────
         self._tab_widget = QtWidgets.QTabWidget()
@@ -93,10 +99,16 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._table_widget = EditableTableWidget()
         self._tab_widget.addTab(self._table_widget, self.tr("数据表格"))
 
+        self._rule_config = RuleConfigWidget()
+        self._tab_widget.addTab(self._rule_config, self.tr("规则配置"))
+
+        self._export_widget = self._build_export_widget()
+        self._tab_widget.addTab(self._export_widget, self.tr("导出"))
+
         self.setWidget(self._tab_widget)
 
         # ── wire signals ─────────────────────────────────────────
-        # issue list → translate
+        # issue list
         self._issue_list.issue_double_clicked.connect(
             self.issue_navigate_requested.emit
         )
@@ -105,20 +117,31 @@ class InspectorPanel(QtWidgets.QDockWidget):
         )
         self._issue_list.rescan_requested.connect(self.run_scan)
 
-        # table → translate
+        # table
         self._table_widget.shape_clicked.connect(
             self.issue_navigate_requested.emit
         )
         self._table_widget.shape_double_clicked.connect(
             self.issue_navigate_requested.emit
         )
-
-        # table edit → forward to label_widget
         self._table_widget.set_edit_callback(self._on_table_edit)
+
+        # rule config
+        self._rule_config.config_changed.connect(self._on_rule_config_changed)
 
         # ── state ────────────────────────────────────────────────
         self._last_report: Optional[ValidationReport] = None
         self._file_list: List[str] = []
+
+        # Populate rule config with current rules + app label config
+        self._rule_config.populate(
+            self._engine.rules,
+            param_overrides={
+                "label_in_allowlist": {
+                    "allowed_labels": self._allowed_labels,
+                },
+            },
+        )
 
         logger.debug("InspectorPanel initialized")
 
@@ -145,6 +168,17 @@ class InspectorPanel(QtWidgets.QDockWidget):
 
         return ValidationEngine(rules)
 
+    # ── Rule config handler ──────────────────────────────────────
+
+    def _on_rule_config_changed(self) -> None:
+        """Rebuild the engine when user changes rule configuration."""
+        self._engine = ValidationEngine(
+            self._rule_config.build_rules(self._extra_rules)
+        )
+        self._last_report = None
+        self._issue_list.clear_results()
+        self._export_btn.setEnabled(False)
+
     # ── Table edit callback ──────────────────────────────────────
 
     def _on_table_edit(
@@ -152,6 +186,149 @@ class InspectorPanel(QtWidgets.QDockWidget):
     ) -> None:
         """Forward table edit to label_widget via signal."""
         self.shape_edit_requested.emit(file_path, shape_index, field, value)
+
+    # ── Export UI builder ────────────────────────────────────────
+
+    def _build_export_widget(self) -> QtWidgets.QWidget:
+        """Build the export control panel."""
+        widget = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(widget)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(6)
+
+        # header
+        header = QtWidgets.QLabel(self.tr("导出 / 拆分文件"))
+        header.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        layout.addWidget(header)
+
+        desc = QtWidgets.QLabel(
+            self.tr(
+                "将扫描结果按规则拆分到子目录中。"
+                "操作类型为复制，不会修改原始文件。"
+            )
+        )
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: #888; font-size: 9pt;")
+        layout.addWidget(desc)
+
+        layout.addSpacing(4)
+
+        # output directory
+        dir_layout = QtWidgets.QHBoxLayout()
+        dir_layout.addWidget(QtWidgets.QLabel(self.tr("输出目录:")))
+        self._export_dir_edit = QtWidgets.QLineEdit()
+        self._export_dir_edit.setPlaceholderText(
+            self.tr("选择导出目录...")
+        )
+        self._export_dir_edit.setReadOnly(True)
+        dir_layout.addWidget(self._export_dir_edit)
+
+        browse_btn = QtWidgets.QPushButton("...")
+        browse_btn.setFixedWidth(28)
+        browse_btn.setToolTip(self.tr("选择输出目录"))
+        browse_btn.clicked.connect(self._on_export_browse)
+        dir_layout.addWidget(browse_btn)
+        layout.addLayout(dir_layout)
+
+        # export button
+        self._export_btn = QtWidgets.QPushButton(self.tr("开始导出"))
+        self._export_btn.setFixedHeight(28)
+        self._export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._export_btn.clicked.connect(self._on_export)
+        self._export_btn.setEnabled(False)
+        layout.addWidget(self._export_btn)
+
+        # status label
+        self._export_status = QtWidgets.QLabel("")
+        self._export_status.setWordWrap(True)
+        self._export_status.setStyleSheet("color: #666; font-size: 9pt;")
+        layout.addWidget(self._export_status)
+
+        layout.addStretch()
+        return widget
+
+    def _on_export_browse(self) -> None:
+        """Open directory chooser for export output."""
+        start_dir = self._export_dir_edit.text() or os.path.expanduser("~")
+        directory = QtWidgets.QFileDialog.getExistingDirectory(
+            self,
+            self.tr("选择导出目录"),
+            start_dir,
+        )
+        if directory:
+            self._export_dir_edit.setText(osp.normpath(directory))
+            self._update_export_button()
+
+    def _on_export(self) -> None:
+        """Execute the export/split operation."""
+        if self._last_report is None or not self._last_report.issues:
+            self._export_status.setText(
+                self.tr("没有可导出的问题。请先执行扫描。")
+            )
+            self._export_status.setStyleSheet(
+                "color: #b71c1c; font-size: 9pt;"
+            )
+            return
+
+        output_dir = self._export_dir_edit.text().strip()
+        if not output_dir:
+            self._export_status.setText(
+                self.tr("请先选择输出目录。")
+            )
+            self._export_status.setStyleSheet(
+                "color: #b71c1c; font-size: 9pt;"
+            )
+            return
+
+        self._export_btn.setEnabled(False)
+        self._export_status.setText(self.tr("正在导出..."))
+        self._export_status.setStyleSheet("color: #888; font-size: 9pt;")
+
+        result = self._export_manager.export(
+            report=self._last_report,
+            output_dir=output_dir,
+        )
+
+        if result.errors:
+            self._export_status.setText(
+                self.tr(
+                    "导出完成。 复制 %d 个 JSON + %d 个图片，"
+                    " %d 个错误。"
+                )
+                % (
+                    result.copied_files,
+                    result.copied_images,
+                    len(result.errors),
+                )
+            )
+            self._export_status.setStyleSheet(
+                "color: #e65100; font-size: 9pt;"
+            )
+        else:
+            self._export_status.setText(
+                self.tr(
+                    "✓ 导出完成。 复制 %d 个 JSON + %d 个图片 到 %d 个子目录。"
+                )
+                % (
+                    result.copied_files,
+                    result.copied_images,
+                    len(result.rules_exported),
+                )
+            )
+            self._export_status.setStyleSheet(
+                "color: #2e7d32; font-size: 9pt;"
+            )
+
+        self._export_btn.setEnabled(True)
+
+    def _update_export_button(self) -> None:
+        """Enable export button if output dir is set."""
+        has_dir = bool(self._export_dir_edit.text().strip())
+        has_report = (
+            self._last_report is not None
+            and self._last_report.issue_count > 0
+        )
+        self._export_btn.setEnabled(has_dir and has_report)
 
     # ── Public API ───────────────────────────────────────────────
 
@@ -171,6 +348,14 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._last_report = None
         self._issue_list.clear_results()
         self._table_widget.clear_results()
+        self._rule_config.populate(
+            self._engine.rules,
+            param_overrides={
+                "label_in_allowlist": {
+                    "allowed_labels": self._allowed_labels,
+                },
+            },
+        )
 
     def run_scan(self, json_paths: Optional[List[str]] = None) -> None:
         """
@@ -185,6 +370,11 @@ class InspectorPanel(QtWidgets.QDockWidget):
 
         self.scan_started.emit()
 
+        # Ensure engine rules match rule config UI state
+        self._engine = ValidationEngine(
+            self._rule_config.build_rules(self._extra_rules)
+        )
+
         # ── Phase 1: index ───────────────────────────────────────
         self._flat_index.clear()
         self._flat_index.scan_files(paths)
@@ -197,9 +387,13 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._issue_list.populate(report)
 
         self.scan_finished.emit(report)
+        self._update_export_button()
+
         logger.info(
-            f"Inspector scan finished: {report.issue_count} issues "
-            f"({report.error_count} errors, {report.warning_count} warnings)"
+            "Inspector scan finished: %d issues (%d errors, %d warnings)",
+            report.issue_count,
+            report.error_count,
+            report.warning_count,
         )
 
     def refresh_file(self, file_path: str) -> None:
@@ -231,13 +425,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
         shapes: list,
         image_path: str = "",
     ) -> None:
-        """Refresh the editable table directly from canvas shapes (fast path).
-
-        Args:
-            file_path: Current file path (used as record key).
-            shapes: List of Shape objects from canvas.
-            image_path: The imagePath field (optional, for record completeness).
-        """
+        """Refresh the editable table directly from canvas shapes (fast path)."""
         records = self._shapes_to_records(file_path, shapes, image_path)
         self._table_widget.populate(records)
 
@@ -287,3 +475,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
     @property
     def table_widget(self) -> EditableTableWidget:
         return self._table_widget
+
+    @property
+    def rule_config_widget(self) -> RuleConfigWidget:
+        return self._rule_config
