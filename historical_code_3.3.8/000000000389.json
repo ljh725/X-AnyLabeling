@@ -1,0 +1,818 @@
+{
+  "version": "4.0.0-beta.4",
+  "flags": {},
+  "checked": false,
+  "shapes": [
+    {
+      "mask": null,
+      "label": "person",
+      "score": null,
+      "points": [
+        [
+          140.37037037037027,
+          90.0
+        ],
+        [
+          506.11111111111114,
+          90.0
+        ],
+        [
+          506.11111111111114,
+          479.0
+        ],
+        [
+          140.37037037037027,
+          479.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "head",
+      "score": null,
+      "points": [
+        [
+          248.0,
+          90.0
+        ],
+        [
+          364.0,
+          90.0
+        ],
+        [
+          364.0,
+          248.0
+        ],
+        [
+          248.0,
+          248.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "face",
+      "score": null,
+      "points": [
+        [
+          250.0,
+          101.0
+        ],
+        [
+          358.0,
+          101.0
+        ],
+        [
+          358.0,
+          227.0
+        ],
+        [
+          250.0,
+          227.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "nose",
+      "score": null,
+      "points": [
+        [
+          310.0,
+          167.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "l_eye",
+      "score": null,
+      "points": [
+        [
+          332.0,
+          148.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "r_eye",
+      "score": null,
+      "points": [
+        [
+          285.0,
+          148.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "l_ear",
+      "score": null,
+      "points": [
+        [
+          361.0,
+          175.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "r_ear",
+      "score": null,
+      "points": [
+        [
+          253.0,
+          178.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "l_sho",
+      "score": null,
+      "points": [
+        [
+          436.0,
+          315.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "r_sho",
+      "score": null,
+      "points": [
+        [
+          191.0,
+          354.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "person",
+      "score": null,
+      "points": [
+        [
+          467.0,
+          292.0
+        ],
+        [
+          565.0,
+          292.0
+        ],
+        [
+          565.0,
+          480.0
+        ],
+        [
+          467.0,
+          480.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "head",
+      "score": null,
+      "points": [
+        [
+          467.0,
+          293.0
+        ],
+        [
+          541.0,
+          293.0
+        ],
+        [
+          541.0,
+          366.0
+        ],
+        [
+          467.0,
+          366.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "l_eye",
+      "score": null,
+      "points": [
+        [
+          472.0,
+          336.0
+        ]
+      ],
+      "group_id": 1,
+      "description": "invisible",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "l_ear",
+      "score": null,
+      "points": [
+        [
+          498.0,
+          345.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "l_sho",
+      "score": null,
+      "points": [
+        [
+          519.0,
+          411.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "r_sho",
+      "score": null,
+      "points": [
+        [
+          537.9310344827586,
+          383.44827586206895
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "person",
+      "score": null,
+      "points": [
+        [
+          562.0,
+          371.0
+        ],
+        [
+          639.0,
+          371.0
+        ],
+        [
+          639.0,
+          479.0
+        ],
+        [
+          562.0,
+          479.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "head",
+      "score": null,
+      "points": [
+        [
+          586.0,
+          373.0
+        ],
+        [
+          630.0,
+          373.0
+        ],
+        [
+          630.0,
+          407.0
+        ],
+        [
+          586.0,
+          407.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "face",
+      "score": null,
+      "points": [
+        [
+          586.0,
+          373.0
+        ],
+        [
+          614.0,
+          373.0
+        ],
+        [
+          614.0,
+          401.0
+        ],
+        [
+          586.0,
+          401.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "nose",
+      "score": null,
+      "points": [
+        [
+          594.0,
+          383.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "l_eye",
+      "score": null,
+      "points": [
+        [
+          604.0,
+          382.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "r_eye",
+      "score": null,
+      "points": [
+        [
+          594.0,
+          380.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "l_ear",
+      "score": null,
+      "points": [
+        [
+          618.0,
+          397.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "l_sho",
+      "score": null,
+      "points": [
+        [
+          629.0,
+          429.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "r_sho",
+      "score": null,
+      "points": [
+        [
+          581.0,
+          424.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "head",
+      "score": null,
+      "points": [
+        [
+          573.0,
+          269.0
+        ],
+        [
+          603.0,
+          269.0
+        ],
+        [
+          603.0,
+          312.0
+        ],
+        [
+          573.0,
+          312.0
+        ]
+      ],
+      "group_id": 3,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {
+        "orphan_head": true,
+        "has_face": true,
+        "entity_source": "orphan_generated"
+      },
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "face",
+      "score": null,
+      "points": [
+        [
+          573.0,
+          283.0
+        ],
+        [
+          594.4444444444445,
+          283.0
+        ],
+        [
+          594.4444444444445,
+          311.6666666666667
+        ],
+        [
+          573.0,
+          311.6666666666667
+        ]
+      ],
+      "group_id": 3,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "head",
+      "score": null,
+      "points": [
+        [
+          171.0,
+          284.0
+        ],
+        [
+          221.0,
+          284.0
+        ],
+        [
+          221.0,
+          331.0
+        ],
+        [
+          171.0,
+          331.0
+        ]
+      ],
+      "group_id": 4,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {
+        "orphan_head": true,
+        "has_face": true,
+        "entity_source": "orphan_generated"
+      },
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "face",
+      "score": null,
+      "points": [
+        [
+          181.0,
+          296.0
+        ],
+        [
+          217.0,
+          296.0
+        ],
+        [
+          217.0,
+          329.0
+        ],
+        [
+          181.0,
+          329.0
+        ]
+      ],
+      "group_id": 4,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "head",
+      "score": null,
+      "points": [
+        [
+          92.0,
+          251.0
+        ],
+        [
+          181.0,
+          251.0
+        ],
+        [
+          181.0,
+          324.0
+        ],
+        [
+          92.0,
+          324.0
+        ]
+      ],
+      "group_id": 5,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {
+        "orphan_head": true,
+        "has_face": true,
+        "entity_source": "orphan_generated"
+      },
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "face",
+      "score": null,
+      "points": [
+        [
+          139.0,
+          261.0
+        ],
+        [
+          180.0,
+          261.0
+        ],
+        [
+          180.0,
+          318.0
+        ],
+        [
+          139.0,
+          318.0
+        ]
+      ],
+      "group_id": 5,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "head",
+      "score": null,
+      "points": [
+        [
+          1.0,
+          259.0
+        ],
+        [
+          110.0,
+          259.0
+        ],
+        [
+          110.0,
+          393.0
+        ],
+        [
+          1.0,
+          393.0
+        ]
+      ],
+      "group_id": 6,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {
+        "orphan_head": true,
+        "has_face": false,
+        "entity_source": "orphan_generated"
+      },
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "mask": null,
+      "label": "head",
+      "score": null,
+      "points": [
+        [
+          394.0,
+          239.7462686567164
+        ],
+        [
+          425.0,
+          239.7462686567164
+        ],
+        [
+          425.0,
+          273.74626865671644
+        ],
+        [
+          394.0,
+          273.74626865671644
+        ]
+      ],
+      "group_id": 7,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {
+        "orphan_head": true,
+        "has_face": false,
+        "entity_source": "orphan_generated"
+      },
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "000000000389.jpg",
+  "imageData": null,
+  "imageHeight": 480,
+  "imageWidth": 640,
+  "description": ""
+}
