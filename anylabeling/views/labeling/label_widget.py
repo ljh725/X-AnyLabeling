@@ -203,6 +203,15 @@ class LabelingWidget(LabelDialog):
         self.inspector_panel.issue_navigate_requested.connect(
             self._on_inspector_navigate
         )
+        self.inspector_panel.shape_edit_requested.connect(
+            self._on_inspector_shape_edit
+        )
+        self._inspector_table_refresh_timer = QtCore.QTimer(self)
+        self._inspector_table_refresh_timer.setSingleShot(True)
+        self._inspector_table_refresh_timer.setInterval(150)
+        self._inspector_table_refresh_timer.timeout.connect(
+            self._refresh_inspector_table
+        )
         self._settings_controller = None
         self._settings_dialog = None
         self._settings_runtime_applier = SettingsRuntimeApplier(self)
@@ -457,6 +466,16 @@ class LabelingWidget(LabelDialog):
         self.canvas.shape_moved.connect(self.set_dirty)
         self.canvas.shape_rotated.connect(self.set_dirty)
         self.canvas.selection_changed.connect(self.shape_selection_changed)
+        # Inspector table refresh (debounced)
+        self.canvas.new_shape.connect(
+            self._schedule_inspector_table_refresh
+        )
+        self.canvas.shape_moved.connect(
+            self._schedule_inspector_table_refresh
+        )
+        self.canvas.selection_changed.connect(
+            self._schedule_inspector_table_refresh
+        )
         self.canvas.drawing_polygon.connect(self.toggle_drawing_sensitive)
         self.canvas.edit_label_requested.connect(self.edit_label)
         # [Feature] support for automatically switching to editing mode
@@ -4268,6 +4287,10 @@ class LabelingWidget(LabelDialog):
             elif osp.isfile(normalized):
                 self.load_file(normalized)
 
+        # Verify the file actually loaded before navigating to shape
+        if str(self.filename) != normalized:
+            return
+
         # Select the shape and center on it
         if 0 <= shape_index < len(self.canvas.shapes):
             shape = self.canvas.shapes[shape_index]
@@ -4306,6 +4329,53 @@ class LabelingWidget(LabelDialog):
 
         self.set_scroll(QtCore.Qt.Orientation.Horizontal, target_x)
         self.set_scroll(QtCore.Qt.Orientation.Vertical, target_y)
+
+    def _on_inspector_shape_edit(
+        self, file_path: str, shape_index: int, field: str, value
+    ):
+        """Handle an edit from the inspector's editable table.
+
+        Modifies the corresponding Shape in canvas, marks the file dirty,
+        and schedules a canvas redraw.
+        """
+        if str(self.filename) != str(file_path):
+            return
+        if shape_index < 0 or shape_index >= len(self.canvas.shapes):
+            return
+
+        shape = self.canvas.shapes[shape_index]
+
+        if field == "label":
+            shape.label = str(value)
+        elif field == "group_id":
+            try:
+                shape.group_id = (
+                    int(value) if str(value).strip() else None
+                )
+            except ValueError:
+                return
+        elif field == "description":
+            shape.description = str(value)
+        else:
+            return
+
+        self.set_dirty()
+        self.canvas.update()
+
+    def _schedule_inspector_table_refresh(self):
+        """Debounced refresh of the inspector editable table."""
+        self._inspector_table_refresh_timer.start()
+
+    def _refresh_inspector_table(self):
+        """Refresh the inspector editable table from current canvas shapes."""
+        if not hasattr(self, "inspector_panel") or self.inspector_panel is None:
+            return
+        if self.filename and self.canvas.shapes is not None:
+            self.inspector_panel.refresh_table_from_shapes(
+                file_path=str(self.filename),
+                shapes=self.canvas.shapes,
+                image_path=getattr(self, "image_path", "") or "",
+            )
 
     def _update_inspector_file_list(self):
         """Feed current file list to the inspector panel."""
@@ -6070,6 +6140,9 @@ class LabelingWidget(LabelDialog):
 
         # Auto-activate keypoint fill mode if enabled and single object found
         self._check_auto_activate_keypoint_fill()
+
+        # Populate inspector editable table with current file's shapes
+        self._refresh_inspector_table()
 
         return True
 

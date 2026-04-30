@@ -250,12 +250,15 @@ class RequiredFieldNotEmpty(ValidationRule):
         ("points_count", "坐标点"),
     ]
 
+    # map field names to record attribute accessors
+    _FIELD_GETTERS = {
+        "label": lambda r: r.label,
+        "points_count": lambda r: r.points_count,
+    }
+
     def check(self, record, all_records, index):
-        field_checks = [
-            ("label", record.label, "标签名"),
-            ("points_count", record.points_count, "坐标点"),
-        ]
-        for field_name, value, display_name in field_checks:
+        for field_name, display_name in self.REQUIRED_FIELDS:
+            value = self._FIELD_GETTERS.get(field_name, lambda r: None)(record)
             if not value:
                 return Issue(
                     rule_name=self.name,

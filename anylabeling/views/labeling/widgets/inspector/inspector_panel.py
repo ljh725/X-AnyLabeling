@@ -2,9 +2,10 @@
 Inspector Panel — the main dock widget that houses the data inspection UI.
 
 This is the top-level container.  It:
-- Holds the FlatIndex, ValidationEngine, and IssueListWidget.
+- Holds the FlatIndex, ValidationEngine, IssueListWidget, and EditableTableWidget.
 - Orchestrates the scan → validate → display pipeline.
 - Emits navigation signals that the parent label_widget connects to.
+- Emits edit signals for bidirectional table ↔ canvas sync.
 
 Usage (in label_widget.py)::
 
@@ -16,8 +17,7 @@ Usage (in label_widget.py)::
 """
 
 import logging
-import os.path as osp
-from typing import Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
@@ -34,6 +34,7 @@ from .validation_engine import (
     AttributeConsistency,
 )
 from .issue_list_widget import IssueListWidget
+from .editable_table_widget import EditableTableWidget
 
 logger = logging.getLogger(__name__)
 
@@ -44,16 +45,19 @@ class InspectorPanel(QtWidgets.QDockWidget):
 
     Signals:
         issue_navigate_requested(file_path: str, shape_index: int)
-            The user clicked an issue → navigate to that file + shape.
+            The user clicked an issue/table row → navigate to that file + shape.
+        shape_edit_requested(file_path: str, shape_index: int, field: str, value)
+            The user edited a cell in the editable table → modify the Shape object.
         scan_started()
             Emitted when a scan begins.
         scan_finished(report: ValidationReport)
             Emitted when a scan completes.
     """
 
-    issue_navigate_requested = QtCore.pyqtSignal(str, int)    # file_path, shape_index
+    issue_navigate_requested = QtCore.pyqtSignal(str, int)
+    shape_edit_requested = QtCore.pyqtSignal(str, int, str, object)
     scan_started = QtCore.pyqtSignal()
-    scan_finished = QtCore.pyqtSignal(object)                  # ValidationReport
+    scan_finished = QtCore.pyqtSignal(object)
 
     # ── COCO keypoints (same as KeypointFillMode) ──────────────
     COCO_KEYPOINTS: Set[str] = {
@@ -76,14 +80,23 @@ class InspectorPanel(QtWidgets.QDockWidget):
 
         # ── core components ──────────────────────────────────────
         self._allowed_labels: Set[str] = allowed_labels or set()
-        self._flat_index = FlatIndex(allowed_labels=self._allowed_labels)
-        self._engine = self._build_engine(extra_rules)
+        self._extra_rules: List[ValidationRule] = extra_rules or []
+        self._flat_index = FlatIndex()
+        self._engine = self._build_engine(self._extra_rules)
 
-        # ── UI ───────────────────────────────────────────────────
+        # ── UI: tab widget ───────────────────────────────────────
+        self._tab_widget = QtWidgets.QTabWidget()
+
         self._issue_list = IssueListWidget()
-        self.setWidget(self._issue_list)
+        self._tab_widget.addTab(self._issue_list, self.tr("数据检查"))
+
+        self._table_widget = EditableTableWidget()
+        self._tab_widget.addTab(self._table_widget, self.tr("数据表格"))
+
+        self.setWidget(self._tab_widget)
 
         # ── wire signals ─────────────────────────────────────────
+        # issue list → translate
         self._issue_list.issue_double_clicked.connect(
             self.issue_navigate_requested.emit
         )
@@ -92,9 +105,20 @@ class InspectorPanel(QtWidgets.QDockWidget):
         )
         self._issue_list.rescan_requested.connect(self.run_scan)
 
+        # table → translate
+        self._table_widget.shape_clicked.connect(
+            self.issue_navigate_requested.emit
+        )
+        self._table_widget.shape_double_clicked.connect(
+            self.issue_navigate_requested.emit
+        )
+
+        # table edit → forward to label_widget
+        self._table_widget.set_edit_callback(self._on_table_edit)
+
         # ── state ────────────────────────────────────────────────
         self._last_report: Optional[ValidationReport] = None
-        self._file_list: List[str] = []           # current file list (JSON paths)
+        self._file_list: List[str] = []
 
         logger.debug("InspectorPanel initialized")
 
@@ -121,6 +145,14 @@ class InspectorPanel(QtWidgets.QDockWidget):
 
         return ValidationEngine(rules)
 
+    # ── Table edit callback ──────────────────────────────────────
+
+    def _on_table_edit(
+        self, file_path: str, shape_index: int, field: str, value
+    ) -> None:
+        """Forward table edit to label_widget via signal."""
+        self.shape_edit_requested.emit(file_path, shape_index, field, value)
+
     # ── Public API ───────────────────────────────────────────────
 
     def set_file_list(self, file_paths: List[str]) -> None:
@@ -130,14 +162,15 @@ class InspectorPanel(QtWidgets.QDockWidget):
         """
         self._file_list = list(file_paths)
         self._issue_list.clear_results()
+        self._table_widget.clear_results()
 
     def set_allowed_labels(self, labels: Set[str]) -> None:
         """Update the label allowlist and rebuild the engine."""
         self._allowed_labels = set(labels)
-        self._engine = self._build_engine()
-        # clear cached results since rules changed
+        self._engine = self._build_engine(self._extra_rules)
         self._last_report = None
         self._issue_list.clear_results()
+        self._table_widget.clear_results()
 
     def run_scan(self, json_paths: Optional[List[str]] = None) -> None:
         """
@@ -175,16 +208,63 @@ class InspectorPanel(QtWidgets.QDockWidget):
         Updates the index and re-runs validation for affected records.
         """
         if file_path not in self._flat_index._by_file:
-            # file not in index yet
             return
 
         self._flat_index.refresh_file(file_path)
 
-        # re-run validation and update display
         if self._last_report:
             report = self._engine.run(self._flat_index)
             self._last_report = report
             self._issue_list.populate(report)
+
+    # ── Editable table API ───────────────────────────────────────
+
+    def populate_table(
+        self, records: List[FlattenedRecord]
+    ) -> None:
+        """Populate the editable table with records (e.g. for current file)."""
+        self._table_widget.populate(records)
+
+    def refresh_table_from_shapes(
+        self,
+        file_path: str,
+        shapes: list,
+        image_path: str = "",
+    ) -> None:
+        """Refresh the editable table directly from canvas shapes (fast path).
+
+        Args:
+            file_path: Current file path (used as record key).
+            shapes: List of Shape objects from canvas.
+            image_path: The imagePath field (optional, for record completeness).
+        """
+        records = self._shapes_to_records(file_path, shapes, image_path)
+        self._table_widget.populate(records)
+
+    @staticmethod
+    def _shapes_to_records(
+        file_path: str,
+        shapes: list,
+        image_path: str = "",
+    ) -> List[FlattenedRecord]:
+        """Convert Shape objects to FlattenedRecords without JSON I/O."""
+        records: List[FlattenedRecord] = []
+        for i, shape in enumerate(shapes):
+            rec = FlattenedRecord(
+                file_path=file_path,
+                image_path=image_path,
+                shape_index=i,
+                label=getattr(shape, "label", ""),
+                shape_type=getattr(shape, "shape_type", ""),
+                group_id=getattr(shape, "group_id", None),
+                flags=dict(getattr(shape, "flags", {}) or {}),
+                attributes=dict(getattr(shape, "attributes", {}) or {}),
+                description=getattr(shape, "description", "") or "",
+                points_count=len(getattr(shape, "points", []) or []),
+                difficulty=bool(getattr(shape, "difficult", False)),
+            )
+            records.append(rec)
+        return records
 
     # ── Properties ───────────────────────────────────────────────
 
@@ -203,3 +283,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
     @property
     def issue_list_widget(self) -> IssueListWidget:
         return self._issue_list
+
+    @property
+    def table_widget(self) -> EditableTableWidget:
+        return self._table_widget

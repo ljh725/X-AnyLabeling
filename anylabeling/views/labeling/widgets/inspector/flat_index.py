@@ -51,7 +51,7 @@ class FlatIndex:
 
     Usage::
 
-        index = FlatIndex(allowed_labels={"person", "head", "face", ...})
+        index = FlatIndex()
         index.scan_files(list_of_json_paths, progress_callback=...)
 
         # query
@@ -62,15 +62,11 @@ class FlatIndex:
             ...
     """
 
-    def __init__(
-        self,
-        allowed_labels: Optional[Set[str]] = None,
-    ):
+    def __init__(self):
         self._records: List[FlattenedRecord] = []
         self._by_file: Dict[str, List[FlattenedRecord]] = {}      # file_path → records
         self._by_label: Dict[str, List[FlattenedRecord]] = {}     # label → records
         self._by_group: Dict[int, List[FlattenedRecord]] = {}     # group_id → records
-        self._allowed_labels: Optional[Set[str]] = allowed_labels
 
         # metadata
         self._files_scanned: int = 0
@@ -173,13 +169,19 @@ class FlatIndex:
         Re-scan a single file (used after user saves changes).
         Returns the new records for this file.
         """
-        # remove old entries
         old_records = self._by_file.pop(file_path, [])
         for rec in old_records:
             self._records.remove(rec)
-            self._by_label.get(rec.label, []).remove(rec)
-            if rec.group_id is not None:
-                self._by_group.get(rec.group_id, []).remove(rec)
+            if rec.label in self._by_label:
+                label_list = self._by_label[rec.label]
+                label_list.remove(rec)
+                if not label_list:
+                    del self._by_label[rec.label]
+            if rec.group_id is not None and rec.group_id in self._by_group:
+                group_list = self._by_group[rec.group_id]
+                group_list.remove(rec)
+                if not group_list:
+                    del self._by_group[rec.group_id]
 
         # re-scan
         self._scan_one(file_path)
