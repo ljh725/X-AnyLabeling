@@ -178,6 +178,7 @@ shortcuts:
   add_point_to_edge: Ctrl+Shift+P
   edit_label: Ctrl+E
   edit_digit_shortcut: Alt+D
+  edit_digit_relabel: Alt+R
   switch_digit_page: F1
   edit_group_id: Alt+G
   edit_labels: Alt+L
@@ -225,4 +226,5 @@ remote_server_settings:
 
 # Digit shortcuts
 digit_shortcuts: null
+rename_shortcuts: null
 digit_shortcut_pages: 1

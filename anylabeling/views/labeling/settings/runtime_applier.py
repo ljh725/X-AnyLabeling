@@ -94,6 +94,7 @@ class SettingsRuntimeApplier:
             "shortcuts.undo_last_point": self._widget.actions.undo_last_point,
             "shortcuts.edit_label": self._widget.actions.edit,
             "shortcuts.edit_digit_shortcut": self._widget.actions.digit_shortcut_manager,
+            "shortcuts.edit_digit_relabel": self._widget.actions.digit_relabel_manager,
             "shortcuts.switch_digit_page": self._widget.actions.switch_digit_page,
             "shortcuts.edit_group_id": self._widget.actions.gid_manager,
             "shortcuts.edit_labels": self._widget.actions.label_manager,

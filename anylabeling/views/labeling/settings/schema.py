@@ -261,6 +261,10 @@ def _shortcut_label(short_key: str) -> str:
             SETTINGS_TRANSLATION_CONTEXT,
             "Open Digit Shortcut Manager Dialog",
         ),
+        "edit_digit_relabel": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Open Digit Relabel Manager Dialog",
+        ),
         "switch_digit_page": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT,
             "Switch Digit Shortcut Page",
@@ -967,6 +971,7 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "show_overview",
             "show_navigator",
             "edit_digit_shortcut",
+            "edit_digit_relabel",
             "switch_digit_page",
             "edit_group_id",
             "edit_labels",

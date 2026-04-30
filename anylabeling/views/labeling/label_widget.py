@@ -83,6 +83,8 @@ from .widgets import (
     LabelFilterComboBox,
     LabelListWidget,
     LabelListWidgetItem,
+    DigitRenameManager,
+    DigitRenameShortcutDialog,
     DigitShortcutDialog,
     DigitShortcutPageManager,
     LabelModifyDialog,
@@ -174,6 +176,7 @@ class LabelingWidget(LabelDialog):
         self.select_loop_count = -1
         self.digit_to_label = None
         self.drawing_digit_shortcuts = self._config.get("digit_shortcuts", {})
+        self.digit_rename_manager = DigitRenameManager(self)
         self._runtime_shape_color_shift = int(
             self._config.get("shift_auto_shape_color", 0)
         )
@@ -1006,6 +1009,15 @@ class LabelingWidget(LabelDialog):
             icon="edit",
             tip=self.tr(
                 "Manage Digit Shortcuts: Assign Drawing Modes and Labels to Number Keys"
+            ),
+        )
+        digit_relabel_manager = action(
+            self.tr("Digit Relabel Manager"),
+            self.digit_rename_shortcut_manager,
+            shortcuts.get("edit_digit_relabel", "Alt+R"),
+            icon="edit",
+            tip=self.tr(
+                "Manage Digit Relabel Shortcuts: Assign Labels to Number Keys for Edit Mode"
             ),
         )
         switch_digit_page = action(
@@ -1901,6 +1913,7 @@ class LabelingWidget(LabelDialog):
             open_paddleocr=open_paddleocr,
             toggle_auto_labeling_widget=toggle_auto_labeling_widget,
             digit_shortcut_manager=digit_shortcut_manager,
+            digit_relabel_manager=digit_relabel_manager,
             switch_digit_page=switch_digit_page,
             label_manager=label_manager,
             gid_manager=gid_manager,
@@ -2086,6 +2099,7 @@ class LabelingWidget(LabelDialog):
                 save_visualization_video,
                 None,
                 digit_shortcut_manager,
+                digit_relabel_manager,
                 enter_keypoint_fill_mode,
                 toggle_keypoint_tool_window,
                 switch_to_prev_person,
@@ -3271,6 +3285,12 @@ class LabelingWidget(LabelDialog):
             )
             save_config(self._config)
 
+    def digit_rename_shortcut_manager(self):
+        digit_rename_dialog = DigitRenameShortcutDialog(parent=self)
+        result = digit_rename_dialog.exec()
+        if result == QtWidgets.QDialog.DialogCode.Accepted:
+            save_config(self._config)
+
     def label_manager(self):
         modify_label_dialog = LabelModifyDialog(
             parent=self, opacity=LABEL_OPACITY
@@ -3464,6 +3484,10 @@ class LabelingWidget(LabelDialog):
         self.actions.union_selection.setEnabled(not drawing)
 
     def create_digit_mode(self, digit_num):
+        if self.digit_rename_manager.is_rename_mode_active():
+            self.digit_rename_manager.trigger_rename(digit_num)
+            return
+
         if self.drawing_digit_shortcuts is None:
             return
 
