@@ -148,15 +148,17 @@ class GroupIdUniqueness(ValidationRule):
     Check that within a single group_id, there are no duplicate shape types
     that should be unique.
 
-    For example: at most ONE 'person' rectangle per group_id.
+    The UNIQUE_TYPES set is empty by default — users can add custom labels
+    in the rule config UI.  Use GroupLabelUniqueness for per-label uniqueness
+    within the shared project label set.
     """
 
     name = "group_id_uniqueness"
     severity = "error"
-    description = "同一 group_id 内出现重复的关键 shape 类型"
+    description = "同一 group_id 内出现重复的关键形状类型"
 
-    # shape types that should be unique within a group
-    UNIQUE_TYPES: Set[str] = {"person", "head", "face"}
+    # shape types that should be unique within a group (user-configurable)
+    UNIQUE_TYPES: Set[str] = set()
 
     def check_all(self, index: FlatIndex) -> List[Issue]:
         issues: List[Issue] = []
@@ -184,6 +186,163 @@ class GroupIdUniqueness(ValidationRule):
 
     def check(self, record, all_records, index):
         # Per-record check is not used; we use check_all for batch efficiency.
+        return None
+
+
+class GroupLabelUniqueness(ValidationRule):
+    """
+    Check that within a single group_id, each label appears at most once.
+
+    Operates per-file (not cross-file).  Only checks labels in the
+    configured label_set.
+    """
+
+    name = "group_label_uniqueness"
+    severity = "error"
+    description = "同一 group_id 内标签名重复出现"
+
+    def __init__(self, label_set: Set[str]):
+        self.label_set = label_set
+
+    def check_all(self, index: FlatIndex) -> List[Issue]:
+        issues: List[Issue] = []
+        for file_path, records in index._by_file.items():
+            by_group: Dict[int, Dict[str, List[FlattenedRecord]]] = {}
+            for rec in records:
+                if rec.group_id is None:
+                    continue
+                if rec.label not in self.label_set:
+                    continue
+                by_group.setdefault(rec.group_id, {}).setdefault(
+                    rec.label, []
+                ).append(rec)
+
+            for gid, label_map in by_group.items():
+                for label, group in label_map.items():
+                    if len(group) > 1:
+                        for rec in group:
+                            issues.append(Issue(
+                                rule_name=self.name,
+                                severity=self.severity,
+                                message=(
+                                    f"[重复标签] group_id={gid} 内 "
+                                    f"label='{label}' 出现 {len(group)} 次 "
+                                    f"(shape #{rec.shape_index})"
+                                ),
+                                file_path=rec.file_path,
+                                shape_index=rec.shape_index,
+                                label=rec.label,
+                                group_id=gid,
+                            ))
+        return issues
+
+    def check(self, record, all_records, index):
+        return None
+
+
+class PersonRectRequiresGroupId(ValidationRule):
+    """
+    Check that every 'person' rectangle has a numeric group_id.
+
+    group_id must be an integer (>=0).  None (missing) or non-integer
+    values are treated as errors.
+    """
+
+    name = "person_rect_requires_group_id"
+    severity = "error"
+    description = "person 矩形框缺少 group_id（必须为数字）"
+
+    def check(self, record, all_records, index):
+        if record.label != "person" or record.shape_type != "rectangle":
+            return None
+        gid = record.group_id
+        if gid is None or not isinstance(gid, int):
+            return Issue(
+                rule_name=self.name,
+                severity=self.severity,
+                message=(
+                    f"[缺少group_id] shape #{record.shape_index} "
+                    f"的 person 矩形框未设置 group_id"
+                ),
+                file_path=record.file_path,
+                shape_index=record.shape_index,
+                label=record.label,
+                group_id=gid,
+            )
+        return None
+
+
+class LabelShapeTypeBinding(ValidationRule):
+    """
+    Check that labels are bound to the correct shape types.
+
+    rectangle_labels -> must be 'rectangle'
+    point_labels     -> must be 'point'
+    Labels not in either set -> reported as 'unbound'.
+    """
+
+    name = "label_shape_type_binding"
+    severity = "error"
+    description = "标签与形状类型不匹配"
+
+    def __init__(
+        self,
+        rectangle_labels: Set[str],
+        point_labels: Set[str],
+    ):
+        self.rectangle_labels = rectangle_labels
+        self.point_labels = point_labels
+        self._all_bound_labels = rectangle_labels | point_labels
+
+    def check(self, record, all_records, index):
+        label = record.label
+
+        if label not in self._all_bound_labels:
+            return Issue(
+                rule_name=self.name,
+                severity=self.severity,
+                message=(
+                    f"[标签未绑定] shape #{record.shape_index} "
+                    f"label='{label}' 未绑定形状类型"
+                ),
+                file_path=record.file_path,
+                shape_index=record.shape_index,
+                label=record.label,
+                group_id=record.group_id,
+            )
+
+        if label in self.rectangle_labels:
+            if record.shape_type != "rectangle":
+                return Issue(
+                    rule_name=self.name,
+                    severity=self.severity,
+                    message=(
+                        f"[类型不匹配] shape #{record.shape_index} "
+                        f"label='{label}' 应为 rectangle，"
+                        f"实际为 {record.shape_type}"
+                    ),
+                    file_path=record.file_path,
+                    shape_index=record.shape_index,
+                    label=record.label,
+                    group_id=record.group_id,
+                )
+
+        if label in self.point_labels:
+            if record.shape_type != "point":
+                return Issue(
+                    rule_name=self.name,
+                    severity=self.severity,
+                    message=(
+                        f"[类型不匹配] shape #{record.shape_index} "
+                        f"label='{label}' 应为 point，"
+                        f"实际为 {record.shape_type}"
+                    ),
+                    file_path=record.file_path,
+                    shape_index=record.shape_index,
+                    label=record.label,
+                    group_id=record.group_id,
+                )
+
         return None
 
 

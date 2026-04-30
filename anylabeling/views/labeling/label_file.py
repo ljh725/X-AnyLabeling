@@ -88,7 +88,7 @@ class LabelFile:
                         )
 
             data["imagePath"] = osp.basename(data["imagePath"])
-            if data["imageData"] is not None:
+            if data.get("imageData") is not None:
                 image_data = base64.b64decode(data["imageData"])
             else:
                 # relative path from label file to relative path from cwd
@@ -103,11 +103,12 @@ class LabelFile:
             flags = data.get("flags", {})
             image_path = data["imagePath"]
 
-            self._check_image_height_and_width(
-                base64.b64encode(image_data).decode("utf-8"),
-                data.get("imageHeight"),
-                data.get("imageWidth"),
-            )
+            if image_data is not None:
+                self._check_image_height_and_width(
+                    base64.b64encode(image_data).decode("utf-8"),
+                    data.get("imageHeight"),
+                    data.get("imageWidth"),
+                )
 
             shapes = [Shape().load_from_dict(s) for s in data["shapes"]]
 

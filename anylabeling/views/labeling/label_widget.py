@@ -197,21 +197,17 @@ class LabelingWidget(LabelDialog):
             tr_callback=self.tr,
         )
         self.keypoint_tool_window = None
-        self.inspector_panel = InspectorPanel(
-            allowed_labels=self._config.get("labels", []),
-        )
+        self.inspector_panel = InspectorPanel()
         self.inspector_panel.issue_navigate_requested.connect(
             self._on_inspector_navigate
         )
         self.inspector_panel.shape_edit_requested.connect(
             self._on_inspector_shape_edit
         )
-        self._inspector_table_refresh_timer = QtCore.QTimer(self)
-        self._inspector_table_refresh_timer.setSingleShot(True)
-        self._inspector_table_refresh_timer.setInterval(150)
-        self._inspector_table_refresh_timer.timeout.connect(
-            self._refresh_inspector_table
-        )
+        # Feed the initial label config to the shared label set
+        labels_from_config = self._config.get("labels", [])
+        if labels_from_config:
+            self.inspector_panel.set_allowed_labels(set(labels_from_config))
         self._settings_controller = None
         self._settings_dialog = None
         self._settings_runtime_applier = SettingsRuntimeApplier(self)
@@ -239,6 +235,14 @@ class LabelingWidget(LabelDialog):
         Shape.line_width = self._config["shape"]["line_width"]
 
         super(LabelDialog, self).__init__()
+
+        # Inspector table refresh timer (debounced)
+        self._inspector_table_refresh_timer = QtCore.QTimer(self)
+        self._inspector_table_refresh_timer.setSingleShot(True)
+        self._inspector_table_refresh_timer.setInterval(150)
+        self._inspector_table_refresh_timer.timeout.connect(
+            self._refresh_inspector_table
+        )
 
         # Whether we need to save or not.
         self.dirty = False
@@ -4277,18 +4281,34 @@ class LabelingWidget(LabelDialog):
         """Navigate to a file and select a specific shape (inspector click)."""
         normalized = str(file_path)
 
+        # Convert JSON path to image path if needed
+        target_image = self._json_path_to_image(normalized)
+        if target_image is None:
+            self.status(
+                self.tr("Cannot find image for: %s") % osp.basename(normalized)
+            )
+            return
+
         # If the requested file is not already open, switch to it
-        if str(self.filename) != normalized:
-            if normalized in self.fn_to_index:
-                idx = self.fn_to_index[normalized]
+        current_image = (
+            str(self.filename) if self.filename else ""
+        )
+        if current_image != target_image:
+            if target_image in self.fn_to_index:
+                idx = self.fn_to_index[target_image]
                 item = self.file_list_widget.item(idx)
                 if item:
                     self.file_list_widget.setCurrentItem(item)
-            elif osp.isfile(normalized):
-                self.load_file(normalized)
+            elif osp.isfile(target_image):
+                self.load_file(target_image)
+            else:
+                self.status(
+                    self.tr("Image not found: %s") % target_image
+                )
+                return
 
         # Verify the file actually loaded before navigating to shape
-        if str(self.filename) != normalized:
+        if str(self.filename) != target_image:
             return
 
         # Select the shape and center on it
@@ -4296,6 +4316,25 @@ class LabelingWidget(LabelDialog):
             shape = self.canvas.shapes[shape_index]
             self.canvas.select_shapes([shape])
             self._center_on_shape(shape)
+
+    def _json_path_to_image(self, json_path: str):
+        """Convert a JSON annotation path to its corresponding image path.
+
+        Matches by basename in image_list (e.g. 000389.json → 000389.jpg).
+        Returns the image path if found, or None.
+        """
+        if not json_path.endswith(".json"):
+            return json_path if osp.isfile(json_path) else None
+
+        json_basename = osp.splitext(osp.basename(json_path))[0]
+
+        for img_path in self.image_list:
+            img_str = str(img_path)
+            img_basename = osp.splitext(osp.basename(img_str))[0]
+            if img_basename == json_basename and osp.isfile(img_str):
+                return img_str
+
+        return None
 
     def _center_on_shape(self, shape):
         """Center the canvas view on the given shape's bounding box.
@@ -4370,6 +4409,10 @@ class LabelingWidget(LabelDialog):
         """Refresh the inspector editable table from current canvas shapes."""
         if not hasattr(self, "inspector_panel") or self.inspector_panel is None:
             return
+        # Don't reset the model while the user is editing a cell
+        if self.inspector_panel.table_widget.is_editing:
+            self._inspector_table_refresh_timer.start()  # retry later
+            return
         if self.filename and self.canvas.shapes is not None:
             self.inspector_panel.refresh_table_from_shapes(
                 file_path=str(self.filename),
@@ -4383,14 +4426,24 @@ class LabelingWidget(LabelDialog):
             return
         # Collect JSON annotation files from the loaded image_list
         json_paths = []
+        output_dir = (
+            getattr(self, "output_dir", None) or None
+        )
         for f in self.image_list:
             f_str = str(f)
             if f_str.endswith(".json"):
                 json_paths.append(f_str)
-            else:
-                # Check for corresponding JSON annotation file
-                base, _ = osp.splitext(f_str)
-                json_path = base + ".json"
+                continue
+            # Check same directory as image
+            base, _ = osp.splitext(f_str)
+            json_path = base + ".json"
+            if osp.isfile(json_path):
+                json_paths.append(json_path)
+                continue
+            # When output_dir is set, check there too
+            if output_dir:
+                basename = osp.basename(base) + ".json"
+                json_path = osp.join(output_dir, basename)
                 if osp.isfile(json_path):
                     json_paths.append(json_path)
         if json_paths:

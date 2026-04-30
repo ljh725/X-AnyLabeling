@@ -62,6 +62,45 @@ python scripts/compile_languages.py # Rebuild .qm + resources.py after .ts chang
 | `scripts/compile_languages.py` | lrelease + pyrcc6 compiler with zlib fallback |
 | `scripts/format_code.sh` | Black wrapper |
 
+### Inspector module (`anylabeling/views/labeling/widgets/inspector/`)
+
+8 文件，4 个 Tab（数据检查 / 数据表格 / 规则配置 / 导出），3 阶段实现。
+
+| 文件 | 职责 | 阶段 |
+|------|------|------|
+| `flat_index.py` | `FlattenedRecord` + `FlatIndex`（内存索引，~500文件/批次） | 1 |
+| `validation_engine.py` | 8 条规则（见速查表）+ `ValidationEngine` | 1 |
+| `issue_list_widget.py` | `QTreeWidget` 问题列表，按规则分组，颜色编码 | 1 |
+| `editable_table_widget.py` | `QTableView` + `EditableTableModel`，可编辑 label/gid/desc | 2 |
+| `rule_config_widget.py` | 共享标签集 + 8 规则 checkbox + 参数编辑器 + `build_rules()` | 3 |
+| `export_manager.py` | `ExportManager.export()` — 按规则名分目录复制 JSON+图片 | 3 |
+| `inspector_panel.py` | `QDockWidget` 4-tab 容器，信号：`issue_navigate_requested` / `shape_edit_requested` | 集成 |
+| `__init__.py` | 导出 `InspectorPanel`, `FlatIndex`, `FlattenedRecord`, `ValidationEngine`, `Issue`, `ValidationRule` | — |
+
+**8 条内置规则速查**：
+
+| # | 规则类 | 检查层级 | 简介 | sev |
+|---|--------|----------|------|-----|
+| R1 | `LabelInAllowlist` | per-shape | label 必须在共享标签集内 | err |
+| R2 | `GroupLabelUniqueness` | per-group | 同 gid 内标签不可重复 | err |
+| R3 | `PersonRectRequiresGroupId` | per-shape | person 矩形框 gid 必须为 int | err |
+| R4 | `LabelShapeTypeBinding` | per-shape | label 必须匹配预期 shape_type | err |
+| R5 | `GroupIdKeypointIntegrity` | per-group | 有关键点的 gid 必须有 person | warn |
+| R6 | `RequiredFieldNotEmpty` | per-shape | label + points 非空 | err |
+| R7 | `GroupIdUniqueness` | per-group | 可配唯一类型（默认空） | err |
+| R8 | `AttributeConsistency` | per-shape | difficult/orphan_head 一致性（默认关） | warn |
+
+**新增规则步骤**：
+1. `validation_engine.py` — 添加 `ValidationRule` 子类，实现 `check()`（per-shape）或 `check_all()`（per-group）
+2. `rule_config_widget.py` — `_RULE_REGISTRY` 追加一行 meta
+3. `rule_config_widget.py` — `_instantiate_rule()` 添加实例化分支
+4. `rule_config_widget.py` — 如有参数，在 `_read_param()` / `_extract_rule_param()` 处理
+
+**关键注意**：
+- `setdefault` 是有效的 Python `dict` 方法（非笔误）
+- 表格刷新时检查 `table_widget.is_editing` 防止模型重置杀掉编辑器
+- `_json_path_to_image()` 通过 basename（非完整路径）匹配 JSON → 图片，支持图片/JSON 分目录存放
+
 ## Agent tasks
 - **Add auto-labeling model**: wrapper in `anylabeling/services/auto_labeling/` (or `__base__/` for family bases), YAML config in `anylabeling/configs/auto_labeling/`, entry in `anylabeling/configs/models.yaml`, ONNX export script in `tools/onnx_exporter/` if needed.
 - **Add label converter**: extend `BaseLabelConverter` in `tools/label_converter.py`, wire into `anylabeling/views/common/converter.py` for CLI access.

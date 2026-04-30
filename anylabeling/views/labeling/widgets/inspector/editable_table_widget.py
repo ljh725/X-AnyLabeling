@@ -254,6 +254,14 @@ class EditableTableWidget(QtWidgets.QWidget):
     ) -> None:
         self._model.set_edit_callback(callback)
 
+    @property
+    def is_editing(self) -> bool:
+        """Check if a cell editor is currently active."""
+        return (
+            self._table_view.state()
+            == QtWidgets.QAbstractItemView.State.EditingState
+        )
+
     # ── event handlers ───────────────────────────────────────────
 
     def _on_clicked(self, index: QModelIndex) -> None:
