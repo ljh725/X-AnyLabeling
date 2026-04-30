@@ -35,5 +35,6 @@ from .unique_label_qlist_widget import UniqueLabelQListWidget
 from .vqa_dialog import VQADialog
 from .keypoint_fill_mode import KeypointFillMode
 from .keypoint_tool_window import KeypointToolWindow
+from .inspector import InspectorPanel
 from .viewport_controller import ViewportController
 from .zoom_widget import ZoomWidget

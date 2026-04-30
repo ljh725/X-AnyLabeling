@@ -99,6 +99,7 @@ from .widgets import (
     NavigatorDialog,
     KeypointFillMode,
     KeypointToolWindow,
+    InspectorPanel,
 )
 
 LABEL_COLORMAP = utils.label_colormap()
@@ -196,6 +197,12 @@ class LabelingWidget(LabelDialog):
             tr_callback=self.tr,
         )
         self.keypoint_tool_window = None
+        self.inspector_panel = InspectorPanel(
+            allowed_labels=self._config.get("labels", []),
+        )
+        self.inspector_panel.issue_navigate_requested.connect(
+            self._on_inspector_navigate
+        )
         self._settings_controller = None
         self._settings_dialog = None
         self._settings_runtime_applier = SettingsRuntimeApplier(self)
@@ -1763,6 +1770,16 @@ class LabelingWidget(LabelDialog):
             enabled=True,
         )
 
+        toggle_inspector = action(
+            self.tr("Data Inspector"),
+            self.toggle_inspector_panel,
+            None,
+            "eye",
+            self.tr("Show/hide the data inspector panel"),
+            checkable=True,
+            enabled=True,
+        )
+
         # AI Actions
         toggle_auto_labeling_widget = action(
             self.tr("Auto Labeling"),
@@ -1902,6 +1919,7 @@ class LabelingWidget(LabelDialog):
             show_linking=show_linking,
             label_on_selection=label_on_selection,
             show_navigator=show_navigator,
+            toggle_inspector=toggle_inspector,
             zoom_actions=zoom_actions,
             open_next_image=open_next_image,
             open_prev_image=open_prev_image,
@@ -2204,6 +2222,7 @@ class LabelingWidget(LabelDialog):
             self.menus.view,
             (
                 show_navigator,
+                toggle_inspector,
                 fill_drawing,
                 loop_thru_labels,
                 loop_select_labels,
@@ -2578,6 +2597,17 @@ class LabelingWidget(LabelDialog):
         self.description_dock.setFeatures(
             self.description_dock.features() & rev_dock_features
         )
+
+        # Inspector panel (Data Inspector)
+        self.inspector_panel.setVisible(False)  # Hidden by default
+        insp_panel = QFrame()
+        insp_panel.setObjectName("sidebarPanel")
+        insp_panel.setStyleSheet(get_panel_style())
+        insp_panel_layout = QVBoxLayout(insp_panel)
+        insp_panel_layout.setContentsMargins(0, 0, 0, 0)
+        insp_panel_layout.setSpacing(0)
+        insp_panel_layout.addWidget(self.inspector_panel)
+        right_sidebar_layout.addWidget(insp_panel)
 
         self.shape_text_edit.textChanged.connect(self.shape_text_changed)
 
@@ -4223,6 +4253,88 @@ class LabelingWidget(LabelDialog):
                     self.grid_layout_container = QWidget()
                     self.grid_layout_container.setLayout(self.grid_layout)
                     self.scroll_area.setWidget(self.grid_layout_container)
+
+    def _on_inspector_navigate(self, file_path: str, shape_index: int):
+        """Navigate to a file and select a specific shape (inspector click)."""
+        normalized = str(file_path)
+
+        # If the requested file is not already open, switch to it
+        if str(self.filename) != normalized:
+            if normalized in self.fn_to_index:
+                idx = self.fn_to_index[normalized]
+                item = self.file_list_widget.item(idx)
+                if item:
+                    self.file_list_widget.setCurrentItem(item)
+            elif osp.isfile(normalized):
+                self.load_file(normalized)
+
+        # Select the shape and center on it
+        if 0 <= shape_index < len(self.canvas.shapes):
+            shape = self.canvas.shapes[shape_index]
+            self.canvas.select_shapes([shape])
+            self._center_on_shape(shape)
+
+    def _center_on_shape(self, shape):
+        """Center the canvas view on the given shape's bounding box.
+
+        Computes the center of the shape in pixmap coordinates and
+        scrolls the canvas so the shape appears centered in the viewport.
+        """
+        pixmap = self.canvas.pixmap
+        if pixmap is None or pixmap.width() <= 0 or pixmap.height() <= 0:
+            return
+
+        # Get shape center in pixmap coordinates
+        if hasattr(shape, "center") and shape.center is not None:
+            cx, cy = shape.center.x(), shape.center.y()
+        else:
+            points = shape.points
+            if not points:
+                return
+            cx = sum(p.x() for p in points) / len(points)
+            cy = sum(p.y() for p in points) / len(points)
+
+        x_ratio = cx / pixmap.width()
+        y_ratio = cy / pixmap.height()
+
+        canvas_size = self.canvas.size()
+        scroll_area = self._central_widget
+        scroll_area_size = scroll_area.viewport().size()
+
+        target_x = x_ratio * canvas_size.width() - scroll_area_size.width() / 2
+        target_y = y_ratio * canvas_size.height() - scroll_area_size.height() / 2
+
+        self.set_scroll(QtCore.Qt.Orientation.Horizontal, target_x)
+        self.set_scroll(QtCore.Qt.Orientation.Vertical, target_y)
+
+    def _update_inspector_file_list(self):
+        """Feed current file list to the inspector panel."""
+        if not hasattr(self, "inspector_panel") or self.inspector_panel is None:
+            return
+        # Collect JSON annotation files from the loaded image_list
+        json_paths = []
+        for f in self.image_list:
+            f_str = str(f)
+            if f_str.endswith(".json"):
+                json_paths.append(f_str)
+            else:
+                # Check for corresponding JSON annotation file
+                base, _ = osp.splitext(f_str)
+                json_path = base + ".json"
+                if osp.isfile(json_path):
+                    json_paths.append(json_path)
+        if json_paths:
+            self.inspector_panel.set_file_list(json_paths)
+
+    def toggle_inspector_panel(self):
+        """Show/hide the inspector panel."""
+        if hasattr(self, "inspector_panel") and self.inspector_panel is not None:
+            visible = not self.inspector_panel.isVisible()
+            self.inspector_panel.setVisible(visible)
+            if hasattr(self, "actions") and hasattr(
+                self.actions, "toggle_inspector"
+            ):
+                self.actions.toggle_inspector.setChecked(visible)
 
     def attribute_selection_changed(self, i, property, combo):
         selected_option = combo.currentText()
@@ -6772,6 +6884,9 @@ class LabelingWidget(LabelDialog):
         self.actions.open_prev_unchecked_image.setEnabled(True)
         self.toggle_actions(True)
         self.open_next_image(load=load)
+
+        # Sync file list to inspector panel
+        self._update_inspector_file_list()
 
         if image_files and self._config.get("exif_scan_enabled", True):
             self.async_exif_scanner.start_scan(image_files)
