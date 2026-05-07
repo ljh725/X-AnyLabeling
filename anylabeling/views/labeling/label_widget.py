@@ -293,10 +293,11 @@ class LabelingWidget(LabelDialog):
         self._global_filter_keep_enabled = True  # default ON
         self._pending_filter_restore = None
         self._sticky_filter_state = {
-            "label": "",
+            "labels": set(),
             "gid": "-1",
             "shape_type": "",
         }
+        self._filter_index = None
         self.select_toggle_action = None
 
         self.label_list.item_selection_changed.connect(
@@ -3094,6 +3095,7 @@ class LabelingWidget(LabelDialog):
 
     def reset_state(self):
         self.label_list.clear()
+        self._filter_index = None  # invalidate stale item references
         self.filename = None
         self.image_path = None
         self.image_data = None
@@ -3121,11 +3123,11 @@ class LabelingWidget(LabelDialog):
         self._update_select_toggle_button_tooltip()
 
     def _has_active_shape_filter(self):
-        current_label = self._sticky_filter_state.get("label", "")
+        selected_labels = self._sticky_filter_state.get("labels", set())
         current_gid = self._sticky_filter_state.get("gid", "-1")
         current_type = self._sticky_filter_state.get("shape_type", "")
         return (
-            bool(current_label)
+            bool(selected_labels)
             or current_gid not in ["", "-1"]
             or bool(current_type)
         )
@@ -4039,18 +4041,32 @@ class LabelingWidget(LabelDialog):
 
     def _populate_label_filter_menu(self, menu):
         menu.clear()
-        action_group = QtGui.QActionGroup(menu)
-        action_group.setExclusive(True)
-        current_label = self.label_filter_combobox.text_box.currentText()
-        for label in self.label_filter_combobox.items:
-            text = self.tr("All Labels") if label == "" else label
+        selected_labels = self._sticky_filter_state.get("labels", set())
+
+        # "All Labels" action — clears the selection
+        all_action = menu.addAction(self.tr("All Labels"))
+        all_action.setCheckable(True)
+        all_action.setChecked(not bool(selected_labels))
+        all_action.triggered.connect(
+            functools.partial(self._set_selected_labels, [])
+        )
+
+        # Separator
+        menu.addSeparator()
+
+        # Current-image labels merged with already-selected labels
+        current_labels = set(self.label_filter_combobox.items)
+        current_labels.discard("")
+        display_labels = sorted(selected_labels | current_labels)
+
+        for label in display_labels:
+            text = label if label else self.tr("All Labels")
             action = menu.addAction(text)
             action.setCheckable(True)
-            action.setChecked(label == current_label)
+            action.setChecked(label in selected_labels)
             action.triggered.connect(
-                functools.partial(self.set_label_filter_value, label)
+                functools.partial(self._toggle_selected_label, label)
             )
-            action_group.addAction(action)
 
     def _populate_gid_filter_menu(self, menu):
         menu.clear()
@@ -4097,20 +4113,64 @@ class LabelingWidget(LabelDialog):
             if type_menu is not None:
                 self._populate_shape_type_filter_menu(type_menu)
 
+    def _copy_sticky_filter_state(self):
+        """Return a safe copy of _sticky_filter_state."""
+        return {
+            "labels": set(self._sticky_filter_state["labels"]),
+            "gid": self._sticky_filter_state["gid"],
+            "shape_type": self._sticky_filter_state["shape_type"],
+        }
+
+    def _set_selected_labels(self, labels, apply_filter=True):
+        """Replace the selected labels set and optionally apply filter."""
+        self._sticky_filter_state["labels"] = set(labels)
+        # Update combobox text as a visual summary indicator
+        if labels:
+            summary = ", ".join(sorted(labels))
+        else:
+            summary = ""
+        idx = self.label_filter_combobox.text_box.findText(summary)
+        if idx < 0:
+            idx = self.label_filter_combobox.text_box.findText("")
+        if idx >= 0:
+            self.label_filter_combobox.text_box.setCurrentIndex(idx)
+        if apply_filter:
+            self._apply_combined_shape_filters()
+
+    def _toggle_selected_label(self, label, checked):
+        """Add or remove a single label from the selected set."""
+        labels = self._sticky_filter_state["labels"]
+        if checked:
+            labels.add(str(label))
+        else:
+            labels.discard(str(label))
+        self._update_combo_box_label_summary()
+        self._apply_combined_shape_filters()
+
+    def _update_combo_box_label_summary(self):
+        """Update label filter combobox text to reflect multi-label state."""
+        labels = self._sticky_filter_state["labels"]
+        if labels:
+            summary = ", ".join(sorted(labels))
+        else:
+            summary = ""
+        idx = self.label_filter_combobox.text_box.findText(summary)
+        if idx < 0:
+            idx = self.label_filter_combobox.text_box.findText("")
+        if idx >= 0:
+            self.label_filter_combobox.text_box.setCurrentIndex(idx)
+
     def set_label_filter_value(
         self, label, _checked=False, block_signal=False
     ):
-        index = self.label_filter_combobox.text_box.findText(str(label))
-        if index < 0:
-            index = self.label_filter_combobox.text_box.findText("")
-        if index >= 0:
-            blocker = None
-            if block_signal:
-                blocker = QtCore.QSignalBlocker(
-                    self.label_filter_combobox.text_box
-                )
-            self.label_filter_combobox.text_box.setCurrentIndex(index)
-            del blocker
+        """Compatibility wrapper: single label → set-based multi-label."""
+        if label in ("", None):
+            self._sticky_filter_state["labels"] = set()
+        else:
+            self._sticky_filter_state["labels"] = {str(label)}
+        if not block_signal:
+            self._update_combo_box_label_summary()
+            self._apply_combined_shape_filters()
 
     def set_gid_filter_value(self, gid, _checked=False, block_signal=False):
         index = self.gid_filter_combobox.gid_box.findText(str(gid))
@@ -4202,34 +4262,22 @@ class LabelingWidget(LabelDialog):
         self._apply_combined_shape_filters()
 
     def _apply_combined_shape_filters(self):
-        current_label = self._sticky_filter_state["label"]
+        selected_labels = self._sticky_filter_state["labels"]
         current_gid = self._sticky_filter_state["gid"]
         current_type = self._sticky_filter_state["shape_type"]
 
         has_active_filter = (
-            current_label != ""
+            bool(selected_labels)
             or current_gid != "-1"
             or current_type != ""
         )
 
+        matched_items = self._compute_matching_items(
+            selected_labels, current_gid, current_type
+        )
+
         def is_visible(item):
-            shape = item.shape()
-            label_ok = (
-                current_label == ""
-                or shape.label == current_label
-            )
-            gid_ok = (
-                str(current_gid) == "-1"
-                or str(shape.group_id) == str(current_gid)
-            )
-            type_ok = (
-                current_type == ""
-                or shape.shape_type == current_type
-            )
-            label_info_ok = self.label_info.get(
-                shape.label, {}
-            ).get("visible", True)
-            return label_ok and gid_ok and type_ok and label_info_ok
+            return item in matched_items
 
         visible_count, changed = self._sync_label_list_visibility(is_visible)
 
@@ -4246,6 +4294,69 @@ class LabelingWidget(LabelDialog):
         else:
             self.status("")
 
+    def _rebuild_filter_index(self):
+        """Build current-image index: label/gid/shape_type → list of items."""
+        idx = {"label": {}, "gid": {}, "shape_type": {}, "all": []}
+        for item in self.label_list:
+            shape = item.shape()
+            idx["all"].append(item)
+            lbl = str(shape.label)
+            idx["label"].setdefault(lbl, []).append(item)
+            if shape.group_id is not None:
+                gid_str = str(shape.group_id)
+                idx["gid"].setdefault(gid_str, []).append(item)
+            if shape.shape_type:
+                idx["shape_type"].setdefault(
+                    str(shape.shape_type), []
+                ).append(item)
+        self._filter_index = idx
+
+    def _compute_matching_items(self, selected_labels, current_gid, current_type):
+        """Compute the set of items that match the current filter using index."""
+        if self._filter_index is None:
+            self._rebuild_filter_index()
+        idx = self._filter_index
+
+        # Determine base candidate set using the most restrictive filter
+        candidates = None
+        if selected_labels:
+            candidate_list = []
+            for lbl in selected_labels:
+                if lbl in idx["label"]:
+                    candidate_list.extend(idx["label"][lbl])
+            candidates = set(candidate_list)
+        elif current_type:
+            if current_type in idx["shape_type"]:
+                candidates = set(idx["shape_type"][current_type])
+        elif current_gid != "-1":
+            if current_gid in idx["gid"]:
+                candidates = set(idx["gid"][current_gid])
+
+        if candidates is None:
+            candidates = set(idx["all"])
+
+        # Apply remaining filter conditions on the candidate set
+        matched = set()
+        for item in candidates:
+            try:
+                shape = item.shape()
+            except RuntimeError:
+                # Item was deleted (e.g. during reset_state); skip
+                continue
+            if current_gid != "-1" and str(shape.group_id) != str(current_gid):
+                continue
+            if current_type and shape.shape_type != current_type:
+                continue
+            if selected_labels and shape.label not in selected_labels:
+                continue
+            label_info_ok = self.label_info.get(shape.label, {}).get(
+                "visible", True
+            )
+            if not label_info_ok:
+                continue
+            matched.add(item)
+        return matched
+
     def toggle_global_filter_keep(self, enabled):
         self._global_filter_keep_enabled = enabled
         self.settings.setValue(
@@ -4254,7 +4365,7 @@ class LabelingWidget(LabelDialog):
         if not enabled:
             # Clear sticky filter state and reset comboboxes
             self._sticky_filter_state = {
-                "label": "",
+                "labels": set(),
                 "gid": "-1",
                 "shape_type": "",
             }
@@ -5360,11 +5471,27 @@ class LabelingWidget(LabelDialog):
         if self._pending_filter_restore is not None:
             saved = self._pending_filter_restore
             self._pending_filter_restore = None
-            self._sticky_filter_state.update(saved)
+            # Merge labels set properly
+            if "labels" in saved:
+                self._sticky_filter_state["labels"] = set(
+                    saved["labels"]
+                )
+            if "gid" in saved:
+                self._sticky_filter_state["gid"] = saved["gid"]
+            if "shape_type" in saved:
+                self._sticky_filter_state["shape_type"] = saved[
+                    "shape_type"
+                ]
+        # Rebuild index for the new image
+        self._filter_index = None
+        self._rebuild_filter_index()
         # Single-pass collection for all three filter boxes
         labels_set, gids_set, types_set = self._collect_filter_options()
+        # Merge selected labels into the current-image label set
+        selected_labels = self._sticky_filter_state["labels"]
+        all_label_set = set(labels_set) | selected_labels
         self.update_combo_box(
-            block_signal=True, precomputed=labels_set
+            block_signal=True, precomputed=all_label_set
         )
         self.update_gid_box(
             block_signal=True, precomputed=gids_set
@@ -5390,12 +5517,7 @@ class LabelingWidget(LabelDialog):
 
     def update_combo_box(self, block_signal=False, precomputed=None):
         # Use sticky state as the authoritative current filter value
-        sticky_label = self._sticky_filter_state.get("label", "")
-        current_label = (
-            sticky_label
-            if sticky_label != ""
-            else self.label_filter_combobox.text_box.currentText()
-        )
+        selected_labels = self._sticky_filter_state.get("labels", set())
 
         unique_labels_list = (
             list(precomputed) if precomputed is not None else []
@@ -5405,11 +5527,12 @@ class LabelingWidget(LabelDialog):
                 unique_labels_list.append(str(item.shape().label))
             unique_labels_list = list(set(unique_labels_list))
 
-        # Add a null row for showing all the labels
+        # Build combo display: "All Labels" (empty) + all unique labels
         unique_labels_list.append("")
-        # Ensure sticky value is in the list (for cross-page persistence)
-        if current_label and current_label not in unique_labels_list:
-            unique_labels_list.append(current_label)
+        # Ensure selected labels are in the list (cross-page persistence)
+        for lbl in selected_labels:
+            if lbl and lbl not in unique_labels_list:
+                unique_labels_list.append(lbl)
         unique_labels_list.sort()
         blocker = None
         if block_signal:
@@ -5417,9 +5540,6 @@ class LabelingWidget(LabelDialog):
                 self.label_filter_combobox.text_box
             )
         self.label_filter_combobox.update_items(unique_labels_list)
-        self.set_label_filter_value(
-            current_label, block_signal=block_signal
-        )
         del blocker
 
     def update_gid_box(self, block_signal=False, precomputed=None):
@@ -5569,9 +5689,12 @@ class LabelingWidget(LabelDialog):
             self.actions.paste.setEnabled(len(self._copied_shapes) > 0)
 
     def text_selection_changed(self, index):
-        self._sticky_filter_state["label"] = (
-            self.label_filter_combobox.text_box.currentText()
-        )
+        # Single-label combobox change: treat as set replacement
+        label = self.label_filter_combobox.text_box.currentText()
+        if label in ("", None):
+            self._sticky_filter_state["labels"] = set()
+        else:
+            self._sticky_filter_state["labels"] = {str(label)}
         self._apply_combined_shape_filters()
 
     def gid_selection_changed(self, index):
@@ -6240,7 +6363,7 @@ class LabelingWidget(LabelDialog):
 
         # Save current filter values for cross-page persistence
         if self._global_filter_keep_enabled:
-            self._pending_filter_restore = dict(self._sticky_filter_state)
+            self._pending_filter_restore = self._copy_sticky_filter_state()
         else:
             self._pending_filter_restore = None
 
