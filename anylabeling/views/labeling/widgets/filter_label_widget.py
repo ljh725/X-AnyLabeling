@@ -41,3 +41,25 @@ class LabelFilterComboBox(QWidget):
         self.items = items
         self.text_box.clear()
         self.text_box.addItems(self.items)
+
+
+class ShapeTypeFilterComboBox(QWidget):
+    def __init__(self, parent=None, items=[]):
+        super(ShapeTypeFilterComboBox, self).__init__(parent)
+        self.items = items
+        self.type_box = QComboBox()
+        self.type_box.setToolTip(self.tr("Shape Type Filter"))
+        self.type_box.addItems(self.items)
+        self.type_box.currentIndexChanged.connect(
+            parent.shape_type_selection_changed
+        )
+
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 2, 0, 2)
+        layout.addWidget(self.type_box)
+        self.setLayout(layout)
+
+    def update_items(self, items):
+        self.items = items
+        self.type_box.clear()
+        self.type_box.addItems(self.items)

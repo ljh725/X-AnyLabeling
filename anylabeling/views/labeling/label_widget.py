@@ -81,6 +81,7 @@ from .widgets import (
     GroupIDFilterComboBox,
     LabelDialog,
     LabelFilterComboBox,
+    ShapeTypeFilterComboBox,
     LabelListWidget,
     LabelListWidgetItem,
     DigitRenameManager,
@@ -285,8 +286,17 @@ class LabelingWidget(LabelDialog):
 
         self.label_filter_combobox = LabelFilterComboBox(self)
         self.gid_filter_combobox = GroupIDFilterComboBox(self)
+        self.shape_type_filter_combobox = ShapeTypeFilterComboBox(self)
         self.label_filter_combobox.hide()
         self.gid_filter_combobox.hide()
+        self.shape_type_filter_combobox.hide()
+        self._global_filter_keep_enabled = True  # default ON
+        self._pending_filter_restore = None
+        self._sticky_filter_state = {
+            "label": "",
+            "gid": "-1",
+            "shape_type": "",
+        }
         self.select_toggle_action = None
 
         self.label_list.item_selection_changed.connect(
@@ -1803,6 +1813,19 @@ class LabelingWidget(LabelDialog):
             enabled=True,
         )
 
+        toggle_global_filter_keep = action(
+            self.tr("Enable Global Filter"),
+            self.toggle_global_filter_keep,
+            None,
+            None,
+            self.tr(
+                "When enabled, filter values persist across images"
+            ),
+            checkable=True,
+            checked=True,
+            enabled=True,
+        )
+
         # AI Actions
         toggle_auto_labeling_widget = action(
             self.tr("Auto Labeling"),
@@ -1943,6 +1966,7 @@ class LabelingWidget(LabelDialog):
             label_on_selection=label_on_selection,
             show_navigator=show_navigator,
             toggle_inspector=toggle_inspector,
+            toggle_global_filter_keep=toggle_global_filter_keep,
             zoom_actions=zoom_actions,
             open_next_image=open_next_image,
             open_prev_image=open_prev_image,
@@ -2100,11 +2124,14 @@ class LabelingWidget(LabelDialog):
         (
             self.label_filter_menu,
             self.gid_filter_menu,
+            self.shape_type_filter_menu,
         ) = self._append_filter_submenus(self.menus.label_list, prepend=True)
         self.canvas_label_filter_menu_0 = None
         self.canvas_gid_filter_menu_0 = None
+        self.canvas_shape_type_filter_menu_0 = None
         self.canvas_label_filter_menu_1 = None
         self.canvas_gid_filter_menu_1 = None
+        self.canvas_shape_type_filter_menu_1 = None
 
         utils.add_actions(
             self.menus.file,
@@ -2246,6 +2273,7 @@ class LabelingWidget(LabelDialog):
             (
                 show_navigator,
                 toggle_inspector,
+                toggle_global_filter_keep,
                 fill_drawing,
                 loop_thru_labels,
                 loop_select_labels,
@@ -2318,6 +2346,7 @@ class LabelingWidget(LabelDialog):
         (
             self.canvas_label_filter_menu_0,
             self.canvas_gid_filter_menu_0,
+            self.canvas_shape_type_filter_menu_0,
         ) = self._append_filter_submenus(
             self.canvas.menus[0],
             prepend=True,
@@ -2677,6 +2706,11 @@ class LabelingWidget(LabelDialog):
         self.recent_files = self.settings.value("recent_files", []) or []
         self.last_open_dir = self.settings.value("last_open_dir", None) or None
 
+        # Restore global filter keep setting
+        self._global_filter_keep_enabled = self.settings.value(
+            "filter/global_keep_enabled", True, type=bool
+        )
+
         # Populate the File menu dynamically.
         self.update_file_menu()
 
@@ -2689,6 +2723,9 @@ class LabelingWidget(LabelDialog):
         self.zoom_widget.valueChanged.connect(self.paint_canvas)
 
         self.populate_mode_actions()
+        self.actions.toggle_global_filter_keep.setChecked(
+            self._global_filter_keep_enabled
+        )
         self._settings_controller = SettingsController(
             config=self._config,
             apply_callback=self._settings_runtime_applier.apply_change,
@@ -2932,6 +2969,7 @@ class LabelingWidget(LabelDialog):
         (
             self.canvas_label_filter_menu_0,
             self.canvas_gid_filter_menu_0,
+            self.canvas_shape_type_filter_menu_0,
         ) = self._append_filter_submenus(
             self.canvas.menus[0],
             prepend=True,
@@ -3065,6 +3103,7 @@ class LabelingWidget(LabelDialog):
         self.compare_view_manager.reset()
         self.label_filter_combobox.text_box.clear()
         self.gid_filter_combobox.gid_box.clear()
+        self.shape_type_filter_combobox.type_box.clear()
         self._update_select_toggle_button_tooltip()
 
     def toggle_select_all(self):
@@ -3082,9 +3121,14 @@ class LabelingWidget(LabelDialog):
         self._update_select_toggle_button_tooltip()
 
     def _has_active_shape_filter(self):
-        current_label = self.label_filter_combobox.text_box.currentText()
-        current_gid = self.gid_filter_combobox.gid_box.currentText()
-        return bool(current_label) or current_gid not in ["", "-1"]
+        current_label = self._sticky_filter_state.get("label", "")
+        current_gid = self._sticky_filter_state.get("gid", "-1")
+        current_type = self._sticky_filter_state.get("shape_type", "")
+        return (
+            bool(current_label)
+            or current_gid not in ["", "-1"]
+            or bool(current_type)
+        )
 
     def _update_select_toggle_button_tooltip(self):
         if self.select_toggle_action is None:
@@ -3967,11 +4011,17 @@ class LabelingWidget(LabelDialog):
         self, parent_menu, prepend=False, after_filter_actions=None
     ):
         label_menu = QtWidgets.QMenu(self.tr("Filter by Label"), parent_menu)
-        gid_menu = QtWidgets.QMenu(self.tr("Filter by Group ID"), parent_menu)
+        gid_menu = QtWidgets.QMenu(
+            self.tr("Filter by Group ID"), parent_menu
+        )
+        type_menu = QtWidgets.QMenu(
+            self.tr("Filter by Shape Type"), parent_menu
+        )
         if prepend and parent_menu.actions():
             first_action = parent_menu.actions()[0]
             parent_menu.insertMenu(first_action, label_menu)
             parent_menu.insertMenu(first_action, gid_menu)
+            parent_menu.insertMenu(first_action, type_menu)
             parent_menu.insertSeparator(first_action)
             if after_filter_actions:
                 for action in after_filter_actions:
@@ -3981,10 +4031,11 @@ class LabelingWidget(LabelDialog):
             parent_menu.addSeparator()
             parent_menu.addMenu(label_menu)
             parent_menu.addMenu(gid_menu)
+            parent_menu.addMenu(type_menu)
             if after_filter_actions:
                 parent_menu.addSeparator()
                 utils.add_actions(parent_menu, after_filter_actions)
-        return label_menu, gid_menu
+        return label_menu, gid_menu, type_menu
 
     def _populate_label_filter_menu(self, menu):
         menu.clear()
@@ -4019,17 +4070,32 @@ class LabelingWidget(LabelDialog):
     def refresh_filter_menus(self):
         self.update_combo_box(block_signal=True)
         self.update_gid_box(block_signal=True)
+        self.update_shape_type_box(block_signal=True)
 
         menus = [
-            (self.label_filter_menu, self.gid_filter_menu),
-            (self.canvas_label_filter_menu_0, self.canvas_gid_filter_menu_0),
-            (self.canvas_label_filter_menu_1, self.canvas_gid_filter_menu_1),
+            (
+                self.label_filter_menu,
+                self.gid_filter_menu,
+                self.shape_type_filter_menu,
+            ),
+            (
+                self.canvas_label_filter_menu_0,
+                self.canvas_gid_filter_menu_0,
+                self.canvas_shape_type_filter_menu_0,
+            ),
+            (
+                self.canvas_label_filter_menu_1,
+                self.canvas_gid_filter_menu_1,
+                self.canvas_shape_type_filter_menu_1,
+            ),
         ]
-        for label_menu, gid_menu in menus:
+        for label_menu, gid_menu, type_menu in menus:
             if label_menu is not None:
                 self._populate_label_filter_menu(label_menu)
             if gid_menu is not None:
                 self._populate_gid_filter_menu(gid_menu)
+            if type_menu is not None:
+                self._populate_shape_type_filter_menu(type_menu)
 
     def set_label_filter_value(
         self, label, _checked=False, block_signal=False
@@ -4058,6 +4124,144 @@ class LabelingWidget(LabelDialog):
                 )
             self.gid_filter_combobox.gid_box.setCurrentIndex(index)
             del blocker
+
+    def set_shape_type_filter_value(
+        self, shape_type, _checked=False, block_signal=False
+    ):
+        index = self.shape_type_filter_combobox.type_box.findText(
+            str(shape_type)
+        )
+        if index < 0:
+            index = self.shape_type_filter_combobox.type_box.findText("")
+        if index >= 0:
+            blocker = None
+            if block_signal:
+                blocker = QtCore.QSignalBlocker(
+                    self.shape_type_filter_combobox.type_box
+                )
+            self.shape_type_filter_combobox.type_box.setCurrentIndex(index)
+            del blocker
+
+    def _populate_shape_type_filter_menu(self, menu):
+        menu.clear()
+        action_group = QtGui.QActionGroup(menu)
+        action_group.setExclusive(True)
+        current_type = self.shape_type_filter_combobox.type_box.currentText()
+        for stype in self.shape_type_filter_combobox.items:
+            text = self.tr("All Types") if stype == "" else stype
+            action = menu.addAction(text)
+            action.setCheckable(True)
+            action.setChecked(stype == current_type)
+            action.triggered.connect(
+                functools.partial(
+                    self.set_shape_type_filter_value, stype
+                )
+            )
+            action_group.addAction(action)
+
+    def update_shape_type_box(self, block_signal=False, precomputed=None):
+        # Use sticky state as the authoritative current filter value
+        sticky_type = self._sticky_filter_state.get("shape_type", "")
+        current_type = (
+            sticky_type
+            if sticky_type != ""
+            else self.shape_type_filter_combobox.type_box.currentText()
+        )
+
+        unique_type_list = (
+            list(precomputed) if precomputed is not None else []
+        )
+        if precomputed is None:
+            for item in self.label_list:
+                stype = item.shape().shape_type
+                if stype:
+                    unique_type_list.append(str(stype))
+            unique_type_list = list(set(unique_type_list))
+
+        # Add a null row for showing all types
+        unique_type_list.append("")
+        # Ensure sticky value is in the list (for cross-page persistence)
+        if current_type and current_type not in unique_type_list:
+            unique_type_list.append(current_type)
+        unique_type_list.sort()
+        blocker = None
+        if block_signal:
+            blocker = QtCore.QSignalBlocker(
+                self.shape_type_filter_combobox.type_box
+            )
+        self.shape_type_filter_combobox.update_items(unique_type_list)
+        self.set_shape_type_filter_value(
+            current_type, block_signal=block_signal
+        )
+        del blocker
+
+    def shape_type_selection_changed(self, index):
+        self._sticky_filter_state["shape_type"] = (
+            self.shape_type_filter_combobox.type_box.currentText()
+        )
+        self._apply_combined_shape_filters()
+
+    def _apply_combined_shape_filters(self):
+        current_label = self._sticky_filter_state["label"]
+        current_gid = self._sticky_filter_state["gid"]
+        current_type = self._sticky_filter_state["shape_type"]
+
+        has_active_filter = (
+            current_label != ""
+            or current_gid != "-1"
+            or current_type != ""
+        )
+
+        def is_visible(item):
+            shape = item.shape()
+            label_ok = (
+                current_label == ""
+                or shape.label == current_label
+            )
+            gid_ok = (
+                str(current_gid) == "-1"
+                or str(shape.group_id) == str(current_gid)
+            )
+            type_ok = (
+                current_type == ""
+                or shape.shape_type == current_type
+            )
+            label_info_ok = self.label_info.get(
+                shape.label, {}
+            ).get("visible", True)
+            return label_ok and gid_ok and type_ok and label_info_ok
+
+        visible_count, changed = self._sync_label_list_visibility(is_visible)
+
+        if changed:
+            self.canvas.update()
+            if (
+                hasattr(self, "navigator_dialog")
+                and self.navigator_dialog.isVisible()
+            ):
+                self.update_navigator_shapes()
+
+        if visible_count == 0 and has_active_filter:
+            self.status(self.tr("No items match the filter criteria"))
+        else:
+            self.status("")
+
+    def toggle_global_filter_keep(self, enabled):
+        self._global_filter_keep_enabled = enabled
+        self.settings.setValue(
+            "filter/global_keep_enabled", enabled
+        )
+        if not enabled:
+            # Clear sticky filter state and reset comboboxes
+            self._sticky_filter_state = {
+                "label": "",
+                "gid": "-1",
+                "shape_type": "",
+            }
+            self.set_label_filter_value("", block_signal=True)
+            self.set_gid_filter_value("-1", block_signal=True)
+            self.set_shape_type_filter_value("", block_signal=True)
+            self._apply_combined_shape_filters()
 
     def validate_label(self, label):
         # no validation
@@ -5098,12 +5302,22 @@ class LabelingWidget(LabelDialog):
             self.flag_widget.addItem(item)
 
     def _sync_label_list_visibility(self, get_visible):
+        """Sync shape/item visibility in a single pass.
+
+        Returns:
+            (visible_count, changed): number of visible shapes and whether any
+            shape visibility actually changed.
+        """
         model = self.label_list.model()
         blocker = QtCore.QSignalBlocker(model)
         self.label_list.setUpdatesEnabled(False)
+        visible_count = 0
+        changed = False
         try:
             for item in self.label_list:
                 is_visible = bool(get_visible(item))
+                if is_visible:
+                    visible_count += 1
                 check_state = (
                     Qt.CheckState.Checked
                     if is_visible
@@ -5111,56 +5325,91 @@ class LabelingWidget(LabelDialog):
                 )
                 if item.checkState() != check_state:
                     item.setCheckState(check_state)
+                    changed = True
                 shape = item.shape()
+                if shape.visible != is_visible:
+                    changed = True
                 shape.visible = is_visible
                 self.canvas.visible[shape] = is_visible
         finally:
             self.label_list.setUpdatesEnabled(True)
             del blocker
-        self.canvas.update()
         self._update_select_toggle_button_tooltip()
-        if (
-            hasattr(self, "navigator_dialog")
-            and self.navigator_dialog.isVisible()
-        ):
-            self.update_navigator_shapes()
+        return visible_count, changed
+
+    def _collect_filter_options(self):
+        """Single-pass collection of unique labels, gids, and shape_types.
+
+        Returns:
+            (labels_set, gids_set, types_set): sets of strings.
+        """
+        labels_set = set()
+        gids_set = set()
+        types_set = set()
+        for item in self.label_list:
+            shape = item.shape()
+            labels_set.add(str(shape.label))
+            if shape.group_id is not None:
+                gids_set.add(str(shape.group_id))
+            if shape.shape_type:
+                types_set.add(str(shape.shape_type))
+        return labels_set, gids_set, types_set
 
     def _refresh_shape_filters(self):
-        self.update_combo_box(block_signal=True)
-        self.update_gid_box(block_signal=True)
-        current_gid = self.gid_filter_combobox.gid_box.currentText()
-        if current_gid and current_gid != "-1":
-            self.gid_selection_changed(
-                self.gid_filter_combobox.gid_box.currentIndex()
-            )
-            return
-        current_label = self.label_filter_combobox.text_box.currentText()
-        if current_label:
-            self.text_selection_changed(
-                self.label_filter_combobox.text_box.currentIndex()
-            )
-            return
-        self.apply_label_visibility()
+        # Restore sticky filter state from pending (page-change persistence)
+        if self._pending_filter_restore is not None:
+            saved = self._pending_filter_restore
+            self._pending_filter_restore = None
+            self._sticky_filter_state.update(saved)
+        # Single-pass collection for all three filter boxes
+        labels_set, gids_set, types_set = self._collect_filter_options()
+        self.update_combo_box(
+            block_signal=True, precomputed=labels_set
+        )
+        self.update_gid_box(
+            block_signal=True, precomputed=gids_set
+        )
+        self.update_shape_type_box(
+            block_signal=True, precomputed=types_set
+        )
+        self._apply_combined_shape_filters()
 
     def apply_label_visibility(self):
-        self._sync_label_list_visibility(
+        _, changed = self._sync_label_list_visibility(
             lambda item: self.label_info.get(item.shape().label, {}).get(
                 "visible", True
             )
         )
+        if changed:
+            self.canvas.update()
+            if (
+                hasattr(self, "navigator_dialog")
+                and self.navigator_dialog.isVisible()
+            ):
+                self.update_navigator_shapes()
 
-    def update_combo_box(self, block_signal=False):
-        current_label = self.label_filter_combobox.text_box.currentText()
+    def update_combo_box(self, block_signal=False, precomputed=None):
+        # Use sticky state as the authoritative current filter value
+        sticky_label = self._sticky_filter_state.get("label", "")
+        current_label = (
+            sticky_label
+            if sticky_label != ""
+            else self.label_filter_combobox.text_box.currentText()
+        )
 
-        # Get the unique labels and add them to the Combobox.
-        labels_list = []
-        for item in self.label_list:
-            label = item.shape().label
-            labels_list.append(str(label))
-        unique_labels_list = list(set(labels_list))
+        unique_labels_list = (
+            list(precomputed) if precomputed is not None else []
+        )
+        if precomputed is None:
+            for item in self.label_list:
+                unique_labels_list.append(str(item.shape().label))
+            unique_labels_list = list(set(unique_labels_list))
 
         # Add a null row for showing all the labels
         unique_labels_list.append("")
+        # Ensure sticky value is in the list (for cross-page persistence)
+        if current_label and current_label not in unique_labels_list:
+            unique_labels_list.append(current_label)
         unique_labels_list.sort()
         blocker = None
         if block_signal:
@@ -5168,36 +5417,45 @@ class LabelingWidget(LabelDialog):
                 self.label_filter_combobox.text_box
             )
         self.label_filter_combobox.update_items(unique_labels_list)
-        if current_label in unique_labels_list:
-            self.set_label_filter_value(
-                current_label, block_signal=block_signal
-            )
-        else:
-            self.set_label_filter_value("", block_signal=block_signal)
+        self.set_label_filter_value(
+            current_label, block_signal=block_signal
+        )
         del blocker
 
-    def update_gid_box(self, block_signal=False):
-        current_gid = self.gid_filter_combobox.gid_box.currentText()
+    def update_gid_box(self, block_signal=False, precomputed=None):
+        # Use sticky state as the authoritative current filter value
+        sticky_gid = self._sticky_filter_state.get("gid", "-1")
+        current_gid = (
+            sticky_gid
+            if sticky_gid != "-1"
+            else self.gid_filter_combobox.gid_box.currentText()
+        )
 
-        # Get the unique group ids and add them to the Combobox.
-        gid_list = []
-        for item in self.label_list:
-            gid = item.shape().group_id
-            if gid is not None:
-                gid_list.append(str(gid))
-        unique_gid_list = list(set(gid_list))
+        unique_gid_list = (
+            list(precomputed) if precomputed is not None else []
+        )
+        if precomputed is None:
+            for item in self.label_list:
+                gid = item.shape().group_id
+                if gid is not None:
+                    unique_gid_list.append(str(gid))
+            unique_gid_list = list(set(unique_gid_list))
 
         # Add a null row for showing all the labels
         unique_gid_list.append("-1")
+        # Ensure sticky value is in the list (for cross-page persistence)
+        if (
+            current_gid
+            and current_gid != "-1"
+            and current_gid not in unique_gid_list
+        ):
+            unique_gid_list.append(current_gid)
         unique_gid_list.sort()
         blocker = None
         if block_signal:
             blocker = QtCore.QSignalBlocker(self.gid_filter_combobox.gid_box)
         self.gid_filter_combobox.update_items(unique_gid_list)
-        if current_gid in unique_gid_list:
-            self.set_gid_filter_value(current_gid, block_signal=block_signal)
-        else:
-            self.set_gid_filter_value("-1", block_signal=block_signal)
+        self.set_gid_filter_value(current_gid, block_signal=block_signal)
         del blocker
 
     def save_labels(self, filename):
@@ -5311,24 +5569,16 @@ class LabelingWidget(LabelDialog):
             self.actions.paste.setEnabled(len(self._copied_shapes) > 0)
 
     def text_selection_changed(self, index):
-        label = self.label_filter_combobox.text_box.itemText(index)
-        self._sync_label_list_visibility(
-            lambda item: label in ["", item.shape().label]
-            and self.label_info.get(item.shape().label, {}).get(
-                "visible", True
-            )
+        self._sticky_filter_state["label"] = (
+            self.label_filter_combobox.text_box.currentText()
         )
+        self._apply_combined_shape_filters()
 
     def gid_selection_changed(self, index):
-        gid = self.gid_filter_combobox.gid_box.itemText(index)
-        self._sync_label_list_visibility(
-            lambda item: str(gid)
-            in (
-                ["-1", str(item.shape().group_id)]
-                if item.shape().group_id is not None
-                else ["-1"]
-            )
+        self._sticky_filter_state["gid"] = (
+            self.gid_filter_combobox.gid_box.currentText()
         )
+        self._apply_combined_shape_filters()
 
     def label_selection_changed(self):
         if self._no_selection_slot:
@@ -5987,6 +6237,12 @@ class LabelingWidget(LabelDialog):
             zoom_widget=self.zoom_widget,
             zoom_mode=self.zoom_mode,
         )
+
+        # Save current filter values for cross-page persistence
+        if self._global_filter_keep_enabled:
+            self._pending_filter_restore = dict(self._sticky_filter_state)
+        else:
+            self._pending_filter_restore = None
 
         self.reset_state()
         self.canvas.setEnabled(False)
