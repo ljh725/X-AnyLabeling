@@ -3103,6 +3103,10 @@ class LabelingWidget(LabelDialog):
         self.other_data = {}
         self.canvas.reset_state()
         self.compare_view_manager.reset()
+        # Block signals to avoid triggering filter callbacks during reset
+        lbl_blocker = QtCore.QSignalBlocker(self.label_filter_combobox.text_box)
+        gid_blocker = QtCore.QSignalBlocker(self.gid_filter_combobox.gid_box)
+        type_blocker = QtCore.QSignalBlocker(self.shape_type_filter_combobox.type_box)
         self.label_filter_combobox.text_box.clear()
         self.gid_filter_combobox.gid_box.clear()
         self.shape_type_filter_combobox.type_box.clear()
@@ -4259,6 +4263,10 @@ class LabelingWidget(LabelDialog):
         self._sticky_filter_state["shape_type"] = (
             self.shape_type_filter_combobox.type_box.currentText()
         )
+        logger.info(
+            "[DIAG] shape_type_selection_changed | index=%s | type=%s",
+            index, self._sticky_filter_state["shape_type"],
+        )
         self._apply_combined_shape_filters()
 
     def _apply_combined_shape_filters(self):
@@ -4272,6 +4280,17 @@ class LabelingWidget(LabelDialog):
             or current_type != ""
         )
 
+        logger.info(
+            "[DIAG] _apply_combined_shape_filters ENTER | selected_labels=%s | gid=%s | type=%s | has_active_filter=%s | list_count=%d",
+            selected_labels, current_gid, current_type,
+            has_active_filter, self.label_list.model().rowCount(),
+        )
+
+        if not has_active_filter:
+            logger.info("[DIAG] _apply_combined_shape_filters SKIP (no active filter)")
+            self.status("")
+            return
+
         matched_items = self._compute_matching_items(
             selected_labels, current_gid, current_type
         )
@@ -4281,6 +4300,11 @@ class LabelingWidget(LabelDialog):
 
         visible_count, changed = self._sync_label_list_visibility(is_visible)
 
+        logger.info(
+            "[DIAG] _apply_combined_shape_filters AFTER sync | visible_count=%d | changed=%s | matched_items=%d",
+            visible_count, changed, len(matched_items),
+        )
+
         if changed:
             self.canvas.update()
             if (
@@ -4289,7 +4313,7 @@ class LabelingWidget(LabelDialog):
             ):
                 self.update_navigator_shapes()
 
-        if visible_count == 0 and has_active_filter:
+        if visible_count == 0:
             self.status(self.tr("No items match the filter criteria"))
         else:
             self.status("")
@@ -5275,12 +5299,22 @@ class LabelingWidget(LabelDialog):
             self.hide_attributes_panel()
 
     def add_label(self, shape, update_last_label=True, refresh_filters=True):
+        logger.info(
+            "[DIAG] add_label ENTER | label=%s | gid=%s | shape_type=%s | list_count=%d",
+            shape.label, shape.group_id, shape.shape_type,
+            self.label_list.model().rowCount(),
+        )
         if shape.group_id is None:
             text = shape.label
         else:
             text = f"{shape.label} ({shape.group_id})"
         label_list_item = LabelListWidgetItem(text, shape)
         self.label_list.add_iem(label_list_item)
+        logger.info(
+            "[DIAG] add_label AFTER add_iem | checkState=%s | shape.visible=%s",
+            label_list_item.checkState() == Qt.CheckState.Checked,
+            shape.visible,
+        )
         if not self.unique_label_list.find_items_by_label(shape.label):
             item = self.unique_label_list.create_item_from_label(shape.label)
             self.unique_label_list.addItem(item)
@@ -5319,7 +5353,17 @@ class LabelingWidget(LabelDialog):
         label_list_item.setText("{}".format(html.escape(text)))
         label_list_item.setBackground(QtGui.QColor(*color, LABEL_OPACITY))
         if refresh_filters:
+            logger.info(
+                "[DIAG] add_label BEFORE _refresh_shape_filters | item.checkState=%s | shape.visible=%s",
+                label_list_item.checkState() == Qt.CheckState.Checked,
+                shape.visible,
+            )
             self._refresh_shape_filters()
+            logger.info(
+                "[DIAG] add_label AFTER _refresh_shape_filters | item.checkState=%s | shape.visible=%s",
+                label_list_item.checkState() == Qt.CheckState.Checked,
+                shape.visible,
+            )
 
     def load_labels(self, labels, clear_existing=True):
         """
@@ -5425,7 +5469,14 @@ class LabelingWidget(LabelDialog):
         visible_count = 0
         changed = False
         try:
-            for item in self.label_list:
+            logger.info(
+                "[DIAG] _sync_label_list_visibility ENTER | item_count=%d",
+                self.label_list.model().rowCount(),
+            )
+            for idx, item in enumerate(self.label_list):
+                prev_check = item.checkState()
+                shape = item.shape()
+                prev_visible = shape.visible if shape else None
                 is_visible = bool(get_visible(item))
                 if is_visible:
                     visible_count += 1
@@ -5434,17 +5485,39 @@ class LabelingWidget(LabelDialog):
                     if is_visible
                     else Qt.CheckState.Unchecked
                 )
+                logger.info(
+                    "[DIAG] _sync_label_list_visibility ITEM[%d] | label=%s | prev_check=%s | is_vis=%s | target_check=%s | prev_shape_vis=%s",
+                    idx, shape.label if shape else "N/A",
+                    "Checked" if prev_check == Qt.CheckState.Checked else "Unchecked",
+                    is_visible,
+                    "Checked" if check_state == Qt.CheckState.Checked else "Unchecked",
+                    prev_visible,
+                )
                 if item.checkState() != check_state:
+                    logger.warning(
+                        "[DIAG] _sync_label_list_visibility CHANGED CHECK | ITEM[%d] %s: %s -> %s",
+                        idx, shape.label if shape else "N/A",
+                        "Checked" if prev_check == Qt.CheckState.Checked else "Unchecked",
+                        "Checked" if check_state == Qt.CheckState.Checked else "Unchecked",
+                    )
                     item.setCheckState(check_state)
                     changed = True
-                shape = item.shape()
                 if shape.visible != is_visible:
+                    logger.warning(
+                        "[DIAG] _sync_label_list_visibility CHANGED VISIBLE | ITEM[%d] %s: %s -> %s",
+                        idx, shape.label if shape else "N/A",
+                        prev_visible, is_visible,
+                    )
                     changed = True
                 shape.visible = is_visible
                 self.canvas.visible[shape] = is_visible
         finally:
             self.label_list.setUpdatesEnabled(True)
             del blocker
+        logger.info(
+            "[DIAG] _sync_label_list_visibility EXIT | visible_count=%d | changed=%s",
+            visible_count, changed,
+        )
         self._update_select_toggle_button_tooltip()
         return visible_count, changed
 
@@ -5467,6 +5540,14 @@ class LabelingWidget(LabelDialog):
         return labels_set, gids_set, types_set
 
     def _refresh_shape_filters(self):
+        logger.info(
+            "[DIAG] _refresh_shape_filters ENTER | pending_restore=%s | sticky_labels=%s | sticky_gid=%s | sticky_type=%s | list_count=%d",
+            self._pending_filter_restore,
+            self._sticky_filter_state["labels"],
+            self._sticky_filter_state["gid"],
+            self._sticky_filter_state["shape_type"],
+            self.label_list.model().rowCount(),
+        )
         # Restore sticky filter state from pending (page-change persistence)
         if self._pending_filter_restore is not None:
             saved = self._pending_filter_restore
@@ -5482,6 +5563,12 @@ class LabelingWidget(LabelDialog):
                 self._sticky_filter_state["shape_type"] = saved[
                     "shape_type"
                 ]
+            logger.info(
+                "[DIAG] _refresh_shape_filters RESTORED | sticky_labels=%s | sticky_gid=%s | sticky_type=%s",
+                self._sticky_filter_state["labels"],
+                self._sticky_filter_state["gid"],
+                self._sticky_filter_state["shape_type"],
+            )
         # Rebuild index for the new image
         self._filter_index = None
         self._rebuild_filter_index()
@@ -5499,7 +5586,9 @@ class LabelingWidget(LabelDialog):
         self.update_shape_type_box(
             block_signal=True, precomputed=types_set
         )
+        logger.info("[DIAG] _refresh_shape_filters BEFORE _apply_combined_shape_filters")
         self._apply_combined_shape_filters()
+        logger.info("[DIAG] _refresh_shape_filters AFTER _apply_combined_shape_filters")
 
     def apply_label_visibility(self):
         _, changed = self._sync_label_list_visibility(
@@ -5695,11 +5784,20 @@ class LabelingWidget(LabelDialog):
             self._sticky_filter_state["labels"] = set()
         else:
             self._sticky_filter_state["labels"] = {str(label)}
+        logger.info(
+            "[DIAG] text_selection_changed | index=%s | label=%s | sticky_labels=%s",
+            index, label, self._sticky_filter_state["labels"],
+        )
         self._apply_combined_shape_filters()
 
     def gid_selection_changed(self, index):
+        raw_gid = self.gid_filter_combobox.gid_box.currentText()
         self._sticky_filter_state["gid"] = (
-            self.gid_filter_combobox.gid_box.currentText()
+            raw_gid if raw_gid and raw_gid != "" else "-1"
+        )
+        logger.info(
+            "[DIAG] gid_selection_changed | index=%s | raw_gid=%s | gid=%s",
+            index, raw_gid, self._sticky_filter_state["gid"],
         )
         self._apply_combined_shape_filters()
 
@@ -5717,9 +5815,19 @@ class LabelingWidget(LabelDialog):
 
     def label_item_changed(self, item):
         shape = item.shape()
+        logger.info(
+            "[DIAG] label_item_changed | label=%s | checkState=%s | shape.visible_before=%s",
+            shape.label if shape else "N/A",
+            "Checked" if item.checkState() == Qt.CheckState.Checked else "Unchecked",
+            shape.visible if shape else "N/A",
+        )
         shape.visible = item.checkState() == Qt.CheckState.Checked
         self.canvas.set_shape_visible(
             shape, item.checkState() == Qt.CheckState.Checked
+        )
+        logger.info(
+            "[DIAG] label_item_changed DONE | shape.visible_after=%s",
+            shape.visible,
         )
         self._update_select_toggle_button_tooltip()
         if (
