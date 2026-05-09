@@ -55,6 +55,8 @@ from .utils.style import (
 from ...config import get_config, save_config
 from .label_file import LabelFile, LabelFileError
 from .logger import logger
+from .filter_state import FilterState
+from .filter_engine import ShapeFilterEngine
 from .settings import SettingsController, SettingsDialog
 from .settings.runtime_applier import SettingsRuntimeApplier
 from .shape import Shape
@@ -291,12 +293,8 @@ class LabelingWidget(LabelDialog):
         self.gid_filter_combobox.hide()
         self.shape_type_filter_combobox.hide()
         self._global_filter_keep_enabled = True  # default ON
-        self._pending_filter_restore = None
-        self._sticky_filter_state = {
-            "labels": set(),
-            "gid": "-1",
-            "shape_type": "",
-        }
+        self._pending_filter_restore: Optional[FilterState] = None
+        self._filter_state = FilterState()  # replaces _sticky_filter_state dict
         self._filter_index = None
         self.select_toggle_action = None
 
@@ -505,6 +503,14 @@ class LabelingWidget(LabelDialog):
         # Crosshair
         self.crosshair_settings = self._config["canvas"]["crosshair"]
         self.canvas.set_cross_line(**self.crosshair_settings)
+
+        # Filter execution engine (computes matches & applies visibility)
+        self._filter_engine = ShapeFilterEngine(
+            label_list=self.label_list,
+            canvas=self.canvas,
+            get_label_info=lambda: self.label_info,
+            update_select_toggle_tooltip=self._update_select_toggle_button_tooltip,
+        )
 
         self._central_widget = scroll_area
 
@@ -3127,9 +3133,9 @@ class LabelingWidget(LabelDialog):
         self._update_select_toggle_button_tooltip()
 
     def _has_active_shape_filter(self):
-        selected_labels = self._sticky_filter_state.get("labels", set())
-        current_gid = self._sticky_filter_state.get("gid", "-1")
-        current_type = self._sticky_filter_state.get("shape_type", "")
+        selected_labels = self._filter_state.labels
+        current_gid = self._filter_state.gid
+        current_type = self._filter_state.shape_type
         return (
             bool(selected_labels)
             or current_gid not in ["", "-1"]
@@ -3175,7 +3181,7 @@ class LabelingWidget(LabelDialog):
             label = item.shape().label
             if label in self.label_info:
                 self.label_info[label]["visible"] = visible
-        self._sync_label_list_visibility(lambda _item: visible)
+        self._filter_engine.sync_label_list_visibility(lambda _item: visible)
 
     def reset_attribute(self, text, shape):
         # Skip validation for auto-labeling special constants
@@ -4045,7 +4051,7 @@ class LabelingWidget(LabelDialog):
 
     def _populate_label_filter_menu(self, menu):
         menu.clear()
-        selected_labels = self._sticky_filter_state.get("labels", set())
+        selected_labels = self._filter_state.labels
 
         # "All Labels" action — clears the selection
         all_action = menu.addAction(self.tr("All Labels"))
@@ -4117,17 +4123,13 @@ class LabelingWidget(LabelDialog):
             if type_menu is not None:
                 self._populate_shape_type_filter_menu(type_menu)
 
-    def _copy_sticky_filter_state(self):
-        """Return a safe copy of _sticky_filter_state."""
-        return {
-            "labels": set(self._sticky_filter_state["labels"]),
-            "gid": self._sticky_filter_state["gid"],
-            "shape_type": self._sticky_filter_state["shape_type"],
-        }
+    def _copy_filter_state(self):
+        """Return a safe copy of the current FilterState."""
+        return self._filter_state.copy()
 
     def _set_selected_labels(self, labels, apply_filter=True):
         """Replace the selected labels set and optionally apply filter."""
-        self._sticky_filter_state["labels"] = set(labels)
+        self._filter_state.set_labels(labels)
         # Update combobox text as a visual summary indicator
         if labels:
             summary = ", ".join(sorted(labels))
@@ -4137,23 +4139,26 @@ class LabelingWidget(LabelDialog):
         if idx < 0:
             idx = self.label_filter_combobox.text_box.findText("")
         if idx >= 0:
+            blocker = QtCore.QSignalBlocker(
+                self.label_filter_combobox.text_box
+            )
             self.label_filter_combobox.text_box.setCurrentIndex(idx)
+            del blocker
         if apply_filter:
             self._apply_combined_shape_filters()
 
     def _toggle_selected_label(self, label, checked):
         """Add or remove a single label from the selected set."""
-        labels = self._sticky_filter_state["labels"]
         if checked:
-            labels.add(str(label))
+            self._filter_state.labels.add(str(label))
         else:
-            labels.discard(str(label))
+            self._filter_state.labels.discard(str(label))
         self._update_combo_box_label_summary()
         self._apply_combined_shape_filters()
 
     def _update_combo_box_label_summary(self):
         """Update label filter combobox text to reflect multi-label state."""
-        labels = self._sticky_filter_state["labels"]
+        labels = self._filter_state.labels
         if labels:
             summary = ", ".join(sorted(labels))
         else:
@@ -4162,21 +4167,26 @@ class LabelingWidget(LabelDialog):
         if idx < 0:
             idx = self.label_filter_combobox.text_box.findText("")
         if idx >= 0:
+            blocker = QtCore.QSignalBlocker(
+                self.label_filter_combobox.text_box
+            )
             self.label_filter_combobox.text_box.setCurrentIndex(idx)
+            del blocker
 
     def set_label_filter_value(
         self, label, _checked=False, block_signal=False
     ):
         """Compatibility wrapper: single label → set-based multi-label."""
         if label in ("", None):
-            self._sticky_filter_state["labels"] = set()
+            self._filter_state.set_labels(set())
         else:
-            self._sticky_filter_state["labels"] = {str(label)}
+            self._filter_state.set_labels({str(label)})
         if not block_signal:
             self._update_combo_box_label_summary()
             self._apply_combined_shape_filters()
 
     def set_gid_filter_value(self, gid, _checked=False, block_signal=False):
+        self._filter_state.set_gid(gid)
         index = self.gid_filter_combobox.gid_box.findText(str(gid))
         if index < 0:
             index = self.gid_filter_combobox.gid_box.findText("-1")
@@ -4192,6 +4202,7 @@ class LabelingWidget(LabelDialog):
     def set_shape_type_filter_value(
         self, shape_type, _checked=False, block_signal=False
     ):
+        self._filter_state.set_shape_type(shape_type)
         index = self.shape_type_filter_combobox.type_box.findText(
             str(shape_type)
         )
@@ -4224,11 +4235,11 @@ class LabelingWidget(LabelDialog):
             action_group.addAction(action)
 
     def update_shape_type_box(self, block_signal=False, precomputed=None):
-        # Use sticky state as the authoritative current filter value
-        sticky_type = self._sticky_filter_state.get("shape_type", "")
+        # Use filter state as the authoritative current filter value
+        filter_type = self._filter_state.shape_type
         current_type = (
-            sticky_type
-            if sticky_type != ""
+            filter_type
+            if filter_type != ""
             else self.shape_type_filter_combobox.type_box.currentText()
         )
 
@@ -4244,7 +4255,7 @@ class LabelingWidget(LabelDialog):
 
         # Add a null row for showing all types
         unique_type_list.append("")
-        # Ensure sticky value is in the list (for cross-page persistence)
+        # Ensure filter value is in the list (for cross-page persistence)
         if current_type and current_type not in unique_type_list:
             unique_type_list.append(current_type)
         unique_type_list.sort()
@@ -4260,25 +4271,21 @@ class LabelingWidget(LabelDialog):
         del blocker
 
     def shape_type_selection_changed(self, index):
-        self._sticky_filter_state["shape_type"] = (
+        self._filter_state.set_shape_type(
             self.shape_type_filter_combobox.type_box.currentText()
         )
         logger.info(
             "[DIAG] shape_type_selection_changed | index=%s | type=%s",
-            index, self._sticky_filter_state["shape_type"],
+            index, self._filter_state.shape_type,
         )
         self._apply_combined_shape_filters()
 
     def _apply_combined_shape_filters(self):
-        selected_labels = self._sticky_filter_state["labels"]
-        current_gid = self._sticky_filter_state["gid"]
-        current_type = self._sticky_filter_state["shape_type"]
+        selected_labels = self._filter_state.labels
+        current_gid = self._filter_state.gid
+        current_type = self._filter_state.shape_type
 
-        has_active_filter = (
-            bool(selected_labels)
-            or current_gid != "-1"
-            or current_type != ""
-        )
+        has_active_filter = self._filter_state.has_active_filter()
 
         logger.info(
             "[DIAG] _apply_combined_shape_filters ENTER | selected_labels=%s | gid=%s | type=%s | has_active_filter=%s | list_count=%d",
@@ -4288,17 +4295,26 @@ class LabelingWidget(LabelDialog):
 
         if not has_active_filter:
             logger.info("[DIAG] _apply_combined_shape_filters SKIP (no active filter)")
+            # Restore full visibility respecting per-label toggles
+            changed = self._filter_engine.apply_label_visibility()
+            if changed:
+                self.canvas.update()
+                if (
+                    hasattr(self, "navigator_dialog")
+                    and self.navigator_dialog.isVisible()
+                ):
+                    self.update_navigator_shapes()
             self.status("")
             return
 
-        matched_items = self._compute_matching_items(
-            selected_labels, current_gid, current_type
+        matched_items = self._filter_engine.compute_matches(
+            self._filter_state, self._filter_index
         )
 
         def is_visible(item):
             return item in matched_items
 
-        visible_count, changed = self._sync_label_list_visibility(is_visible)
+        visible_count, changed = self._filter_engine.sync_label_list_visibility(is_visible)
 
         logger.info(
             "[DIAG] _apply_combined_shape_filters AFTER sync | visible_count=%d | changed=%s | matched_items=%d",
@@ -4335,64 +4351,14 @@ class LabelingWidget(LabelDialog):
                 ).append(item)
         self._filter_index = idx
 
-    def _compute_matching_items(self, selected_labels, current_gid, current_type):
-        """Compute the set of items that match the current filter using index."""
-        if self._filter_index is None:
-            self._rebuild_filter_index()
-        idx = self._filter_index
-
-        # Determine base candidate set using the most restrictive filter
-        candidates = None
-        if selected_labels:
-            candidate_list = []
-            for lbl in selected_labels:
-                if lbl in idx["label"]:
-                    candidate_list.extend(idx["label"][lbl])
-            candidates = set(candidate_list)
-        elif current_type:
-            if current_type in idx["shape_type"]:
-                candidates = set(idx["shape_type"][current_type])
-        elif current_gid != "-1":
-            if current_gid in idx["gid"]:
-                candidates = set(idx["gid"][current_gid])
-
-        if candidates is None:
-            candidates = set(idx["all"])
-
-        # Apply remaining filter conditions on the candidate set
-        matched = set()
-        for item in candidates:
-            try:
-                shape = item.shape()
-            except RuntimeError:
-                # Item was deleted (e.g. during reset_state); skip
-                continue
-            if current_gid != "-1" and str(shape.group_id) != str(current_gid):
-                continue
-            if current_type and shape.shape_type != current_type:
-                continue
-            if selected_labels and shape.label not in selected_labels:
-                continue
-            label_info_ok = self.label_info.get(shape.label, {}).get(
-                "visible", True
-            )
-            if not label_info_ok:
-                continue
-            matched.add(item)
-        return matched
-
     def toggle_global_filter_keep(self, enabled):
         self._global_filter_keep_enabled = enabled
         self.settings.setValue(
             "filter/global_keep_enabled", enabled
         )
         if not enabled:
-            # Clear sticky filter state and reset comboboxes
-            self._sticky_filter_state = {
-                "labels": set(),
-                "gid": "-1",
-                "shape_type": "",
-            }
+            # Clear filter state and reset comboboxes
+            self._filter_state.reset()
             self.set_label_filter_value("", block_signal=True)
             self.set_gid_filter_value("-1", block_signal=True)
             self.set_shape_type_filter_value("", block_signal=True)
@@ -5456,71 +5422,6 @@ class LabelingWidget(LabelDialog):
             )
             self.flag_widget.addItem(item)
 
-    def _sync_label_list_visibility(self, get_visible):
-        """Sync shape/item visibility in a single pass.
-
-        Returns:
-            (visible_count, changed): number of visible shapes and whether any
-            shape visibility actually changed.
-        """
-        model = self.label_list.model()
-        blocker = QtCore.QSignalBlocker(model)
-        self.label_list.setUpdatesEnabled(False)
-        visible_count = 0
-        changed = False
-        try:
-            logger.info(
-                "[DIAG] _sync_label_list_visibility ENTER | item_count=%d",
-                self.label_list.model().rowCount(),
-            )
-            for idx, item in enumerate(self.label_list):
-                prev_check = item.checkState()
-                shape = item.shape()
-                prev_visible = shape.visible if shape else None
-                is_visible = bool(get_visible(item))
-                if is_visible:
-                    visible_count += 1
-                check_state = (
-                    Qt.CheckState.Checked
-                    if is_visible
-                    else Qt.CheckState.Unchecked
-                )
-                logger.info(
-                    "[DIAG] _sync_label_list_visibility ITEM[%d] | label=%s | prev_check=%s | is_vis=%s | target_check=%s | prev_shape_vis=%s",
-                    idx, shape.label if shape else "N/A",
-                    "Checked" if prev_check == Qt.CheckState.Checked else "Unchecked",
-                    is_visible,
-                    "Checked" if check_state == Qt.CheckState.Checked else "Unchecked",
-                    prev_visible,
-                )
-                if item.checkState() != check_state:
-                    logger.warning(
-                        "[DIAG] _sync_label_list_visibility CHANGED CHECK | ITEM[%d] %s: %s -> %s",
-                        idx, shape.label if shape else "N/A",
-                        "Checked" if prev_check == Qt.CheckState.Checked else "Unchecked",
-                        "Checked" if check_state == Qt.CheckState.Checked else "Unchecked",
-                    )
-                    item.setCheckState(check_state)
-                    changed = True
-                if shape.visible != is_visible:
-                    logger.warning(
-                        "[DIAG] _sync_label_list_visibility CHANGED VISIBLE | ITEM[%d] %s: %s -> %s",
-                        idx, shape.label if shape else "N/A",
-                        prev_visible, is_visible,
-                    )
-                    changed = True
-                shape.visible = is_visible
-                self.canvas.visible[shape] = is_visible
-        finally:
-            self.label_list.setUpdatesEnabled(True)
-            del blocker
-        logger.info(
-            "[DIAG] _sync_label_list_visibility EXIT | visible_count=%d | changed=%s",
-            visible_count, changed,
-        )
-        self._update_select_toggle_button_tooltip()
-        return visible_count, changed
-
     def _collect_filter_options(self):
         """Single-pass collection of unique labels, gids, and shape_types.
 
@@ -5541,33 +5442,25 @@ class LabelingWidget(LabelDialog):
 
     def _refresh_shape_filters(self):
         logger.info(
-            "[DIAG] _refresh_shape_filters ENTER | pending_restore=%s | sticky_labels=%s | sticky_gid=%s | sticky_type=%s | list_count=%d",
+            "[DIAG] _refresh_shape_filters ENTER | pending_restore=%s | labels=%s | gid=%s | type=%s | list_count=%d",
             self._pending_filter_restore,
-            self._sticky_filter_state["labels"],
-            self._sticky_filter_state["gid"],
-            self._sticky_filter_state["shape_type"],
+            self._filter_state.labels,
+            self._filter_state.gid,
+            self._filter_state.shape_type,
             self.label_list.model().rowCount(),
         )
-        # Restore sticky filter state from pending (page-change persistence)
+        # Restore filter state from pending (cross-image persistence)
         if self._pending_filter_restore is not None:
-            saved = self._pending_filter_restore
+            restored = self._pending_filter_restore
             self._pending_filter_restore = None
-            # Merge labels set properly
-            if "labels" in saved:
-                self._sticky_filter_state["labels"] = set(
-                    saved["labels"]
-                )
-            if "gid" in saved:
-                self._sticky_filter_state["gid"] = saved["gid"]
-            if "shape_type" in saved:
-                self._sticky_filter_state["shape_type"] = saved[
-                    "shape_type"
-                ]
+            self._filter_state.set_labels(restored.labels)
+            self._filter_state.set_gid(restored.gid)
+            self._filter_state.set_shape_type(restored.shape_type)
             logger.info(
-                "[DIAG] _refresh_shape_filters RESTORED | sticky_labels=%s | sticky_gid=%s | sticky_type=%s",
-                self._sticky_filter_state["labels"],
-                self._sticky_filter_state["gid"],
-                self._sticky_filter_state["shape_type"],
+                "[DIAG] _refresh_shape_filters RESTORED | labels=%s | gid=%s | type=%s",
+                self._filter_state.labels,
+                self._filter_state.gid,
+                self._filter_state.shape_type,
             )
         # Rebuild index for the new image
         self._filter_index = None
@@ -5575,7 +5468,7 @@ class LabelingWidget(LabelDialog):
         # Single-pass collection for all three filter boxes
         labels_set, gids_set, types_set = self._collect_filter_options()
         # Merge selected labels into the current-image label set
-        selected_labels = self._sticky_filter_state["labels"]
+        selected_labels = self._filter_state.labels
         all_label_set = set(labels_set) | selected_labels
         self.update_combo_box(
             block_signal=True, precomputed=all_label_set
@@ -5591,11 +5484,7 @@ class LabelingWidget(LabelDialog):
         logger.info("[DIAG] _refresh_shape_filters AFTER _apply_combined_shape_filters")
 
     def apply_label_visibility(self):
-        _, changed = self._sync_label_list_visibility(
-            lambda item: self.label_info.get(item.shape().label, {}).get(
-                "visible", True
-            )
-        )
+        changed = self._filter_engine.apply_label_visibility()
         if changed:
             self.canvas.update()
             if (
@@ -5605,8 +5494,8 @@ class LabelingWidget(LabelDialog):
                 self.update_navigator_shapes()
 
     def update_combo_box(self, block_signal=False, precomputed=None):
-        # Use sticky state as the authoritative current filter value
-        selected_labels = self._sticky_filter_state.get("labels", set())
+        # Use filter state as the authoritative current filter value
+        selected_labels = self._filter_state.labels
 
         unique_labels_list = (
             list(precomputed) if precomputed is not None else []
@@ -5618,7 +5507,7 @@ class LabelingWidget(LabelDialog):
 
         # Build combo display: "All Labels" (empty) + all unique labels
         unique_labels_list.append("")
-        # Ensure selected labels are in the list (cross-page persistence)
+        # Ensure selected labels are in the list (cross-image persistence)
         for lbl in selected_labels:
             if lbl and lbl not in unique_labels_list:
                 unique_labels_list.append(lbl)
@@ -5632,11 +5521,11 @@ class LabelingWidget(LabelDialog):
         del blocker
 
     def update_gid_box(self, block_signal=False, precomputed=None):
-        # Use sticky state as the authoritative current filter value
-        sticky_gid = self._sticky_filter_state.get("gid", "-1")
+        # Use filter state as the authoritative current filter value
+        filter_gid = self._filter_state.gid
         current_gid = (
-            sticky_gid
-            if sticky_gid != "-1"
+            filter_gid
+            if filter_gid != "-1"
             else self.gid_filter_combobox.gid_box.currentText()
         )
 
@@ -5652,7 +5541,6 @@ class LabelingWidget(LabelDialog):
 
         # Add a null row for showing all the labels
         unique_gid_list.append("-1")
-        # Ensure sticky value is in the list (for cross-page persistence)
         if (
             current_gid
             and current_gid != "-1"
@@ -5781,23 +5669,21 @@ class LabelingWidget(LabelDialog):
         # Single-label combobox change: treat as set replacement
         label = self.label_filter_combobox.text_box.currentText()
         if label in ("", None):
-            self._sticky_filter_state["labels"] = set()
+            self._filter_state.set_labels(set())
         else:
-            self._sticky_filter_state["labels"] = {str(label)}
+            self._filter_state.set_labels({str(label)})
         logger.info(
-            "[DIAG] text_selection_changed | index=%s | label=%s | sticky_labels=%s",
-            index, label, self._sticky_filter_state["labels"],
+            "[DIAG] text_selection_changed | index=%s | label=%s | labels=%s",
+            index, label, self._filter_state.labels,
         )
         self._apply_combined_shape_filters()
 
     def gid_selection_changed(self, index):
         raw_gid = self.gid_filter_combobox.gid_box.currentText()
-        self._sticky_filter_state["gid"] = (
-            raw_gid if raw_gid and raw_gid != "" else "-1"
-        )
+        self._filter_state.set_gid(raw_gid)
         logger.info(
             "[DIAG] gid_selection_changed | index=%s | raw_gid=%s | gid=%s",
-            index, raw_gid, self._sticky_filter_state["gid"],
+            index, raw_gid, self._filter_state.gid,
         )
         self._apply_combined_shape_filters()
 
@@ -6471,7 +6357,7 @@ class LabelingWidget(LabelDialog):
 
         # Save current filter values for cross-page persistence
         if self._global_filter_keep_enabled:
-            self._pending_filter_restore = self._copy_sticky_filter_state()
+            self._pending_filter_restore = self._copy_filter_state()
         else:
             self._pending_filter_restore = None
 

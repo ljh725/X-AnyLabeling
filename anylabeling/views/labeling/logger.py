@@ -41,10 +41,12 @@ class ColoredFormatter(logging.Formatter):
         def colored(text, color):
             return termcolor.colored(text, color=color, attrs={"bold": True})
 
+        message = record.getMessage()
+
         record.levelname2 = colored(
             f"{record.levelname:<7}", COLORS[record.levelname]
         )
-        record.message2 = colored(record.msg, COLORS[record.levelname])
+        record.message2 = colored(message, COLORS[record.levelname])
         record.asctime2 = termcolor.colored(
             self.formatTime(record, self.datefmt), color="green"
         )

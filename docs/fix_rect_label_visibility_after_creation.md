@@ -1,247 +1,285 @@
-# Fix: 按R标注矩形框后标签默认隐藏
+# Fix: 矩形标注后对象可见性被筛选刷新影响
 
 ## 日期
 
-2026-05-08
+2026-05-09
 
 ---
 
 ## 一、问题描述
 
-按 R 快捷键画矩形框，标注完成后标签（复选框）默认处于未勾选状态，导致画布上的矩形框和标签文字不可见。
+按 `R` 快捷键创建矩形后，标注刚加入对象列表时应保持可见。但在筛选状态刷新链路中，如果筛选状态、对象列表复选框、`shape.visible` 和 `canvas.visible` 的同步顺序不一致，新对象可能出现以下问题：
 
-### 复现步骤
-
-1. 加载图片
-2. 更改输出目录
-3. 按 R 开始画矩形
-4. 完成标注
-5. 观察：对象面板中对象的复选框为取消勾选状态，矩形框隐藏
+1. 对象面板复选框状态和 `shape.visible` 不一致。
+2. 清空筛选后，之前被筛掉的对象没有恢复显示。
+3. 跨图片保持筛选时，旧筛选状态恢复后覆盖当前图片对象可见性。
+4. 多标签筛选状态被单选下拉框回调误清空。
 
 ---
 
-## 二、筛选功能完整调用链
+## 二、最新筛选架构
 
-### 2.1 核心数据结构
+当前筛选逻辑已经从 `LabelingWidget` 的旧字典状态中拆分为两个核心模块：
 
-| 变量 | 默认值 | 定义位置 | 说明 |
-|------|--------|----------|------|
-| `_sticky_filter_state["labels"]` | `set()` | :295 | 标签筛选集合 |
-| `_sticky_filter_state["gid"]` | `"-1"` | :295 | 组ID筛选 |
-| `_sticky_filter_state["shape_type"]` | `""` | :295 | 形状类型筛选 |
-| `_global_filter_keep_enabled` | `True` | :293 | 跨图片筛选保持开关 |
-| `_pending_filter_restore` | `None` | :294 | 待恢复的筛选状态快照 |
-| `_filter_index` | `None` | :300 | 当前图片筛选索引缓存 |
-| `label_info` | `{}` | :166 | 标签元信息（含 visible 标记） |
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| `FilterState` | `anylabeling/views/labeling/filter_state.py` | 统一保存并规范化 label/gid/shape_type 筛选状态 |
+| `ShapeFilterEngine` | `anylabeling/views/labeling/filter_engine.py` | 计算筛选命中项，并同步对象列表、shape 和 canvas 可见性 |
 
-### 2.2 标注新形状触发链
+`LabelingWidget` 仍负责 UI 入口、切图流程、筛选菜单刷新和状态恢复，但不再直接承担筛选匹配计算。
 
-```
-用户按 R → 鼠标点击两次完成矩形
-  │
-  ├─ canvas.py:3050  finalise()
-  │     ├─ Shape(visible=True)     [shape.py:97]
-  │     ├─ self.shapes.append(shape)
-  │     └─ emit new_shape()
-  │
-  └─ label_widget.py:5736  new_shape()
-        ├─ 确定标签文字（弹窗 / 数字快捷键 / 上一条标签）
-        ├─ canvas.set_last_label() [canvas.py:3509]
-        └─ add_label(shape)        [label_widget.py:5277]
-              ├─ LabelListWidgetItem(text, shape)
-              │     └─ 初始 checkState = Checked  [label_list_widget.py:84]
-              │
-              ├─ label_list.add_iem(item)
-              │     └─ Qt 发射 itemChanged → label_item_changed()
-              │           └─ shape.visible = True ✓
-              │
-              ├─ _refresh_shape_filters()      [label_widget.py:5322]
-              │     ├─ ① 检查 _pending_filter_restore（非None则恢复到_sticky_filter_state）
-              │     ├─ ② _rebuild_filter_index()  重建筛选索引
-              │     ├─ ③ update_combo_box()       更新标签筛选下拉框
-              │     ├─ ④ update_gid_box()         更新组ID筛选下拉框
-              │     ├─ ⑤ update_shape_type_box()  更新形状类型筛选下拉框
-              │     └─ ⑥ _apply_combined_shape_filters()  ← 含修复
-              │
-              └─ 返回 new_shape()
-```
+### 2.1 权威状态
 
-### 2.3 `_apply_combined_shape_filters()` 内部流
-
-```
-_apply_combined_shape_filters()  [label_widget.py:4264]
-  │
-  ├─ 读取 _sticky_filter_state 的三个筛选条件
-  │
-  ├─ has_active_filter = (
-  │       bool(selected_labels)    # set()→False
-  │    or current_gid != "-1"      # "-1"→False
-  │    or current_type != ""       # ""→False
-  │   )
-  │
-  ├─ ★ 修复点 ★  if not has_active_filter: return
-  │
-  ├─ _compute_matching_items()
-  │     └─ 还检查 label_info[label]["visible"] 作为二级筛选
-  │
-  └─ _sync_label_list_visibility(is_visible)
-        ├─ QSignalBlocker(model)     阻塞 itemChanged 信号
-        ├─ setUpdatesEnabled(False)   禁用视觉刷新
-        ├─ 遍历所有 item：
-        │     ├─ is_visible = get_visible(item)
-        │     ├─ item.setCheckState(Checked/Unchecked)  ← 修改复选框
-        │     ├─ shape.visible = is_visible             ← 修改形状可见性
-        │     └─ canvas.visible[shape] = is_visible
-        ├─ setUpdatesEnabled(True)    恢复视觉刷新
-        └─ del signal_blocker         恢复信号
-```
-
----
-
-## 三、Enable Global Filter 切换图片流程
-
-### 3.1 开启状态（默认 `_global_filter_keep_enabled = True`）
-
-```
-用户切换图片
-  │
-  └─ label_widget.py:6337  load_file()
-        ├─ ① 保存当前筛选到 _pending_filter_restore
-        │     _pending_filter_restore = _copy_sticky_filter_state()  [:6369]
-        │
-        ├─ ② reset_state()  [:6374]
-        │     ├─ label_list.clear()
-        │     ├─ _filter_index = None
-        │     └─ 清空筛选下拉框内容
-        │
-        ├─ ③ 加载图片像素数据
-        │
-        ├─ ④ 如果有标注文件 → load_shapes()  [:6492]
-        │     └─ _refresh_shape_filters()  [:5407]
-        │           └─ 恢复 _pending_filter_restore → _sticky_filter_state
-        │           └─ _apply_combined_shape_filters()
-        │
-        └─ ⑤ 如果没有标注文件（新图片）
-              └─ load_shapes() 不被调用
-              └─ _pending_filter_restore 残留，等待下次 _refresh_shape_filters() 消费
-```
-
-**关键：即使选择"全部标签"（空筛选），`_pending_filter_restore` 仍然保存了空集合的筛选状态。在新图片首次标注时，`_refresh_shape_filters()` 会恢复这个空筛选，然后调用 `_apply_combined_shape_filters()`。修复前，`_sync_label_list_visibility()` 会被调用（尽管 has_active_filter=False），导致 Qt 信号阻塞期间意外重置复选框。**
-
-### 3.2 关闭状态（`_global_filter_keep_enabled = False`）
-
-```
-用户点击 View → Enable Global Filter 取消勾选
-  │
-  └─ label_widget.py:4364  toggle_global_filter_keep(False)
-        ├─ _global_filter_keep_enabled = False
-        ├─ 清空 _sticky_filter_state 为默认值
-        ├─ 重置三个筛选下拉框为默认值（block_signal=True）
-        └─ _apply_combined_shape_filters()  [:4379]
-              └─ has_active_filter=False → 修复后直接 return
-```
-
-```
-用户切换图片
-  │
-  └─ load_file()
-        ├─ _pending_filter_restore = None  [:6372]  ← 不保存筛选
-        │
-        ├─ reset_state()
-        │
-        └─ _refresh_shape_filters()（如有标注）
-              └─ _pending_filter_restore is None → 不恢复
-              └─ _sticky_filter_state 保持默认值（无筛选）
-              └─ _apply_combined_shape_filters()
-                    └─ has_active_filter=False → return
-```
-
-### 3.3 总结对比
-
-| 场景 | 开启 Global Filter | 关闭 Global Filter |
-|------|-------------------|-------------------|
-| 切换图片时保存筛选 | ✓ `_pending_filter_restore = 快照` | ✗ `_pending_filter_restore = None` |
-| 新图片标注时恢复筛选 | ✓ 恢复快照到 `_sticky_filter_state` | ✗ 保持默认无筛选 |
-| 全部标签时 `has_active_filter` | `False` | `False` |
-| 修复后是否执行 sync | **否（直接 return）** | **否（直接 return）** |
-| 筛选下拉框是否跨图保留 | 保留（Pending→恢复） | 不保留（随图片重置） |
-
----
-
-## 四、根因定位
-
-**文件：** `anylabeling/views/labeling/label_widget.py`  
-**方法：** `_apply_combined_shape_filters()` （第 4264 行）
+筛选权威状态为：
 
 ```python
-def _apply_combined_shape_filters(self):
+self._filter_state = FilterState()
+```
+
+字段语义：
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `labels` | `set()` | 多标签筛选集合 |
+| `gid` | `"-1"` | 组 ID 筛选，`"-1"` 表示全部 |
+| `shape_type` | `""` | 形状类型筛选，空字符串表示全部 |
+
+所有外部写入都应通过：
+
+```python
+set_labels()
+set_gid()
+set_shape_type()
+```
+
+避免直接写字段导致 `None`、空字符串或非字符串 gid 绕过规范化。
+
+### 2.2 执行引擎
+
+筛选应用由 `ShapeFilterEngine` 执行：
+
+```python
+self._filter_engine = ShapeFilterEngine(
+    label_list=self.label_list,
+    canvas=self.canvas,
+    get_label_info=lambda: self.label_info,
+    update_select_toggle_tooltip=self._update_select_toggle_button_tooltip,
+)
+```
+
+关键方法：
+
+| 方法 | 说明 |
+|------|------|
+| `compute_matches(filter_state, filter_index)` | 根据当前筛选状态和索引计算命中对象 |
+| `sync_label_list_visibility(get_visible)` | 同步对象复选框、`shape.visible`、`canvas.visible` |
+| `apply_label_visibility()` | 无 active filter 时，按 `label_info[label]["visible"]` 恢复对象可见性 |
+
+---
+
+## 三、矩形创建后的调用链
+
+```text
+用户按 R 并完成矩形
+  |
+  v
+Canvas.finalise()
+  - 创建 Shape，默认 visible=True
+  - 加入 canvas.shapes
+  - emit new_shape()
+  |
+  v
+LabelingWidget.new_shape()
+  - 确定 label / group_id / flags / description
+  - add_label(shape)
+  |
+  v
+LabelingWidget.add_label()
+  - 创建 LabelListWidgetItem
+  - 加入对象列表
+  - 根据 refresh_filters 决定是否调用 _refresh_shape_filters()
+  |
+  v
+LabelingWidget._refresh_shape_filters()
+  - 消费 _pending_filter_restore
+  - 重建 _filter_index
+  - 刷新 label/gid/shape_type 下拉项
+  - 调用 _apply_combined_shape_filters()
+```
+
+该链路的关键点是：新对象加入后，筛选刷新必须以 `FilterState` 为权威状态，而不是以 combobox 当前文本或旧 UI 残留为准。
+
+---
+
+## 四、跨图片筛选保持流程
+
+### 4.1 开启 Enable Global Filter
+
+默认开启：
+
+```python
+self._global_filter_keep_enabled = True
+```
+
+切图时：
+
+```text
+load_file()
+  |
+  |-- _pending_filter_restore = _copy_filter_state()
+  |-- reset_state()
+  |-- 加载图片和标注
+  |-- load_shapes()
+        |
+        v
+      _refresh_shape_filters()
+        |-- FilterState.set_labels(restored.labels)
+        |-- FilterState.set_gid(restored.gid)
+        |-- FilterState.set_shape_type(restored.shape_type)
+        |-- _apply_combined_shape_filters()
+```
+
+恢复时必须走 `FilterState` 的 setter，确保 `gid=None`、`gid=""` 等输入都会规范化为 `"-1"`。
+
+### 4.2 关闭 Enable Global Filter
+
+关闭时：
+
+```text
+toggle_global_filter_keep(False)
+  |-- _filter_state.reset()
+  |-- set_label_filter_value("", block_signal=True)
+  |-- set_gid_filter_value("-1", block_signal=True)
+  |-- set_shape_type_filter_value("", block_signal=True)
+  |-- _apply_combined_shape_filters()
+```
+
+`set_gid_filter_value()` 和 `set_shape_type_filter_value()` 现在采用 state-first 模式，即使 `block_signal=True` 也会同步 `_filter_state`，不再依赖 Qt 回调副作用。
+
+---
+
+## 五、根因和修复点
+
+### 5.1 清空筛选后没有恢复可见性
+
+旧逻辑在无 active filter 时直接返回，导致之前被筛掉的对象仍保持隐藏。
+
+最新修复：
+
+```python
+if not has_active_filter:
+    changed = self._filter_engine.apply_label_visibility()
+    if changed:
+        self.canvas.update()
+        if self.navigator_dialog.isVisible():
+            self.update_navigator_shapes()
+    self.status("")
+    return
+```
+
+含义：
+
+- 无 label/gid/shape_type 筛选时，不再执行匹配筛选。
+- 但会恢复对象可见性到 label 级别的可见性设置。
+- 避免清空筛选后对象仍隐藏。
+
+### 5.2 多标签筛选被 combobox 回调清空
+
+多标签筛选由菜单支持，但 label combobox 仍是单选控件。更新 combobox 摘要时，如果触发 `currentIndexChanged`，会进入 `text_selection_changed()` 并把多标签集合覆盖为单标签或空集合。
+
+最新修复：
+
+```python
+blocker = QtCore.QSignalBlocker(self.label_filter_combobox.text_box)
+self.label_filter_combobox.text_box.setCurrentIndex(idx)
+del blocker
+```
+
+应用位置：
+
+- `_set_selected_labels()`
+- `_update_combo_box_label_summary()`
+
+### 5.3 gid/type setter 只改 UI 不改状态
+
+旧逻辑依赖 `currentIndexChanged` 回调更新状态。`block_signal=True` 时，UI 会变化但 `_filter_state` 不会变化。
+
+最新修复：
+
+```python
+def set_gid_filter_value(self, gid, _checked=False, block_signal=False):
+    self._filter_state.set_gid(gid)
     ...
-    has_active_filter = (
-        bool(selected_labels)      # set() → False
-        or current_gid != "-1"     # "-1" == "-1" → False
-        or current_type != ""      # "" == "" → False
-    )
-    # has_active_filter = False，但以下代码仍然执行 ↓
 
-    matched_items = self._compute_matching_items(...)
-    visible_count, changed = self._sync_label_list_visibility(is_visible)
-    # ↑ _sync_label_list_visibility 内部执行：
-    #   1. QSignalBlocker(model) 阻塞 Qt itemChanged 信号
-    #   2. setUpdatesEnabled(False) 禁用视觉刷新
-    #   3. 遍历所有 item，调用 setCheckState() 设置复选框状态
-    #   4. setUpdatesEnabled(True) 恢复刷新
-    #   5. del blocker 恢复信号
-    #
-    #  在信号阻塞+更新禁用的窗口期内，刚创建的 item
-    #  可能因为 Qt 内部信号队列处理而意外被重置
+def set_shape_type_filter_value(
+    self, shape_type, _checked=False, block_signal=False
+):
+    self._filter_state.set_shape_type(shape_type)
+    ...
+```
+
+### 5.4 pending restore 直接写字段
+
+旧逻辑直接写：
+
+```python
+self._filter_state.labels = ...
+self._filter_state.gid = ...
+self._filter_state.shape_type = ...
+```
+
+最新修复：
+
+```python
+self._filter_state.set_labels(restored.labels)
+self._filter_state.set_gid(restored.gid)
+self._filter_state.set_shape_type(restored.shape_type)
 ```
 
 ---
 
-## 五、修复方案
+## 六、当前行为规则
 
-在 `_apply_combined_shape_filters()` 中添加提前返回：当 `has_active_filter` 为 `False` 时，跳过全部匹配计算和可见性同步。
+| 场景 | 行为 |
+|------|------|
+| 无 active filter | 按 label 可见性恢复所有对象显示状态 |
+| 有 label/gid/type 筛选 | 只显示命中对象，同时尊重 label 可见性 |
+| 多标签筛选 | 以 `FilterState.labels` 为权威状态，combobox 只作为摘要显示 |
+| 切图且保持筛选开启 | 保存并恢复 `FilterState` 快照 |
+| 切图且保持筛选关闭 | 不保存筛选，状态保持默认无筛选 |
+| 手动切换全部可见性 | active filter 存在时禁用，避免和筛选状态冲突 |
 
-**修改位置：** `label_widget.py:4269-4273` 之后
+---
 
-```diff
-     has_active_filter = (
-         bool(selected_labels)
-         or current_gid != "-1"
-         or current_type != ""
-     )
+## 七、回归测试
 
-+    if not has_active_filter:
-+        self.status("")
-+        return
-+
-     matched_items = self._compute_matching_items(
-         selected_labels, current_gid, current_type
-     )
+新增测试文件：
+
+```text
+tests/test_filter_persistence.py
 ```
 
-### 修复逻辑
+覆盖点：
 
-- `has_active_filter = False`：用户未使用任何筛选，所有形状应全部可见 → **直接 return，不做任何同步**
-- `has_active_filter = True`：用户在筛选下拉框中有选择 → 正常执行 `_compute_matching_items + _sync_label_list_visibility`
-- `label_info` 的标签可见性控制通过 `apply_label_visibility()` 独立处理，不受影响
+1. `set_gid_filter_value()` / `set_shape_type_filter_value()` 在 `block_signal=True` 时仍同步状态。
+2. pending restore 会走 `FilterState` setter 并规范化默认值。
+3. 无 active filter 时会调用 `apply_label_visibility()` 恢复可见性。
+4. 多标签摘要更新不会触发 combobox 回调并清空状态。
 
----
+当前本地环境缺少 `PyQt6`，测试会被跳过。安装 PyQt6 后运行：
 
-## 六、影响范围
-
-- 仅在无筛选条件时跳过可见性同步
-- 有筛选条件时行为不变
-- `label_info` 的标签可见性控制仍通过 `apply_label_visibility()` 独立处理
-- 不影响其他标注模式（多边形、点、线等）
-- 无论 Enable Global Filter 是开是关，只要"全部标签"选中，`has_active_filter` 为 False，都跳过同步
+```bash
+pytest tests/test_filter_persistence.py
+```
 
 ---
 
-## 七、测试建议
+## 八、人工验证清单
 
-1. 打开一张空白图片，按 R 画矩形，确认标签复选框为勾选状态、矩形可见
-2. 在标签筛选下拉框中选择特定标签后画矩形，确认筛选仍正常工作
-3. 开启 Enable Global Filter，选择筛选条件后切换图片，确认筛选跨图保持
-4. 关闭 Enable Global Filter，切换图片后画矩形，确认无残留筛选
-5. 使用"眼睛"按钮切换全部可见性后再画矩形，确认行为正确
+1. 打开图片，按 `R` 创建矩形，确认对象复选框勾选且矩形可见。
+2. 启用 label 筛选后创建不匹配 label 的对象，确认筛选行为正确。
+3. 清空筛选，确认之前隐藏的对象按 label 可见性恢复。
+4. 同时选择多个 label，确认切图后多标签筛选不丢失。
+5. 启用 Enable Global Filter 后切图，确认 label/gid/type 筛选保持。
+6. 关闭 Enable Global Filter 后切图，确认筛选状态清空。
+7. 切换 label 可见性，再清空筛选，确认仍尊重 label 级可见性。
