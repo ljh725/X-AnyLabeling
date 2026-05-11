@@ -100,13 +100,30 @@ class DigitRenameManager:
     def _apply_rename(self, rename_label: str) -> None:
         """Apply a relabel operation to all selected shapes."""
         label_widget = self._label_widget
-        shapes = list(getattr(label_widget.canvas, "selected_shapes", []) or [])
+        shapes = list(
+            getattr(label_widget.canvas, "selected_shapes", []) or []
+        )
 
         if not shapes:
             label_widget.status(
                 label_widget.tr("No shapes selected for relabel."), 2000
             )
             return
+
+        if not label_widget.validate_label(rename_label):
+            label_widget.status(
+                label_widget.tr(
+                    "Invalid label '{label}' with validation type "
+                    "'{type}'"
+                ).format(
+                    label=rename_label,
+                    type=label_widget._config["validate_label"],
+                ),
+                3000,
+            )
+            return
+
+        label_widget.canvas.store_shapes()
 
         updated_count = 0
         for shape in shapes:
@@ -125,7 +142,9 @@ class DigitRenameManager:
 
         label_widget.label_dialog.add_label_history(rename_label)
 
-        if not label_widget.unique_label_list.find_items_by_label(rename_label):
+        if not label_widget.unique_label_list.find_items_by_label(
+            rename_label
+        ):
             unique_label_item = (
                 label_widget.unique_label_list.create_item_from_label(
                     rename_label
@@ -141,12 +160,19 @@ class DigitRenameManager:
             )
 
         label_widget.set_dirty()
-        label_widget.update_combo_box(block_signal=True)
-        label_widget.update_gid_box(block_signal=True)
-        label_widget.apply_label_visibility()
+        label_widget._refresh_shape_filters()
+
+        if len(shapes) == 1:
+            try:
+                selected_idx = label_widget.canvas.shapes.index(shapes[0])
+                label_widget.update_attributes(selected_idx)
+            except ValueError:
+                pass
 
         label_widget.status(
-            label_widget.tr("Relabeled {count} shape(s) to '{label}'").format(
+            label_widget.tr(
+                "Relabeled {count} shape(s) to '{label}'"
+            ).format(
                 count=updated_count,
                 label=rename_label,
             ),
