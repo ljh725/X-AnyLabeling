@@ -6,8 +6,6 @@ Separates the *computation* of filter matches and
 
 from PyQt6 import QtCore
 
-from .logger import logger
-
 
 class ShapeFilterEngine:
     """Computes which items match a FilterState and syncs visibility.
@@ -97,20 +95,13 @@ class ShapeFilterEngine:
         -------
         (visible_count: int, changed: bool)
         """
-        model = self._label_list.model()
-        blocker = QtCore.QSignalBlocker(model)
+        blocker = QtCore.QSignalBlocker(self._label_list.model())
         self._label_list.setUpdatesEnabled(False)
         visible_count = 0
         changed = False
         try:
-            logger.info(
-                "[DIAG] sync_label_list_visibility ENTER | item_count=%d",
-                model.rowCount(),
-            )
-            for idx, item in enumerate(self._label_list):
-                prev_check = item.checkState()
+            for item in self._label_list:
                 shape = item.shape()
-                prev_visible = shape.visible if shape else None
 
                 is_visible = bool(get_visible(item))
                 if is_visible:
@@ -121,33 +112,10 @@ class ShapeFilterEngine:
                     if is_visible
                     else QtCore.Qt.CheckState.Unchecked
                 )
-                logger.info(
-                    "[DIAG] sync_label_list_visibility ITEM[%d] | label=%s | prev_check=%s | is_vis=%s | target_check=%s | prev_shape_vis=%s",
-                    idx,
-                    shape.label if shape else "N/A",
-                    "Checked" if prev_check == QtCore.Qt.CheckState.Checked else "Unchecked",
-                    is_visible,
-                    "Checked" if check_state == QtCore.Qt.CheckState.Checked else "Unchecked",
-                    prev_visible,
-                )
                 if item.checkState() != check_state:
-                    logger.warning(
-                        "[DIAG] sync_label_list_visibility CHANGED CHECK | ITEM[%d] %s: %s -> %s",
-                        idx,
-                        shape.label if shape else "N/A",
-                        "Checked" if prev_check == QtCore.Qt.CheckState.Checked else "Unchecked",
-                        "Checked" if check_state == QtCore.Qt.CheckState.Checked else "Unchecked",
-                    )
                     item.setCheckState(check_state)
                     changed = True
                 if shape.visible != is_visible:
-                    logger.warning(
-                        "[DIAG] sync_label_list_visibility CHANGED VISIBLE | ITEM[%d] %s: %s -> %s",
-                        idx,
-                        shape.label if shape else "N/A",
-                        prev_visible,
-                        is_visible,
-                    )
                     changed = True
                 shape.visible = is_visible
                 self._canvas.visible[shape] = is_visible
@@ -155,11 +123,6 @@ class ShapeFilterEngine:
             self._label_list.setUpdatesEnabled(True)
             del blocker
 
-        logger.info(
-            "[DIAG] sync_label_list_visibility EXIT | visible_count=%d | changed=%s",
-            visible_count,
-            changed,
-        )
         if self._update_select_toggle_tooltip:
             self._update_select_toggle_tooltip()
         return visible_count, changed

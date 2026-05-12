@@ -57,6 +57,7 @@ from .label_file import LabelFile, LabelFileError
 from .logger import logger
 from .filter_state import FilterState
 from .filter_engine import ShapeFilterEngine
+from .filter_navigation_engine import FilterNavigationEngine
 from .settings import SettingsController, SettingsDialog
 from .settings.runtime_applier import SettingsRuntimeApplier
 from .shape import Shape
@@ -296,6 +297,13 @@ class LabelingWidget(LabelDialog):
         self._pending_filter_restore: Optional[FilterState] = None
         self._filter_state = FilterState()  # replaces _sticky_filter_state dict
         self._filter_index = None
+
+        # Filter result navigation state
+        self._filter_navigation_engine = FilterNavigationEngine()
+        self._filter_navigation_active = False
+        self._filter_navigation_files = []
+        self._filter_navigation_initial_count = 0
+        self._filter_navigation_state = None
         self.select_toggle_action = None
 
         self.label_list.item_selection_changed.connect(
@@ -1833,6 +1841,25 @@ class LabelingWidget(LabelDialog):
             enabled=True,
         )
 
+        toggle_filter_navigation = action(
+            self.tr("Filter Result Navigation"),
+            self.toggle_filter_navigation,
+            None,
+            "eye",
+            self.tr("Enable/disable filter result navigation"),
+            checkable=True,
+            checked=False,
+            enabled=True,
+        )
+        refresh_filter_navigation = action(
+            self.tr("Refresh Filter Result Navigation"),
+            self.refresh_filter_navigation,
+            None,
+            None,
+            self.tr("Refresh files matched by the current filter"),
+            enabled=True,
+        )
+
         # AI Actions
         toggle_auto_labeling_widget = action(
             self.tr("Auto Labeling"),
@@ -1974,6 +2001,8 @@ class LabelingWidget(LabelDialog):
             show_navigator=show_navigator,
             toggle_inspector=toggle_inspector,
             toggle_global_filter_keep=toggle_global_filter_keep,
+            toggle_filter_navigation=toggle_filter_navigation,
+            refresh_filter_navigation=refresh_filter_navigation,
             zoom_actions=zoom_actions,
             open_next_image=open_next_image,
             open_prev_image=open_prev_image,
@@ -2281,6 +2310,8 @@ class LabelingWidget(LabelDialog):
                 show_navigator,
                 toggle_inspector,
                 toggle_global_filter_keep,
+                toggle_filter_navigation,
+                refresh_filter_navigation,
                 fill_drawing,
                 loop_thru_labels,
                 loop_select_labels,
@@ -2387,6 +2418,7 @@ class LabelingWidget(LabelDialog):
             undo,
             loop_thru_labels,
             loop_select_labels,
+            toggle_filter_navigation,
             select_toggle_shapes,
             run_all_images,
             toggle_auto_labeling_widget,
@@ -4127,6 +4159,187 @@ class LabelingWidget(LabelDialog):
         """Return a safe copy of the current FilterState."""
         return self._filter_state.copy()
 
+    # ------------------------------------------------------------------
+    # Filter result navigation
+    # ------------------------------------------------------------------
+
+    def enable_filter_navigation(self, status_prefix=None):
+        if not self._filter_state.has_active_filter():
+            self.status(
+                self.tr("No active filter for result navigation"), 3000
+            )
+            self._set_filter_navigation_action_checked(False)
+            return False
+
+        state = self._copy_filter_state()
+        matched = self._filter_navigation_engine.collect_matched_files(
+            list(self.image_list), state, self.output_dir
+        )
+        self._filter_navigation_files = matched
+        self._filter_navigation_initial_count = len(matched)
+        self._filter_navigation_state = state
+        self._filter_navigation_active = bool(matched)
+
+        if not matched:
+            self.status(
+                self.tr("No files match the current filter"), 3000
+            )
+            self._set_filter_navigation_action_checked(False)
+            return False
+        self._show_filter_navigation_status(
+            status_prefix or self.tr("Filter result navigation enabled")
+        )
+        self._set_filter_navigation_action_checked(True)
+        return True
+
+    def clear_filter_navigation(self):
+        self._filter_navigation_active = False
+        self._filter_navigation_files = []
+        self._filter_navigation_initial_count = 0
+        self._filter_navigation_state = None
+        self._set_filter_navigation_action_checked(False)
+        self.status(self.tr("Filter result navigation cleared"), 2000)
+
+    def toggle_filter_navigation(self, enabled):
+        if enabled:
+            if not self.enable_filter_navigation():
+                self._set_filter_navigation_action_checked(False)
+        else:
+            self.clear_filter_navigation()
+
+    def refresh_filter_navigation(self):
+        self.enable_filter_navigation(
+            status_prefix=self.tr("Filter result navigation refreshed")
+        )
+
+    def _set_filter_navigation_action_checked(self, checked):
+        if not hasattr(self, "actions"):
+            return
+        action = getattr(self.actions, "toggle_filter_navigation", None)
+        if action is None or action.isChecked() == checked:
+            return
+        blocker = QtCore.QSignalBlocker(action)
+        action.setChecked(checked)
+        del blocker
+
+    def _show_filter_navigation_status(self, prefix=None):
+        message = self.tr(
+            "Remaining {remaining} / initial {initial}"
+        ).format(
+            remaining=len(self._filter_navigation_files),
+            initial=self._filter_navigation_initial_count,
+        )
+        if prefix:
+            message = f"{prefix}: {message}"
+        self.status(message, 3000)
+
+    def _settle_current_filter_navigation_file(self):
+        if not self._filter_navigation_active:
+            return
+        if not self.filename or self._filter_navigation_state is None:
+            return
+
+        filename = str(self.filename)
+        if filename not in self._filter_navigation_files:
+            return
+
+        shapes = getattr(self.canvas, "shapes", None)
+        if shapes is not None:
+            still_matches = (
+                self._filter_navigation_engine.shapes_match_filter(
+                    shapes, self._filter_navigation_state
+                )
+            )
+        else:
+            still_matches = (
+                self._filter_navigation_engine.file_matches_filter(
+                    filename,
+                    self._filter_navigation_state,
+                    self.output_dir,
+                )
+            )
+
+        if still_matches:
+            return
+
+        self._filter_navigation_files.remove(filename)
+        if not self._filter_navigation_files:
+            self.clear_filter_navigation()
+            self.status(
+                self.tr("Filter result navigation completed"), 3000
+            )
+            return
+
+        self._show_filter_navigation_status(
+            self.tr("Current file completed")
+        )
+
+    def _current_image_index(self):
+        files = self.image_list
+        if not self.filename or str(self.filename) not in files:
+            return -1
+        return files.index(str(self.filename))
+
+    def _next_filter_navigation_file(self, anchor=None):
+        files = self.image_list
+        if anchor and anchor in files:
+            current_index = files.index(anchor)
+        else:
+            current_index = self._current_image_index()
+        start = current_index + 1 if current_index >= 0 else 0
+        remaining = set(self._filter_navigation_files)
+        for filename in files[start:]:
+            if filename in remaining:
+                return filename
+        return None
+
+    def _prev_filter_navigation_file(self, anchor=None):
+        files = self.image_list
+        if anchor and anchor in files:
+            current_index = files.index(anchor)
+        else:
+            current_index = self._current_image_index()
+        if current_index < 0:
+            return None
+        remaining = set(self._filter_navigation_files)
+        for filename in reversed(files[:current_index]):
+            if filename in remaining:
+                return filename
+        return None
+
+    def _open_next_filter_navigation_image(self, load=True):
+        anchor = str(self.filename) if self.filename else None
+        self._settle_current_filter_navigation_file()
+        if not self._filter_navigation_active:
+            return True
+
+        filename = self._next_filter_navigation_file(anchor)
+        if filename is None:
+            self.status(
+                self.tr("Already at the last filter result"), 2000
+            )
+            return True
+
+        if load:
+            self.load_file(filename)
+        return True
+
+    def _open_prev_filter_navigation_image(self):
+        anchor = str(self.filename) if self.filename else None
+        self._settle_current_filter_navigation_file()
+        if not self._filter_navigation_active:
+            return True
+
+        filename = self._prev_filter_navigation_file(anchor)
+        if filename is None:
+            self.status(
+                self.tr("Already at the first filter result"), 2000
+            )
+            return True
+
+        self.load_file(filename)
+        return True
+
     def _set_selected_labels(self, labels, apply_filter=True):
         """Replace the selected labels set and optionally apply filter."""
         self._filter_state.set_labels(labels)
@@ -4274,27 +4487,12 @@ class LabelingWidget(LabelDialog):
         self._filter_state.set_shape_type(
             self.shape_type_filter_combobox.type_box.currentText()
         )
-        logger.info(
-            "[DIAG] shape_type_selection_changed | index=%s | type=%s",
-            index, self._filter_state.shape_type,
-        )
         self._apply_combined_shape_filters()
 
     def _apply_combined_shape_filters(self):
-        selected_labels = self._filter_state.labels
-        current_gid = self._filter_state.gid
-        current_type = self._filter_state.shape_type
-
         has_active_filter = self._filter_state.has_active_filter()
 
-        logger.info(
-            "[DIAG] _apply_combined_shape_filters ENTER | selected_labels=%s | gid=%s | type=%s | has_active_filter=%s | list_count=%d",
-            selected_labels, current_gid, current_type,
-            has_active_filter, self.label_list.model().rowCount(),
-        )
-
         if not has_active_filter:
-            logger.info("[DIAG] _apply_combined_shape_filters SKIP (no active filter)")
             # Restore full visibility respecting per-label toggles
             changed = self._filter_engine.apply_label_visibility()
             if changed:
@@ -4315,11 +4513,6 @@ class LabelingWidget(LabelDialog):
             return item in matched_items
 
         visible_count, changed = self._filter_engine.sync_label_list_visibility(is_visible)
-
-        logger.info(
-            "[DIAG] _apply_combined_shape_filters AFTER sync | visible_count=%d | changed=%s | matched_items=%d",
-            visible_count, changed, len(matched_items),
-        )
 
         if changed:
             self.canvas.update()
@@ -4564,6 +4757,9 @@ class LabelingWidget(LabelDialog):
 
         if not self.may_continue():
             return
+
+        if self._filter_navigation_active:
+            self._settle_current_filter_navigation_file()
 
         current_index = self.fn_to_index[str(item.text())]
         if current_index < len(self.image_list):
@@ -5265,22 +5461,12 @@ class LabelingWidget(LabelDialog):
             self.hide_attributes_panel()
 
     def add_label(self, shape, update_last_label=True, refresh_filters=True):
-        logger.info(
-            "[DIAG] add_label ENTER | label=%s | gid=%s | shape_type=%s | list_count=%d",
-            shape.label, shape.group_id, shape.shape_type,
-            self.label_list.model().rowCount(),
-        )
         if shape.group_id is None:
             text = shape.label
         else:
             text = f"{shape.label} ({shape.group_id})"
         label_list_item = LabelListWidgetItem(text, shape)
         self.label_list.add_iem(label_list_item)
-        logger.info(
-            "[DIAG] add_label AFTER add_iem | checkState=%s | shape.visible=%s",
-            label_list_item.checkState() == Qt.CheckState.Checked,
-            shape.visible,
-        )
         if not self.unique_label_list.find_items_by_label(shape.label):
             item = self.unique_label_list.create_item_from_label(shape.label)
             self.unique_label_list.addItem(item)
@@ -5319,17 +5505,7 @@ class LabelingWidget(LabelDialog):
         label_list_item.setText("{}".format(html.escape(text)))
         label_list_item.setBackground(QtGui.QColor(*color, LABEL_OPACITY))
         if refresh_filters:
-            logger.info(
-                "[DIAG] add_label BEFORE _refresh_shape_filters | item.checkState=%s | shape.visible=%s",
-                label_list_item.checkState() == Qt.CheckState.Checked,
-                shape.visible,
-            )
             self._refresh_shape_filters()
-            logger.info(
-                "[DIAG] add_label AFTER _refresh_shape_filters | item.checkState=%s | shape.visible=%s",
-                label_list_item.checkState() == Qt.CheckState.Checked,
-                shape.visible,
-            )
 
     def load_labels(self, labels, clear_existing=True):
         """
@@ -5441,14 +5617,6 @@ class LabelingWidget(LabelDialog):
         return labels_set, gids_set, types_set
 
     def _refresh_shape_filters(self):
-        logger.info(
-            "[DIAG] _refresh_shape_filters ENTER | pending_restore=%s | labels=%s | gid=%s | type=%s | list_count=%d",
-            self._pending_filter_restore,
-            self._filter_state.labels,
-            self._filter_state.gid,
-            self._filter_state.shape_type,
-            self.label_list.model().rowCount(),
-        )
         # Restore filter state from pending (cross-image persistence)
         if self._pending_filter_restore is not None:
             restored = self._pending_filter_restore
@@ -5456,12 +5624,6 @@ class LabelingWidget(LabelDialog):
             self._filter_state.set_labels(restored.labels)
             self._filter_state.set_gid(restored.gid)
             self._filter_state.set_shape_type(restored.shape_type)
-            logger.info(
-                "[DIAG] _refresh_shape_filters RESTORED | labels=%s | gid=%s | type=%s",
-                self._filter_state.labels,
-                self._filter_state.gid,
-                self._filter_state.shape_type,
-            )
         # Rebuild index for the new image
         self._filter_index = None
         self._rebuild_filter_index()
@@ -5479,9 +5641,7 @@ class LabelingWidget(LabelDialog):
         self.update_shape_type_box(
             block_signal=True, precomputed=types_set
         )
-        logger.info("[DIAG] _refresh_shape_filters BEFORE _apply_combined_shape_filters")
         self._apply_combined_shape_filters()
-        logger.info("[DIAG] _refresh_shape_filters AFTER _apply_combined_shape_filters")
 
     def apply_label_visibility(self):
         changed = self._filter_engine.apply_label_visibility()
@@ -5672,19 +5832,11 @@ class LabelingWidget(LabelDialog):
             self._filter_state.set_labels(set())
         else:
             self._filter_state.set_labels({str(label)})
-        logger.info(
-            "[DIAG] text_selection_changed | index=%s | label=%s | labels=%s",
-            index, label, self._filter_state.labels,
-        )
         self._apply_combined_shape_filters()
 
     def gid_selection_changed(self, index):
         raw_gid = self.gid_filter_combobox.gid_box.currentText()
         self._filter_state.set_gid(raw_gid)
-        logger.info(
-            "[DIAG] gid_selection_changed | index=%s | raw_gid=%s | gid=%s",
-            index, raw_gid, self._filter_state.gid,
-        )
         self._apply_combined_shape_filters()
 
     def label_selection_changed(self):
@@ -5701,19 +5853,9 @@ class LabelingWidget(LabelDialog):
 
     def label_item_changed(self, item):
         shape = item.shape()
-        logger.info(
-            "[DIAG] label_item_changed | label=%s | checkState=%s | shape.visible_before=%s",
-            shape.label if shape else "N/A",
-            "Checked" if item.checkState() == Qt.CheckState.Checked else "Unchecked",
-            shape.visible if shape else "N/A",
-        )
         shape.visible = item.checkState() == Qt.CheckState.Checked
         self.canvas.set_shape_visible(
             shape, item.checkState() == Qt.CheckState.Checked
-        )
-        logger.info(
-            "[DIAG] label_item_changed DONE | shape.visible_after=%s",
-            shape.visible,
         )
         self._update_select_toggle_button_tooltip()
         if (
@@ -6834,6 +6976,9 @@ class LabelingWidget(LabelDialog):
             return
         if self.filename is None:
             return
+        if self._filter_navigation_active:
+            if self._open_prev_filter_navigation_image():
+                return
         current_index = self.fn_to_index[str(self.filename)]
         if current_index - 1 >= 0:
             filename = self.file_list_widget.item(current_index - 1).text()
@@ -6846,6 +6991,9 @@ class LabelingWidget(LabelDialog):
         count = self.file_list_widget.count()
         if count <= 0:
             return
+        if self._filter_navigation_active:
+            if self._open_next_filter_navigation_image(load=load):
+                return
         filename = None
         if self.filename is None:
             filename = self.file_list_widget.item(0).text()
