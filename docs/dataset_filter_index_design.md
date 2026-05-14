@@ -1,0 +1,416 @@
+# 数据集筛选索引设计
+
+## 背景
+
+当前筛选显示与筛选结果导航功能已经能在单张图片与当前会话层面工作，但在 5000 张图片、约 18000 个 shape 的数据规模下，若每次开启筛选或刷新都全量遍历 JSON，会产生明显的等待时间。
+
+你的使用场景是：
+
+1. 以浏览筛选为主。
+2. 会频繁修改少量标签。
+3. 数据目录是 YOLO 风格，图片与 JSON 分离，且为单层结构。
+4. 外部脚本也可能批量修改 JSON，之后再重新打开软件。
+5. 希望筛选像 SQL 查询一样快。
+
+因此需要将“每次全量扫描 JSON”升级为“基于索引查询 + 手动刷新 + 增量更新 + 持久缓存”的架构。
+
+## 目标
+
+1. 首次加载后建立数据集索引。
+2. 后续筛选直接查索引，不再全量扫 JSON。
+3. 支持外部脚本改动后，在用户手动刷新或重新打开目录时更新索引。
+4. 支持软件内部编辑后的单文件增量更新。
+5. 保持原有 `FilterState`、`ShapeFilterEngine`、`FilterNavigationEngine` 的职责边界。
+
+## 非目标
+
+1. 不做实时文件系统监听。
+2. 不在软件运行中主动猜测外部脚本的持续写入状态。
+3. 不强制所有查询都落库到数据库服务。
+4. 不先做复杂的跨进程同步。
+5. 不改变现有标注文件格式。
+
+## 设计原则
+
+1. **一次建索引，多次查询**。
+2. **用户主动刷新才重新校验外部文件变化**。
+3. **内部编辑时仅增量更新当前文件索引**。
+4. **查询层不访问 Qt UI 控件**。
+5. **索引层不承担 UI 状态同步职责**。
+
+## 架构分层
+
+建议拆成四层：
+
+```text
+FilterState
+  保存筛选条件
+
+DatasetFilterIndex
+  保存全数据集的倒排索引 / 元数据缓存
+
+ShapeFilterEngine
+  当前图片内筛选与可见性同步
+
+FilterNavigationEngine
+  基于索引结果进行筛选结果导航
+```
+
+### 职责说明
+
+| 层 | 职责 | 不应该做 |
+|----|------|----------|
+| FilterState | 保存筛选条件快照 | 访问 UI、访问文件系统 |
+| DatasetFilterIndex | 建立与查询数据集索引、管理缓存 | 操作 QWidget、决定显示方式 |
+| ShapeFilterEngine | 当前图可见性同步、局部 apply | 全量扫描全数据集 |
+| FilterNavigationEngine | 处理筛选结果文件集合、前后跳转 | 全量重建索引 |
+
+## 数据规模假设
+
+基于当前描述：
+
+```text
+图片数量：约 5000
+每图 shape 数：平均约 7
+shape_type：2~3 类
+gid：与 shape 数量接近
+数据结构：单层目录，图片与 JSON 分离
+```
+
+该规模适合做内存索引 + 持久缓存，而不是每次查询都重扫 JSON。
+
+## 关键问题
+
+当前慢点是：
+
+```text
+开启筛选显示 / 筛选结果导航
+  -> 遍历全量 JSON
+  -> 找到命中的 shape / 文件
+  -> 才能更新 UI
+```
+
+这导致每次开关功能都要做一次全量重计算。
+
+正确方向是：
+
+```text
+首次扫描建立索引
+之后查询索引
+变化文件单独重建
+```
+
+## 索引内容
+
+建议为每个 JSON 记录两类信息：
+
+### 1. 文件级元数据
+
+```text
+path
+mtime
+size
+shape_count
+label_count
+gid_count
+shape_type_count
+```
+
+### 2. 倒排索引
+
+至少维护以下集合：
+
+```python
+label_index: Dict[str, Set[str]]
+gid_index: Dict[str, Set[str]]
+shape_type_index: Dict[str, Set[str]]
+```
+
+如果未来需要 shape 级聚合，可升级为：
+
+```python
+label_index: Dict[str, Dict[str, Set[int]]]
+gid_index: Dict[str, Dict[str, Set[int]]]
+shape_type_index: Dict[str, Dict[str, Set[int]]]
+```
+
+其中：
+
+```text
+外层 key = label/gid/type
+内层 key = 文件路径
+value = 该文件命中的 shape id 集合
+```
+
+## 查询语义
+
+保持当前 `FilterState` 语义：
+
+```text
+label 集合内部 OR
+label / gid / shape_type 之间 AND
+一个文件任意 shape 命中即文件命中
+```
+
+索引查询示例：
+
+```text
+label=person,car
+  -> label_index[person] ∪ label_index[car]
+
+label=person AND gid=1 AND type=rectangle
+  -> label_set ∩ gid_set ∩ type_set
+```
+
+## 缓存策略
+
+### 缓存目标
+
+避免每次打开目录都全量重建。
+
+### 缓存内容
+
+建议持久化以下信息：
+
+```text
+dataset_root
+file manifest
+每个文件的 mtime / size / shape_count
+label/gid/shape_type 索引
+```
+
+### 缓存格式建议
+
+优先：
+
+```text
+SQLite
+```
+
+备选：
+
+```text
+JSON cache
+```
+
+### 缓存失效判定
+
+采用轻量方案：
+
+```text
+path 新增 -> 重建
+path 删除 -> 移除缓存
+mtime 变了 -> 重建
+size 变了 -> 重建
+mtime / size 都没变 -> 复用缓存
+```
+
+## 刷新策略
+
+你已确认选择的是：
+
+```text
+不主动监听外部变化
+只在手动刷新或重新打开目录时刷新索引
+```
+
+因此提供两个动作：
+
+```text
+刷新索引
+重建索引
+```
+
+### 刷新索引
+
+```text
+读取缓存
+检查文件清单与 mtime / size
+仅重建变化文件
+保留未变文件的索引
+```
+
+### 重建索引
+
+```text
+忽略缓存
+全量扫描所有 JSON
+重新生成索引与缓存
+```
+
+## 增量更新
+
+当用户在软件内部修改少量标签时，不应全量重扫。
+
+建议接口：
+
+```python
+def refresh_file(self, image_path, output_dir=None):
+    """Rebuild index for a single file."""
+```
+
+流程：
+
+```text
+1. 读取该文件对应 JSON
+2. 移除旧索引记录
+3. 写入新索引记录
+4. 更新 mtime / size / shape_count
+```
+
+这适合你的工作流：
+
+```text
+筛选 -> 进入命中文件 -> 改 1~2 个标签 -> 保存 -> 只更新当前文件索引
+```
+
+## 与现有功能的关系
+
+### 与 `FilterState`
+
+`FilterState` 不变，仍然是权威筛选条件快照。
+
+### 与 `ShapeFilterEngine`
+
+当前图对象可见性同步仍由它负责。
+
+但它不应再承担全数据集扫描职责。
+
+### 与 `FilterNavigationEngine`
+
+筛选结果导航不应自己重扫整个目录，而应消费 `DatasetFilterIndex` 的查询结果。
+
+### 与文件列表 / UI
+
+UI 只负责：
+
+```text
+显示结果
+触发启用 / 刷新 / 关闭
+响应导航
+```
+
+不负责全量扫描。
+
+## 推荐模块拆分
+
+建议新增：
+
+```text
+anylabeling/views/labeling/dataset_filter_index.py
+```
+
+职责：
+
+1. 扫描 JSON。
+2. 建索引。
+3. 从缓存加载索引。
+4. 刷新单文件。
+5. 执行筛选查询。
+
+### 可能的类接口
+
+```python
+class DatasetFilterIndex:
+    def load_or_build(self, root_dir, output_dir=None): ...
+    def rebuild(self, root_dir, output_dir=None): ...
+    def refresh_file(self, image_path, output_dir=None): ...
+    def query(self, filter_state): ...
+```
+
+### 返回值建议
+
+```python
+class DatasetFilterQueryResult:
+    matched_files: list[str]
+    matched_count: int
+    total_files: int
+```
+
+## 后台构建
+
+首次加载允许耗时，但应尽量做到“无感”。
+
+建议：
+
+```text
+打开目录
+  -> UI 立即可用
+  -> 后台线程构建索引
+  -> 状态栏提示索引构建中
+  -> 构建完成后启用高频查询
+```
+
+如果你不希望初版异步，可先同步实现，但最终目标应是后台化。
+
+## UI 入口建议
+
+建议在 `View` 菜单与工具栏提供：
+
+```text
+刷新索引
+重建索引
+筛选结果导航
+```
+
+其中：
+
+```text
+筛选结果导航 = 可勾选开关
+刷新索引 = 普通动作
+重建索引 = 普通动作
+```
+
+## 性能目标
+
+你希望达到类似 SQL 查询的体验。
+
+目标定义为：
+
+1. 普通筛选查询只做索引集合运算。
+2. 当前文件修改只更新当前文件索引。
+3. 外部脚本修改后，在手动刷新时只处理变化文件。
+
+理想情况下：
+
+```text
+查询速度 ≈ O(命中集合运算)
+而不是 O(全部 JSON 扫描)
+```
+
+## 风险点
+
+1. 如果继续全量扫描，5000 张图仍会明显慢。
+2. 如果 UI 线程直接建索引，会卡顿。
+3. 如果缓存失效判断只看 path，不看 mtime / size，会出现脏索引。
+4. 如果软件内部保存后不刷新当前文件索引，会导致结果不一致。
+
+## 代码落地顺序
+
+### Phase 1
+
+1. 新增 `DatasetFilterIndex`。
+2. 支持 JSON 扫描和索引查询。
+3. 支持单文件刷新。
+4. 支持缓存读写。
+
+### Phase 2
+
+1. `LabelingWidget` 接入索引查询。
+2. 筛选结果导航消费索引结果。
+3. UI 添加刷新 / 重建动作。
+
+### Phase 3
+
+1. 后台线程索引构建。
+2. 进度与取消。
+3. 更细粒度 shape 级缓存。
+
+## 验收标准
+
+1. 打开目录后不再每次开关筛选都全量重扫。
+2. 首次加载后再次查询明显更快。
+3. 当前文件修改后，索引可局部更新。
+4. 外部脚本改动后，手动刷新/重新打开目录可识别变化。
+5. 筛选结果导航仍保持原有交互。
+6. 原始文件列表操作不受影响。
