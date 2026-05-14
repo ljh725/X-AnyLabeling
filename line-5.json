@@ -1,0 +1,87 @@
+[
+  {
+    "line_id": 1,
+    "name": "左侧过道边缘线",
+    "type": "horizontal_perspective",
+    "start_point": [30, 850],
+    "end_point": [960, 420],
+    "color": [255, 0, 0],
+    "line_style": "solid"
+  },
+  {
+    "line_id": 2,
+    "name": "右侧过道边缘线",
+    "type": "horizontal_perspective",
+    "start_point": [1890, 850],
+    "end_point": [960, 420],
+    "color": [255, 0, 0],
+    "line_style": "solid"
+  },
+  {
+    "line_id": 3,
+    "name": "中间过道左侧边界线",
+    "type": "horizontal_perspective",
+    "start_point": [500, 830],
+    "end_point": [960, 420],
+    "color": [0, 255, 0],
+    "line_style": "dashed"
+  },
+  {
+    "line_id": 4,
+    "name": "中间过道右侧边界线",
+    "type": "horizontal_perspective",
+    "start_point": [1420, 830],
+    "end_point": [960, 420],
+    "color": [0, 255, 0],
+    "line_style": "dashed"
+  },
+  {
+    "line_id": 5,
+    "name": "天花板灯排透视线",
+    "type": "horizontal_perspective",
+    "start_point": [250, 280],
+    "end_point": [960, 420],
+    "color": [0, 0, 255],
+    "line_style": "dotted"
+  },
+  {
+    "line_id": 6,
+    "name": "左侧窗帘前景垂直压缩线",
+    "type": "vertical_compression",
+    "start_point": [50, 200],
+    "end_point": [50, 880],
+    "color": [255, 165, 0],
+    "line_style": "solid",
+    "description": "前景窗帘高度，褶皱间距大"
+  },
+  {
+    "line_id": 7,
+    "name": "左侧窗帘中景垂直压缩线",
+    "type": "vertical_compression",
+    "start_point": [150, 220],
+    "end_point": [150, 750],
+    "color": [255, 165, 0],
+    "line_style": "dashed",
+    "description": "中景窗帘，高度略压缩"
+  },
+  {
+    "line_id": 8,
+    "name": "左侧窗帘远景垂直压缩线",
+    "type": "vertical_compression",
+    "start_point": [250, 240],
+    "end_point": [250, 620],
+    "color": [255, 165, 0],
+    "line_style": "dotted",
+    "description": "远景窗帘，高度明显压缩，褶皱密集"
+  },
+  {
+    "line_id": 9,
+    "name": "后墙中央垂直压缩示意线",
+    "type": "vertical_compression",
+    "start_point": [960, 200],
+    "end_point": [960, 500],
+    "color": [128, 0, 128],
+    "line_style": "dashed",
+    "description": "后墙高度压缩示例，实际高度不变但视觉缩短"
+  }
+]
