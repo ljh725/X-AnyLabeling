@@ -58,6 +58,11 @@ from .logger import logger
 from .filter_state import FilterState
 from .filter_engine import ShapeFilterEngine
 from .filter_navigation_engine import FilterNavigationEngine
+from .dataset_filter_index import (
+    DatasetFilterIndex,
+    make_db_path,
+)
+from .dataset_filter_index_worker import DatasetIndexWorker
 from .settings import SettingsController, SettingsDialog
 from .settings.runtime_applier import SettingsRuntimeApplier
 from .shape import Shape
@@ -297,6 +302,10 @@ class LabelingWidget(LabelDialog):
         self._pending_filter_restore: Optional[FilterState] = None
         self._filter_state = FilterState()  # replaces _sticky_filter_state dict
         self._filter_index = None
+
+        # Dataset filter index (SQLite derived cache)
+        self._dataset_filter_index: Optional[DatasetFilterIndex] = None
+        self._dataset_index_worker: Optional[DatasetIndexWorker] = None
 
         # Filter result navigation state
         self._filter_navigation_engine = FilterNavigationEngine()
@@ -1859,6 +1868,30 @@ class LabelingWidget(LabelDialog):
             self.tr("Refresh files matched by the current filter"),
             enabled=True,
         )
+        refresh_dataset_index = action(
+            self.tr("Refresh Dataset Index"),
+            self.refresh_dataset_index,
+            None,
+            None,
+            self.tr("Incremental refresh of the dataset filter index"),
+            enabled=True,
+        )
+        rebuild_dataset_index = action(
+            self.tr("Rebuild Dataset Index"),
+            self.rebuild_dataset_index,
+            None,
+            None,
+            self.tr("Rebuild the dataset filter index from scratch"),
+            enabled=True,
+        )
+        cancel_dataset_index = action(
+            self.tr("Cancel Dataset Index Build"),
+            self.cancel_dataset_index_build,
+            None,
+            None,
+            self.tr("Cancel the running dataset index task"),
+            enabled=False,
+        )
 
         # AI Actions
         toggle_auto_labeling_widget = action(
@@ -2003,6 +2036,9 @@ class LabelingWidget(LabelDialog):
             toggle_global_filter_keep=toggle_global_filter_keep,
             toggle_filter_navigation=toggle_filter_navigation,
             refresh_filter_navigation=refresh_filter_navigation,
+            refresh_dataset_index=refresh_dataset_index,
+            rebuild_dataset_index=rebuild_dataset_index,
+            cancel_dataset_index=cancel_dataset_index,
             zoom_actions=zoom_actions,
             open_next_image=open_next_image,
             open_prev_image=open_prev_image,
@@ -2312,6 +2348,9 @@ class LabelingWidget(LabelDialog):
                 toggle_global_filter_keep,
                 toggle_filter_navigation,
                 refresh_filter_navigation,
+                refresh_dataset_index,
+                rebuild_dataset_index,
+                cancel_dataset_index,
                 fill_drawing,
                 loop_thru_labels,
                 loop_select_labels,
@@ -2419,6 +2458,9 @@ class LabelingWidget(LabelDialog):
             loop_thru_labels,
             loop_select_labels,
             toggle_filter_navigation,
+            refresh_dataset_index,
+            rebuild_dataset_index,
+            cancel_dataset_index,
             select_toggle_shapes,
             run_all_images,
             toggle_auto_labeling_widget,
@@ -4172,9 +4214,19 @@ class LabelingWidget(LabelDialog):
             return False
 
         state = self._copy_filter_state()
-        matched = self._filter_navigation_engine.collect_matched_files(
-            list(self.image_list), state, self.output_dir
-        )
+        if (
+            self._dataset_filter_index is not None
+            and self._dataset_filter_index.is_ready()
+        ):
+            # Fast path: query derived SQLite index
+            all_matched = self._dataset_filter_index.query(state)
+            image_set = set(self.image_list)
+            matched = [p for p in all_matched if p in image_set]
+        else:
+            # Fallback: full JSON scan
+            matched = self._filter_navigation_engine.collect_matched_files(
+                list(self.image_list), state, self.output_dir
+            )
         self._filter_navigation_files = matched
         self._filter_navigation_initial_count = len(matched)
         self._filter_navigation_state = state
@@ -4211,6 +4263,106 @@ class LabelingWidget(LabelDialog):
         self.enable_filter_navigation(
             status_prefix=self.tr("Filter result navigation refreshed")
         )
+
+    def refresh_dataset_index(self):
+        self._start_dataset_index_worker(
+            "refresh", list(self.image_list), self.output_dir
+        )
+
+    def rebuild_dataset_index(self):
+        self._start_dataset_index_worker(
+            "rebuild", list(self.image_list), self.output_dir
+        )
+
+    def cancel_dataset_index_build(self):
+        if self._dataset_index_worker is not None:
+            self._dataset_index_worker.cancel()
+            self.status(
+                self.tr("Cancelling dataset index build..."), 3000
+            )
+
+    def _start_dataset_index_worker(
+        self, mode, image_files, output_dir=None
+    ):
+        if self._dataset_index_worker is not None:
+            self.status(
+                self.tr("Dataset index task is already running"), 3000
+            )
+            return
+        if not image_files:
+            self.status(
+                self.tr("No images to index. Open a directory first."),
+                3000,
+            )
+            return
+        db_path = make_db_path(self.last_open_dir or self.current_path())
+        self._dataset_index_worker = DatasetIndexWorker(
+            mode, db_path, image_files, output_dir, self
+        )
+        self._dataset_index_worker.progress_changed.connect(
+            self._on_dataset_index_progress
+        )
+        self._dataset_index_worker.finished.connect(
+            self._on_dataset_index_finished
+        )
+        self._dataset_index_worker.cancelled.connect(
+            self._on_dataset_index_cancelled
+        )
+        self._dataset_index_worker.failed.connect(
+            self._on_dataset_index_failed
+        )
+        self.actions.refresh_dataset_index.setEnabled(False)
+        self.actions.rebuild_dataset_index.setEnabled(False)
+        self.actions.cancel_dataset_index.setEnabled(True)
+        self.status(self.tr("Building dataset index..."), 3000)
+        self._dataset_index_worker.start()
+
+    def _finish_dataset_index_worker(self):
+        if self._dataset_index_worker is not None:
+            self._dataset_index_worker.deleteLater()
+            self._dataset_index_worker = None
+        self.actions.refresh_dataset_index.setEnabled(True)
+        self.actions.rebuild_dataset_index.setEnabled(True)
+        self.actions.cancel_dataset_index.setEnabled(False)
+
+    def _on_dataset_index_progress(self, current, total, filename):
+        self.status(
+            self.tr(
+                "Building dataset index: {current}/{total} {filename}"
+            ).format(current=current, total=total, filename=filename),
+            1000,
+        )
+
+    def _on_dataset_index_finished(self, result):
+        db_path = make_db_path(self.last_open_dir or self.current_path())
+        self._dataset_filter_index = DatasetFilterIndex(db_path)
+        self._dataset_filter_index.open()
+        self.status(
+            self.tr(
+                "Dataset index ready: inserted={inserted}, "
+                "updated={updated}, removed={removed}, failed={failed}"
+            ).format(
+                inserted=result.inserted,
+                updated=result.updated,
+                removed=result.removed,
+                failed=result.failed,
+            ),
+            5000,
+        )
+        self._finish_dataset_index_worker()
+
+    def _on_dataset_index_cancelled(self, result):
+        self.status(self.tr("Dataset index build cancelled"), 3000)
+        self._finish_dataset_index_worker()
+
+    def _on_dataset_index_failed(self, message):
+        self.status(
+            self.tr("Dataset index build failed: {message}").format(
+                message=message
+            ),
+            5000,
+        )
+        self._finish_dataset_index_worker()
 
     def _set_filter_navigation_action_checked(self, checked):
         if not hasattr(self, "actions"):
@@ -5766,7 +5918,11 @@ class LabelingWidget(LabelDialog):
                     items[0], self._annotation_checked()
                 )
             # disable allows next and previous image to proceed
-            # self.filename = filename
+            # Refresh derived index for the saved file
+            if self._dataset_filter_index is not None:
+                self._dataset_filter_index.refresh_file(
+                    self.image_path, self.output_dir
+                )
             return True
         except LabelFileError as e:
             self.error_message(
@@ -7537,6 +7693,12 @@ class LabelingWidget(LabelDialog):
 
         if image_files and self._config.get("exif_scan_enabled", True):
             self.async_exif_scanner.start_scan(image_files)
+
+        # Build or refresh dataset filter index (background)
+        if image_files:
+            self._start_dataset_index_worker(
+                "refresh", image_files, self.output_dir
+            )
 
     def toggle_auto_labeling_widget(self):
         """Toggle auto labeling widget visibility."""

@@ -81,8 +81,8 @@ def rename_videos(directory, pattern, start=1, dry_run=False):
 # IDE Launch Configuration
 # ---------------------------------------------------------------------------
 # When running from an IDE (PyCharm / VS Code / etc.), set these defaults:
-IDE_DIRECTORY = r"D:\idm下载文件夹\身体剪影"          # <-- 修改为你的视频目录
-IDE_PATTERN = "video_{n:06d}.mp4"      # <-- 修改为你的命名格式
+IDE_DIRECTORY = r"D:\body-shadow-1"          # <-- 修改为你的视频目录
+IDE_PATTERN = "shadow_{n:06d}.mp4"      # <-- 修改为你的命名格式
 IDE_START = 1                          # <-- 起始编号
 IDE_DRY_RUN = False                     # <-- True=仅预览, False=执行重命名
 # ---------------------------------------------------------------------------
