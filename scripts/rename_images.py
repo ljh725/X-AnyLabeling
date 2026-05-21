@@ -123,3 +123,28 @@ IDE Usage:
 
 if __name__ == "__main__":
     main()
+
+
+"""
+功能说明：
+    这个脚本用来批量重命名文件夹里的图片文件。
+    它会按自然排序（把数字当数字排，不是当字符串）排好图片，
+    然后按你指定的格式重新命名，比如 "img_001.jpg"、"img_002.jpg" 这样。
+    你可以自定义编号从几开始、编号几位数、文件后缀是什么。
+    默认先预览不会真改名，加 --dry-run 或把 IDE_DRY_RUN 改成 True 就是只看不改。
+    如果不带命令行参数，会自动用脚本里 IDE_* 开头的默认配置，方便在 IDE 里直接运行。
+
+运行命令样例：
+
+  # 基础用法：把 images 文件夹里的图片重命名为 img_001.jpg, img_002.jpg ...
+  python scripts/rename_images.py ./images "img_{n:03d}.jpg"
+
+  # 编号从 10 开始
+  python scripts/rename_images.py ./images "photo_{n:03d}.jpg" --start 10
+
+  # 只预览，不真正改名
+  python scripts/rename_images.py ./images "frame_{n:02d}.jpg" --dry-run
+
+  # 在 IDE 里直接运行（不用命令行参数）
+  # 修改脚本顶部的 IDE_DIRECTORY、IDE_PATTERN、IDE_START、IDE_DRY_RUN 即可
+"""

@@ -184,3 +184,50 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+"""
+功能说明：
+    这个脚本用来把 YOLO 姿态估计（pose）的标注文件做格式转换。
+    YOLO pose 的每个关键点通常是 x y conf（坐标+置信度），
+    但 X-AnyLabeling 导入时需要 x y visibility（坐标+可见性标志）。
+    这个脚本就是把 conf 按阈值转成 visibility：
+    置信度大于等于阈值（默认 0.5）的点标为 2（可见），
+    小于阈值的点标为 0（不可见）。
+    对于不可见的点，默认会把它们的 x、y 坐标也清零，
+    除非加 --keep-hidden-xy 参数保留原坐标。
+    脚本还可以只转换指定的类别、修改输出类别号，
+    或者让某些类别只保留检测框、去掉关键点。
+
+运行命令样例：
+
+  # 基础转换：把 yolo_labels 里的所有 .txt 文件转换后存到 output_labels
+  python scripts/convert_yolo_pose_conf_to_visibility.py \
+      --src-dir ./yolo_labels \
+      --dst-dir ./output_labels
+
+  # 只转换 class_id 为 0 的文件，并把输出 class_id 改成 1
+  python scripts/convert_yolo_pose_conf_to_visibility.py \
+      --src-dir ./yolo_labels \
+      --dst-dir ./output_labels \
+      --class-id 0 \
+      --output-class-id 1
+
+  # 关键点数量不是 17 个时（比如 23 个关键点）
+  python scripts/convert_yolo_pose_conf_to_visibility.py \
+      --src-dir ./yolo_labels \
+      --dst-dir ./output_labels \
+      --num-kpts 23
+
+  # 保留隐藏关键点的原始坐标（不置零）
+  python scripts/convert_yolo_pose_conf_to_visibility.py \
+      --src-dir ./yolo_labels \
+      --dst-dir ./output_labels \
+      --keep-hidden-xy
+
+  # 让 class_id 1 和 2 只保留检测框，去掉关键点
+  python scripts/convert_yolo_pose_conf_to_visibility.py \
+      --src-dir ./yolo_labels \
+      --dst-dir ./output_labels \
+      --box-only-class-ids "1,2"
+"""

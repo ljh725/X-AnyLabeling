@@ -34,3 +34,17 @@ for filepath in glob.glob(os.path.join(LABELS_DIR, "*.txt")):
         f.write("\n".join(new_lines) + "\n")
 
 print("Done.")
+
+
+"""
+功能说明：
+    这个脚本用来批量转换 YOLO 格式的标注文件。
+    它读取 labels 文件夹里的所有 .txt 文件，把关键点（keypoint）
+    的可见性值按 0.5 的阈值改成 0（不可见）或 2（可见），
+    然后把转换后的结果保存到 labels_d 文件夹里。
+
+运行命令样例：
+
+  # 在项目根目录下直接运行
+  python scripts/convert_labels.py
+"""

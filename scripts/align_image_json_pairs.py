@@ -315,3 +315,27 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+"""
+功能说明：
+    这个脚本用来把图片和对应的 JSON 标注文件一一配对。
+    按文件名（去掉后缀）来匹配，如果某个图片找不到对应的 JSON，
+    或者某个 JSON 找不到对应的图片，就把这些落单的文件移到单独的文件夹里。
+    默认先试运行，看看哪些文件会被移动，只有加了 --apply 才会真动文件。
+
+运行命令样例：
+
+  # 预览模式（只生成报告，不实际移动）
+  python scripts/align_image_json_pairs.py \
+      --images-dir ./images \
+      --json-dir ./json \
+      --output-dir ./unpaired
+
+  # 实际执行移动
+  python scripts/align_image_json_pairs.py \
+      --images-dir ./images \
+      --json-dir ./json \
+      --output-dir ./unpaired \
+      --apply
+"""

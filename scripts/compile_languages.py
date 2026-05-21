@@ -61,3 +61,17 @@ compile_resources(
     output="anylabeling/resources/resources.py",
     qrc="anylabeling/resources/resources.qrc",
 )
+
+
+"""
+功能说明：
+    这个脚本用来编译翻译文件和资源文件。
+    先用 lrelease 把 .ts 翻译文件转成 .qm 二进制文件，
+    再用 RCC 工具把 .qrc 资源文件打包成 Python 模块（resources.py），
+    这样软件运行时就能加载多语言翻译和内置资源了。
+
+运行命令样例：
+
+  # 在项目根目录下直接运行
+  python scripts/compile_languages.py
+"""

@@ -18,11 +18,17 @@ from typing import Dict, Iterable, List, Tuple
 # Source labels to rename. Keep the order aligned with RENAME_TO.
 RENAME_FROM = [
     # "old_label",
+    "nose",
+    "left_eye","right_eye","left_ear","right_ear","left_shoulder","right_shoulder","left_elbow","right_elbow",
+    "left_wrist","right_wrist","left_hip","right_hip","left_knee","right_knee","left_ankle","right_ankle", 
 ]
 
 # Target labels. Each item maps to the same index in RENAME_FROM.
 RENAME_TO = [
     # "new_label",
+    "nose",
+    "l_eye","r_eye","l_ear","r_ear","l_sho","r_sho","l_elb","r_elb",
+    "l_wri","r_wri","l_hip","r_hip","l_knee","r_knee","l_ank","r_ank"
 ]
 
 # Labels listed here will be removed from shapes.
@@ -224,3 +230,38 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+"""
+功能说明：
+    这个脚本用来批量修改 X-AnyLabeling 的 JSON 标注文件里的标签名称，或者删除某些标签。
+    使用之前，你需要先在脚本最上面的 RENAME_FROM 和 RENAME_TO 列表里写好对应关系，
+    比如把 "nose" 改成 "nose"，把 "left_eye" 改成 "l_eye" 等等。
+    如果要删掉某些标签，就把它们填到 DELETE_LABELS 列表里。
+    支持处理单个文件，也可以处理一整个文件夹。
+    默认会输出到新文件夹，不会动原文件；加 --inplace 会直接覆盖原文件。
+    加 --recursive 可以递归处理子文件夹里的所有 JSON 文件。
+
+运行命令样例：
+
+  # 基础用法：把 input 文件夹里的所有 JSON 标注处理后保存到 output 文件夹
+  python scripts/label_rename_converter.py \
+      --src_path ./input \
+      --dst_path ./output
+
+  # 递归处理，包括子文件夹里的 JSON 文件
+  python scripts/label_rename_converter.py \
+      --src_path ./input \
+      --dst_path ./output \
+      --recursive
+
+  # 原地修改，直接覆盖原文件（谨慎使用）
+  python scripts/label_rename_converter.py \
+      --src_path ./input \
+      --inplace
+
+  # 处理单个 JSON 文件
+  python scripts/label_rename_converter.py \
+      --src_path ./annotations/0001.json \
+      --dst_path ./output/0001.json
+"""

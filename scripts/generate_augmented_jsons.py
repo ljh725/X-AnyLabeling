@@ -229,3 +229,58 @@ def main():
 if __name__ == "__main__":
     main()
 
+
+"""
+功能说明：
+    这个脚本用来给数据增强后的图片批量生成对应的 JSON 标注文件。
+    增强后的图片文件名里通常带有一个标记（默认是 __jpg__gen_），
+    脚本会根据这个标记找到原始图片的名字，
+    然后复制原始图片的 JSON 标注，把里面的图片路径、宽高改成增强后图片的信息，
+    最后保存成新的 JSON 文件。
+    支持多线程并行处理，默认先预览（dry-run）不写入，
+    只有真正运行时才生成文件，避免误操作。
+
+运行命令样例：
+
+  # 基础用法：为增强图片生成 JSON 标注
+  python scripts/generate_augmented_jsons.py \
+      --src-json-dir ./original_jsons \
+      --aug-image-dir ./augmented_images \
+      --out-json-dir ./output_jsons
+
+  # 增强图片用了自定义标记（比如 __aug_）
+  python scripts/generate_augmented_jsons.py \
+      --src-json-dir ./original_jsons \
+      --aug-image-dir ./augmented_images \
+      --out-json-dir ./output_jsons \
+      --augment-marker "__aug_"
+
+  # 覆盖已存在的输出文件
+  python scripts/generate_augmented_jsons.py \
+      --src-json-dir ./original_jsons \
+      --aug-image-dir ./augmented_images \
+      --out-json-dir ./output_jsons \
+      --overwrite
+
+  # 只预览，不实际生成文件
+  python scripts/generate_augmented_jsons.py \
+      --src-json-dir ./original_jsons \
+      --aug-image-dir ./augmented_images \
+      --out-json-dir ./output_jsons \
+      --dry-run
+
+  # 使用 8 个线程加速处理
+  python scripts/generate_augmented_jsons.py \
+      --src-json-dir ./original_jsons \
+      --aug-image-dir ./augmented_images \
+      --out-json-dir ./output_jsons \
+      --workers 8
+
+大白话版：
+    你对图片做了数据增强（比如翻转、变色、加噪声），生成了很多新图片。
+    这些新图片需要对应的标注文件才能训练模型。
+    这个脚本就是帮你批量"抄作业"：
+    找到原始图片的标注，复制一份，把里面的图片名和尺寸改成新图片的，
+    这样就省去了重新标注的麻烦。
+    如果你不确定对不对，可以先跑一遍看看效果，不加 --apply 就不会真生成文件。
+"""

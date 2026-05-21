@@ -82,3 +82,21 @@ compile_resources(
     output="anylabeling/resources/resources.py",
     qrc="anylabeling/resources/resources.qrc",
 )
+
+
+"""
+功能说明：
+    这个脚本用来生成软件的多语言翻译文件。
+    它会做这几件事：
+    1. 把项目里的 .ui 界面文件转成 Python 代码
+    2. 扫描所有 Python 文件，把里面需要翻译的字符串提取出来
+    3. 生成 .ts 翻译源文件（供翻译人员填写不同语言的译文）
+    4. 用 lrelease 把 .ts 编译成 .qm 二进制文件（软件运行时加载）
+    5. 打包所有资源文件到一个 Python 模块里
+    支持的语言包括：英文、中文、日文、韩文。
+
+运行命令样例：
+
+  # 在项目根目录下直接运行
+  python scripts/generate_languages.py
+"""
