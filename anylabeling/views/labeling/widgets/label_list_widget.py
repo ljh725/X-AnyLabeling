@@ -177,6 +177,8 @@ class LabelListWidget(QtWidgets.QListView):
         item.setSizeHint(self.itemDelegate().sizeHint(None, None))
 
     def remove_item(self, item):
+        if item is None:
+            return
         index = self.model().indexFromItem(item)
         self.model().removeRows(index.row(), 1)
 

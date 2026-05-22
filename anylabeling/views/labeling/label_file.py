@@ -1,6 +1,8 @@
 import base64
 import json
+import os
 import os.path as osp
+import time
 
 import PIL.Image
 from PIL import ImageFile
@@ -14,6 +16,14 @@ from .schema import XLABEL_BASIC_FIELDS, create_xlabel_template
 from .shape import Shape
 
 PIL.Image.MAX_IMAGE_PIXELS = None
+
+PERF_LOG_ENABLED = os.getenv("XANYLABELING_PERF_LOG") == "1"
+
+
+def _perf_log(message, *args):
+    """Emit performance logs only when enabled by env var."""
+    if PERF_LOG_ENABLED:
+        logger.info(message, *args)
 
 
 class LabelFileError(Exception):
@@ -55,17 +65,28 @@ class LabelFile:
 
     @staticmethod
     def load_image_file(filename, default=None):
+        _t0 = time.perf_counter()
         try:
             with open(filename, "rb") as f:
-                return f.read()
+                data = f.read()
+            elapsed = time.perf_counter() - _t0
+            if elapsed > 0.05:
+                _perf_log(
+                    "LabelFile.load_image_file slow: %.3fs, file=%s",
+                    elapsed,
+                    filename,
+                )
+            return data
         except Exception:
             logger.error(f"Failed opening image file: {filename}")
             return default
 
     def load(self, filename):
+        _t0 = time.perf_counter()
         try:
             with utils.io_open(filename, "r") as f:
                 data = json.load(f)
+            _t_json = time.perf_counter()
 
             if data.get("version") is None:
                 logger.warning(
@@ -89,7 +110,13 @@ class LabelFile:
 
             data["imagePath"] = osp.basename(data["imagePath"])
             if data.get("imageData") is not None:
+                _t_image = time.perf_counter()
                 image_data = base64.b64decode(data["imageData"])
+                _perf_log(
+                    "LabelFile.load imageData decode: %.3fs, file=%s",
+                    time.perf_counter() - _t_image,
+                    filename,
+                )
             else:
                 # relative path from label file to relative path from cwd
                 if self.image_dir:
@@ -98,7 +125,13 @@ class LabelFile:
                     image_path = osp.join(
                         osp.dirname(filename), data["imagePath"]
                     )
+                _t_image = time.perf_counter()
                 image_data = self.load_image_file(image_path)
+                _perf_log(
+                    "LabelFile.load image bytes: %.3fs, file=%s",
+                    time.perf_counter() - _t_image,
+                    image_path,
+                )
 
             flags = data.get("flags", {})
             image_path = data["imagePath"]
@@ -110,7 +143,20 @@ class LabelFile:
                     data.get("imageWidth"),
                 )
 
+            _t_shape_build = time.perf_counter()
             shapes = [Shape().load_from_dict(s) for s in data["shapes"]]
+            _t_shapes = time.perf_counter()
+            total_time = _t_shapes - _t0
+            if total_time > 0.1:
+                _perf_log(
+                    "LabelFile.load slow: json=%.3fs, pre_shapes=%.3fs, "
+                    "shape_build=%.3fs, total=%.3fs, file=%s",
+                    _t_json - _t0,
+                    _t_shape_build - _t_json,
+                    _t_shapes - _t_shape_build,
+                    total_time,
+                    filename,
+                )
 
         except Exception as e:  # noqa
             raise LabelFileError(e) from e

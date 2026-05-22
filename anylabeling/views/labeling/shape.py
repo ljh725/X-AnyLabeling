@@ -1,14 +1,9 @@
 import copy
 import math
-
 from PyQt6 import QtCore, QtGui
 
 from . import utils
 from ..labeling.logger import logger
-
-# TODO(unknown):
-# - [opt] Store paths instead of creating new ones at each paint.
-
 
 DEFAULT_LINE_COLOR = QtGui.QColor(0, 255, 0, 128)  # bf hovering
 DEFAULT_FILL_COLOR = QtGui.QColor(100, 100, 100, 100)  # hovering
@@ -111,6 +106,10 @@ class Shape:
         self._vertex_fill_color = None
 
         self._closed = False
+        self._cached_bbox = None
+        self._cached_bbox_key = None
+        self._cached_path = None
+        self._cached_path_key = None
 
         if line_color is not None:
             # Override the class line_color attribute
@@ -158,6 +157,7 @@ class Shape:
         self.other_data = {k: v for k, v in data.items() if k not in self.KEYS}
         if self.shape_type == "cuboid" and "cuboid3d" not in self.other_data:
             self.sync_cuboid_depth_vector()
+        self._invalidate_cache()
         if close:
             self.close()
         return self
@@ -175,6 +175,7 @@ class Shape:
         if value not in self.get_supported_shape():
             raise ValueError(f"Unexpected shape_type: {value}")
         self._shape_type = value
+        self._invalidate_cache()
 
     @staticmethod
     def get_supported_shape():
@@ -225,6 +226,7 @@ class Shape:
                 self.close()
             else:
                 self.points.append(point)
+        self._invalidate_cache()
 
     def can_add_point(self):
         """Check if shape supports more points"""
@@ -272,6 +274,7 @@ class Shape:
             "depth_vector": [float(depth_vector[0]), float(depth_vector[1])],
             "source": source,
         }
+        self._invalidate_cache()
 
     def sync_cuboid_depth_vector(self):
         if self.shape_type != "cuboid" or len(self.points) < 5:
@@ -382,16 +385,19 @@ class Shape:
     def pop_point(self):
         """Remove and return the last point of the shape"""
         if self.points:
+            self._invalidate_cache()
             return self.points.pop()
         return None
 
     def insert_point(self, i, point):
         """Insert a point to a specific index"""
         self.points.insert(i, point)
+        self._invalidate_cache()
 
     def remove_point(self, i):
         """Remove point from a specific index"""
         self.points.pop(i)
+        self._invalidate_cache()
 
     def is_closed(self):
         """Check if the shape is closed"""
@@ -420,7 +426,16 @@ class Shape:
                 pen.setStyle(QtCore.Qt.PenStyle.DashLine)
             painter.setPen(pen)
 
-            line_path = QtGui.QPainterPath()
+            can_reuse_line_path = (
+                self.shape_type == "polygon"
+                and not self.selected
+                and not self.hovered
+            )
+            line_path = (
+                self.make_path()
+                if can_reuse_line_path
+                else QtGui.QPainterPath()
+            )
             vrtx_path = QtGui.QPainterPath()
 
             if self.shape_type == "rectangle":
@@ -430,10 +445,12 @@ class Shape:
                         f"expected 1, 2 or 4, got {len(self.points)}"
                     )
                     return
-                if len(self.points) == 2:
+                if can_reuse_line_path:
+                    pass
+                elif len(self.points) == 2:
                     rectangle = self.get_rect_from_line(*self.points)
                     line_path.addRect(rectangle)
-                if len(self.points) == 4:
+                elif len(self.points) == 4:
                     line_path.moveTo(self.points[0])
                     for i, p in enumerate(self.points):
                         line_path.lineTo(p)
@@ -448,10 +465,12 @@ class Shape:
                         f"expected 1, 2 or 4, got {len(self.points)}"
                     )
                     return
-                if len(self.points) == 2:
+                if can_reuse_line_path:
+                    pass
+                elif len(self.points) == 2:
                     rectangle = self.get_rect_from_line(*self.points)
                     line_path.addRect(rectangle)
-                if len(self.points) == 4:
+                elif len(self.points) == 4:
                     line_path.moveTo(self.points[0])
                     for i, p in enumerate(self.points):
                         line_path.lineTo(p)
@@ -525,17 +544,22 @@ class Shape:
                         f"expected 1 or 2, got {len(self.points)}"
                     )
                     return
-                if len(self.points) == 2:
+                if can_reuse_line_path:
+                    pass
+                elif len(self.points) == 2:
                     rectangle = self.get_circle_rect_from_line(self.points)
                     line_path.addEllipse(rectangle)
                 if self.selected:
                     for i in range(len(self.points)):
                         self.draw_vertex(vrtx_path, i)
             elif self.shape_type == "linestrip":
-                line_path.moveTo(self.points[0])
-                for i, p in enumerate(self.points):
-                    line_path.lineTo(p)
-                    self.draw_vertex(vrtx_path, i)
+                if can_reuse_line_path:
+                    pass
+                else:
+                    line_path.moveTo(self.points[0])
+                    for i, p in enumerate(self.points):
+                        line_path.lineTo(p)
+                        self.draw_vertex(vrtx_path, i)
             elif self.shape_type == "point":
                 if len(self.points) != 1:
                     logger.error(
@@ -545,6 +569,11 @@ class Shape:
                     return
                 self.draw_vertex(vrtx_path, 0, True)
             else:
+                if can_reuse_line_path:
+                    painter.drawPath(line_path)
+                    if self.fill:
+                        painter.fillPath(line_path, self.fill_color)
+                    return
                 line_path.moveTo(self.points[0])
                 # Uncommenting the following line will draw 2 paths
                 # for the 1st vertex, and make it non-filled, which
@@ -739,6 +768,12 @@ class Shape:
 
     def make_path(self):
         """Create a path from shape"""
+        cache_key = self._geometry_cache_key()
+        if (
+            self._cached_path is not None
+            and self._cached_path_key == cache_key
+        ):
+            return QtGui.QPainterPath(self._cached_path)
         if not self.points:
             return QtGui.QPainterPath()
         if self.shape_type == "rectangle":
@@ -766,19 +801,52 @@ class Shape:
             path = QtGui.QPainterPath(self.points[0])
             for p in self.points[1:]:
                 path.lineTo(p)
-        return path
+        self._cached_path = QtGui.QPainterPath(path)
+        self._cached_path_key = cache_key
+        return QtGui.QPainterPath(path)
 
     def bounding_rect(self):
         """Return bounding rectangle of the shape"""
-        return self.make_path().boundingRect()
+        cache_key = self._geometry_cache_key()
+        if self._cached_bbox is None or self._cached_bbox_key != cache_key:
+            rect = self.make_path().boundingRect()
+            if rect.isEmpty() and self.points:
+                radius = max(2.0, self.point_size / max(self.scale, 1e-6))
+                point = self.points[0]
+                rect = QtCore.QRectF(
+                    point.x() - radius,
+                    point.y() - radius,
+                    radius * 2.0,
+                    radius * 2.0,
+                )
+            self._cached_bbox = rect
+            self._cached_bbox_key = cache_key
+        return self._cached_bbox
+
+    def _geometry_cache_key(self):
+        """Return a stable key for geometry-only caches."""
+        return (
+            self.shape_type,
+            self._closed,
+            tuple((p.x(), p.y()) for p in self.points),
+        )
+
+    def _invalidate_cache(self):
+        """Invalidate cached bounding rect and path."""
+        self._cached_bbox = None
+        self._cached_bbox_key = None
+        self._cached_path = None
+        self._cached_path_key = None
 
     def move_by(self, offset):
         """Move all points by an offset"""
         self.points = [p + offset for p in self.points]
+        self._invalidate_cache()
 
     def move_vertex_by(self, i, offset):
         """Move a specific vertex by an offset"""
         self.points[i] = self.points[i] + offset
+        self._invalidate_cache()
 
     def highlight_vertex(self, i, action):
         """Highlight a vertex appropriately based on the current action
@@ -799,6 +867,15 @@ class Shape:
         """Copy shape"""
         return copy.deepcopy(self)
 
+    def __getstate__(self):
+        """Return pickle/deepcopy state without non-copyable Qt caches."""
+        state = self.__dict__.copy()
+        state["_cached_bbox"] = None
+        state["_cached_bbox_key"] = None
+        state["_cached_path"] = None
+        state["_cached_path_key"] = None
+        return state
+
     def __len__(self):
         return len(self.points)
 
@@ -807,3 +884,4 @@ class Shape:
 
     def __setitem__(self, key, value):
         self.points[key] = value
+        self._invalidate_cache()

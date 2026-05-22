@@ -1,6 +1,8 @@
 """This module defines Canvas widget - the core component for drawing image labels"""
 
 import math
+import os
+import time
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QWheelEvent
@@ -10,7 +12,17 @@ from anylabeling.views.labeling.utils.colormap import label_colormap
 from anylabeling.views.labeling.utils.theme import get_theme
 
 from .. import utils
+from ..logger import logger
 from ..shape import Shape
+
+PERF_LOG_ENABLED = os.getenv("XANYLABELING_PERF_LOG") == "1"
+
+
+def _perf_log(message, *args):
+    """Emit performance logs only when enabled by env var."""
+    if PERF_LOG_ENABLED:
+        logger.info(message, *args)
+
 
 CURSOR_DEFAULT = QtCore.Qt.CursorShape.ArrowCursor
 CURSOR_POINT = QtCore.Qt.CursorShape.PointingHandCursor
@@ -120,6 +132,7 @@ class Canvas(
         self.auto_labeling_mode: AutoLabelingMode = None
         self.shapes = []
         self.shapes_backups = []
+        self._pending_initial_backup = False
         self.current = None
         self.selected_shapes = []  # save the selected shapes here
         self.selected_shapes_copy = []
@@ -291,6 +304,12 @@ class Canvas(
 
     def store_shapes(self):
         """Store shapes for restoring later (Undo feature)"""
+        if getattr(self, "_pending_initial_backup", False) and self.shapes:
+            initial_backup = []
+            for shape in self.shapes:
+                initial_backup.append(shape.copy())
+            self.shapes_backups.append(initial_backup)
+            self._pending_initial_backup = False
         shapes_backup = []
         for shape in self.shapes:
             shapes_backup.append(shape.copy())
@@ -1260,6 +1279,8 @@ class Canvas(
                     ev.modifiers()
                     == QtCore.Qt.KeyboardModifier.ControlModifier
                 )
+                if getattr(self, "_pending_initial_backup", False):
+                    self.store_shapes()
                 self.select_shape_point(
                     pos, multiple_selection_mode=group_mode
                 )
@@ -2124,6 +2145,7 @@ class Canvas(
     # QT Overload
     def paintEvent(self, event):  # noqa: C901
         """Paint event for canvas"""
+        _t0 = time.perf_counter()
         if (
             self.pixmap is None
             or self.pixmap.width() == 0
@@ -2138,8 +2160,17 @@ class Canvas(
         p.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform)
         p.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
+        offset = self.offset_to_center()
         p.scale(self.scale, self.scale)
-        p.translate(self.offset_to_center())
+        p.translate(offset)
+
+        # Compute scene viewport for culling
+        viewport_rect = QtCore.QRectF(
+            -offset.x(),
+            -offset.y(),
+            self.width() / self.scale,
+            self.height() / self.scale,
+        )
 
         p.drawPixmap(0, 0, self.pixmap)
 
@@ -2427,6 +2458,10 @@ class Canvas(
 
         # Draw degrees
         for shape in self.shapes:
+            if not shape.visible:
+                continue
+            if not viewport_rect.intersects(shape.bounding_rect()):
+                continue
             if (
                 shape.selected or not self._hide_backround
             ) and self.is_visible(shape):
@@ -2971,6 +3006,13 @@ class Canvas(
                 p.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, False)
 
         p.end()
+        _dt = time.perf_counter() - _t0
+        if _dt > 0.05:
+            _perf_log(
+                "Canvas.paintEvent slow: %.3fs, shapes=%d",
+                _dt,
+                len(self.shapes),
+            )
 
     def render_visualization(
         self,
@@ -3558,13 +3600,20 @@ class Canvas(
             self.shapes = []
         self.update()
 
-    def load_shapes(self, shapes, replace=True):
+    def load_shapes(self, shapes, replace=True, store_backup=True):
         """Load shapes"""
+        _t0 = time.perf_counter()
         if replace:
             self.shapes = list(shapes)
         else:
             self.shapes.extend(shapes)
-        self.store_shapes()
+        _t_before_store = time.perf_counter()
+        if store_backup:
+            self.store_shapes()
+            self._pending_initial_backup = False
+        else:
+            self._pending_initial_backup = True
+        _t_after_store = time.perf_counter()
         self.current = None
         self._brush_drawing = False
         self.h_hape = None
@@ -3572,6 +3621,16 @@ class Canvas(
         self.h_edge = None
         self.h_cuboid_face = None
         self.update()
+        _t_total = time.perf_counter()
+        total_time = _t_total - _t0
+        if total_time > 0.1:
+            _perf_log(
+                "Canvas.load_shapes slow: store_shapes=%.3fs, total=%.3fs, "
+                "count=%d",
+                _t_after_store - _t_before_store,
+                total_time,
+                len(self.shapes),
+            )
 
     def set_shape_visible(self, shape, value):
         """Set visibility for a shape"""

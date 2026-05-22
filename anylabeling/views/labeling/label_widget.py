@@ -6,6 +6,7 @@ import os
 import os.path as osp
 import re
 import shutil
+import time
 from typing import Optional
 
 import cv2
@@ -110,6 +111,15 @@ from .widgets import (
     KeypointToolWindow,
     InspectorPanel,
 )
+
+PERF_LOG_ENABLED = os.getenv("XANYLABELING_PERF_LOG") == "1"
+
+
+def _perf_log(message, *args):
+    """Emit performance logs only when enabled by env var."""
+    if PERF_LOG_ENABLED:
+        logger.info(message, *args)
+
 
 LABEL_COLORMAP = utils.label_colormap()
 LABEL_OPACITY = 128
@@ -306,6 +316,7 @@ class LabelingWidget(LabelDialog):
         # Dataset filter index (SQLite derived cache)
         self._dataset_filter_index: Optional[DatasetFilterIndex] = None
         self._dataset_index_worker: Optional[DatasetIndexWorker] = None
+        self._dataset_index_timer: Optional[QtCore.QTimer] = None
 
         # Filter result navigation state
         self._filter_navigation_engine = FilterNavigationEngine()
@@ -1892,6 +1903,14 @@ class LabelingWidget(LabelDialog):
             self.tr("Cancel the running dataset index task"),
             enabled=False,
         )
+        scan_exif_orientation = action(
+            self.tr("Scan EXIF Orientation"),
+            self.scan_exif_orientation,
+            None,
+            None,
+            self.tr("Scan EXIF orientation for all images in the list"),
+            enabled=True,
+        )
 
         # AI Actions
         toggle_auto_labeling_widget = action(
@@ -2039,6 +2058,7 @@ class LabelingWidget(LabelDialog):
             refresh_dataset_index=refresh_dataset_index,
             rebuild_dataset_index=rebuild_dataset_index,
             cancel_dataset_index=cancel_dataset_index,
+            scan_exif_orientation=scan_exif_orientation,
             zoom_actions=zoom_actions,
             open_next_image=open_next_image,
             open_prev_image=open_prev_image,
@@ -2351,6 +2371,7 @@ class LabelingWidget(LabelDialog):
                 refresh_dataset_index,
                 rebuild_dataset_index,
                 cancel_dataset_index,
+                scan_exif_orientation,
                 fill_drawing,
                 loop_thru_labels,
                 loop_select_labels,
@@ -2461,6 +2482,7 @@ class LabelingWidget(LabelDialog):
             refresh_dataset_index,
             rebuild_dataset_index,
             cancel_dataset_index,
+            scan_exif_orientation,
             select_toggle_shapes,
             run_all_images,
             toggle_auto_labeling_widget,
@@ -4010,6 +4032,7 @@ class LabelingWidget(LabelDialog):
         popup.show_popup(self, copy_msg=file_path, position="default")
 
     def _label_file_checked(self, label_file):
+        _t0 = time.perf_counter()
         if not QtCore.QFile.exists(label_file):
             return False
         try:
@@ -4022,9 +4045,23 @@ class LabelingWidget(LabelDialog):
                     buffer = buffer[-32:] + chunk
                     match = CHECKED_FIELD_PATTERN.search(buffer)
                     if match:
+                        _dt = time.perf_counter() - _t0
+                        if _dt > 0.05:
+                            _perf_log(
+                                "_label_file_checked slow: %.3fs for %s",
+                                _dt,
+                                label_file,
+                            )
                         return match.group(1) == "true"
         except Exception:
             return False
+        _dt = time.perf_counter() - _t0
+        if _dt > 0.05:
+            _perf_log(
+                "_label_file_checked slow: %.3fs for %s",
+                _dt,
+                label_file,
+            )
         return False
 
     def _set_file_item_checked(self, item, checked):
@@ -4036,7 +4073,7 @@ class LabelingWidget(LabelDialog):
     def _file_item_annotation_checked(self, item):
         return item.data(Qt.ItemDataRole.UserRole) is True
 
-    def _create_file_list_item(self, file, label_file):
+    def _create_file_list_item(self, file, label_file, load_checked=False):
         item = QtWidgets.QListWidgetItem(file)
         flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
         if self._config.get("file_list_checkbox_editable", False):
@@ -4048,13 +4085,30 @@ class LabelingWidget(LabelDialog):
             item.setCheckState(Qt.CheckState.Checked)
         else:
             item.setCheckState(Qt.CheckState.Unchecked)
-        self._set_file_item_checked(item, self._label_file_checked(label_file))
+        if load_checked:
+            self._set_file_item_checked(
+                item, self._label_file_checked(label_file)
+            )
+        else:
+            self._set_file_item_checked(item, False)
         return item
 
     def _current_file_item(self):
         if str(self.filename) not in self.fn_to_index:
             return None
         return self.file_list_widget.item(self.fn_to_index[str(self.filename)])
+
+    def _sync_file_list_current_row(self, filename):
+        """Sync file list selection without re-entering load_file."""
+        filename = str(filename)
+        if filename not in self.fn_to_index:
+            return
+        row = self.fn_to_index[filename]
+        if self.file_list_widget.currentRow() == row:
+            return
+        blocker = QtCore.QSignalBlocker(self.file_list_widget)
+        self.file_list_widget.setCurrentRow(row)
+        del blocker
 
     def _annotation_checked(self):
         return self.other_data.get(CHECKED_FIELD, False) is True
@@ -4223,10 +4277,15 @@ class LabelingWidget(LabelDialog):
             image_set = set(self.image_list)
             matched = [p for p in all_matched if p in image_set]
         else:
-            # Fallback: full JSON scan
-            matched = self._filter_navigation_engine.collect_matched_files(
-                list(self.image_list), state, self.output_dir
+            # If index is not ready, prompt user instead of full JSON scan
+            self.status(
+                self.tr(
+                    "Dataset index not ready. Please wait or rebuild index."
+                ),
+                5000,
             )
+            self._set_filter_navigation_action_checked(False)
+            return False
         self._filter_navigation_files = matched
         self._filter_navigation_initial_count = len(matched)
         self._filter_navigation_state = state
@@ -4280,6 +4339,21 @@ class LabelingWidget(LabelDialog):
             self.status(
                 self.tr("Cancelling dataset index build..."), 3000
             )
+
+    def scan_exif_orientation(self):
+        """Manually trigger EXIF orientation scan for all images."""
+        image_files = list(self.image_list)
+        if not image_files:
+            self.status(
+                self.tr("No images to scan. Open a directory first."), 3000
+            )
+            return
+        self.async_exif_scanner.start_scan(image_files)
+        self.status(
+            self.tr("Scanning EXIF orientation for %d images...")
+            % len(image_files),
+            3000,
+        )
 
     def _start_dataset_index_worker(
         self, mode, image_files, output_dir=None
@@ -5720,10 +5794,14 @@ class LabelingWidget(LabelDialog):
     def remove_labels(self, shapes):
         for shape in shapes:
             item = self.label_list.find_item_by_shape(shape)
-            self.label_list.remove_item(item)
+            if item is not None:
+                self.label_list.remove_item(item)
         self._refresh_shape_filters()
 
-    def load_shapes(self, shapes, replace=True, update_last_label=True):
+    def load_shapes(
+        self, shapes, replace=True, update_last_label=True, store_backup=True
+    ):
+        _t0 = time.perf_counter()
         self._no_selection_slot = True
         self.label_list.setUpdatesEnabled(False)
         try:
@@ -5737,8 +5815,22 @@ class LabelingWidget(LabelDialog):
         finally:
             self.label_list.setUpdatesEnabled(True)
             self._no_selection_slot = False
-        self.canvas.load_shapes(shapes, replace=replace)
+        _t_list = time.perf_counter()
+        self.canvas.load_shapes(shapes, replace=replace, store_backup=store_backup)
+        _t_canvas = time.perf_counter()
         self._refresh_shape_filters()
+        _t_filter = time.perf_counter()
+        total_time = _t_filter - _t0
+        if total_time > 0.1:
+            _perf_log(
+                "load_shapes slow: %d shapes, list=%.3fs, canvas=%.3fs, "
+                "filter=%.3fs, total=%.3fs",
+                len(shapes),
+                _t_list - _t0,
+                _t_canvas - _t_list,
+                _t_filter - _t_canvas,
+                total_time,
+            )
 
     def load_flags(self, flags):
         self.flag_widget.clear()
@@ -6624,6 +6716,7 @@ class LabelingWidget(LabelDialog):
 
     def load_file(self, filename=None):  # noqa: C901
         """Load the specified file, or the last opened file if None."""
+        _t_load = time.perf_counter()
 
         # NOTE(jack): Does we need to save the config here?
         # save_config(self._config)
@@ -6634,16 +6727,9 @@ class LabelingWidget(LabelDialog):
         # self.clear_auto_labeling_marks()
         # self.inform_next_files(filename)
 
-        # Changing file_list_widget loads file
-        if str(filename) in self.fn_to_index and (
-            self.file_list_widget.currentRow()
-            != self.fn_to_index[str(filename)]
-        ):
-            self.file_list_widget.setCurrentRow(
-                self.fn_to_index[str(filename)]
-            )
-            self.file_list_widget.update()
-            return False
+        # Keep file list selection in sync without deferring actual loading to
+        # itemSelectionChanged. Deferring created a two-stage next-image path.
+        self._sync_file_list_current_row(filename)
 
         # ① Save viewport of the image we are leaving
         self.viewport_controller.on_file_leaving(
@@ -6684,7 +6770,13 @@ class LabelingWidget(LabelDialog):
             label_file
         ):
             try:
+                _t_label = time.perf_counter()
                 self.label_file = LabelFile(label_file, image_dir)
+                _perf_log(
+                    "load_file label json: %.3fs, %s",
+                    time.perf_counter() - _t_label,
+                    label_file,
+                )
             except LabelFileError as e:
                 self.error_message(
                     self.tr("Error opening file"),
@@ -6727,7 +6819,13 @@ class LabelingWidget(LabelDialog):
         # TODO(jack): icc profile issue warning
         # - qt.gui.icc: fromIccProfile: failed minimal tag size sanity
         # - qt.gui.icc: fromIccProfile: invalid tag offset alignment
+        _t_image = time.perf_counter()
         image = QtGui.QImage.fromData(self.image_data)
+        _perf_log(
+            "load_file image decode: %.3fs, %s",
+            time.perf_counter() - _t_image,
+            filename,
+        )
 
         if image.isNull():
             formats = [
@@ -6761,7 +6859,13 @@ class LabelingWidget(LabelDialog):
                 self.update_navigator_viewport()
         if self._config["keep_prev"]:
             prev_shapes = self.canvas.shapes
+        _t_pixmap = time.perf_counter()
         self.canvas.load_pixmap(QtGui.QPixmap.fromImage(image))
+        _perf_log(
+            "load_file canvas.load_pixmap: %.3fs, %s",
+            time.perf_counter() - _t_pixmap,
+            filename,
+        )
 
         # load label flags
         flags = {k: False for k in self.image_flags or []}
@@ -6777,7 +6881,18 @@ class LabelingWidget(LabelDialog):
                         **default_flags,
                         **shape.flags,
                     }
-            self.load_shapes(self.label_file.shapes, update_last_label=False)
+            _t_shapes = time.perf_counter()
+            self.load_shapes(
+                self.label_file.shapes,
+                update_last_label=False,
+                store_backup=False,
+            )
+            _perf_log(
+                "load_file load_shapes: %.3fs, count=%d, %s",
+                time.perf_counter() - _t_shapes,
+                len(self.label_file.shapes),
+                filename,
+            )
             if self.label_file.flags is not None:
                 flags.update(self.label_file.flags)
         self.load_flags(flags)
@@ -6785,11 +6900,16 @@ class LabelingWidget(LabelDialog):
         # load shapes
         if self._config["keep_prev"] and self.no_shape():
             self.load_shapes(
-                prev_shapes, replace=False, update_last_label=False
+                prev_shapes,
+                replace=False,
+                update_last_label=False,
+                store_backup=False,
             )
             self.set_dirty()
         else:
             self.set_clean()
+        # Correct the checked state of the current file list item after load.
+        self._update_current_file_checked_item()
         self.canvas.setEnabled(True)
 
         # set zoom / viewport values
@@ -6848,7 +6968,13 @@ class LabelingWidget(LabelDialog):
                 )
             self.brightness_contrast_dialog.on_new_value()
 
+        _t_canvas = time.perf_counter()
         self.paint_canvas()
+        _perf_log(
+            "load_file paint_canvas: %.3fs, %s",
+            time.perf_counter() - _t_canvas,
+            filename,
+        )
         self.add_recent_file(self.filename)
         self.toggle_actions(True)
         self.canvas.setFocus()
@@ -6867,6 +6993,12 @@ class LabelingWidget(LabelDialog):
 
         # Populate inspector editable table with current file's shapes
         self._refresh_inspector_table()
+
+        _perf_log(
+            "load_file total: %.3fs, %s",
+            time.perf_counter() - _t_load,
+            filename,
+        )
 
         return True
 
@@ -7142,6 +7274,8 @@ class LabelingWidget(LabelDialog):
                 self.load_file(filename)
 
     def open_next_image(self, _value=False, load=True):
+        _t_next = time.perf_counter()
+        _perf_log("open_next_image enter: current=%s", self.filename)
         if not self.may_continue():
             return
         count = self.file_list_widget.count()
@@ -7162,6 +7296,11 @@ class LabelingWidget(LabelDialog):
         self.filename = filename
         if self.filename and load:
             self.load_file(self.filename)
+        _perf_log(
+            "open_next_image exit: %.3fs, next=%s",
+            time.perf_counter() - _t_next,
+            self.filename,
+        )
 
     # File
     def open_file(self, _value=False):
@@ -7618,7 +7757,9 @@ class LabelingWidget(LabelDialog):
             if self.output_dir:
                 label_file_without_path = osp.basename(label_file)
                 label_file = self.output_dir + "/" + label_file_without_path
-            item = self._create_file_list_item(file, label_file)
+            item = self._create_file_list_item(
+                file, label_file, load_checked=False
+            )
             self.file_list_widget.addItem(item)
             self.fn_to_index[file] = self.file_list_widget.count() - 1
 
@@ -7631,10 +7772,8 @@ class LabelingWidget(LabelDialog):
         self.toggle_actions(True)
         self.open_next_image()
 
-        if valid_files and self._config.get("exif_scan_enabled", True):
-            self.async_exif_scanner.start_scan(valid_files)
-
     def import_image_folder(self, dirpath, pattern=None, load=True):
+        _t0 = time.perf_counter()
         if not self.may_continue() or not dirpath:
             return
 
@@ -7677,7 +7816,9 @@ class LabelingWidget(LabelDialog):
             if self.output_dir:
                 label_file_without_path = osp.basename(label_file)
                 label_file = self.output_dir + "/" + label_file_without_path
-            item = self._create_file_list_item(filename, label_file)
+            item = self._create_file_list_item(
+                filename, label_file, load_checked=False
+            )
             self.file_list_widget.addItem(item)
             self.fn_to_index[filename] = self.file_list_widget.count() - 1
 
@@ -7691,14 +7832,15 @@ class LabelingWidget(LabelDialog):
         # Sync file list to inspector panel
         self._update_inspector_file_list()
 
-        if image_files and self._config.get("exif_scan_enabled", True):
-            self.async_exif_scanner.start_scan(image_files)
-
-        # Build or refresh dataset filter index (background)
-        if image_files:
-            self._start_dataset_index_worker(
-                "refresh", image_files, self.output_dir
-            )
+        # Cancel any pending dataset index timer from a previous directory.
+        if self._dataset_index_timer is not None:
+            self._dataset_index_timer.stop()
+            self._dataset_index_timer = None
+        _perf_log(
+            "import_image_folder: %d files in %.3fs",
+            len(image_files),
+            time.perf_counter() - _t0,
+        )
 
     def toggle_auto_labeling_widget(self):
         """Toggle auto labeling widget visibility."""
@@ -8036,6 +8178,7 @@ class LabelingWidget(LabelDialog):
                 )
 
     def update_thumbnail_display(self):
+        _t_thumbnail = time.perf_counter()
         self.thumbnail_pixmap = None
         self.thumbnail_image_label.clear()
         self.thumbnail_container.hide()
@@ -8069,6 +8212,11 @@ class LabelingWidget(LabelDialog):
             if not self.thumbnail_pixmap.isNull():
                 self.thumbnail_container.show()
                 self.update_thumbnail_pixmap()
+            _perf_log(
+                "update_thumbnail_display: %.3fs, %s",
+                time.perf_counter() - _t_thumbnail,
+                self.filename,
+            )
 
         except Exception as e:
             logger.error(f"Failed to load thumbnail image: {str(e)}")
