@@ -4719,6 +4719,8 @@ class LabelingWidget(LabelDialog):
         has_active_filter = self._filter_state.has_active_filter()
 
         if not has_active_filter:
+            if getattr(self, "_filter_navigation_active", False):
+                self.clear_filter_navigation()
             # Restore full visibility respecting per-label toggles
             changed = self._filter_engine.apply_label_visibility()
             if changed:

@@ -145,6 +145,7 @@ class TestFilterPersistence(unittest.TestCase):
         status_messages = []
         widget = types.SimpleNamespace()
         widget._filter_state = FilterState()
+        widget._filter_navigation_active = False
         widget.label_list = _FakeLabelList()
         widget._filter_engine = _FakeFilterEngine(changed=True)
         widget.canvas = _FakeCanvas()
@@ -162,6 +163,35 @@ class TestFilterPersistence(unittest.TestCase):
         self.assertEqual(widget._filter_engine.apply_calls, 1)
         self.assertEqual(widget.canvas.update_calls, 1)
         self.assertEqual(widget.update_navigator_shapes_calls, 1)
+        self.assertEqual(status_messages[-1], "")
+
+    def test_apply_combined_shape_filters_clears_navigation_without_filter(self):
+        status_messages = []
+        widget = types.SimpleNamespace()
+        widget._filter_state = FilterState()
+        widget._filter_navigation_active = True
+        widget._filter_navigation_files = ["a.jpg"]
+        widget._filter_navigation_initial_count = 1
+        widget._filter_navigation_state = FilterState(labels={"person"})
+        widget.label_list = _FakeLabelList()
+        widget._filter_engine = _FakeFilterEngine(changed=False)
+        widget.canvas = _FakeCanvas()
+        widget.navigator_dialog = _FakeNavigatorDialog(visible=True)
+        widget.status = lambda message, *_args: status_messages.append(message)
+        widget.update_navigator_shapes_calls = 0
+        widget.update_navigator_shapes = lambda: setattr(
+            widget,
+            "update_navigator_shapes_calls",
+            widget.update_navigator_shapes_calls + 1,
+        )
+        widget._set_filter_navigation_action_checked = lambda _checked: None
+
+        LabelingWidget._apply_combined_shape_filters(widget)
+
+        self.assertFalse(widget._filter_navigation_active)
+        self.assertEqual(widget._filter_navigation_files, [])
+        self.assertEqual(widget._filter_navigation_initial_count, 0)
+        self.assertIsNone(widget._filter_navigation_state)
         self.assertEqual(status_messages[-1], "")
 
     def test_multi_label_summary_does_not_clear_filter_state(self):
