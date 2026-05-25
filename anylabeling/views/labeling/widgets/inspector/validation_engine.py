@@ -15,6 +15,11 @@ from .flat_index import FlatIndex, FlattenedRecord
 logger = logging.getLogger(__name__)
 
 
+def is_valid_group_id(value: Any) -> bool:
+    """Return whether a group_id is a non-negative integer."""
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -256,7 +261,7 @@ class PersonRectRequiresGroupId(ValidationRule):
         if record.label != "person" or record.shape_type != "rectangle":
             return None
         gid = record.group_id
-        if gid is None or not isinstance(gid, int):
+        if not is_valid_group_id(gid):
             return Issue(
                 rule_name=self.name,
                 severity=self.severity,
@@ -269,6 +274,99 @@ class PersonRectRequiresGroupId(ValidationRule):
                 label=record.label,
                 group_id=gid,
             )
+        return None
+
+
+class GroupIdValid(ValidationRule):
+    """Check that group_id is a non-negative integer for supported shapes."""
+
+    name = "group_id_valid"
+    severity = "error"
+    description = "group_id 必须是非负整数"
+
+    def check(self, record, all_records, index):
+        gid = record.group_id
+        if gid is None or is_valid_group_id(gid):
+            return None
+        return Issue(
+            rule_name=self.name,
+            severity=self.severity,
+            message=(
+                f"[group_id异常] shape #{record.shape_index} "
+                f"group_id={gid!r} 不是非负整数"
+            ),
+            file_path=record.file_path,
+            shape_index=record.shape_index,
+            label=record.label,
+            group_id=None,
+        )
+
+
+class HeadFaceGroupIdRequired(ValidationRule):
+    """Check that head/face shapes have a valid group_id."""
+
+    name = "head_face_group_id_required"
+    severity = "error"
+    description = "head/face 必须有合法 group_id"
+
+    def check(self, record, all_records, index):
+        if record.label not in {"head", "face"}:
+            return None
+        gid = record.group_id
+        if not is_valid_group_id(gid):
+            return Issue(
+                rule_name=self.name,
+                severity=self.severity,
+                message=(
+                    f"[group_id缺失] shape #{record.shape_index} "
+                    f"label='{record.label}' 的 group_id 不合法"
+                ),
+                file_path=record.file_path,
+                shape_index=record.shape_index,
+                label=record.label,
+                group_id=None,
+            )
+        return None
+
+
+class HeadFaceGroupIdUniqueness(ValidationRule):
+    """Check that head/face group_id values do not repeat within a file."""
+
+    name = "head_face_group_id_uniqueness"
+    severity = "error"
+    description = "head/face 的 group_id 不应重复"
+
+    def check_all(self, index: FlatIndex) -> List[Issue]:
+        issues: List[Issue] = []
+        for file_path, records in index._by_file.items():
+            by_gid: Dict[int, List[FlattenedRecord]] = {}
+            for rec in records:
+                if rec.label not in {"head", "face"}:
+                    continue
+                gid = rec.group_id
+                if not is_valid_group_id(gid):
+                    continue
+                by_gid.setdefault(gid, []).append(rec)
+
+            for gid, grouped in by_gid.items():
+                if len(grouped) <= 1:
+                    continue
+                for rec in grouped:
+                    issues.append(Issue(
+                        rule_name=self.name,
+                        severity=self.severity,
+                        message=(
+                            f"[group_id重复] 文件内 head/face 的 group_id={gid} "
+                            f"出现 {len(grouped)} 次 (shape #{rec.shape_index})"
+                        ),
+                        file_path=rec.file_path,
+                        shape_index=rec.shape_index,
+                        label=rec.label,
+                        group_id=gid,
+                    ))
+        return issues
+
+    def check(self, record, all_records, index):
         return None
 
 
@@ -418,7 +516,23 @@ class RequiredFieldNotEmpty(ValidationRule):
     def check(self, record, all_records, index):
         for field_name, display_name in self.REQUIRED_FIELDS:
             value = self._FIELD_GETTERS.get(field_name, lambda r: None)(record)
-            if not value:
+            if field_name == "label":
+                if not value:
+                    return Issue(
+                        rule_name=self.name,
+                        severity=self.severity,
+                        message=(
+                            f"[字段为空] shape #{record.shape_index} "
+                            f"'{display_name}' 字段为空"
+                        ),
+                        file_path=record.file_path,
+                        shape_index=record.shape_index,
+                        label=record.label,
+                        group_id=record.group_id,
+                        extra={"field": field_name},
+                    )
+                continue
+            if field_name == "points_count" and value <= 0:
                 return Issue(
                     rule_name=self.name,
                     severity=self.severity,

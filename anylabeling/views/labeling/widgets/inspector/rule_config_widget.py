@@ -23,6 +23,9 @@ from .validation_engine import (
     LabelInAllowlist,
     GroupLabelUniqueness,
     PersonRectRequiresGroupId,
+    GroupIdValid,
+    HeadFaceGroupIdRequired,
+    HeadFaceGroupIdUniqueness,
     LabelShapeTypeBinding,
     GroupIdUniqueness,
     GroupIdKeypointIntegrity,
@@ -78,6 +81,27 @@ _RULE_REGISTRY: List[Dict[str, Any]] = [
         "name": "person_rect_requires_group_id",
         "display": "Person 矩形 group_id 检查",
         "description": "person 矩形框必须有数字 group_id",
+        "severity": "error",
+        "default_on": True,
+    },
+    {
+        "name": "group_id_valid",
+        "display": "group_id 合法性检查",
+        "description": "group_id 必须是非负整数",
+        "severity": "error",
+        "default_on": True,
+    },
+    {
+        "name": "head_face_group_id_required",
+        "display": "Head/Face group_id 检查",
+        "description": "head/face 必须有合法 group_id",
+        "severity": "error",
+        "default_on": True,
+    },
+    {
+        "name": "head_face_group_id_uniqueness",
+        "display": "Head/Face group_id 唯一性",
+        "description": "head/face 的 group_id 不应重复",
         "severity": "error",
         "default_on": True,
     },
@@ -426,6 +450,15 @@ class RuleConfigWidget(QtWidgets.QWidget):
         if rule_name == "person_rect_requires_group_id":
             return PersonRectRequiresGroupId()
 
+        if rule_name == "group_id_valid":
+            return GroupIdValid()
+
+        if rule_name == "head_face_group_id_required":
+            return HeadFaceGroupIdRequired()
+
+        if rule_name == "head_face_group_id_uniqueness":
+            return HeadFaceGroupIdUniqueness()
+
         if rule_name == "label_shape_type_binding":
             rect_labels = self._read_param(
                 rule_name, "rectangle_labels", DEFAULT_RECT_LABELS
@@ -445,7 +478,7 @@ class RuleConfigWidget(QtWidgets.QWidget):
             unique_str = self._read_param(rule_name, "unique_types", "")
             rule = GroupIdUniqueness()
             if unique_str:
-                rule.UNIQUE_TYPES = unique_str
+                rule.UNIQUE_TYPES = set(unique_str)
             return rule
 
         if rule_name == "attribute_consistency":
@@ -468,9 +501,9 @@ class RuleConfigWidget(QtWidgets.QWidget):
             (m["params"] for m in _RULE_REGISTRY if m["name"] == rule_name),
             {},
         )
-        for i, pn in enumerate(params_meta):
-            if pn == param_name and i < len(children):
-                raw = children[i].text().strip()
+        for idx, pn in enumerate(params_meta):
+            if pn == param_name and idx < len(children):
+                raw = children[idx].text().strip()
                 return set(s.strip() for s in raw.split(",") if s.strip())
         return set(s.strip() for s in default.split(",") if s.strip())
 
