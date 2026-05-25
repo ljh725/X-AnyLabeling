@@ -187,3 +187,4 @@ calibration_*.npy
 # 自动化备份，别传到Git上
 conversations/
 exported/
+.specstory/
