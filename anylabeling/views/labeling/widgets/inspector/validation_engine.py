@@ -8,7 +8,7 @@ rules against a FlatIndex and collects Issues.
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple, Type
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .flat_index import FlatIndex, FlattenedRecord
 
@@ -168,6 +168,8 @@ class GroupIdUniqueness(ValidationRule):
     def check_all(self, index: FlatIndex) -> List[Issue]:
         issues: List[Issue] = []
         for gid, records in index._by_group.items():
+            if not is_valid_group_id(gid):
+                continue
             type_counts: Dict[str, List[FlattenedRecord]] = {}
             for rec in records:
                 if rec.shape_type == "rectangle" and rec.label in self.UNIQUE_TYPES:
@@ -214,7 +216,7 @@ class GroupLabelUniqueness(ValidationRule):
         for file_path, records in index._by_file.items():
             by_group: Dict[int, Dict[str, List[FlattenedRecord]]] = {}
             for rec in records:
-                if rec.group_id is None:
+                if not is_valid_group_id(rec.group_id):
                     continue
                 if rec.label not in self.label_set:
                     continue
@@ -272,7 +274,7 @@ class PersonRectRequiresGroupId(ValidationRule):
                 file_path=record.file_path,
                 shape_index=record.shape_index,
                 label=record.label,
-                group_id=gid,
+                group_id=gid if is_valid_group_id(gid) else None,
             )
         return None
 
@@ -466,6 +468,8 @@ class GroupIdKeypointIntegrity(ValidationRule):
     def check_all(self, index: FlatIndex) -> List[Issue]:
         issues: List[Issue] = []
         for gid, records in index._by_group.items():
+            if not is_valid_group_id(gid):
+                continue
             has_person_rect = any(
                 r.label == "person" and r.shape_type == "rectangle"
                 for r in records

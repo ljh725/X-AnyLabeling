@@ -414,8 +414,10 @@ class RuleConfigWidget(QtWidgets.QWidget):
             rname = meta["name"]
             row = self._rule_rows.get(rname)
             if row is None:
-                continue
-            if not row._cb.isChecked():  # type: ignore[attr-defined]
+                enabled = meta.get("default_on", False)
+            else:
+                enabled = row._cb.isChecked()  # type: ignore[attr-defined]
+            if not enabled:
                 continue
 
             rule = self._instantiate_rule(rname, meta, shared_labels)
