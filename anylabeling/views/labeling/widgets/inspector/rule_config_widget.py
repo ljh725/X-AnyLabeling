@@ -118,8 +118,8 @@ _RULE_REGISTRY: List[Dict[str, Any]] = [
     },
     {
         "name": "group_id_keypoint_integrity",
-        "display": "关键点完整性",
-        "description": "有关键点的 group 必须有 person 矩形框",
+        "display": "Person 主体绑定",
+        "description": "person 是唯一的 pose 主体；关键点只能绑定到含 person 的 group_id，head/face 只作为同组辅助框。",
         "severity": "warning",
         "default_on": True,
     },

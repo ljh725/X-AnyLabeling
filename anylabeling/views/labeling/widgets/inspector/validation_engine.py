@@ -448,15 +448,16 @@ class LabelShapeTypeBinding(ValidationRule):
 
 class GroupIdKeypointIntegrity(ValidationRule):
     """
-    Check keypoint integrity: if a group has keypoints (point type with
-    COCO keypoint labels), it MUST have a 'person' rectangle.
+    Check pose subject binding.
 
-    This catches orphan heads / orphan keypoints.
+    person is the only pose subject.  Keypoints must belong to a group_id
+    that contains a person rectangle.  head/face may share the same group_id
+    as auxiliary boxes, but they do not carry pose keypoints.
     """
 
     name = "group_id_keypoint_integrity"
     severity = "warning"
-    description = "group 内有关键点但缺少 person 矩形框"
+    description = "person 是唯一的 pose 主体；关键点必须绑定到含 person 的 group_id"
 
     COCO_KEYPOINTS: Set[str] = {
         "nose", "l_eye", "r_eye", "l_ear", "r_ear",
@@ -474,6 +475,10 @@ class GroupIdKeypointIntegrity(ValidationRule):
                 r.label == "person" and r.shape_type == "rectangle"
                 for r in records
             )
+            has_head_or_face = any(
+                r.label in {"head", "face"} and r.shape_type == "rectangle"
+                for r in records
+            )
             has_keypoints = any(
                 r.shape_type == "point" and r.label in self.COCO_KEYPOINTS
                 for r in records
@@ -481,17 +486,29 @@ class GroupIdKeypointIntegrity(ValidationRule):
             if has_keypoints and not has_person_rect:
                 for rec in records:
                     if rec.shape_type == "point" and rec.label in self.COCO_KEYPOINTS:
+                        if has_head_or_face:
+                            message = (
+                                f"[主体缺失] group_id={gid} 只有 head/face 辅助框，"
+                                f"却出现关键点 '{rec.label}'；关键点只能绑定到 person"
+                            )
+                        else:
+                            message = (
+                                f"[主体缺失] group_id={gid} 有关键点 '{rec.label}'，"
+                                f"但没有 person 矩形框；关键点只能绑定到 person"
+                            )
                         issues.append(Issue(
                             rule_name=self.name,
                             severity=self.severity,
-                            message=(
-                                f"[孤立关键点] group_id={gid} 有关键点 '{rec.label}' "
-                                f"但缺少 person 矩形框"
-                            ),
+                            message=message,
                             file_path=rec.file_path,
                             shape_index=rec.shape_index,
                             label=rec.label,
                             group_id=gid,
+                            extra={
+                                "has_person": has_person_rect,
+                                "has_head_or_face": has_head_or_face,
+                                "subject": "person",
+                            },
                         ))
         return issues
 
