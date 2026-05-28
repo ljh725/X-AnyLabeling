@@ -188,3 +188,4 @@ calibration_*.npy
 conversations/
 exported/
 .specstory/
+.understand-anything/
