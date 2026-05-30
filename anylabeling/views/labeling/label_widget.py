@@ -7,7 +7,7 @@ import os.path as osp
 import re
 import shutil
 import time
-from typing import Optional
+from typing import Optional, Set
 
 import cv2
 import numpy as np
@@ -317,6 +317,7 @@ class LabelingWidget(LabelDialog):
         self._dataset_filter_index: Optional[DatasetFilterIndex] = None
         self._dataset_index_worker: Optional[DatasetIndexWorker] = None
         self._dataset_index_timer: Optional[QtCore.QTimer] = None
+        self._pending_dataset_index_refresh_files: Set[str] = set()
 
         # Filter result navigation state
         self._filter_navigation_engine = FilterNavigationEngine()
@@ -4370,6 +4371,9 @@ class LabelingWidget(LabelDialog):
                 3000,
             )
             return
+        if self._dataset_filter_index is not None:
+            self._dataset_filter_index.close()
+            self._dataset_filter_index = None
         db_path = make_db_path(self.last_open_dir or self.current_path())
         self._dataset_index_worker = DatasetIndexWorker(
             mode, db_path, image_files, output_dir, self
@@ -4409,9 +4413,18 @@ class LabelingWidget(LabelDialog):
         )
 
     def _on_dataset_index_finished(self, result):
+        if self._dataset_filter_index is not None:
+            self._dataset_filter_index.close()
         db_path = make_db_path(self.last_open_dir or self.current_path())
         self._dataset_filter_index = DatasetFilterIndex(db_path)
-        self._dataset_filter_index.open()
+        if self._dataset_filter_index.open():
+            for image_path in sorted(
+                self._pending_dataset_index_refresh_files
+            ):
+                self._dataset_filter_index.refresh_file(
+                    image_path, self.output_dir
+                )
+        self._pending_dataset_index_refresh_files.clear()
         self.status(
             self.tr(
                 "Dataset index ready: inserted={inserted}, "
@@ -6024,7 +6037,11 @@ class LabelingWidget(LabelDialog):
                 )
             # disable allows next and previous image to proceed
             # Refresh derived index for the saved file
-            if self._dataset_filter_index is not None:
+            if self._dataset_index_worker is not None:
+                self._pending_dataset_index_refresh_files.add(
+                    self.image_path
+                )
+            elif self._dataset_filter_index is not None:
                 self._dataset_filter_index.refresh_file(
                     self.image_path, self.output_dir
                 )
@@ -7360,6 +7377,14 @@ class LabelingWidget(LabelDialog):
 
         if not output_dir:
             return
+
+        if self._dataset_index_worker is not None:
+            self._dataset_index_worker.cancel()
+            self._dataset_index_worker.wait()
+
+        if self._dataset_filter_index is not None:
+            self._dataset_filter_index.close()
+            self._dataset_filter_index = None
 
         self.output_dir = output_dir
 

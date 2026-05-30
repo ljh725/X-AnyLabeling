@@ -25,6 +25,7 @@ CACHE_DIR = osp.expanduser("~/.cache/xanylabeling/dataset_index")
 INDEX_STATUS_OK = "ok"
 INDEX_STATUS_MISSING = "missing"
 INDEX_STATUS_ERROR = "error"
+SQLITE_BUSY_TIMEOUT_MS = 30000
 
 ProgressCallback = Callable[[int, int, str], None]
 CancelCheck = Callable[[], bool]
@@ -87,7 +88,14 @@ class DatasetFilterIndex:
         if self.db_path is None:
             return False
         try:
-            self._conn = sqlite3.connect(self.db_path)
+            self._conn = sqlite3.connect(
+                self.db_path, timeout=SQLITE_BUSY_TIMEOUT_MS / 1000
+            )
+            self._conn.execute(
+                f"PRAGMA busy_timeout = {SQLITE_BUSY_TIMEOUT_MS}"
+            )
+            if self.db_path != ":memory:":
+                self._conn.execute("PRAGMA journal_mode = WAL")
             self._conn.execute("PRAGMA foreign_keys = ON")
             self._ensure_schema()
             return True
@@ -221,6 +229,8 @@ class DatasetFilterIndex:
             return
         json_path = self._json_path_for_image(image_path, output_dir)
         file_id = self._file_id_for_json(json_path)
+        if file_id is None:
+            file_id = self._file_id_for_image(image_path)
         if file_id is not None:
             self._remove_file_shapes(file_id)
             self._update_file(file_id, json_path)
@@ -761,12 +771,13 @@ class DatasetFilterIndex:
             self._conn.execute(
                 f"""
                 UPDATE files
-                SET {sort_order_sql} json_mtime = ?, json_size = ?,
+                SET json_path = ?, {sort_order_sql} json_mtime = ?, json_size = ?,
                     shape_count = ?, indexed_at = ?, index_status = ?,
                     error_message = ?
                 WHERE id = ?
                 """,
-                params_prefix
+                (json_path,)
+                + params_prefix
                 + (
                     0.0,
                     0,
@@ -786,12 +797,13 @@ class DatasetFilterIndex:
         self._conn.execute(
             f"""
             UPDATE files
-            SET {sort_order_sql} json_mtime = ?, json_size = ?,
+            SET json_path = ?, {sort_order_sql} json_mtime = ?, json_size = ?,
                 shape_count = ?, indexed_at = ?,
                 index_status = ?, error_message = ?
             WHERE id = ?
             """,
-            params_prefix
+            (json_path,)
+            + params_prefix
             + (
                 st.st_mtime,
                 st.st_size,
@@ -889,6 +901,24 @@ class DatasetFilterIndex:
         try:
             cursor = self._conn.execute(
                 "SELECT id FROM files WHERE json_path = ?", (json_path,)
+            )
+            row = cursor.fetchone()
+            return row[0] if row else None
+        except sqlite3.Error:
+            return None
+
+    def _file_id_for_image(self, image_path: str) -> Optional[int]:
+        """根据图片路径查询对应的 file_id。
+
+        Args:
+            image_path: 图片文件路径。
+
+        Returns:
+            文件记录 ID，若不存在则返回 None。
+        """
+        try:
+            cursor = self._conn.execute(
+                "SELECT id FROM files WHERE image_path = ?", (image_path,)
             )
             row = cursor.fetchone()
             return row[0] if row else None
