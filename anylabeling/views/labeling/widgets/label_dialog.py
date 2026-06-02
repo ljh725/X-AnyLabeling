@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import concurrent.futures
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtGui import QFont, QColor, QIntValidator
@@ -949,35 +950,80 @@ class LabelInfoScanThread(QtCore.QThread):
         self.output_dir = output_dir
         self._cancelled = False
 
+    @staticmethod
+    def _worker_count(total):
+        """Return a bounded worker count for parallel JSON scanning."""
+        if total <= 1:
+            return 1
+
+        configured = os.getenv("XANYLABELING_LABEL_SCAN_WORKERS")
+        if configured:
+            try:
+                workers = int(configured)
+            except ValueError:
+                workers = 0
+        else:
+            workers = max(2, os.cpu_count() or 4)
+
+        return max(1, min(workers, 8, total))
+
     def cancel(self):
         """Request cancellation before the next file is scanned."""
         self._cancelled = True
 
+    def _label_file_for_image(self, image_file):
+        """Return the annotation JSON path for an image path."""
+        label_dir, filename = os.path.split(image_file)
+        if self.output_dir:
+            label_dir = self.output_dir
+        return os.path.join(
+            label_dir, os.path.splitext(filename)[0] + ".json"
+        )
+
+    def _scan_image_file(self, image_file):
+        """Read one image's JSON file and return labels found in it."""
+        classes = set()
+        label_file = self._label_file_for_image(image_file)
+        if not os.path.exists(label_file):
+            return classes
+
+        with open(label_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        shapes = data.get("shapes", [])
+        for shape in shapes:
+            label = shape.get("label")
+            if label:
+                classes.add(label)
+        return classes
+
     def run(self):
         """Read annotation JSON files and emit the collected label names."""
-        classes = set()
         total = len(self.image_file_list)
+        if total == 0:
+            self.finished_with_labels.emit(set())
+            return
+
         progress_step = max(total // 100, 1)
+        workers = self._worker_count(total)
+
+        if workers <= 1:
+            classes = self._run_sequential(total, progress_step)
+        else:
+            classes = self._run_parallel(total, progress_step, workers)
+
+        if not self._cancelled:
+            self.finished_with_labels.emit(classes)
+
+    def _run_sequential(self, total, progress_step):
+        """Scan JSON files one by one."""
+        classes = set()
 
         for index, image_file in enumerate(self.image_file_list, 1):
             if self._cancelled:
-                return
+                return classes
 
             try:
-                label_dir, filename = os.path.split(image_file)
-                if self.output_dir:
-                    label_dir = self.output_dir
-                label_file = os.path.join(
-                    label_dir, os.path.splitext(filename)[0] + ".json"
-                )
-                if os.path.exists(label_file):
-                    with open(label_file, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                    shapes = data.get("shapes", [])
-                    for shape in shapes:
-                        label = shape.get("label")
-                        if label:
-                            classes.add(label)
+                classes.update(self._scan_image_file(image_file))
             except Exception as e:
                 self.error.emit(
                     f"Error occurred while scanning labels: {e}"
@@ -986,8 +1032,59 @@ class LabelInfoScanThread(QtCore.QThread):
             if index == total or index % progress_step == 0:
                 self.progress.emit(index, total)
 
-        if not self._cancelled:
-            self.finished_with_labels.emit(classes)
+        return classes
+
+    def _run_parallel(self, total, progress_step, workers):
+        """Scan JSON files with a bounded thread pool."""
+        classes = set()
+        completed = 0
+        image_iter = iter(self.image_file_list)
+        pending = set()
+        executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=workers
+        )
+
+        def submit_next():
+            try:
+                image_file = next(image_iter)
+            except StopIteration:
+                return False
+            pending.add(executor.submit(self._scan_image_file, image_file))
+            return True
+
+        for _ in range(min(total, workers * 4)):
+            submit_next()
+
+        try:
+            while pending:
+                if self._cancelled:
+                    return classes
+                done, pending = concurrent.futures.wait(
+                    pending,
+                    timeout=0.1,
+                    return_when=concurrent.futures.FIRST_COMPLETED,
+                )
+                if not done:
+                    continue
+
+                for future in done:
+                    completed += 1
+                    try:
+                        classes.update(future.result())
+                    except Exception as e:
+                        self.error.emit(
+                            f"Error occurred while scanning labels: {e}"
+                        )
+                    if completed == total or completed % progress_step == 0:
+                        self.progress.emit(completed, total)
+                    submit_next()
+        finally:
+            executor.shutdown(
+                wait=not self._cancelled,
+                cancel_futures=self._cancelled,
+            )
+
+        return classes
 
 
 class LabelModifyDialog(QtWidgets.QDialog):
@@ -1463,13 +1560,7 @@ class LabelModifyDialog(QtWidgets.QDialog):
     def init_label_info(self, classes):
         """Merge scanned labels with current UI label metadata."""
         classes = set(classes)
-
-        for i in range(self.parent.unique_label_list.count()):
-            item = self.parent.unique_label_list.item(i)
-            if item:
-                label_text = item.text()
-                if label_text:
-                    classes.add(label_text)
+        scanned_label_info = {}
 
         for c in sorted(classes):
             # Update unique label list
@@ -1496,13 +1587,14 @@ class LabelModifyDialog(QtWidgets.QDialog):
                 color = list(rgb)
                 opacity = self.opacity
                 visible = True
-            self.parent.label_info[c] = dict(
+            scanned_label_info[c] = dict(
                 delete=False,
                 value=None,
                 color=color,
                 opacity=opacity,
                 visible=visible,
             )
+        self.parent.label_info = scanned_label_info
 
     def update_range(self):
         if not self._label_scan_finished:
