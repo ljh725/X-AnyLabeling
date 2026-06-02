@@ -229,6 +229,7 @@ class LabelingWidget(LabelDialog):
             self.inspector_panel.set_allowed_labels(set(labels_from_config))
         self._settings_controller = None
         self._settings_dialog = None
+        self._label_modify_dialog = None
         self._settings_runtime_applier = SettingsRuntimeApplier(self)
         self._auto_switch_signal_connected = False
 
@@ -3499,10 +3500,25 @@ class LabelingWidget(LabelDialog):
             save_config(self._config)
 
     def label_manager(self):
+        if self._label_modify_dialog is not None:
+            self._label_modify_dialog.raise_()
+            self._label_modify_dialog.activateWindow()
+            return
+
         modify_label_dialog = LabelModifyDialog(
             parent=self, opacity=LABEL_OPACITY
         )
-        result = modify_label_dialog.exec()
+        self._label_modify_dialog = modify_label_dialog
+        action = getattr(getattr(self, "actions", None), "label_manager", None)
+        was_enabled = action.isEnabled() if action is not None else None
+        if action is not None:
+            action.setEnabled(False)
+        try:
+            result = modify_label_dialog.exec()
+        finally:
+            self._label_modify_dialog = None
+            if action is not None:
+                action.setEnabled(was_enabled)
         if result == QtWidgets.QDialog.DialogCode.Accepted:
             if self.filename:
                 self.load_file(self.filename)

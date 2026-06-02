@@ -929,6 +929,67 @@ class LabelColorButton(QtWidgets.QWidget):
             self.parent.change_color(self)
 
 
+class LabelInfoScanThread(QtCore.QThread):
+    """Scan label names from JSON files without blocking dialog creation."""
+
+    progress = QtCore.pyqtSignal(int, int)
+    finished_with_labels = QtCore.pyqtSignal(object)
+    error = QtCore.pyqtSignal(str)
+
+    def __init__(self, image_file_list, output_dir, parent=None):
+        """Initialize the scan thread.
+
+        Args:
+            image_file_list: List of loaded image paths.
+            output_dir: Optional label output directory.
+            parent: Optional QObject parent.
+        """
+        super().__init__(parent)
+        self.image_file_list = list(image_file_list)
+        self.output_dir = output_dir
+        self._cancelled = False
+
+    def cancel(self):
+        """Request cancellation before the next file is scanned."""
+        self._cancelled = True
+
+    def run(self):
+        """Read annotation JSON files and emit the collected label names."""
+        classes = set()
+        total = len(self.image_file_list)
+        progress_step = max(total // 100, 1)
+
+        for index, image_file in enumerate(self.image_file_list, 1):
+            if self._cancelled:
+                return
+
+            try:
+                label_dir, filename = os.path.split(image_file)
+                if self.output_dir:
+                    label_dir = self.output_dir
+                label_file = os.path.join(
+                    label_dir, os.path.splitext(filename)[0] + ".json"
+                )
+                if os.path.exists(label_file):
+                    with open(label_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    shapes = data.get("shapes", [])
+                    for shape in shapes:
+                        label = shape.get("label")
+                        if label:
+                            classes.add(label)
+            except Exception as e:
+                self.error.emit(
+                    f"Error occurred while scanning labels: {e}"
+                )
+
+            if index == total or index % progress_step == 0:
+                self.progress.emit(index, total)
+
+        if not self._cancelled:
+            self.finished_with_labels.emit(classes)
+
+
 class LabelModifyDialog(QtWidgets.QDialog):
     """A dialog for modifying labels across multiple files.
 
@@ -952,8 +1013,11 @@ class LabelModifyDialog(QtWidgets.QDialog):
         self.image_file_list = self.get_image_file_list()
         self.start_index = 1
         self.end_index = len(self.image_file_list)
-        self.init_label_info()
+        self._label_scan_thread = None
+        self._label_scan_finished = False
+        self._label_scan_cancelled = False
         self.init_ui()
+        self.start_label_info_scan()
 
     def init_ui(self):
         """Initialize the user interface."""
@@ -1036,10 +1100,76 @@ class LabelModifyDialog(QtWidgets.QDialog):
         range_layout.addStretch(1)
 
         layout = QtWidgets.QVBoxLayout(self)
+        self.loading_label = QtWidgets.QLabel(
+            self.tr("Scanning labels from loaded JSON files...")
+        )
+        self.loading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.progress_bar = QtWidgets.QProgressBar(self)
+        self.progress_bar.setRange(0, max(len(self.image_file_list), 1))
+        self.progress_bar.setValue(0)
+        layout.addWidget(self.loading_label)
+        layout.addWidget(self.progress_bar)
         layout.addWidget(self.table_widget)
         layout.addLayout(range_layout)
 
+        self.set_controls_enabled(False)
+
+    def set_controls_enabled(self, enabled):
+        """Enable or disable controls that require completed scan results."""
+        self.table_widget.setEnabled(enabled)
+        self.from_input.setEnabled(enabled)
+        self.to_input.setEnabled(enabled)
+        self.range_button.setEnabled(enabled)
+
+    def start_label_info_scan(self):
+        """Start collecting label names in a dedicated thread."""
+        self._label_scan_thread = LabelInfoScanThread(
+            self.image_file_list,
+            self.parent.output_dir,
+            self,
+        )
+        self._label_scan_thread.progress.connect(
+            self.on_label_info_scan_progress
+        )
+        self._label_scan_thread.finished_with_labels.connect(
+            self.on_label_info_scan_finished
+        )
+        self._label_scan_thread.error.connect(self.on_label_info_scan_error)
+        self._label_scan_thread.finished.connect(
+            self.on_label_info_thread_finished
+        )
+        self._label_scan_thread.start()
+
+    def on_label_info_scan_progress(self, current, total):
+        """Update progress while label files are scanned."""
+        if self._label_scan_cancelled:
+            return
+        self.progress_bar.setRange(0, max(total, 1))
+        self.progress_bar.setValue(current)
+        self.loading_label.setText(
+            self.tr("Scanning labels from loaded JSON files... {}/{}").format(
+                current, total
+            )
+        )
+
+    def on_label_info_scan_error(self, message):
+        """Log scan errors without blocking the remaining files."""
+        logger.warning(message)
+
+    def on_label_info_scan_finished(self, classes):
+        """Populate the table after background label scanning completes."""
+        if self._label_scan_cancelled:
+            return
+        self._label_scan_finished = True
+        self.init_label_info(classes)
         self.populate_table()
+        self.loading_label.hide()
+        self.progress_bar.hide()
+        self.set_controls_enabled(True)
+
+    def on_label_info_thread_finished(self):
+        """Clear the scan thread reference after it stops."""
+        self._label_scan_thread = None
 
     def get_image_file_list(self):
         image_file_list = []
@@ -1330,24 +1460,9 @@ class LabelModifyDialog(QtWidgets.QDialog):
             logger.error(f"Error occurred while updating labels: {e}")
             return False
 
-    def init_label_info(self):
-        classes = set()
-
-        for image_file in self.image_file_list:
-            label_dir, filename = os.path.split(image_file)
-            if self.parent.output_dir:
-                label_dir = self.parent.output_dir
-            label_file = os.path.join(
-                label_dir, os.path.splitext(filename)[0] + ".json"
-            )
-            if not os.path.exists(label_file):
-                continue
-            with open(label_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            shapes = data.get("shapes", [])
-            for shape in shapes:
-                label = shape["label"]
-                classes.add(label)
+    def init_label_info(self, classes):
+        """Merge scanned labels with current UI label metadata."""
+        classes = set(classes)
 
         for i in range(self.parent.unique_label_list.count()):
             item = self.parent.unique_label_list.item(i)
@@ -1390,6 +1505,9 @@ class LabelModifyDialog(QtWidgets.QDialog):
             )
 
     def update_range(self):
+        if not self._label_scan_finished:
+            return
+
         from_value = (
             int(self.from_input.text())
             if self.from_input.text()
@@ -1416,6 +1534,15 @@ class LabelModifyDialog(QtWidgets.QDialog):
             self.start_index = from_value
             self.end_index = to_value
             self.confirm_changes(self.start_index, self.end_index)
+
+    def reject(self):
+        """Stop label scanning before closing the dialog."""
+        self._label_scan_cancelled = True
+        if self._label_scan_thread is not None:
+            self._label_scan_thread.cancel()
+            self._label_scan_thread.wait()
+            self._label_scan_thread = None
+        super().reject()
 
 
 class LabelQLineEdit(QtWidgets.QLineEdit):

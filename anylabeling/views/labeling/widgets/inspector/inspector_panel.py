@@ -7,6 +7,13 @@ This is the top-level container.  It:
 - Orchestrates scan → validate → display, rule config, and file export.
 - Emits navigation and edit signals that the parent label_widget connects to.
 
+检查器面板 — 用于容纳数据检查用户界面的主停靠窗口部件。
+
+这是顶层容器。它：
+- 包含 FlatIndex、IssueListWidget、EditableTableWidget、RuleConfigWidget（带共享标签集）以及导出控件。
+- 协调扫描 → 验证 → 显示、规则配置和文件导出。
+- 发出导航和编辑信号，由父级 label_widget 连接。
+
 Usage (in label_widget.py)::
 
     from .widgets.inspector import InspectorPanel
