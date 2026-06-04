@@ -20,14 +20,18 @@ logger = logging.getLogger(__name__)
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FlattenedRecord:
     """A single shape, flattened for querying."""
-    file_path: str          # absolute path to JSON
-    image_path: str         # imagePath field from JSON
-    shape_index: int        # index in shapes[]
+
+    file_path: str  # absolute path to JSON
+    image_path: str  # imagePath field from JSON
+    shape_index: int  # index in shapes[]
     label: str
-    shape_type: str         # rectangle / polygon / point / linestrip / circle / rotation
+    shape_type: (
+        str  # rectangle / polygon / point / linestrip / circle / rotation
+    )
     group_id: Optional[int]
     flags: Dict[str, Any] = field(default_factory=dict)
     attributes: Dict[str, Any] = field(default_factory=dict)
@@ -44,6 +48,7 @@ class FlattenedRecord:
 # ---------------------------------------------------------------------------
 # FlatIndex
 # ---------------------------------------------------------------------------
+
 
 class FlatIndex:
     """
@@ -64,13 +69,19 @@ class FlatIndex:
 
     def __init__(self):
         self._records: List[FlattenedRecord] = []
-        self._by_file: Dict[str, List[FlattenedRecord]] = {}      # file_path → records
-        self._by_label: Dict[str, List[FlattenedRecord]] = {}     # label → records
-        self._by_group: Dict[int, List[FlattenedRecord]] = {}     # group_id → records
+        self._by_file: Dict[str, List[FlattenedRecord]] = (
+            {}
+        )  # file_path → records
+        self._by_label: Dict[str, List[FlattenedRecord]] = (
+            {}
+        )  # label → records
+        self._by_group: Dict[int, List[FlattenedRecord]] = (
+            {}
+        )  # group_id → records
 
         # metadata
         self._files_scanned: int = 0
-        self._files_failed: List[Tuple[str, str]] = []             # (path, error)
+        self._files_failed: List[Tuple[str, str]] = []  # (path, error)
 
     # ------------------------------------------------------------------
     # Properties
@@ -100,18 +111,25 @@ class FlatIndex:
         self,
         json_paths: List[str],
         progress_callback: Optional[Callable[[int, int, str], None]] = None,
+        cancel_check: Optional[Callable[[], bool]] = None,
     ) -> None:
         """
         Scan a list of JSON files and build the index.
 
         Args:
             json_paths: List of absolute paths to JSON annotation files.
-            progress_callback: Optional callable(current, total, current_filename).
+            progress_callback: Optional callable receiving current, total,
+                and current_filename.
+            cancel_check: Optional callable returning True when scanning should
+                stop before the next file.
         """
         self.clear()
         total = len(json_paths)
+        scanned = 0
 
         for idx, path in enumerate(json_paths, 1):
+            if cancel_check and cancel_check():
+                break
             try:
                 self._scan_one(path)
             except Exception as exc:
@@ -120,8 +138,9 @@ class FlatIndex:
 
             if progress_callback:
                 progress_callback(idx, total, osp.basename(path))
+            scanned = idx
 
-        self._files_scanned = total
+        self._files_scanned = scanned
         logger.info(
             f"FlatIndex scan complete: {self.record_count} records "
             f"from {self.file_count}/{total} files "
@@ -152,8 +171,10 @@ class FlatIndex:
                 attributes=shape.get("attributes", {}) or {},
                 description=shape.get("description", "") or "",
                 points_count=len(shape.get("points", []) or []),
-                difficulty=bool(shape.get("difficult", False) or
-                                shape.get("flags", {}).get("difficult", False)),
+                difficulty=bool(
+                    shape.get("difficult", False)
+                    or shape.get("flags", {}).get("difficult", False)
+                ),
             )
             records.append(rec)
 

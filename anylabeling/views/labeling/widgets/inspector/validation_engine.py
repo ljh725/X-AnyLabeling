@@ -8,7 +8,7 @@ rules against a FlatIndex and collects Issues.
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from .flat_index import FlatIndex, FlattenedRecord
 
@@ -17,21 +17,25 @@ logger = logging.getLogger(__name__)
 
 def is_valid_group_id(value: Any) -> bool:
     """Return whether a group_id is a non-negative integer."""
-    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+    return (
+        isinstance(value, int) and not isinstance(value, bool) and value >= 0
+    )
 
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Issue:
     """A single validation issue found by a rule."""
-    rule_name: str              # e.g. "label_unregistered"
-    severity: str               # "error" | "warning" | "info"
-    message: str                # human-readable description
-    file_path: str              # absolute path to the JSON file
-    shape_index: int            # -1 for file-level issues
+
+    rule_name: str  # e.g. "label_unregistered"
+    severity: str  # "error" | "warning" | "info"
+    message: str  # human-readable description
+    file_path: str  # absolute path to the JSON file
+    shape_index: int  # -1 for file-level issues
     label: str = ""
     group_id: Optional[int] = None
     extra: Dict[str, Any] = field(default_factory=dict)
@@ -40,6 +44,7 @@ class Issue:
 @dataclass
 class ValidationReport:
     """Aggregated result of running all rules."""
+
     total_files: int = 0
     total_records: int = 0
     issues: List[Issue] = field(default_factory=list)
@@ -67,6 +72,7 @@ class ValidationReport:
 # ---------------------------------------------------------------------------
 # Rule base class
 # ---------------------------------------------------------------------------
+
 
 class ValidationRule(ABC):
     """Abstract base for a validation rule."""
@@ -113,6 +119,7 @@ class ValidationRule(ABC):
 # ---------------------------------------------------------------------------
 # Built-in rules
 # ---------------------------------------------------------------------------
+
 
 class LabelInAllowlist(ValidationRule):
     """Check that every shape label is in a pre-approved allowlist."""
@@ -172,23 +179,28 @@ class GroupIdUniqueness(ValidationRule):
                 continue
             type_counts: Dict[str, List[FlattenedRecord]] = {}
             for rec in records:
-                if rec.shape_type == "rectangle" and rec.label in self.UNIQUE_TYPES:
+                if (
+                    rec.shape_type == "rectangle"
+                    and rec.label in self.UNIQUE_TYPES
+                ):
                     type_counts.setdefault(rec.label, []).append(rec)
             for label, group in type_counts.items():
                 if len(group) > 1:
                     for rec in group:
-                        issues.append(Issue(
-                            rule_name=self.name,
-                            severity=self.severity,
-                            message=(
-                                f"[重复类型] group_id={gid} 内有 {len(group)} 个 "
-                                f"'{label}' 矩形框 (shape #{rec.shape_index})"
-                            ),
-                            file_path=rec.file_path,
-                            shape_index=rec.shape_index,
-                            label=rec.label,
-                            group_id=gid,
-                        ))
+                        issues.append(
+                            Issue(
+                                rule_name=self.name,
+                                severity=self.severity,
+                                message=(
+                                    f"[重复类型] group_id={gid} 内有 {len(group)} 个 "
+                                    f"'{label}' 矩形框 (shape #{rec.shape_index})"
+                                ),
+                                file_path=rec.file_path,
+                                shape_index=rec.shape_index,
+                                label=rec.label,
+                                group_id=gid,
+                            )
+                        )
         return issues
 
     def check(self, record, all_records, index):
@@ -228,19 +240,21 @@ class GroupLabelUniqueness(ValidationRule):
                 for label, group in label_map.items():
                     if len(group) > 1:
                         for rec in group:
-                            issues.append(Issue(
-                                rule_name=self.name,
-                                severity=self.severity,
-                                message=(
-                                    f"[重复标签] group_id={gid} 内 "
-                                    f"label='{label}' 出现 {len(group)} 次 "
-                                    f"(shape #{rec.shape_index})"
-                                ),
-                                file_path=rec.file_path,
-                                shape_index=rec.shape_index,
-                                label=rec.label,
-                                group_id=gid,
-                            ))
+                            issues.append(
+                                Issue(
+                                    rule_name=self.name,
+                                    severity=self.severity,
+                                    message=(
+                                        f"[重复标签] group_id={gid} 内 "
+                                        f"label='{label}' 出现 {len(group)} 次 "
+                                        f"(shape #{rec.shape_index})"
+                                    ),
+                                    file_path=rec.file_path,
+                                    shape_index=rec.shape_index,
+                                    label=rec.label,
+                                    group_id=gid,
+                                )
+                            )
         return issues
 
     def check(self, record, all_records, index):
@@ -354,18 +368,20 @@ class HeadFaceGroupIdUniqueness(ValidationRule):
                 if len(grouped) <= 1:
                     continue
                 for rec in grouped:
-                    issues.append(Issue(
-                        rule_name=self.name,
-                        severity=self.severity,
-                        message=(
-                            f"[group_id重复] 文件内 head/face 的 group_id={gid} "
-                            f"出现 {len(grouped)} 次 (shape #{rec.shape_index})"
-                        ),
-                        file_path=rec.file_path,
-                        shape_index=rec.shape_index,
-                        label=rec.label,
-                        group_id=gid,
-                    ))
+                    issues.append(
+                        Issue(
+                            rule_name=self.name,
+                            severity=self.severity,
+                            message=(
+                                f"[group_id重复] 文件内 head/face 的 group_id={gid} "
+                                f"出现 {len(grouped)} 次 (shape #{rec.shape_index})"
+                            ),
+                            file_path=rec.file_path,
+                            shape_index=rec.shape_index,
+                            label=rec.label,
+                            group_id=gid,
+                        )
+                    )
         return issues
 
     def check(self, record, all_records, index):
@@ -457,13 +473,28 @@ class GroupIdKeypointIntegrity(ValidationRule):
 
     name = "group_id_keypoint_integrity"
     severity = "warning"
-    description = "person 是唯一的 pose 主体；关键点必须绑定到含 person 的 group_id"
+    description = (
+        "person 是唯一的 pose 主体；关键点必须绑定到含 person 的 group_id"
+    )
 
     COCO_KEYPOINTS: Set[str] = {
-        "nose", "l_eye", "r_eye", "l_ear", "r_ear",
-        "l_sho", "r_sho", "l_elb", "r_elb", "l_wri",
-        "r_wri", "l_hip", "r_hip", "l_knee", "r_knee",
-        "l_ank", "r_ank",
+        "nose",
+        "l_eye",
+        "r_eye",
+        "l_ear",
+        "r_ear",
+        "l_sho",
+        "r_sho",
+        "l_elb",
+        "r_elb",
+        "l_wri",
+        "r_wri",
+        "l_hip",
+        "r_hip",
+        "l_knee",
+        "r_knee",
+        "l_ank",
+        "r_ank",
     }
 
     def check_all(self, index: FlatIndex) -> List[Issue]:
@@ -485,7 +516,10 @@ class GroupIdKeypointIntegrity(ValidationRule):
             )
             if has_keypoints and not has_person_rect:
                 for rec in records:
-                    if rec.shape_type == "point" and rec.label in self.COCO_KEYPOINTS:
+                    if (
+                        rec.shape_type == "point"
+                        and rec.label in self.COCO_KEYPOINTS
+                    ):
                         if has_head_or_face:
                             message = (
                                 f"[主体缺失] group_id={gid} 只有 head/face 辅助框，"
@@ -496,20 +530,22 @@ class GroupIdKeypointIntegrity(ValidationRule):
                                 f"[主体缺失] group_id={gid} 有关键点 '{rec.label}'，"
                                 f"但没有 person 矩形框；关键点只能绑定到 person"
                             )
-                        issues.append(Issue(
-                            rule_name=self.name,
-                            severity=self.severity,
-                            message=message,
-                            file_path=rec.file_path,
-                            shape_index=rec.shape_index,
-                            label=rec.label,
-                            group_id=gid,
-                            extra={
-                                "has_person": has_person_rect,
-                                "has_head_or_face": has_head_or_face,
-                                "subject": "person",
-                            },
-                        ))
+                        issues.append(
+                            Issue(
+                                rule_name=self.name,
+                                severity=self.severity,
+                                message=message,
+                                file_path=rec.file_path,
+                                shape_index=rec.shape_index,
+                                label=rec.label,
+                                group_id=gid,
+                                extra={
+                                    "has_person": has_person_rect,
+                                    "has_head_or_face": has_head_or_face,
+                                    "subject": "person",
+                                },
+                            )
+                        )
         return issues
 
     def check(self, record, all_records, index):
@@ -587,12 +623,30 @@ class AttributeConsistency(ValidationRule):
         issues: List[Issue] = []
 
         # difficult flag on point keypoints is unusual
-        if record.difficulty and record.shape_type == "point" and record.label in {
-            "nose", "l_eye", "r_eye", "l_ear", "r_ear",
-            "l_sho", "r_sho", "l_elb", "r_elb", "l_wri",
-            "r_wri", "l_hip", "r_hip", "l_knee", "r_knee",
-            "l_ank", "r_ank",
-        }:
+        if (
+            record.difficulty
+            and record.shape_type == "point"
+            and record.label
+            in {
+                "nose",
+                "l_eye",
+                "r_eye",
+                "l_ear",
+                "r_ear",
+                "l_sho",
+                "r_sho",
+                "l_elb",
+                "r_elb",
+                "l_wri",
+                "r_wri",
+                "l_hip",
+                "r_hip",
+                "l_knee",
+                "r_knee",
+                "l_ank",
+                "r_ank",
+            }
+        ):
             return Issue(
                 rule_name=self.name,
                 severity=self.severity,
@@ -628,6 +682,7 @@ class AttributeConsistency(ValidationRule):
 # Engine
 # ---------------------------------------------------------------------------
 
+
 class ValidationEngine:
     """
     Runs a set of rules against a FlatIndex and collects a ValidationReport.
@@ -646,19 +701,32 @@ class ValidationEngine:
     def remove_rule(self, rule_name: str) -> None:
         self._rules = [r for r in self._rules if r.name != rule_name]
 
-    def run(self, index: FlatIndex) -> ValidationReport:
-        """Run all registered rules and return a report."""
+    def run(
+        self,
+        index: FlatIndex,
+        progress_callback: Optional[Callable[[int, int, str], None]] = None,
+    ) -> ValidationReport:
+        """Run all registered rules and return a report.
+
+        Args:
+            index: Flattened annotation index to validate.
+            progress_callback: Optional callable(current, total, rule_name).
+        """
         report = ValidationReport(
             total_files=index.file_count,
             total_records=index.record_count,
         )
-        for rule in self._rules:
+        total = len(self._rules)
+        for idx, rule in enumerate(self._rules, 1):
             try:
                 issues = rule.check_all(index)
                 report.issues.extend(issues)
-                logger.debug(
-                    f"Rule '{rule.name}': {len(issues)} issue(s)"
-                )
+                logger.debug(f"Rule '{rule.name}': {len(issues)} issue(s)")
             except Exception as exc:
-                logger.error(f"Rule '{rule.name}' crashed: {exc}", exc_info=True)
+                logger.error(
+                    f"Rule '{rule.name}' crashed: {exc}",
+                    exc_info=True,
+                )
+            if progress_callback:
+                progress_callback(idx, total, rule.name)
         return report
