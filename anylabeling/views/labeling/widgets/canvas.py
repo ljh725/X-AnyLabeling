@@ -2581,6 +2581,20 @@ class Canvas(
             drawing_shape._closed = True
             drawing_shape.paint(p)
 
+        autolabel_names = {
+            "AUTOLABEL_OBJECT",
+            "AUTOLABEL_ADD",
+            "AUTOLABEL_REMOVE",
+        }
+
+        def should_merge_rectangle_text(shape):
+            return (
+                self.show_labels
+                and shape.shape_type == "rectangle"
+                and not (self.label_on_selection and not shape.selected)
+                and shape.label not in autolabel_names
+            )
+
         # Draw texts
         if self.show_texts:
             text_color = "#FFFFFF"
@@ -2596,6 +2610,8 @@ class Canvas(
             p.setPen(pen)
             for shape in self.shapes:
                 if not shape.visible:
+                    continue
+                if should_merge_rectangle_text(shape):
                     continue
                 description = shape.description
                 if description:
@@ -2625,6 +2641,8 @@ class Canvas(
             p.setPen(pen)
             for shape in self.shapes:
                 if not shape.visible:
+                    continue
+                if should_merge_rectangle_text(shape):
                     continue
                 description = shape.description
                 if description:
@@ -2678,6 +2696,19 @@ class Canvas(
                         else ""
                     )
                 )
+                if shape.shape_type == "rectangle":
+                    extra_texts = []
+                    if self.show_texts and shape.description:
+                        extra_texts.append(str(shape.description))
+                    if self.show_attributes and getattr(
+                        shape, "attributes", None
+                    ):
+                        extra_texts.extend(
+                            f"{key}: {value}"
+                            for key, value in shape.attributes.items()
+                        )
+                    if extra_texts:
+                        label_text = " | ".join([label_text] + extra_texts)
                 if not label_text:
                     continue
                 fm = QtGui.QFontMetrics(p.font())
@@ -2687,8 +2718,39 @@ class Canvas(
                 rect_width = text_rect.width() + 2 * padding_x
                 rect_height = fm.height() + 2 * padding_y
 
-                if shape.shape_type in [
-                    "rectangle",
+                if shape.shape_type == "rectangle":
+                    try:
+                        bbox = shape.bounding_rect()
+                    except IndexError:
+                        continue
+
+                    rect_x = int(bbox.x())
+                    max_x = self.pixmap.width() - rect_width
+                    if max_x >= 0:
+                        rect_x = min(max(rect_x, 0), max_x)
+                    else:
+                        rect_x = 0
+
+                    rect_y = int(bbox.y() - rect_height - 1)
+                    if rect_y < 0:
+                        rect_y = int(bbox.y())
+                    max_y = self.pixmap.height() - rect_height
+                    if max_y >= 0:
+                        rect_y = min(max(rect_y, 0), max_y)
+                    else:
+                        rect_y = 0
+
+                    rect = QtCore.QRect(
+                        rect_x,
+                        rect_y,
+                        rect_width,
+                        rect_height,
+                    )
+                    text_pos = QtCore.QPoint(
+                        rect_x + padding_x,
+                        rect_y + rect_height - padding_y - fm.descent(),
+                    )
+                elif shape.shape_type in [
                     "polygon",
                     "rotation",
                     "quadrilateral",
@@ -2798,6 +2860,8 @@ class Canvas(
 
             for shape in self.shapes:
                 if not shape.visible:
+                    continue
+                if should_merge_rectangle_text(shape):
                     continue
                 if not hasattr(shape, "attributes") or not shape.attributes:
                     continue

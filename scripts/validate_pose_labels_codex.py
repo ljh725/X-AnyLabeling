@@ -3,6 +3,8 @@
 """Validate X-AnyLabeling pose JSON annotations."""
 
 import argparse
+import csv
+import io
 import json
 import os
 import sys
@@ -20,7 +22,8 @@ except ImportError:
 # ========== IDE direct-run config ==========
 INPUT_PATH = r"D:\xinjiegou-X-AnyLabeling-4.0.0-beta.4\scripts"
 WORKERS = None
-REPORT_NAME = "pose_label_validation_report.txt"
+REPORT_NAME = None
+DEFAULT_FORMAT = "tsv"
 # ==========================================
 
 
@@ -48,6 +51,13 @@ ALLOWED_LABELS = {
 }
 RECTANGLE_LABELS = {"person", "face", "head"}
 POINT_LABELS = ALLOWED_LABELS - RECTANGLE_LABELS
+INSPECTOR_FIELDNAMES = [
+    "file_path",
+    "shape_index",
+    "rule_name",
+    "severity",
+    "message",
+]
 
 
 @dataclass
@@ -285,7 +295,9 @@ def validate_groups(
             )
 
 
-def validate_json_file(file_path: str) -> Tuple[str, List[ValidationIssue], Optional[str]]:
+def validate_json_file(
+    file_path: str,
+) -> Tuple[str, List[ValidationIssue], Optional[str]]:
     """Validate one JSON file and return issues or load error."""
     try:
         with open(file_path, "r", encoding="utf-8") as file_obj:
@@ -298,16 +310,20 @@ def validate_json_file(file_path: str) -> Tuple[str, List[ValidationIssue], Opti
     issues: List[ValidationIssue] = []
     shapes = data.get("shapes")
     if not isinstance(shapes, list):
-        return file_path, [
-            ValidationIssue(
-                file_path=file_path,
-                shape_index=-1,
-                label="",
-                group_id=None,
-                error_type="shapes字段异常",
-                message="shapes 缺失或不是列表",
-            )
-        ], None
+        return (
+            file_path,
+            [
+                ValidationIssue(
+                    file_path=file_path,
+                    shape_index=-1,
+                    label="",
+                    group_id=None,
+                    error_type="shapes字段异常",
+                    message="shapes 缺失或不是列表",
+                )
+            ],
+            None,
+        )
 
     image_width = data.get("imageWidth")
     image_height = data.get("imageHeight")
@@ -379,7 +395,9 @@ def collect_json_files(input_path: str) -> List[str]:
     for root, _, filenames in os.walk(input_path):
         for filename in filenames:
             if filename.lower().endswith(".json"):
-                json_files.append(os.path.abspath(os.path.join(root, filename)))
+                json_files.append(
+                    os.path.abspath(os.path.join(root, filename))
+                )
     return sorted(json_files)
 
 
@@ -399,7 +417,9 @@ def build_report_text(
         set(file_results.keys()) | set(load_errors.keys()),
         key=lambda path: os.path.basename(path).lower(),
     )
-    issue_count = sum(len(file_results.get(path, [])) for path in directory_files)
+    issue_count = sum(
+        len(file_results.get(path, [])) for path in directory_files
+    )
     lines.append(f"异常数量: {issue_count + len(load_errors)}")
     lines.append("")
 
@@ -436,49 +456,158 @@ def build_report_text(
     return "\n".join(lines)
 
 
+def iter_inspector_rows(
+    file_results: Dict[str, List[ValidationIssue]],
+    load_errors: Dict[str, str],
+) -> List[Dict[str, Any]]:
+    """Build Inspector-importable rows with the required core fields."""
+    rows: List[Dict[str, Any]] = []
+    all_paths = sorted(
+        set(file_results.keys()) | set(load_errors.keys()),
+        key=lambda p: os.path.basename(p).lower(),
+    )
+    for path in all_paths:
+        if path in load_errors:
+            rows.append(
+                {
+                    "file_path": os.path.basename(path),
+                    "shape_index": -1,
+                    "rule_name": "file_level_error",
+                    "severity": "error",
+                    "message": load_errors[path],
+                }
+            )
+            continue
+        for issue in file_results.get(path, []):
+            rows.append(
+                {
+                    "file_path": os.path.basename(path),
+                    "shape_index": issue.shape_index,
+                    "rule_name": issue.error_type,
+                    "severity": "error",
+                    "message": issue.message,
+                }
+            )
+    return rows
+
+
+def build_report_tsv(
+    file_results: Dict[str, List[ValidationIssue]],
+    load_errors: Dict[str, str],
+) -> str:
+    """Build TSV report content for Inspector import."""
+    output = io.StringIO()
+    writer = csv.DictWriter(
+        output, fieldnames=INSPECTOR_FIELDNAMES, delimiter="\t"
+    )
+    writer.writeheader()
+    writer.writerows(iter_inspector_rows(file_results, load_errors))
+    return output.getvalue()
+
+
+def build_report_csv(
+    file_results: Dict[str, List[ValidationIssue]],
+    load_errors: Dict[str, str],
+) -> str:
+    """Build CSV report content for Inspector import."""
+    output = io.StringIO()
+    writer = csv.DictWriter(
+        output, fieldnames=INSPECTOR_FIELDNAMES, delimiter=","
+    )
+    writer.writeheader()
+    writer.writerows(iter_inspector_rows(file_results, load_errors))
+    return output.getvalue()
+
+
+def build_report_json(
+    file_results: Dict[str, List[ValidationIssue]],
+    load_errors: Dict[str, str],
+) -> str:
+    """Build JSON report content for Inspector import."""
+    issues = iter_inspector_rows(file_results, load_errors)
+    return json.dumps({"issues": issues}, ensure_ascii=False, indent=2)
+
+
+def default_report_name(fmt: str) -> str:
+    """Return the default report name for an output format."""
+    return f"pose_label_validation_report.{fmt}"
+
+
 def write_reports(
     file_results: Dict[str, List[ValidationIssue]],
     load_errors: Dict[str, str],
     report_name: str,
     output_dir: Optional[str] = None,
+    fmt: str = DEFAULT_FORMAT,
 ) -> List[str]:
-    """Write one report TXT file to each JSON directory or to output_dir."""
-    if output_dir is not None:
+    """Write report file(s) in the specified format."""
+    if fmt == "txt":
+        if output_dir is not None:
+            os.makedirs(output_dir, exist_ok=True)
+            report_path = os.path.join(output_dir, report_name)
+            report_text = build_report_text(
+                output_dir, file_results, load_errors
+            )
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write(report_text)
+            return [report_path]
+
+        directories = sorted(
+            {
+                os.path.dirname(path)
+                for path in set(file_results) | set(load_errors)
+            }
+        )
+        written_paths = []
+        for directory in directories:
+            dir_results = {
+                path: issues
+                for path, issues in file_results.items()
+                if os.path.dirname(path) == directory
+            }
+            dir_errors = {
+                path: error
+                for path, error in load_errors.items()
+                if os.path.dirname(path) == directory
+            }
+            report_path = os.path.join(directory, report_name)
+            report_text = build_report_text(directory, dir_results, dir_errors)
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write(report_text)
+            written_paths.append(report_path)
+        return written_paths
+
+    if fmt in ("tsv", "csv", "json"):
+        if output_dir is None:
+            directories = sorted(
+                {
+                    os.path.dirname(path)
+                    for path in set(file_results) | set(load_errors)
+                }
+            )
+            output_dir = directories[0] if directories else "."
         os.makedirs(output_dir, exist_ok=True)
+
+        if fmt == "tsv":
+            report_text = build_report_tsv(file_results, load_errors)
+        elif fmt == "csv":
+            report_text = build_report_csv(file_results, load_errors)
+        else:
+            report_text = build_report_json(file_results, load_errors)
+
         report_path = os.path.join(output_dir, report_name)
-        report_text = build_report_text(output_dir, file_results, load_errors)
-        with open(report_path, "w", encoding="utf-8") as f:
+        with open(report_path, "w", encoding="utf-8", newline="") as f:
             f.write(report_text)
         return [report_path]
 
-    directories = sorted(
-        {os.path.dirname(path) for path in set(file_results) | set(load_errors)}
-    )
-    written_paths = []
-    for directory in directories:
-        dir_results = {
-            path: issues
-            for path, issues in file_results.items()
-            if os.path.dirname(path) == directory
-        }
-        dir_errors = {
-            path: error
-            for path, error in load_errors.items()
-            if os.path.dirname(path) == directory
-        }
-        report_path = os.path.join(directory, report_name)
-        report_text = build_report_text(directory, dir_results, dir_errors)
-        with open(report_path, "w", encoding="utf-8") as f:
-            f.write(report_text)
-        written_paths.append(report_path)
-    return written_paths
+    raise ValueError(f"不支持的输出格式: {fmt}")
 
 
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description=(
-            "多线程检测 X-AnyLabeling 姿态 JSON 标签，并在 JSON 同级目录生成 TXT 报告。"
+            "多线程检测 X-AnyLabeling 姿态 JSON 标签，并生成 Inspector 可导入报告。"
         )
     )
     parser.add_argument(
@@ -498,7 +627,7 @@ def parse_args() -> argparse.Namespace:
         "-rn",
         "--report-name",
         default=REPORT_NAME,
-        help=f"报告文件名，默认 {REPORT_NAME}",
+        help="报告文件名，默认按输出格式自动生成",
     )
     parser.add_argument(
         "-o",
@@ -506,7 +635,13 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="报告输出目录，默认写入 JSON 同级目录",
     )
-
+    parser.add_argument(
+        "-f",
+        "--format",
+        choices=["txt", "tsv", "csv", "json"],
+        default=DEFAULT_FORMAT,
+        help="报告输出格式：tsv（默认）/ csv / json / txt",
+    )
     return parser.parse_args()
 
 
@@ -523,6 +658,7 @@ def main() -> int:
         print(f"未找到 JSON 文件: {args.input}")
         return 0
 
+    report_name = args.report_name or default_report_name(args.format)
     workers = args.workers or min(32, (os.cpu_count() or 1) * 4)
     file_results: Dict[str, List[ValidationIssue]] = {}
     load_errors: Dict[str, str] = {}
@@ -533,7 +669,9 @@ def main() -> int:
     print("开始检测...")
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = [executor.submit(validate_json_file, path) for path in json_files]
+        futures = [
+            executor.submit(validate_json_file, path) for path in json_files
+        ]
         completed_futures = as_completed(futures)
         if tqdm is not None:
             completed_futures = tqdm(
@@ -560,7 +698,7 @@ def main() -> int:
             print()
 
     report_paths = write_reports(
-        file_results, load_errors, args.report_name, args.output_dir
+        file_results, load_errors, report_name, args.output_dir, args.format
     )
     issue_count = sum(len(issues) for issues in file_results.values())
     total_errors = issue_count + len(load_errors)
@@ -590,31 +728,44 @@ if __name__ == "__main__":
     5. group_id 是不是非负整数，head 和 face 的 group_id 不能为 null
     6. 同一个 group_id 里有没有重复的标签
     7. 一个 group_id 里有关键点的话，必须要有 person 矩形框
-    支持多线程并行处理，检测完后会生成 TXT 报告。
-    默认在每个 JSON 文件夹里生成一份报告；
-    也可以通过 -o/--output-dir 参数指定一个本地目录，统一输出到那里，
+    支持多线程并行处理，检测完后会生成报告。
+    支持 4 种输出格式（通过 -f/--format 选择）：
+      - tsv：Tab 分隔表格，适合导入 Inspector 外部结果（默认）
+      - csv：逗号分隔表格，也可导入 Inspector
+      - json：结构化 JSON，也可导入 Inspector
+      - txt：人类可读的文本报告
+    tsv / csv / json 只输出 Inspector 导入所需的 5 个核心字段：
+      file_path, shape_index, rule_name, severity, message
+    脚本不再默认额外生成 readable.txt；可读性由 Inspector 导入后的显示层负责。
+    默认在每个 JSON 文件夹里生成报告；
+    也可以通过 -o/--output-dir 参数指定一个本地目录统一输出，
     避免因为网络路径没有写入权限而报错。
-    报告会把有问题的文件和具体错误都列出来。
 
 运行命令样例：
 
   # 基础用法：检测指定目录下的所有 JSON 文件
-  python scripts/validate_pose_labels.py -i ./annotations
+  python scripts/validate_pose_labels_codex.py -i ./annotations
 
   # 检测单个 JSON 文件
-  python scripts/validate_pose_labels.py -i ./annotations/0001.json
+  python scripts/validate_pose_labels_codex.py -i ./annotations/0001.json
 
   # 使用 8 个线程加速
-  python scripts/validate_pose_labels.py -i ./annotations -w 8
+  python scripts/validate_pose_labels_codex.py -i ./annotations -w 8
 
   # 指定报告文件名
-  python scripts/validate_pose_labels.py -i ./annotations --report-name my_report.txt
+  python scripts/validate_pose_labels_codex.py -i ./annotations --report-name my_report.tsv
 
   # 指定报告输出目录（避免写入无权限的网络路径）
-  python scripts/validate_pose_labels.py -i ./annotations -o D:/reports
+  python scripts/validate_pose_labels_codex.py -i ./annotations -o D:/reports
+
+  # 默认输出 TSV（可导入 Inspector 外部结果）
+  python scripts/validate_pose_labels_codex.py -i ./annotations
+
+  # 指定输出格式为 JSON
+  python scripts/validate_pose_labels_codex.py -i ./annotations -f json --report-name result.json
 
   # 在 IDE 里直接运行（修改脚本顶部的 INPUT_PATH）
-  python scripts/validate_pose_labels.py
+  python scripts/validate_pose_labels_codex.py
 
 大白话版：
     你标了一堆姿态估计的数据（画框、打点），但难免有手滑的时候：

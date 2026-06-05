@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 
 # ── color constants ──────────────────────────────────────────────
 SEVERITY_COLORS = {
-    "error": QtGui.QColor(220, 53, 69),      # red
-    "warning": QtGui.QColor(255, 193, 7),    # amber
-    "info": QtGui.QColor(13, 110, 253),      # blue
+    "error": QtGui.QColor(220, 53, 69),  # red
+    "warning": QtGui.QColor(255, 193, 7),  # amber
+    "info": QtGui.QColor(13, 110, 253),  # blue
 }
 
 SEVERITY_ICONS = {
@@ -42,11 +42,16 @@ class IssueListWidget(QtWidgets.QWidget):
             Emitted on double-click (→ navigate + activate edit mode).
         rescan_requested():
             Emitted when the user clicks the "Re-scan" button.
+        import_requested():
+            Emitted when the user clicks the external import button.
     """
 
-    issue_clicked = QtCore.pyqtSignal(str, int)          # file_path, shape_index
-    issue_double_clicked = QtCore.pyqtSignal(str, int)   # file_path, shape_index
+    issue_clicked = QtCore.pyqtSignal(str, int)  # file_path, shape_index
+    issue_double_clicked = QtCore.pyqtSignal(
+        str, int
+    )  # file_path, shape_index
     rescan_requested = QtCore.pyqtSignal()
+    import_requested = QtCore.pyqtSignal()
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
         super().__init__(parent)
@@ -69,6 +74,12 @@ class IssueListWidget(QtWidgets.QWidget):
         header_layout.addWidget(self.title_label)
 
         header_layout.addStretch()
+
+        self.import_btn = QtWidgets.QPushButton("导入")
+        self.import_btn.setFixedHeight(24)
+        self.import_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.import_btn.setToolTip("导入外部检测结果")
+        header_layout.addWidget(self.import_btn)
 
         self.scan_btn = QtWidgets.QPushButton("扫描")
         self.scan_btn.setFixedHeight(24)
@@ -96,13 +107,14 @@ class IssueListWidget(QtWidgets.QWidget):
         # column widths
         header = self.tree.header()
         header.setStretchLastSection(True)
-        header.resizeSection(0, 220)   # 问题
-        header.resizeSection(1, 180)   # 文件
+        header.resizeSection(0, 220)  # 问题
+        header.resizeSection(1, 180)  # 文件
 
         layout.addWidget(self.tree)
 
     def _connect_signals(self) -> None:
         self.scan_btn.clicked.connect(self.rescan_requested.emit)
+        self.import_btn.clicked.connect(self.import_requested.emit)
         self.tree.itemClicked.connect(self._on_item_clicked)
         self.tree.itemDoubleClicked.connect(self._on_item_double_clicked)
 
@@ -128,9 +140,7 @@ class IssueListWidget(QtWidgets.QWidget):
             f"⚠ {report.warning_count} 警告"
         )
         self.summary_label.setStyleSheet("color: #b71c1c; font-size: 9pt;")
-        self.title_label.setText(
-            f"数据检查 ({report.issue_count} 个问题)"
-        )
+        self.title_label.setText(f"数据检查 ({report.issue_count} 个问题)")
 
         # group by rule
         grouped = report.issues_by_rule()
@@ -148,10 +158,14 @@ class IssueListWidget(QtWidgets.QWidget):
             font = group_item.font(0)
             font.setBold(True)
             group_item.setFont(0, font)
-            group_item.setData(0, Qt.ItemDataRole.UserRole, {
-                "type": "group",
-                "rule_name": rule_name,
-            })
+            group_item.setData(
+                0,
+                Qt.ItemDataRole.UserRole,
+                {
+                    "type": "group",
+                    "rule_name": rule_name,
+                },
+            )
             self.tree.addTopLevelItem(group_item)
 
             # ── leaf items ───────────────────────────────────────
@@ -160,14 +174,18 @@ class IssueListWidget(QtWidgets.QWidget):
                 leaf.setText(0, issue.message)
                 leaf.setText(1, self._shorten_path(issue.file_path))
                 leaf.setText(2, self._detail_text(issue))
-                leaf.setToolTip(0, issue.message)
+                leaf.setToolTip(0, self._message_tooltip(issue))
                 leaf.setToolTip(1, issue.file_path)
-                leaf.setData(0, Qt.ItemDataRole.UserRole, {
-                    "type": "issue",
-                    "file_path": issue.file_path,
-                    "shape_index": issue.shape_index,
-                    "group_id": issue.group_id,
-                })
+                leaf.setData(
+                    0,
+                    Qt.ItemDataRole.UserRole,
+                    {
+                        "type": "issue",
+                        "file_path": issue.file_path,
+                        "shape_index": issue.shape_index,
+                        "group_id": issue.group_id,
+                    },
+                )
                 group_item.addChild(leaf)
 
         self.tree.expandAll()
@@ -182,14 +200,18 @@ class IssueListWidget(QtWidgets.QWidget):
 
     # ── Event handlers ───────────────────────────────────────────
 
-    def _on_item_clicked(self, item: QtWidgets.QTreeWidgetItem, column: int) -> None:
+    def _on_item_clicked(
+        self, item: QtWidgets.QTreeWidgetItem, column: int
+    ) -> None:
         data = item.data(0, Qt.ItemDataRole.UserRole)
         if data and data.get("type") == "issue":
             file_path = data["file_path"]
             shape_index = data["shape_index"]
             self.issue_clicked.emit(file_path, shape_index)
 
-    def _on_item_double_clicked(self, item: QtWidgets.QTreeWidgetItem, column: int) -> None:
+    def _on_item_double_clicked(
+        self, item: QtWidgets.QTreeWidgetItem, column: int
+    ) -> None:
         data = item.data(0, Qt.ItemDataRole.UserRole)
         if data and data.get("type") == "issue":
             file_path = data["file_path"]
@@ -202,6 +224,7 @@ class IssueListWidget(QtWidgets.QWidget):
     def _shorten_path(path: str, max_len: int = 40) -> str:
         """Show just the filename + parent dir if path is too long."""
         import os.path as osp
+
         if len(path) <= max_len:
             return path
         parent = osp.basename(osp.dirname(path))
@@ -218,6 +241,16 @@ class IssueListWidget(QtWidgets.QWidget):
         if issue.shape_index >= 0:
             parts.append(f"idx={issue.shape_index}")
         return ", ".join(parts)
+
+    @staticmethod
+    def _message_tooltip(issue: Issue) -> str:
+        """Return tooltip text while preserving external raw messages."""
+        raw_message = ""
+        if isinstance(issue.extra, dict):
+            raw_message = str(issue.extra.get("raw_message") or "")
+        if raw_message and raw_message != issue.message:
+            return f"{issue.message}\n\n原始信息: {raw_message}"
+        return issue.message
 
     # ── Public helpers ───────────────────────────────────────────
 

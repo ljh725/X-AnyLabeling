@@ -40,6 +40,7 @@ from .issue_list_widget import IssueListWidget
 from .editable_table_widget import EditableTableWidget
 from .rule_config_widget import RuleConfigWidget
 from .export_manager import ExportManager, ExportResult
+from .external_result_importer import ExternalResultImporter
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ logger = logging.getLogger(__name__)
 class InspectorScanThread(QtCore.QThread):
     """Background worker for inspector scan and validation."""
 
-    progress = QtCore.pyqtSignal(int, int, str)
+    progress = QtCore.pyqtSignal(int, int, str, str)
     status_changed = QtCore.pyqtSignal(str)
     finished_with_result = QtCore.pyqtSignal(object, object)
     error = QtCore.pyqtSignal(str)
@@ -80,7 +81,6 @@ class InspectorScanThread(QtCore.QThread):
             index = FlatIndex()
             file_total = len(self._json_paths)
             rule_total = len(self._rules)
-            total_units = max(file_total + rule_total, 1)
             progress_step = max(file_total // 100, 1)
 
             self.status_changed.emit("正在扫描标注文件...")
@@ -89,7 +89,12 @@ class InspectorScanThread(QtCore.QThread):
                 current: int, _total: int, filename: str
             ) -> None:
                 if current == file_total or current % progress_step == 0:
-                    self.progress.emit(current, total_units, filename)
+                    self.progress.emit(
+                        current,
+                        max(file_total, 1),
+                        filename,
+                        "scan",
+                    )
 
             index.scan_files(
                 self._json_paths,
@@ -106,9 +111,10 @@ class InspectorScanThread(QtCore.QThread):
                 current: int, _total: int, rule_name: str
             ) -> None:
                 self.progress.emit(
-                    file_total + current,
-                    total_units,
+                    current,
+                    max(rule_total, 1),
                     rule_name,
+                    "validate",
                 )
 
             report = engine.run(
@@ -197,6 +203,9 @@ class InspectorPanel(QtWidgets.QDockWidget):
             self.issue_navigate_requested.emit
         )
         self._issue_list.rescan_requested.connect(self.run_scan)
+        self._issue_list.import_requested.connect(
+            self._on_import_external_results
+        )
 
         self._table_widget.shape_clicked.connect(
             self.issue_navigate_requested.emit
@@ -387,6 +396,57 @@ class InspectorPanel(QtWidgets.QDockWidget):
         )
         self._export_btn.setEnabled(has_dir and has_report)
 
+    def _on_import_external_results(self) -> None:
+        """Import external validation issues and replace current results."""
+        if self._scan_thread is not None:
+            return
+
+        start_dir = (
+            osp.dirname(self._file_list[0])
+            if self._file_list
+            else os.path.expanduser("~")
+        )
+        file_path, _selected_filter = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            self.tr("导入外部检测结果"),
+            start_dir,
+            self.tr("Result Files (*.txt *.tsv *.csv *.json);;All Files (*)"),
+        )
+        if not file_path:
+            return
+
+        try:
+            importer = ExternalResultImporter(self._file_list)
+            result = importer.import_file(file_path)
+        except Exception as exc:
+            logger.exception("Failed to import external inspector results")
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("导入失败"),
+                self.tr("无法导入外部检测结果: %s") % str(exc),
+            )
+            return
+
+        self._flat_index.clear()
+        self._last_report = result.report
+        self._issue_list.populate(result.report)
+        self.scan_finished.emit(result.report)
+        self._update_export_button()
+
+        skipped = len(result.errors)
+        if result.report.issue_count:
+            summary = self.tr("导入 %d 个问题") % result.report.issue_count
+        else:
+            summary = self.tr("导入完成，未发现问题")
+        if skipped:
+            self._issue_list.summary_label.setToolTip("\n".join(result.errors))
+            self._issue_list.summary_label.setText(
+                self.tr("%s，跳过 %d 行") % (summary, skipped)
+            )
+        else:
+            self._issue_list.summary_label.setToolTip("")
+            self._issue_list.summary_label.setText(summary)
+
     # ── Scan progress helpers ────────────────────────────────────
 
     def _set_scan_controls_enabled(self, enabled: bool) -> None:
@@ -412,7 +472,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._progress_widget.hide()
 
     def _on_scan_progress(
-        self, current: int, total: int, current_name: str
+        self, current: int, total: int, current_name: str, stage: str
     ) -> None:
         """Update the scan progress bar and status label."""
         safe_total = max(total, 1)
@@ -424,9 +484,14 @@ class InspectorPanel(QtWidgets.QDockWidget):
             self.tr("%d/%d (%d%%)") % (safe_current, safe_total, percent)
         )
         if current_name:
-            self._scan_status_label.setText(
-                self.tr("正在处理: %s") % current_name
-            )
+            if stage == "validate":
+                self._scan_status_label.setText(
+                    self.tr("正在检查规则: %s") % current_name
+                )
+            else:
+                self._scan_status_label.setText(
+                    self.tr("正在扫描: %s") % current_name
+                )
 
     def _on_scan_status_changed(self, message: str) -> None:
         """Show the current background scan stage."""
@@ -515,7 +580,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._table_widget.clear_results()
         self._export_btn.setEnabled(False)
         self._set_scan_controls_enabled(False)
-        self._show_scan_progress(len(paths) + len(self._engine.rules))
+        self._show_scan_progress(len(paths))
 
         self._scan_thread = InspectorScanThread(
             paths,
