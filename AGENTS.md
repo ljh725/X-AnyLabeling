@@ -16,12 +16,20 @@ pip install -e ".[gpu-cu11,dev]"  # CUDA 11.x
 
 ## Dev commands
 ```bash
+# IMPORTANT: Use conda environment 'x-anylabeling-cu12' for all operations
+conda activate x-anylabeling-cu12
+
 pytest                              # Run tests (add --slow for slow tests)
 bash scripts/format_code.sh         # black -l 79
 flake8 anylabeling/                 # Lint (max complexity 18)
 pre-commit run --all-files          # Pre-commit gate
 python scripts/compile_languages.py # Rebuild .qm + resources.py after .ts changes
 ```
+
+### opencode Integration
+- opencode must be started **after** activating the conda environment
+- Use the provided script: `start-opencode-conda.bat` (auto-activates conda)
+- Or manually: `conda activate x-anylabeling-cu12 && opencode`
 
 ## Code style
 - **Black**: line length `79`. Excludes: `tests/`, `anylabeling/resources/resources.py`, `venv/`.

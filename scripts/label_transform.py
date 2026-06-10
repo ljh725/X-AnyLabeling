@@ -12,10 +12,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ========== IDE direct-run config ==========
 INPUT_DIR = (
-    r"\\192.168.3.248\opt\chengdu\cls3pose_cly\cls3pose_v1\train\annotations"
+    r""
 )
 OUTPUT_DIR = (
-    r"\\192.168.3.248\opt\chengdu\cls3pose_cly\cls3pose_v1\train\new-annotations"
+    r""
 )
 WORKERS = None
 # ==========================================

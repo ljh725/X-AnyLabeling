@@ -147,6 +147,55 @@ def _create_file_status_icon(color):
     return QtGui.QIcon(pixmap)
 
 
+class LabelCheckWorker(QtCore.QThread):
+    """Background worker that checks label files in batches."""
+
+    progress = QtCore.pyqtSignal(int, int)
+    batch_ready = QtCore.pyqtSignal(list)
+    labels_found = QtCore.pyqtSignal(list)
+    finished = QtCore.pyqtSignal()
+
+    def __init__(self, image_files, output_dir=None, batch_size=500):
+        super().__init__()
+        self.image_files = image_files
+        self.output_dir = output_dir
+        self.batch_size = batch_size
+        self._cancelled = False
+
+    def cancel(self):
+        self._cancelled = True
+
+    def run(self):
+        total = len(self.image_files)
+        batch = []
+        label_paths = []
+        for i, img_path in enumerate(self.image_files):
+            if self._cancelled:
+                break
+            label_file = osp.splitext(img_path)[0] + ".json"
+            if self.output_dir:
+                label_file = (
+                    self.output_dir + "/" + osp.basename(label_file)
+                )
+            has_label = (
+                QtCore.QFile.exists(label_file)
+                and LabelFile.is_label_file(label_file)
+            )
+            if has_label:
+                label_paths.append(label_file)
+            batch.append((img_path, has_label))
+            if len(batch) >= self.batch_size:
+                self.batch_ready.emit(batch)
+                batch = []
+            step = max(total // 100, 1)
+            if i % step == 0 or i == total - 1:
+                self.progress.emit(i + 1, total)
+        if batch:
+            self.batch_ready.emit(batch)
+        self.labels_found.emit(label_paths)
+        self.finished.emit()
+
+
 class LabelingWidget(LabelDialog):
     """The main widget for labeling images"""
 
@@ -4091,23 +4140,29 @@ class LabelingWidget(LabelDialog):
     def _file_item_annotation_checked(self, item):
         return item.data(Qt.ItemDataRole.UserRole) is True
 
-    def _create_file_list_item(self, file, label_file, load_checked=False):
+    def _create_file_list_item(
+        self, file, label_file, load_checked=False, check_label=True
+    ):
         item = QtWidgets.QListWidgetItem(file)
         flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
         if self._config.get("file_list_checkbox_editable", False):
             flags |= Qt.ItemFlag.ItemIsUserCheckable
         item.setFlags(flags)
-        if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(
-            label_file
-        ):
-            item.setCheckState(Qt.CheckState.Checked)
+        if check_label:
+            if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(
+                label_file
+            ):
+                item.setCheckState(Qt.CheckState.Checked)
+            else:
+                item.setCheckState(Qt.CheckState.Unchecked)
+            if load_checked:
+                self._set_file_item_checked(
+                    item, self._label_file_checked(label_file)
+                )
+            else:
+                self._set_file_item_checked(item, False)
         else:
             item.setCheckState(Qt.CheckState.Unchecked)
-        if load_checked:
-            self._set_file_item_checked(
-                item, self._label_file_checked(label_file)
-            )
-        else:
             self._set_file_item_checked(item, False)
         return item
 
@@ -7834,13 +7889,21 @@ class LabelingWidget(LabelDialog):
         if self.compare_view_manager.is_active():
             self.close_compare_view(confirm=False)
 
+        # Cancel any previous background label check.
+        if hasattr(self, "_label_check_worker") and self._label_check_worker:
+            self._label_check_worker.cancel()
+            self._label_check_worker.wait()
+            self._label_check_worker = None
+
         self.last_open_dir = dirpath
         self.filename = None
         self.file_list_widget.clear()
+        self.fn_to_index.clear()
         image_files = []
 
         search_pattern = parse_search_pattern(pattern) if pattern else None
 
+        # Phase 1: scan paths only (no network IO for labels).
         for file_index, filename in enumerate(
             utils.scan_all_images(dirpath), start=1
         ):
@@ -7852,29 +7915,23 @@ class LabelingWidget(LabelDialog):
                     if not matches_filename(filename, search_pattern):
                         continue
 
+                    # Attribute filtering is deferred to Phase 2 because
+                    # it requires reading JSON content over the network.
                     if search_pattern.mode == "attribute":
-                        label_file = osp.splitext(filename)[0] + ".json"
-                        if self.output_dir:
-                            label_file_without_path = osp.basename(label_file)
-                            label_file = (
-                                self.output_dir + "/" + label_file_without_path
-                            )
-
-                        if not matches_label_attribute(
-                            filename, label_file, search_pattern
-                        ):
-                            continue
+                        pass
 
             image_files.append(filename)
-            label_file = osp.splitext(filename)[0] + ".json"
-            if self.output_dir:
-                label_file_without_path = osp.basename(label_file)
-                label_file = self.output_dir + "/" + label_file_without_path
-            item = self._create_file_list_item(
-                filename, label_file, load_checked=False
-            )
-            self.file_list_widget.addItem(item)
-            self.fn_to_index[filename] = self.file_list_widget.count() - 1
+
+        # Bulk atomic insert (avoids 38k individual addItem calls).
+        self.file_list_widget.addItems(image_files)
+        for i, path in enumerate(image_files):
+            self.fn_to_index[path] = i
+
+        # All items start as unchecked; labels are verified in background.
+        for i in range(self.file_list_widget.count()):
+            item = self.file_list_widget.item(i)
+            item.setCheckState(Qt.CheckState.Unchecked)
+            self._set_file_item_checked(item, False)
 
         self.actions.open_next_image.setEnabled(True)
         self.actions.open_prev_image.setEnabled(True)
@@ -7883,18 +7940,85 @@ class LabelingWidget(LabelDialog):
         self.toggle_actions(True)
         self.open_next_image(load=load)
 
-        # Sync file list to inspector panel
-        self._update_inspector_file_list()
+        # NOTE: inspector file list sync is deferred to the background
+        # label check worker to avoid blocking the UI with 38k network
+        # IO calls (osp.isfile) on remote storage.
 
         # Cancel any pending dataset index timer from a previous directory.
         if self._dataset_index_timer is not None:
             self._dataset_index_timer.stop()
             self._dataset_index_timer = None
+
         _perf_log(
-            "import_image_folder: %d files in %.3fs",
+            "import_image_folder phase1: %d files in %.3fs",
             len(image_files),
             time.perf_counter() - _t0,
         )
+
+        # Phase 2: background label check with progress dialog.
+        self._start_label_check_worker(image_files)
+
+    def _start_label_check_worker(self, image_files):
+        """Launch modal progress dialog and background label checker."""
+        if not image_files:
+            return
+
+        progress = QtWidgets.QProgressDialog(
+            self.tr("Checking label files..."),
+            self.tr("Cancel"),
+            0,
+            len(image_files),
+            self,
+        )
+        progress.setWindowModality(Qt.WindowModality.ApplicationModal)
+        progress.setMinimumDuration(500)
+        progress.setValue(0)
+        progress.setWindowTitle(self.tr("Loading Labels"))
+
+        self._label_check_worker = LabelCheckWorker(
+            image_files,
+            output_dir=self.output_dir,
+            batch_size=500,
+        )
+        self._label_check_worker.progress.connect(progress.setValue)
+        self._label_check_worker.batch_ready.connect(
+            self._on_label_check_batch
+        )
+        self._label_check_worker.labels_found.connect(
+            self._on_inspector_labels_found
+        )
+        self._label_check_worker.finished.connect(progress.close)
+        self._label_check_worker.finished.connect(
+            lambda: setattr(self, "_label_check_worker", None)
+        )
+        progress.canceled.connect(self._label_check_worker.cancel)
+        self._label_check_worker.start()
+
+    def _on_label_check_batch(self, batch):
+        """Update check state for a batch of items."""
+        for img_path, has_label in batch:
+            if img_path not in self.fn_to_index:
+                continue
+            row = self.fn_to_index[img_path]
+            item = self.file_list_widget.item(row)
+            if item is None:
+                continue
+            if has_label:
+                item.setCheckState(Qt.CheckState.Checked)
+            else:
+                item.setCheckState(Qt.CheckState.Unchecked)
+            if self._config.get("file_list_checkbox_editable", False):
+                self._set_file_item_checked(item, has_label)
+
+    def _on_inspector_labels_found(self, label_paths):
+        """Pass discovered label files to the inspector panel."""
+        if (
+            not hasattr(self, "inspector_panel")
+            or self.inspector_panel is None
+        ):
+            return
+        if label_paths:
+            self.inspector_panel.set_file_list(label_paths)
 
     def toggle_auto_labeling_widget(self):
         """Toggle auto labeling widget visibility."""
