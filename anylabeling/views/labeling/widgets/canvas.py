@@ -2232,7 +2232,7 @@ class Canvas(
             p.setPen(pen)
             grouped_shapes = {}
             for shape in self.shapes:
-                if not shape.visible:
+                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
                 if shape.group_id is None:
                     continue
@@ -2303,7 +2303,7 @@ class Canvas(
             linking_pairs = []
             group_color = (255, 128, 0)
             for shape in self.shapes:
-                if not shape.visible:
+                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
 
                 try:
@@ -2359,7 +2359,7 @@ class Canvas(
         # Draw shape masks
         if self.show_masks:
             for shape in self.shapes:
-                if not shape.visible:
+                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
                 if shape.shape_type not in [
                     "polygon",
@@ -2458,7 +2458,7 @@ class Canvas(
 
         # Draw degrees
         for shape in self.shapes:
-            if not shape.visible:
+            if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                 continue
             if not viewport_rect.intersects(shape.bounding_rect()):
                 continue
@@ -2609,7 +2609,7 @@ class Canvas(
             )
             p.setPen(pen)
             for shape in self.shapes:
-                if not shape.visible:
+                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
                 if should_merge_rectangle_text(shape):
                     continue
@@ -2640,7 +2640,7 @@ class Canvas(
             )
             p.setPen(pen)
             for shape in self.shapes:
-                if not shape.visible:
+                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
                 if should_merge_rectangle_text(shape):
                     continue
@@ -2670,12 +2670,12 @@ class Canvas(
             )
             labels = []
             for shape in self.shapes:
-                if not shape.visible:
+                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
                 if self.label_on_selection and not shape.selected:
                     continue
                 d_react = shape.point_size / shape.scale
-                if not shape.visible:
+                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
                 if shape.label in [
                     "AUTOLABEL_OBJECT",
@@ -2817,19 +2817,33 @@ class Canvas(
                     )
                 else:
                     continue
+
+                # 对关键点（point）默认隐藏标签，仅当鼠标靠近或选中时显示
+                if shape.shape_type == "point":
+                    if not shape.points:
+                        continue
+                    point = shape.points[0]
+                    mouse_pos = self.prev_move_point
+                    distance = math.hypot(
+                        mouse_pos.x() - point.x(),
+                        mouse_pos.y() - point.y()
+                    )
+                    if distance > 15 and not shape.selected:
+                        continue
+
                 labels.append((shape, rect, text_pos, label_text))
 
             pen = QtGui.QPen(QtGui.QColor("#FFA500"), 8, Qt.PenStyle.SolidLine)
             p.setPen(pen)
             for shape, rect, _, _ in labels:
-                if not shape.visible:
+                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
                 p.fillRect(rect, shape.line_color)
 
             pen = QtGui.QPen(QtGui.QColor("#000000"), 8, Qt.PenStyle.SolidLine)
             p.setPen(pen)
             for shape, _, text_pos, label_text in labels:
-                if not shape.visible:
+                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
                 p.drawText(text_pos, label_text)
 
@@ -2859,7 +2873,7 @@ class Canvas(
             attributes_list = []
 
             for shape in self.shapes:
-                if not shape.visible:
+                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
                 if should_merge_rectangle_text(shape):
                     continue
@@ -2976,7 +2990,7 @@ class Canvas(
                 )
 
             for shape, rect, _, _ in attributes_list:
-                if not shape.visible:
+                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
 
                 background_color = QtGui.QColor(*self.attr_background_color)

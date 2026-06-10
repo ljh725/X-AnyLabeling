@@ -28,6 +28,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QScrollArea,
+    QShortcut,
     QVBoxLayout,
     QWidget,
     QLineEdit,
@@ -538,6 +539,9 @@ class LabelingWidget(LabelDialog):
         self.canvas.split_position_changed.connect(
             self.compare_view_slider.set_position
         )
+
+        # Instance visibility shortcuts
+        self._setup_instance_visibility_shortcuts()
 
         scroll_area = QScrollArea()
         scroll_area.setWidget(self.canvas)
@@ -5855,7 +5859,7 @@ class LabelingWidget(LabelDialog):
                 )
 
     def _update_shape_color(self, shape):
-        r, g, b = self._get_rgb_by_label(shape.label)
+        r, g, b = self._get_rgb_by_label(shape.label, shape.group_id)
         shape.line_color = QtGui.QColor(r, g, b)
         shape.vertex_fill_color = QtGui.QColor(r, g, b)
         shape.hvertex_fill_color = QtGui.QColor(255, 255, 255)
@@ -5863,7 +5867,12 @@ class LabelingWidget(LabelDialog):
         shape.select_line_color = QtGui.QColor(255, 255, 255)
         shape.select_fill_color = QtGui.QColor(r, g, b, 155)
 
-    def _get_rgb_by_label(self, label, skip_label_info=False):
+    def _get_rgb_by_label(self, label, group_id=None, skip_label_info=False):
+        # 如果 shape 有 group_id，按实例分配颜色
+        if group_id is not None and group_id >= 0:
+            instance_id = int(group_id)
+            return LABEL_COLORMAP[instance_id % len(LABEL_COLORMAP)]
+
         if label == "AUTOLABEL_ADD":
             return (144, 238, 144)
         if label == "AUTOLABEL_REMOVE":
@@ -7102,6 +7111,77 @@ class LabelingWidget(LabelDialog):
         )
 
         return True
+
+    # Instance visibility shortcuts and methods
+    def _setup_instance_visibility_shortcuts(self):
+        """Setup keyboard shortcuts for instance visibility control"""
+        # H: Hide current instance
+        self.hide_instance_shortcut = QShortcut(
+            QtGui.QKeySequence("H"), self
+        )
+        self.hide_instance_shortcut.activated.connect(
+            self.hide_current_instance
+        )
+
+        # Shift+H: Focus mode (hide all except current)
+        self.focus_instance_shortcut = QShortcut(
+            QtGui.QKeySequence("Shift+H"), self
+        )
+        self.focus_instance_shortcut.activated.connect(
+            self.focus_current_instance
+        )
+
+        # Ctrl+Shift+H: Show all instances
+        self.show_all_shortcut = QShortcut(
+            QtGui.QKeySequence("Ctrl+Shift+H"), self
+        )
+        self.show_all_shortcut.activated.connect(
+            self.show_all_instances
+        )
+
+    def hide_current_instance(self):
+        """Hide the currently selected instance (same group_id)"""
+        selected_shapes = getattr(self.canvas, 'selected_shapes', [])
+        if not selected_shapes:
+            self.status(self.tr("No shape selected"))
+            return
+        current_shape = selected_shapes[0]
+        if current_shape.group_id is None:
+            self.status(self.tr("Selected shape has no group_id"))
+            return
+        target_group_id = current_shape.group_id
+        for shape in self.canvas.shapes:
+            if shape.group_id == target_group_id:
+                shape.hidden_by_filter = True
+        self.canvas.update()
+        self.status(
+            self.tr(f"Hidden instance with group_id={target_group_id}")
+        )
+
+    def focus_current_instance(self):
+        """Focus mode: hide all instances except current"""
+        selected_shapes = getattr(self.canvas, 'selected_shapes', [])
+        if not selected_shapes:
+            self.status(self.tr("No shape selected"))
+            return
+        current_shape = selected_shapes[0]
+        if current_shape.group_id is None:
+            self.status(self.tr("Selected shape has no group_id"))
+            return
+        target_group_id = current_shape.group_id
+        for shape in self.canvas.shapes:
+            shape.hidden_by_filter = (shape.group_id != target_group_id)
+        self.canvas.update()
+        self.status(
+            self.tr(f"Focus mode: only showing group_id={target_group_id}")
+        )
+
+    def show_all_instances(self):
+        """Show all instances"""
+        for shape in self.canvas.shapes:
+            shape.hidden_by_filter = False
+        self.canvas.update()
+        self.status(self.tr("All instances visible"))
 
     # QT Overload
     def keyPressEvent(self, event):

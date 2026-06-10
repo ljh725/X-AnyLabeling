@@ -96,6 +96,9 @@ class Shape:
         self.center = None
         self.show_degrees = True
 
+        # Instance-level visibility filter (runtime only, not serialized)
+        self.hidden_by_filter = False
+
         self._highlight_index = None
         self._highlight_mode = self.NEAR_VERTEX
         self._highlight_settings = {
