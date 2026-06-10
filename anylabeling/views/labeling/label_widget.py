@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSlot
-from PyQt6.QtGui import QFontMetrics
+from PyQt6.QtGui import QFontMetrics, QShortcut
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -28,7 +28,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QScrollArea,
-    QShortcut,
     QVBoxLayout,
     QWidget,
     QLineEdit,
