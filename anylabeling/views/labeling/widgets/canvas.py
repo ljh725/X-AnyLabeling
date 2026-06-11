@@ -3600,6 +3600,12 @@ class Canvas(
                 self.rotate_by_keyboard(-self.small_rotation_increment)
             elif key == QtCore.Qt.Key.Key_V:
                 self.rotate_by_keyboard(-self.large_rotation_increment)
+            else:
+                super(Canvas, self).keyPressEvent(ev)
+                return
+        else:
+            super(Canvas, self).keyPressEvent(ev)
+            return
 
     # QT Overload
     def keyReleaseEvent(self, ev):

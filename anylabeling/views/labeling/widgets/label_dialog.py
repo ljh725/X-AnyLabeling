@@ -115,25 +115,36 @@ class DigitShortcutDialog(QtWidgets.QDialog):
         controls_layout = QtWidgets.QHBoxLayout()
         controls_layout.setSpacing(12)
 
-        self.prev_button = QtWidgets.QPushButton(self.tr("Previous Page"))
+        self.prev_button = QtWidgets.QPushButton(self.tr("上一页"))
         self.prev_button.setFixedHeight(28)
         self.prev_button.clicked.connect(self.show_previous_page)
         self.prev_button.setStyleSheet(get_cancel_btn_style())
 
-        self.next_button = QtWidgets.QPushButton(self.tr("Next Page"))
+        self.next_button = QtWidgets.QPushButton(self.tr("下一页"))
         self.next_button.setFixedHeight(28)
         self.next_button.clicked.connect(self.show_next_page)
         self.next_button.setStyleSheet(get_cancel_btn_style())
+
+        self.add_page_button = QtWidgets.QPushButton(self.tr("+ 增加页"))
+        self.add_page_button.setFixedHeight(28)
+        self.add_page_button.clicked.connect(self.add_page)
+        self.add_page_button.setStyleSheet(get_ok_btn_style())
+
+        self.remove_page_button = QtWidgets.QPushButton(self.tr("- 删除页"))
+        self.remove_page_button.setFixedHeight(28)
+        self.remove_page_button.clicked.connect(self.remove_page)
+        self.remove_page_button.setStyleSheet(get_cancel_btn_style())
 
         self.page_label = QtWidgets.QLabel()
         self.page_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.page_label.setStyleSheet("font-weight: 500;")
 
         controls_layout.addWidget(self.prev_button)
+        controls_layout.addWidget(self.next_button)
+        controls_layout.addWidget(self.add_page_button)
+        controls_layout.addWidget(self.remove_page_button)
         controls_layout.addStretch()
         controls_layout.addWidget(self.page_label)
-        controls_layout.addStretch()
-        controls_layout.addWidget(self.next_button)
 
         layout.addLayout(controls_layout)
 
@@ -307,11 +318,12 @@ class DigitShortcutDialog(QtWidgets.QDialog):
 
         self.prev_button.setEnabled(self.current_page > 0)
         self.next_button.setEnabled(self.current_page < self.pages - 1)
+        self.remove_page_button.setEnabled(self.pages > 1)
 
         start_index = self.current_page * self.page_size
         end_index = start_index + self.page_size - 1
         self.page_label.setText(
-            self.tr("Page {current}/{total} (Shortcuts {start}-{end})").format(
+            self.tr("第 {current}/{total} 页（快捷键 {start}-{end}）").format(
                 current=self.current_page + 1,
                 total=self.pages,
                 start=start_index,
@@ -400,6 +412,47 @@ class DigitShortcutDialog(QtWidgets.QDialog):
             return
         self.save_current_page_data()
         self.load_page(self.current_page + 1)
+
+    def add_page(self):
+        """Add a new blank page and switch to it."""
+        self.save_current_page_data()
+        self.pages += 1
+        self.load_page(self.pages - 1)
+
+    def remove_page(self):
+        """Remove the current page after confirmation."""
+        if self.pages <= 1:
+            return
+
+        start_idx = self.current_page * self.page_size
+        end_idx = start_idx + self.page_size - 1
+        has_data = any(
+            self.digit_shortcuts.get(i, {}).get("mode") is not None
+            for i in range(start_idx, end_idx + 1)
+        )
+
+        if has_data:
+            confirm = QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("确认删除"),
+                self.tr(
+                    "当前页（快捷键 {start}-{end}）存在已配置的快捷键，"
+                    "删除后数据将丢失。确定要删除吗？"
+                ).format(start=start_idx, end=end_idx),
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No,
+                QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if confirm != QtWidgets.QMessageBox.StandardButton.Yes:
+                return
+
+        for i in range(start_idx, end_idx + 1):
+            self.digit_shortcuts.pop(i, None)
+
+        self.pages -= 1
+        if self.current_page >= self.pages:
+            self.current_page = self.pages - 1
+        self.load_page(self.current_page)
 
     def reset_settings(self):
         """Reset all settings to None"""

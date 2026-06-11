@@ -15,6 +15,29 @@ from .popup import Popup
 LABEL_OPACITY = 128
 
 
+class _CellLineEdit(QtWidgets.QLineEdit):
+    """QLineEdit subclass that intercepts Enter/Return to prevent
+    the parent QDialog from auto-accepting when the user presses Enter
+    inside a table cell.  Instead, focus moves to the next row."""
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        if event.key() in (
+            QtCore.Qt.Key.Key_Return,
+            QtCore.Qt.Key.Key_Enter,
+        ):
+            table = self.parent()
+            if isinstance(table, QtWidgets.QTableWidget):
+                row = table.indexAt(self.pos()).row()
+                next_row = (row + 1) % table.rowCount()
+                next_widget = table.cellWidget(next_row, 1)
+                if next_widget is not None:
+                    next_widget.setFocus()
+                    next_widget.selectAll()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+
 class DigitRenameManager:
     """Manage digit-based relabel shortcuts for selected shapes."""
 
@@ -80,8 +103,8 @@ class DigitRenameManager:
 
         if not rename_label:
             message = self._label_widget.tr(
-                "No relabel mapping set for key {digit}. "
-                "Please configure the mapping in Digit Relabel Manager."
+                "按键 {digit} 未设置重命名映射，"
+                "请在数字快捷重命名管理器中配置"
             ).format(digit=digit_num)
             self._label_widget.status(message, 2000)
             return True
@@ -106,15 +129,14 @@ class DigitRenameManager:
 
         if not shapes:
             label_widget.status(
-                label_widget.tr("No shapes selected for relabel."), 2000
+                label_widget.tr("未选中任何标注对象"), 2000
             )
             return
 
         if not label_widget.validate_label(rename_label):
             label_widget.status(
                 label_widget.tr(
-                    "Invalid label '{label}' with validation type "
-                    "'{type}'"
+                    "标签 '{label}' 无效，验证类型为 '{type}'"
                 ).format(
                     label=rename_label,
                     type=label_widget._config["validate_label"],
@@ -171,7 +193,7 @@ class DigitRenameManager:
 
         label_widget.status(
             label_widget.tr(
-                "Relabeled {count} shape(s) to '{label}'"
+                "已将 {count} 个对象重命名为 '{label}'"
             ).format(
                 count=updated_count,
                 label=rename_label,
@@ -191,6 +213,7 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
     """Dialog for configuring digit relabel shortcuts."""
 
     PAGE_SIZE = 10
+    _ROW_HEIGHT = 32
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         """Initialize the dialog.
@@ -234,9 +257,8 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
 
     def _build_ui(self) -> None:
         """Create the dialog UI."""
-        self.setWindowTitle(self.tr("Digit Relabel Manager"))
+        self.setWindowTitle(self.tr("数字快捷重命名管理器"))
         self.setModal(True)
-        self.resize(520, 420)
         self.setWindowFlags(
             self.windowFlags()
             & ~QtCore.Qt.WindowType.WindowContextHelpButtonHint
@@ -245,19 +267,17 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
+        layout.setSpacing(12)
 
         header_label = QtWidgets.QLabel(
-            self.tr(
-                "Configure relabel mappings for digit keys 0-9 while editing selected objects."
-            )
+            self.tr("编辑选中对象时，使用数字键 0-9 快速重命名标签")
         )
         header_label.setWordWrap(True)
         layout.addWidget(header_label)
 
         self._table = QtWidgets.QTableWidget(self.PAGE_SIZE, 2, self)
         self._table.setHorizontalHeaderLabels(
-            [self.tr("Digit"), self.tr("Label")]
+            [self.tr("数字键"), self.tr("标签")]
         )
         self._table.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.NoSelection
@@ -266,6 +286,9 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
             QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
         )
         self._table.verticalHeader().setVisible(False)
+        self._table.setHorizontalScrollMode(
+            QtWidgets.QAbstractItemView.ScrollMode.ScrollPerPixel
+        )
         self._table.horizontalHeader().setSectionResizeMode(
             0,
             QtWidgets.QHeaderView.ResizeMode.ResizeToContents,
@@ -276,6 +299,8 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
         )
 
         for row in range(self.PAGE_SIZE):
+            self._table.setRowHeight(row, self._ROW_HEIGHT)
+
             digit_item = QtWidgets.QTableWidgetItem(str(row))
             digit_item.setTextAlignment(
                 QtCore.Qt.AlignmentFlag.AlignCenter
@@ -285,8 +310,8 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
             )
             self._table.setItem(row, 0, digit_item)
 
-            label_edit = QtWidgets.QLineEdit(self)
-            label_edit.setPlaceholderText(self.tr("Enter label"))
+            label_edit = _CellLineEdit(self)
+            label_edit.setPlaceholderText(self.tr("输入标签"))
             label_edit.textChanged.connect(
                 lambda text, index=row: self._on_label_changed(index, text)
             )
@@ -295,16 +320,20 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
         layout.addWidget(self._table)
 
         button_layout = QtWidgets.QHBoxLayout()
-        reset_button = QtWidgets.QPushButton(self.tr("Reset"), self)
+        reset_button = QtWidgets.QPushButton(self.tr("重置"))
         reset_button.setStyleSheet(get_cancel_btn_style())
         reset_button.clicked.connect(self._on_reset)
 
-        cancel_button = QtWidgets.QPushButton(self.tr("Cancel"), self)
+        cancel_button = QtWidgets.QPushButton(self.tr("取消"))
         cancel_button.setStyleSheet(get_cancel_btn_style())
+        cancel_button.setAutoDefault(False)
+        cancel_button.setDefault(False)
         cancel_button.clicked.connect(self.reject)
 
-        ok_button = QtWidgets.QPushButton(self.tr("OK"), self)
+        ok_button = QtWidgets.QPushButton(self.tr("确定"))
         ok_button.setStyleSheet(get_ok_btn_style())
+        ok_button.setAutoDefault(False)
+        ok_button.setDefault(False)
         ok_button.clicked.connect(self._on_save)
 
         button_layout.addWidget(reset_button)
@@ -337,11 +366,8 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
         """Clear all configured relabel mappings after confirmation."""
         confirm = QtWidgets.QMessageBox.warning(
             self,
-            self.tr("Confirm Reset"),
-            self.tr(
-                "Are you sure you want to clear all relabel mappings? "
-                "This cannot be undone."
-            ),
+            self.tr("确认重置"),
+            self.tr("确定要清空所有快捷重命名映射吗？此操作不可撤销。"),
             QtWidgets.QMessageBox.StandardButton.Yes
             | QtWidgets.QMessageBox.StandardButton.No,
             QtWidgets.QMessageBox.StandardButton.No,
@@ -377,7 +403,7 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
         self.accept()
 
         popup = Popup(
-            self.tr("Digit relabel shortcuts saved successfully"),
+            self.tr("数字快捷重命名映射已保存"),
             self._parent,
             msec=1000,
             icon=new_icon_path("copy-green", "svg"),

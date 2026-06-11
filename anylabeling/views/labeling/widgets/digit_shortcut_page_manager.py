@@ -184,8 +184,11 @@ class DigitShortcutPageManager(QtCore.QObject):
         if self._total_pages <= 1:
             if self._status:
                 self._status(
-                    self._tr("Only one digit shortcut page is configured."),
-                    2000,
+                    self._tr(
+                        "仅配置了一页数字快捷键。"
+                        "请通过 数字快捷键管理器(Alt+D) 增加页数"
+                    ),
+                    3000,
                 )
             return (self._current_page, self._total_pages)
 
@@ -243,20 +246,20 @@ class DigitShortcutPageManager(QtCore.QObject):
         """
         info = self.get_page_info()
 
-        mapping_text = self._tr("Keys 0-9 → Shortcuts {start}-{end}").format(
+        mapping_text = self._tr("按键 0-9 → 快捷键 {start}-{end}").format(
             start=info["start_index"],
             end=info["end_index"],
         )
 
         status_message = self._tr(
-            "Digit shortcuts: Page {page}/{total} ({mapping})"
+            "数字快捷键：第 {page}/{total} 页（{mapping}）"
         ).format(
             page=info["display_page"],
             total=info["total_pages"],
             mapping=mapping_text,
         )
 
-        hint_message = self._tr("Use {key} to switch pages").format(
+        hint_message = self._tr("按 {key} 切换页面").format(
             key=switch_key
         )
 

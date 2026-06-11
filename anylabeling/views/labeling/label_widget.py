@@ -5786,6 +5786,9 @@ class LabelingWidget(LabelDialog):
         else:
             self.hide_attributes_panel()
 
+        if self.auto_focus_instance:
+            self._auto_focus_on_selection(selected_shapes)
+
     def add_label(self, shape, update_last_label=True, refresh_filters=True):
         if shape.group_id is None:
             text = shape.label
@@ -7140,6 +7143,15 @@ class LabelingWidget(LabelDialog):
             self.show_all_instances
         )
 
+        # Alt+H: Toggle auto-focus instance mode
+        self.auto_focus_instance = False
+        self.auto_focus_instance_shortcut = QShortcut(
+            QtGui.QKeySequence("Alt+H"), self
+        )
+        self.auto_focus_instance_shortcut.activated.connect(
+            self.toggle_auto_focus_instance
+        )
+
     def hide_current_instance(self):
         """Hide the currently selected instance (same group_id)"""
         selected_shapes = getattr(self.canvas, 'selected_shapes', [])
@@ -7184,9 +7196,55 @@ class LabelingWidget(LabelDialog):
         self.canvas.update()
         self.status(self.tr("All instances visible"))
 
+    def toggle_auto_focus_instance(self):
+        """Toggle auto-focus instance aggregation mode."""
+        self.auto_focus_instance = not self.auto_focus_instance
+        if self.auto_focus_instance:
+            self.status(self.tr("自动聚合模式已开启（选中即聚焦，ESC 退出聚合）"), 3000)
+        else:
+            self.show_all_instances()
+            self.status(self.tr("自动聚合模式已关闭"), 2000)
+
+    def _auto_focus_on_selection(self, selected_shapes):
+        """Auto-focus the selected shape's group_id if auto-focus is on."""
+        if not self.auto_focus_instance:
+            return
+        if not selected_shapes:
+            return
+        current_shape = selected_shapes[0]
+        if current_shape.group_id is None:
+            return
+        target_group_id = current_shape.group_id
+        for shape in self.canvas.shapes:
+            shape.hidden_by_filter = (shape.group_id != target_group_id)
+        self.canvas.update()
+        self.status(
+            self.tr("自动聚合: group_id={gid}").format(gid=target_group_id),
+            2000,
+        )
+
+    def _escape_auto_focus_if_active(self):
+        """Handle ESC in auto-focus mode: temporarily show all instances."""
+        if not self.auto_focus_instance:
+            return False
+        has_hidden = any(
+            getattr(s, "hidden_by_filter", False)
+            for s in self.canvas.shapes
+        )
+        if not has_hidden:
+            return False
+        for shape in self.canvas.shapes:
+            shape.hidden_by_filter = False
+        self.canvas.update()
+        self.status(self.tr("已退出聚合（自动聚合模式仍开启）"), 2000)
+        return True
+
     # QT Overload
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
+            if self._escape_auto_focus_if_active():
+                event.accept()
+                return
             event.accept()
             return
         super(LabelingWidget, self).keyPressEvent(event)
