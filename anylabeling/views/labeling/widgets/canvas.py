@@ -2829,7 +2829,8 @@ class Canvas(
                     # 使用屏幕像素距离，避免缩放影响
                     screen_distance = distance * self.scale
                     is_hovered = (shape == self.h_hape)
-                    if screen_distance > 15 and not shape.selected and not is_hovered:
+                    # 修改为 10个像素距离 避免显示两个标签
+                    if screen_distance > 10 and not shape.selected and not is_hovered:
                         continue
                 else:
                     # 非关键点：受 label_on_selection 控制
