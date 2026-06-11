@@ -2828,7 +2828,10 @@ class Canvas(
                         mouse_pos.x() - point.x(),
                         mouse_pos.y() - point.y()
                     )
-                    if distance > 15 and not shape.selected:
+                    # 使用屏幕像素距离，避免缩放影响
+                    screen_distance = distance * self.scale
+                    is_hovered = (shape == self.h_hape)
+                    if screen_distance > 15 and not shape.selected and not is_hovered:
                         continue
 
                 labels.append((shape, rect, text_pos, label_text))

@@ -5870,7 +5870,9 @@ class LabelingWidget(LabelDialog):
         # 如果 shape 有 group_id，按实例分配颜色
         if group_id is not None and group_id >= 0:
             instance_id = int(group_id)
-            return LABEL_COLORMAP[instance_id % len(LABEL_COLORMAP)]
+            # 跳过索引0（黑色），使用1-based索引循环
+            color_idx = (instance_id % (len(LABEL_COLORMAP) - 1)) + 1
+            return LABEL_COLORMAP[color_idx]
 
         if label == "AUTOLABEL_ADD":
             return (144, 238, 144)
