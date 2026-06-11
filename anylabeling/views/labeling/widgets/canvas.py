@@ -2672,8 +2672,6 @@ class Canvas(
             for shape in self.shapes:
                 if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
-                if self.label_on_selection and not shape.selected:
-                    continue
                 d_react = shape.point_size / shape.scale
                 if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
@@ -2832,6 +2830,10 @@ class Canvas(
                     screen_distance = distance * self.scale
                     is_hovered = (shape == self.h_hape)
                     if screen_distance > 15 and not shape.selected and not is_hovered:
+                        continue
+                else:
+                    # 非关键点：受 label_on_selection 控制
+                    if self.label_on_selection and not shape.selected:
                         continue
 
                 labels.append((shape, rect, text_pos, label_text))
