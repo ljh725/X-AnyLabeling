@@ -192,6 +192,7 @@ class Canvas(
         self.show_masks = True
         self.show_texts = True
         self.show_labels = True
+        self.label_display_mode = "label"
         self.show_scores = True
         self.show_degrees = False
         self.show_attributes = True
@@ -2681,19 +2682,31 @@ class Canvas(
                     "AUTOLABEL_REMOVE",
                 ]:
                     continue
-                label_text = (
-                    (
-                        f"id:{shape.group_id} "
+                display_mode = self.label_display_mode
+                if display_mode == "none":
+                    continue
+                elif display_mode == "label":
+                    label_text = shape.label
+                elif display_mode == "id":
+                    label_text = (
+                        str(shape.group_id)
                         if shape.group_id is not None
                         else ""
                     )
-                    + (f"{shape.label}")
-                    + (
-                        f" {float(shape.score):.2f}"
-                        if (shape.score is not None and self.show_scores)
-                        else ""
-                    )
-                )
+                elif display_mode == "both":
+                    if shape.group_id is not None:
+                        label_text = f"{shape.label} #{shape.group_id}"
+                    else:
+                        label_text = shape.label
+                else:
+                    label_text = shape.label
+                if not label_text:
+                    continue
+                if (
+                    shape.score is not None
+                    and self.show_scores
+                ):
+                    label_text += f" {float(shape.score):.2f}"
                 if shape.shape_type == "rectangle":
                     extra_texts = []
                     if self.show_texts and shape.description:
@@ -2839,15 +2852,17 @@ class Canvas(
 
                 labels.append((shape, rect, text_pos, label_text))
 
-            pen = QtGui.QPen(QtGui.QColor("#FFA500"), 8, Qt.PenStyle.SolidLine)
-            p.setPen(pen)
+            p.setPen(Qt.PenStyle.NoPen)
             for shape, rect, _, _ in labels:
                 if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
-                p.fillRect(rect, shape.line_color)
+                bg_color = QtGui.QColor(shape.line_color)
+                bg_color.setAlphaF(0.85)
+                p.setBrush(bg_color)
+                p.drawRoundedRect(rect, 3, 3)
 
-            pen = QtGui.QPen(QtGui.QColor("#000000"), 8, Qt.PenStyle.SolidLine)
-            p.setPen(pen)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QtGui.QColor("#ffffff"))
             for shape, _, text_pos, label_text in labels:
                 if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
@@ -3124,6 +3139,7 @@ class Canvas(
         scratch.compare_pixmap = None
         scratch.cross_line_show = False
         scratch.show_labels = show_labels
+        scratch.label_display_mode = self.label_display_mode
         scratch.show_scores = show_scores
         scratch.show_groups = show_groups
         scratch.show_texts = show_texts

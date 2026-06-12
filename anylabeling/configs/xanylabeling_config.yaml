@@ -20,6 +20,7 @@ show_groups: false
 show_masks: true
 show_texts: true
 show_labels: true
+label_display_mode: label
 show_scores: true
 show_degrees: false
 show_shapes: true

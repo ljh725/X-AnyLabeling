@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSlot
-from PyQt6.QtGui import QFontMetrics, QShortcut
+from PyQt6.QtGui import QFontMetrics, QIntValidator, QShortcut
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -2657,27 +2657,75 @@ class LabelingWidget(LabelDialog):
         self.thumbnail_container.hide()
         right_sidebar_layout.addWidget(self.thumbnail_container)
 
-        # Shape attributes
-        self.shape_attributes = QLabel(self.tr("Attributes"))
+        # Label display mode buttons
+        display_mode_panel = QFrame()
+        display_mode_panel.setObjectName("sidebarPanel")
+        display_mode_panel.setStyleSheet(get_panel_style())
+        display_mode_layout = QVBoxLayout(display_mode_panel)
+        display_mode_layout.setContentsMargins(4, 4, 4, 4)
+        display_mode_layout.setSpacing(4)
+
+        display_mode_header = QLabel(self.tr("标签显示"))
+        display_mode_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        display_mode_header.setStyleSheet("font-weight: bold; font-size: 11px;")
+        display_mode_layout.addWidget(display_mode_header)
+
+        display_mode_btn_row = QHBoxLayout()
+        display_mode_btn_row.setSpacing(3)
+
+        self._display_mode_buttons = {}
+        current_mode = self._config.get("label_display_mode", "label")
+        for mode_key, mode_label in [
+            ("label", self.tr("标签")),
+            ("id", self.tr("编号")),
+            ("both", self.tr("名称+编号")),
+            ("none", self.tr("隐藏")),
+        ]:
+            btn = QtWidgets.QPushButton(mode_label)
+            btn.setCheckable(True)
+            btn.setFixedHeight(24)
+            btn.setStyleSheet(
+                "QPushButton { border: 1px solid #555; border-radius: 3px;"
+                " font-size: 11px; padding: 2px 4px; }"
+                "QPushButton:checked { background: #e94560;"
+                " color: white; border-color: #e94560; }"
+            )
+            btn.clicked.connect(
+                lambda checked, m=mode_key: self._set_label_display_mode(m)
+            )
+            if mode_key == current_mode:
+                btn.setChecked(True)
+            display_mode_btn_row.addWidget(btn)
+            self._display_mode_buttons[mode_key] = btn
+
+        display_mode_layout.addLayout(display_mode_btn_row)
+
+        self._display_score_cb = QtWidgets.QCheckBox(self.tr("显示置信度"))
+        self._display_score_cb.setChecked(
+            self._config.get("show_scores", True)
+        )
+        self._display_score_cb.setStyleSheet("font-size: 11px;")
+        self._display_score_cb.toggled.connect(self._toggle_display_score)
+        display_mode_layout.addWidget(self._display_score_cb)
+
+        right_sidebar_layout.addWidget(display_mode_panel)
+
+        # Shape attributes / info panel
+        self.shape_attributes = QLabel(self.tr("对象属性"))
         self.grid_layout = QGridLayout()
         self.scroll_area = QScrollArea()
-        # Show vertical scrollbar as needed
         self.scroll_area.setVerticalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
-        # Disable horizontal scrollbar
         self.scroll_area.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
         self.scroll_area.setWidgetResizable(True)
-        # Create a container widget for the grid layout
         self.grid_layout_container = QWidget()
         self.grid_layout_container.setLayout(self.grid_layout)
         self.scroll_area.setWidget(self.grid_layout_container)
         self._building_attributes_panel = False
-        if not self.attributes:
-            self.shape_attributes.hide()
-            self.scroll_area.hide()
+        self.scroll_area.setMaximumHeight(200)
         right_sidebar_layout.addWidget(
             self.shape_attributes, 0, Qt.AlignmentFlag.AlignCenter
         )
@@ -5346,153 +5394,275 @@ class LabelingWidget(LabelDialog):
 
         update_shape = self.canvas.shapes[shape_index]
         update_category = update_shape.label
-        if update_category not in self.attributes:
-            self._reset_attributes_panel()
-            self.hide_attributes_panel()
-            return
-
-        current_attibute = self.attributes[update_category]
-        if not update_shape.attributes:
-            update_shape.attributes = {}
 
         self._reset_attributes_panel()
         self._building_attributes_panel = True
         try:
             row_counter = 0
+            info_style = "QLabel { color: #aaa; font-size: 11px; }"
+            val_style = (
+                "QLabel { color: #eee; font-size: 11px;"
+                " font-family: monospace; }"
+            )
 
-            for property, options in current_attibute.items():
-                widget_type = self.attribute_widget_types.get(
-                    update_category, {}
-                ).get(property, "combobox")
-                current_value = update_shape.attributes.get(property, None)
-                font_metrics = QFontMetrics(self.scroll_area.font())
-                available_width = self.scroll_area.width() - 30
-                property_display = property
-                if _measure_text_width(font_metrics, property) > available_width:
-                    while (
-                        _measure_text_width(font_metrics, property_display + "...")
-                        > available_width
-                        and len(property_display) > 1
-                    ):
-                        property_display = property_display[:-1]
-                    property_display += "..."
-
-                property_label = QLabel(property_display)
-                if property_display != property:
-                    property_label.setToolTip(property)
-
-                self.grid_layout.addWidget(
-                    property_label, row_counter, 0, 1, 2
-                )
+            def _add_info_row(label_text, value_text, value_widget=None):
+                nonlocal row_counter
+                lbl = QLabel(label_text)
+                lbl.setStyleSheet(info_style)
+                self.grid_layout.addWidget(lbl, row_counter, 0)
+                if value_widget is not None:
+                    self.grid_layout.addWidget(
+                        value_widget, row_counter, 1
+                    )
+                else:
+                    val = QLabel(str(value_text))
+                    val.setStyleSheet(val_style)
+                    self.grid_layout.addWidget(val, row_counter, 1)
                 row_counter += 1
 
-                if widget_type == "radiobutton":
-                    radio_group = QButtonGroup()
-                    radio_container = QWidget()
-                    main_layout = QVBoxLayout()
-                    main_layout.setContentsMargins(0, 0, 0, 0)
-                    main_layout.setSpacing(2)
+            idx_edit = QtWidgets.QLineEdit(str(shape_index))
+            idx_edit.setReadOnly(True)
+            idx_edit.setStyleSheet(
+                "QLineEdit { font-size: 11px; padding: 1px 3px; }"
+            )
+            _add_info_row(self.tr("索引"), None, idx_edit)
 
-                    def get_truncated_text(text, max_width):
-                        if _measure_text_width(font_metrics, text) <= max_width:
-                            return text, text
-                        truncated = text
+            type_edit = QtWidgets.QLineEdit(
+                update_shape.shape_type or ""
+            )
+            type_edit.setReadOnly(True)
+            type_edit.setStyleSheet(
+                "QLineEdit { font-size: 11px; padding: 1px 3px; }"
+            )
+            _add_info_row(self.tr("类型"), None, type_edit)
+
+            label_edit = QtWidgets.QLineEdit(update_shape.label)
+            label_edit.setStyleSheet(
+                "QLineEdit { font-size: 11px; padding: 1px 3px; }"
+            )
+            label_edit.textChanged.connect(
+                lambda t, idx=shape_index: self._info_panel_label_changed(
+                    idx, t
+                )
+            )
+            _add_info_row(self.tr("标签"), None, label_edit)
+
+            gid_edit = QtWidgets.QLineEdit(
+                str(update_shape.group_id)
+                if update_shape.group_id is not None
+                else ""
+            )
+            gid_edit.setValidator(QIntValidator())
+            gid_edit.setStyleSheet(
+                "QLineEdit { font-size: 11px; padding: 1px 3px; }"
+            )
+            gid_edit.textChanged.connect(
+                lambda t, idx=shape_index: self._info_panel_gid_changed(
+                    idx, t
+                )
+            )
+            _add_info_row(self.tr("Group ID"), None, gid_edit)
+
+            color_swatch = QLabel()
+            fill_rgb = update_shape.fill_color.getRgb()[:3]
+            color_swatch.setFixedSize(40, 16)
+            color_swatch.setStyleSheet(
+                f"background-color: rgb({fill_rgb[0]},{fill_rgb[1]},{fill_rgb[2]});"
+                " border: 1px solid #666; border-radius: 2px;"
+            )
+            _add_info_row(self.tr("颜色"), None, color_swatch)
+
+            diff_cb = QtWidgets.QCheckBox()
+            diff_cb.setChecked(getattr(update_shape, "difficult", False))
+            diff_cb.toggled.connect(
+                lambda c, idx=shape_index: self._info_panel_difficult_changed(
+                    idx, c
+                )
+            )
+            _add_info_row(self.tr("Difficult"), None, diff_cb)
+
+            sep = QFrame()
+            sep.setFrameShape(QFrame.Shape.HLine)
+            sep.setFrameShadow(QFrame.Shadow.Sunken)
+            self.grid_layout.addWidget(sep, row_counter, 0, 1, 2)
+            row_counter += 1
+
+            if update_category in self.attributes:
+                current_attibute = self.attributes[update_category]
+                if not update_shape.attributes:
+                    update_shape.attributes = {}
+
+                for property, options in current_attibute.items():
+                    widget_type = self.attribute_widget_types.get(
+                        update_category, {}
+                    ).get(property, "combobox")
+                    current_value = update_shape.attributes.get(
+                        property, None
+                    )
+                    font_metrics = QFontMetrics(self.scroll_area.font())
+                    available_width = self.scroll_area.width() - 30
+                    property_display = property
+                    if (
+                        _measure_text_width(font_metrics, property)
+                        > available_width
+                    ):
                         while (
                             _measure_text_width(
-                                font_metrics, truncated + "..."
+                                font_metrics, property_display + "..."
                             )
-                            > max_width
-                            and len(truncated) > 1
+                            > available_width
+                            and len(property_display) > 1
                         ):
-                            truncated = truncated[:-1]
-                        return truncated + "...", text
+                            property_display = property_display[:-1]
+                        property_display += "..."
 
-                    def get_button_width(text):
-                        return _measure_text_width(font_metrics, text) + 30
+                    property_label = QLabel(property_display)
+                    if property_display != property:
+                        property_label.setToolTip(property)
 
-                    def create_radio_button_with_handler(
-                        display_text, original_text, prop, shape_idx
-                    ):
-                        radio_button = QRadioButton(display_text)
-                        if display_text != original_text:
-                            radio_button.setToolTip(original_text)
-                        radio_group.addButton(radio_button)
+                    self.grid_layout.addWidget(
+                        property_label, row_counter, 0, 1, 2
+                    )
+                    row_counter += 1
 
-                        def handler(checked):
-                            if checked:
-                                self.attribute_radio_changed(
-                                    shape_idx, prop, original_text, checked
+                    if widget_type == "radiobutton":
+                        radio_group = QButtonGroup()
+                        radio_container = QWidget()
+                        main_layout = QVBoxLayout()
+                        main_layout.setContentsMargins(0, 0, 0, 0)
+                        main_layout.setSpacing(2)
+
+                        def get_truncated_text(text, max_width):
+                            if _measure_text_width(font_metrics, text) <= max_width:
+                                return text, text
+                            truncated = text
+                            while (
+                                _measure_text_width(
+                                    font_metrics, truncated + "..."
                                 )
+                                > max_width
+                                and len(truncated) > 1
+                            ):
+                                truncated = truncated[:-1]
+                            return truncated + "...", text
 
-                        radio_button.toggled.connect(handler)
-                        return radio_button
+                        def get_button_width(text):
+                            return _measure_text_width(font_metrics, text) + 30
 
-                    buttons_data = []
-                    for option in options:
-                        display_text, original_text = get_truncated_text(
-                            option, available_width
-                        )
-                        button_width = get_button_width(display_text)
-                        buttons_data.append(
-                            (display_text, original_text, button_width)
-                        )
+                        def create_radio_button_with_handler(
+                            display_text, original_text, prop, shape_idx
+                        ):
+                            radio_button = QRadioButton(display_text)
+                            if display_text != original_text:
+                                radio_button.setToolTip(original_text)
+                            radio_group.addButton(radio_button)
 
-                    current_row_buttons = []
-                    current_row_width = 0
-
-                    idx = 0
-                    while idx < len(buttons_data):
-                        (
-                            display_text,
-                            original_text,
-                            button_width,
-                        ) = buttons_data[idx]
-
-                        if not current_row_buttons:
-                            current_row_buttons.append(
-                                (display_text, original_text)
-                            )
-                            current_row_width = button_width
-                            idx += 1
-                            continue
-
-                        if current_row_width + button_width <= available_width:
-                            current_row_buttons.append(
-                                (display_text, original_text)
-                            )
-                            current_row_width += button_width
-                            idx += 1
-                        else:
-                            if len(current_row_buttons) == 1:
-                                (
-                                    first_display,
-                                    first_original,
-                                ) = current_row_buttons[0]
-                                first_truncated, _ = get_truncated_text(
-                                    first_original,
-                                    available_width - button_width,
-                                )
-                                first_truncated_width = get_button_width(
-                                    first_truncated
-                                )
-
-                                if (
-                                    first_truncated_width + button_width
-                                    <= available_width
-                                ):
-                                    current_row_buttons = [
-                                        (first_truncated, first_original),
-                                        (display_text, original_text),
-                                    ]
-                                    current_row_width = (
-                                        first_truncated_width + button_width
+                            def handler(checked):
+                                if checked:
+                                    self.attribute_radio_changed(
+                                        shape_idx, prop, original_text, checked
                                     )
-                                    idx += 1
+
+                            radio_button.toggled.connect(handler)
+                            return radio_button
+
+                        buttons_data = []
+                        for option in options:
+                            display_text, original_text = get_truncated_text(
+                                option, available_width
+                            )
+                            button_width = get_button_width(display_text)
+                            buttons_data.append(
+                                (display_text, original_text, button_width)
+                            )
+
+                        current_row_buttons = []
+                        current_row_width = 0
+
+                        idx = 0
+                        while idx < len(buttons_data):
+                            (
+                                display_text,
+                                original_text,
+                                button_width,
+                            ) = buttons_data[idx]
+
+                            if not current_row_buttons:
+                                current_row_buttons.append(
+                                    (display_text, original_text)
+                                )
+                                current_row_width = button_width
+                                idx += 1
+                                continue
+
+                            if current_row_width + button_width <= available_width:
+                                current_row_buttons.append(
+                                    (display_text, original_text)
+                                )
+                                current_row_width += button_width
+                                idx += 1
+                            else:
+                                if len(current_row_buttons) == 1:
+                                    (
+                                        first_display,
+                                        first_original,
+                                    ) = current_row_buttons[0]
+                                    first_truncated, _ = get_truncated_text(
+                                        first_original,
+                                        available_width - button_width,
+                                    )
+                                    first_truncated_width = get_button_width(
+                                        first_truncated
+                                    )
+
+                                    if (
+                                        first_truncated_width + button_width
+                                        <= available_width
+                                    ):
+                                        current_row_buttons = [
+                                            (first_truncated, first_original),
+                                            (display_text, original_text),
+                                        ]
+                                        current_row_width = (
+                                            first_truncated_width + button_width
+                                        )
+                                        idx += 1
+                                    else:
+                                        row_layout = QHBoxLayout()
+                                        row_layout.setContentsMargins(0, 0, 0, 0)
+                                        row_layout.setSpacing(4)
+
+                                        for (
+                                            btn_display,
+                                            btn_original,
+                                        ) in current_row_buttons:
+                                            radio_button = (
+                                                create_radio_button_with_handler(
+                                                    btn_display,
+                                                    btn_original,
+                                                    property,
+                                                    shape_index,
+                                                )
+                                            )
+                                            row_layout.addWidget(radio_button)
+                                            if current_value == btn_original or (
+                                                current_value is None
+                                                and btn_original == options[0]
+                                            ):
+                                                radio_button.setChecked(True)
+
+                                        row_layout.addStretch()
+                                        row_widget = QWidget()
+                                        row_widget.setLayout(row_layout)
+                                        main_layout.addWidget(row_widget)
+
+                                        current_row_buttons = []
+                                        current_row_width = 0
+                                        continue
                                 else:
                                     row_layout = QHBoxLayout()
                                     row_layout.setContentsMargins(0, 0, 0, 0)
                                     row_layout.setSpacing(4)
-
                                     for (
                                         btn_display,
                                         btn_original,
@@ -5520,117 +5690,86 @@ class LabelingWidget(LabelDialog):
                                     current_row_buttons = []
                                     current_row_width = 0
                                     continue
-                            else:
-                                row_layout = QHBoxLayout()
-                                row_layout.setContentsMargins(0, 0, 0, 0)
-                                row_layout.setSpacing(4)
-                                for (
+
+                        if current_row_buttons:
+                            row_layout = QHBoxLayout()
+                            row_layout.setContentsMargins(0, 0, 0, 0)
+                            row_layout.setSpacing(4)
+                            for btn_display, btn_original in current_row_buttons:
+                                radio_button = create_radio_button_with_handler(
                                     btn_display,
                                     btn_original,
-                                ) in current_row_buttons:
-                                    radio_button = (
-                                        create_radio_button_with_handler(
-                                            btn_display,
-                                            btn_original,
-                                            property,
-                                            shape_index,
-                                        )
-                                    )
-                                    row_layout.addWidget(radio_button)
-                                    if current_value == btn_original or (
-                                        current_value is None
-                                        and btn_original == options[0]
-                                    ):
-                                        radio_button.setChecked(True)
+                                    property,
+                                    shape_index,
+                                )
+                                row_layout.addWidget(radio_button)
+                                if current_value == btn_original or (
+                                    current_value is None
+                                    and btn_original == options[0]
+                                ):
+                                    radio_button.setChecked(True)
+                            row_layout.addStretch()
+                            row_widget = QWidget()
+                            row_widget.setLayout(row_layout)
+                            main_layout.addWidget(row_widget)
 
-                                row_layout.addStretch()
-                                row_widget = QWidget()
-                                row_widget.setLayout(row_layout)
-                                main_layout.addWidget(row_widget)
-
-                                current_row_buttons = []
-                                current_row_width = 0
-                                continue
-
-                    if current_row_buttons:
-                        row_layout = QHBoxLayout()
-                        row_layout.setContentsMargins(0, 0, 0, 0)
-                        row_layout.setSpacing(4)
-                        for btn_display, btn_original in current_row_buttons:
-                            radio_button = create_radio_button_with_handler(
-                                btn_display,
-                                btn_original,
-                                property,
-                                shape_index,
+                        radio_container.setLayout(main_layout)
+                        self.grid_layout.addWidget(
+                            radio_container, row_counter, 0, 1, 2
+                        )
+                        row_counter += 1
+                    elif widget_type == "group_id":
+                        property_combo = QComboBox()
+                        options = [""] + sorted(
+                            {
+                                str(obj.group_id)
+                                for obj in self.canvas.shapes
+                                if obj.group_id is not None
+                            }
+                        )
+                        property_combo.addItems(options)
+                        if current_value:
+                            index = property_combo.findText(current_value)
+                            if index >= 0:
+                                property_combo.setCurrentIndex(index)
+                        property_combo.currentIndexChanged.connect(
+                            lambda _, prop=property, combo=property_combo, shape_idx=shape_index: self.attribute_selection_changed(
+                                shape_idx, prop, combo
                             )
-                            row_layout.addWidget(radio_button)
-                            if current_value == btn_original or (
-                                current_value is None
-                                and btn_original == options[0]
-                            ):
-                                radio_button.setChecked(True)
-                        row_layout.addStretch()
-                        row_widget = QWidget()
-                        row_widget.setLayout(row_layout)
-                        main_layout.addWidget(row_widget)
-
-                    radio_container.setLayout(main_layout)
-                    self.grid_layout.addWidget(
-                        radio_container, row_counter, 0, 1, 2
-                    )
-                    row_counter += 1
-                elif widget_type == "group_id":
-                    property_combo = QComboBox()
-                    options = [""] + sorted(
-                        {
-                            str(obj.group_id)
-                            for obj in self.canvas.shapes
-                            if obj.group_id is not None
-                        }
-                    )
-                    property_combo.addItems(options)
-                    if current_value:
-                        index = property_combo.findText(current_value)
-                        if index >= 0:
-                            property_combo.setCurrentIndex(index)
-                    property_combo.currentIndexChanged.connect(
-                        lambda _, prop=property, combo=property_combo, shape_idx=shape_index: self.attribute_selection_changed(
-                            shape_idx, prop, combo
                         )
-                    )
-                    self.grid_layout.addWidget(
-                        property_combo, row_counter, 0, 1, 2
-                    )
-                    row_counter += 1
-                elif widget_type == "lineedit":
-                    property_line = QLineEdit()
-                    if current_value:
-                        property_line.setText(current_value)
-                    property_line.textChanged.connect(
-                        lambda _, prop=property, line=property_line, shape_idx=shape_index: self.attribute_line_changed(
-                            shape_idx, prop, line
+                        self.grid_layout.addWidget(
+                            property_combo, row_counter, 0, 1, 2
                         )
-                    )
-                    self.grid_layout.addWidget(
-                        property_line, row_counter, 0, 1, 2
-                    )
-                    row_counter += 1
-                else:
-                    property_combo = QComboBox()
-                    property_combo.addItems(options)
-                    if current_value:
-                        index = property_combo.findText(current_value)
-                        if index >= 0:
-                            property_combo.setCurrentIndex(index)
-                    property_combo.currentIndexChanged.connect(
-                        lambda _, prop=property, combo=property_combo, shape_idx=shape_index: self.attribute_selection_changed(
-                            shape_idx, prop, combo
+                        row_counter += 1
+                    elif widget_type == "lineedit":
+                        property_line = QLineEdit()
+                        if current_value:
+                            property_line.setText(current_value)
+                        property_line.textChanged.connect(
+                            lambda _, prop=property, line=property_line, shape_idx=shape_index: self.attribute_line_changed(
+                                shape_idx, prop, line
+                            )
                         )
-                    )
-                    self.grid_layout.addWidget(
-                        property_combo, row_counter, 0, 1, 2
-                    )
-                    row_counter += 1
+                        self.grid_layout.addWidget(
+                            property_line, row_counter, 0, 1, 2
+                        )
+                        row_counter += 1
+                    else:
+                        property_combo = QComboBox()
+                        property_combo.addItems(options)
+                        if current_value:
+                            index = property_combo.findText(current_value)
+                            if index >= 0:
+                                property_combo.setCurrentIndex(index)
+                        property_combo.currentIndexChanged.connect(
+                            lambda _, prop=property, combo=property_combo, shape_idx=shape_index: self.attribute_selection_changed(
+                                shape_idx, prop, combo
+                            )
+                        )
+                        self.grid_layout.addWidget(
+                            property_combo, row_counter, 0, 1, 2
+                        )
+                        row_counter += 1
 
         finally:
             self._building_attributes_panel = False
@@ -5640,10 +5779,63 @@ class LabelingWidget(LabelDialog):
     def show_attributes_panel(self):
         if hasattr(self, "scroll_area"):
             self.scroll_area.setVisible(True)
+        if hasattr(self, "shape_attributes"):
+            self.shape_attributes.setVisible(True)
 
     def hide_attributes_panel(self):
         if hasattr(self, "scroll_area"):
             self.scroll_area.setVisible(False)
+        if hasattr(self, "shape_attributes"):
+            self.shape_attributes.setVisible(False)
+
+    def _info_panel_label_changed(self, shape_index, text):
+        if self._building_attributes_panel:
+            return
+        if shape_index >= len(self.canvas.shapes):
+            return
+        shape = self.canvas.shapes[shape_index]
+        new_label = text.strip()
+        if not new_label or new_label == shape.label:
+            return
+        shape.label = new_label
+        self._update_shape_color(shape)
+        item = self.label_list.find_item_by_shape(shape)
+        if item is not None:
+            if shape.group_id is None:
+                item.setText(new_label)
+            else:
+                item.setText(f"{new_label} ({shape.group_id})")
+        self.set_dirty()
+        self.canvas.update()
+
+    def _info_panel_gid_changed(self, shape_index, text):
+        if self._building_attributes_panel:
+            return
+        if shape_index >= len(self.canvas.shapes):
+            return
+        shape = self.canvas.shapes[shape_index]
+        text = text.strip()
+        new_gid = int(text) if text else None
+        if new_gid == shape.group_id:
+            return
+        shape.group_id = new_gid
+        item = self.label_list.find_item_by_shape(shape)
+        if item is not None:
+            if new_gid is None:
+                item.setText(shape.label)
+            else:
+                item.setText(f"{shape.label} ({new_gid})")
+        self.set_dirty()
+        self._refresh_shape_filters()
+        self.canvas.update()
+
+    def _info_panel_difficult_changed(self, shape_index, checked):
+        if self._building_attributes_panel:
+            return
+        if shape_index >= len(self.canvas.shapes):
+            return
+        self.canvas.shapes[shape_index].difficult = checked
+        self.set_dirty()
 
     def _reset_attributes_panel(self):
         """Clear attribute widgets without recreating the scroll area."""
@@ -5778,7 +5970,7 @@ class LabelingWidget(LabelDialog):
         is_drawing_mode = (
             hasattr(self.canvas, "current") and self.canvas.current is not None
         )
-        if self.attributes and selected_count == 1 and not is_drawing_mode:
+        if selected_count == 1 and not is_drawing_mode:
             for i in range(len(self.canvas.shapes)):
                 if self.canvas.shapes[i].selected:
                     self.update_attributes(i)
@@ -6340,14 +6532,12 @@ class LabelingWidget(LabelDialog):
             ):
                 self.canvas._brush_drawing = True
 
-            if self.attributes and text in self.attributes:
-                shape.selected = True
-                self.shape_attributes.show()
-                self.scroll_area.show()
-                for i, canvas_shape in enumerate(self.canvas.shapes):
-                    if canvas_shape is shape:
-                        self.update_attributes(i)
-                        break
+            shape.selected = True
+            self.show_attributes_panel()
+            for i, canvas_shape in enumerate(self.canvas.shapes):
+                if canvas_shape is shape:
+                    self.update_attributes(i)
+                    break
         else:
             self.canvas.undo_last_line()
             self.canvas.shapes_backups.pop()
@@ -8546,3 +8736,15 @@ class LabelingWidget(LabelDialog):
 
     def toggle_shapes_visibility(self, checked):
         self.shape_dock.setVisible(checked)
+
+    def _set_label_display_mode(self, mode):
+        self._config["label_display_mode"] = mode
+        self.canvas.label_display_mode = mode
+        for key, btn in self._display_mode_buttons.items():
+            btn.setChecked(key == mode)
+        self.canvas.update()
+
+    def _toggle_display_score(self, checked):
+        self._config["show_scores"] = checked
+        self.canvas.show_scores = checked
+        self.canvas.update()
