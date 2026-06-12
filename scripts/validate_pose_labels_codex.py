@@ -20,7 +20,7 @@ except ImportError:
 
 
 # ========== IDE direct-run config ==========
-INPUT_PATH = r"D:\xinjiegou-X-AnyLabeling-4.0.0-beta.4\scripts"
+INPUT_PATH = r""
 WORKERS = None
 REPORT_NAME = None
 DEFAULT_FORMAT = "tsv"

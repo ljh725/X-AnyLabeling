@@ -203,6 +203,9 @@ class InspectorPanel(QtWidgets.QDockWidget):
             self.issue_navigate_requested.emit
         )
         self._issue_list.rescan_requested.connect(self.run_scan)
+        self._issue_list.scan_current_requested.connect(
+            self.run_scan_current
+        )
         self._issue_list.import_requested.connect(
             self._on_import_external_results
         )
@@ -221,6 +224,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._last_report: Optional[ValidationReport] = None
         self._file_list: List[str] = []
         self._scan_thread: Optional[InspectorScanThread] = None
+        self._current_file_path: Optional[str] = None
 
         # Populate rule config UI from initial engine
         self._rule_config.populate(self._engine.rules)
@@ -452,6 +456,9 @@ class InspectorPanel(QtWidgets.QDockWidget):
     def _set_scan_controls_enabled(self, enabled: bool) -> None:
         """Enable or disable controls while a background scan is running."""
         self._issue_list.scan_btn.setEnabled(enabled)
+        self._issue_list.scan_current_btn.setEnabled(
+            enabled and self._can_scan_current()
+        )
         self._rule_config.setEnabled(enabled)
         export_enabled = enabled and self._export_btn.isEnabled()
         self._export_btn.setEnabled(export_enabled)
@@ -522,6 +529,9 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._issue_list.populate(report)
         self.scan_finished.emit(report)
         self._update_export_button()
+        self._issue_list.scan_current_btn.setEnabled(
+            self._can_scan_current()
+        )
 
         logger.info(
             "Inspector scan finished: %d issues (%d errors, %d warnings)",
@@ -539,6 +549,82 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._update_export_button()
 
     # ── Public API ───────────────────────────────────────────────
+
+    def _resolve_current_json_path(self) -> Optional[str]:
+        """Return the JSON annotation path for the current file.
+
+        Matches by basename to handle cases where images and JSON
+        files reside in different directories (e.g. ``images/`` vs
+        ``jsons/``) or use different path separators.
+        """
+        if self._current_file_path is None:
+            return None
+        if self._current_file_path in self._flat_index._by_file:
+            return self._current_file_path
+
+        # Fast path: same directory, just different extension
+        base, _ = osp.splitext(self._current_file_path)
+        json_path = base + ".json"
+        if json_path in self._flat_index._by_file:
+            return json_path
+
+        # Slow path: match by basename (handles different dirs)
+        target_base = osp.splitext(osp.basename(self._current_file_path))[0]
+        for key in self._flat_index._by_file:
+            key_base = osp.splitext(osp.basename(key))[0]
+            if key_base == target_base and key.endswith(".json"):
+                return key
+        return None
+
+    def _can_scan_current(self) -> bool:
+        """Return True if the current file can be scanned incrementally."""
+        return self._resolve_current_json_path() is not None
+
+    def set_current_file(self, file_path: Optional[str]) -> None:
+        """Update the path of the currently viewed file.
+
+        Called by label_widget whenever the active image changes.
+        Enables or disables the "scan current" button accordingly.
+        """
+        self._current_file_path = file_path
+        self._issue_list.scan_current_btn.setEnabled(self._can_scan_current())
+
+    def run_scan_current(self) -> None:
+        """Re-scan and re-validate only the currently viewed file.
+
+        Requires that a full scan has been run first so the file exists
+        in the flat index.  Uses FlatIndex.refresh_file() to avoid
+        re-reading all other files, then runs all rules on the updated
+        in-memory index.
+        """
+        if self._scan_thread is not None:
+            return
+
+        json_path = self._resolve_current_json_path()
+        if json_path is None:
+            logger.warning(
+                "Cannot scan current file: not in index (%s)",
+                self._current_file_path,
+            )
+            return
+
+        self._engine = ValidationEngine(self._rule_config.build_rules())
+
+        self._flat_index.refresh_file(json_path)
+
+        report = self._engine.run(self._flat_index)
+        self._last_report = report
+        self._issue_list.populate(report)
+        self.scan_finished.emit(report)
+        self._update_export_button()
+
+        logger.info(
+            "Inspector single-file scan finished: %d issues "
+            "(%d errors, %d warnings)",
+            report.issue_count,
+            report.error_count,
+            report.warning_count,
+        )
 
     def set_file_list(self, file_paths: List[str]) -> None:
         """Set the list of JSON files to scan."""

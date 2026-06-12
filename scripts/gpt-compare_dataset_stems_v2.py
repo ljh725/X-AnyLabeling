@@ -63,7 +63,9 @@ GROUP_A_DIRS: list[str] = [
     # 示例: "/path/to/images",
     # 示例: "/path/to/more_images",
     # "\\\\192.168.3.248\opt\chengdu\images"
-    "D:\A0_part1_kps_3_class_dataset\Sample\images"
+    r"\\192.168.3.248\opt\chengdu\cls3pose_cly\cls3pose_v1\train\images"
+    
+
 ]
 
 # B组目录列表（支持一个或多个）
@@ -71,11 +73,17 @@ GROUP_B_DIRS: list[str] = [
     # 示例: "/path/to/labels",
     # 示例: "/path/to/more_labels",
     # "\\\\192.168.3.248\opt\chengdu\images2\images"
-    "D:\A0_part2_kps_3_class_dataset\Phase_2_1217_personheadface_points_33076\HK_不要计入统计\hk_image_1800"
+    # r"D:\A0_part1_kps_3_class_dataset\sort_jsons_35100",
+    # r"D:\A0_part1_kps_3_class_dataset\hard-111\json-converted",
+    # r"D:\A0_part1_kps_3_class_dataset\HK-Hard\json-converted",
+    # r"D:\A0_part1_kps_3_class_dataset\HK-Sample\json-converted",
+    # r"D:\A0_part1_kps_3_class_dataset\images\json-converted"
+    # r"\\192.168.3.248\opt\chengdu\cls3pose_cly\cls3pose_v1\train\output\images"
+    r"\\192.168.3.248\opt\chengdu\cls3pose_cly\cls3pose_v1\train\annotations"
 ]
 
 # 输出报告路径
-OUTPUT_PATH: str = r"D:\A000_report_txt\20260608_001.txt"  # 示例: "/path/to/report.md"
+OUTPUT_PATH: str = r"D:\A000_report_txt\20260612_33428_img_json.md"  # 示例: "/path/to/report.md"
 
 # 线程数（默认自动）
 WORKERS: int = min(8, os.cpu_count() or 4)

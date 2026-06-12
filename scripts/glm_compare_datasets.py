@@ -139,7 +139,8 @@ import os
 
 # 本地第一部分的文件夹路径 (支持多个文件夹，用逗号隔开，写在方括号里)
 PATHS_LOCAL_FOLDERS = [
-        r"\\192.168.3.248\data1\ljh\cls3_pose\class3_1st_Edition_and_keypints_2nd_Edtion_BAK\part2_images_jsons_33076\add\images"
+        r"\\192.168.3.248\opt\chengdu\cls3pose_cly\cls3pose_v1\train\images",
+        r"\\192.168.3.248\opt\chengdu\cls3pose_cly\cls3pose_v1\test\images"
 
 ]
 
@@ -150,7 +151,10 @@ PATHS_SERVER_FOLDERS = [
     # r"D:\A0_part2_kps_3_class_dataset\Phase_2_1217_personheadface_points_33076\PRW\PRW_image_11792",
     # r"D:\A0_part2_kps_3_class_dataset\Phase_2_1217_personheadface_points_33076\TUD-Campus\TUD-Campus_iamge_248"
 
-    r"\\192.168.3.248\data1\ljh\cls3_pose\class3_1st_Edition_and_keypints_2nd_Edtion_BAK\part1_images_jsons_34355\images"
+    r"D:\A0_part1_kps_3_class_dataset\hard-111\images",
+    r"D:\A0_part1_kps_3_class_dataset\HK-Hard\images",
+    r"D:\A0_part1_kps_3_class_dataset\HK-Sample\images",
+    r"D:\A0_part1_kps_3_class_dataset\images\images"
 
 ]
 

@@ -5268,6 +5268,7 @@ class LabelingWidget(LabelDialog):
             self._inspector_table_refresh_timer.start()  # retry later
             return
         if self.filename and self.canvas.shapes is not None:
+            self.inspector_panel.set_current_file(str(self.filename))
             self.inspector_panel.refresh_table_from_shapes(
                 file_path=str(self.filename),
                 shapes=self.canvas.shapes,
