@@ -2677,6 +2677,33 @@ class Canvas(
                 )
             )
             labels = []
+            # Compute hover context once for the unified label gate.
+            hovered_shape = self.h_hape
+            mp = self.prev_move_point
+            if hovered_shape is None:
+                for s in self.shapes:
+                    if (
+                        s.shape_type == "point"
+                        and s.points
+                        and s.visible
+                        and not getattr(s, "hidden_by_filter", False)
+                    ):
+                        if (
+                            math.hypot(
+                                mp.x() - s.points[0].x(),
+                                mp.y() - s.points[0].y(),
+                            )
+                            * self.scale
+                            <= 10
+                        ):
+                            hovered_shape = s
+                            break
+            hovered_group = (
+                hovered_shape.group_id
+                if hovered_shape is not None
+                else None
+            )
+            zoom_reveals = self.scale >= self.label_zoom_threshold
             for shape in self.shapes:
                 if not shape.visible or getattr(shape, 'hidden_by_filter', False):
                     continue
@@ -2836,25 +2863,34 @@ class Canvas(
                 else:
                     continue
 
-                # 对关键点（point）默认隐藏标签，仅当鼠标靠近或选中时显示
-                if shape.shape_type == "point":
-                    if not shape.points:
-                        continue
-                    point = shape.points[0]
-                    mouse_pos = self.prev_move_point
-                    distance = math.hypot(
-                        mouse_pos.x() - point.x(),
-                        mouse_pos.y() - point.y()
-                    )
-                    # 使用屏幕像素距离，避免缩放影响
-                    screen_distance = distance * self.scale
-                    is_hovered = (shape == self.h_hape)
-                    # 修改为 10个像素距离 避免显示两个标签
-                    if screen_distance > 10 and not shape.selected and not is_hovered:
-                        continue
-                else:
-                    # 非关键点：受 label_on_selection 控制
-                    if self.label_on_selection and not shape.selected:
+                # --- Unified label visibility gate ---
+                # label_on_selection ON  = sparse: hover/selected/zoom
+                # label_on_selection OFF = show all labels
+                if self.label_on_selection:
+                    is_hovered = shape == hovered_shape
+                    if (
+                        not is_hovered
+                        and shape.shape_type == "point"
+                        and shape.points
+                    ):
+                        is_hovered = (
+                            math.hypot(
+                                mp.x() - shape.points[0].x(),
+                                mp.y() - shape.points[0].y(),
+                            )
+                            * self.scale
+                            <= 10
+                        )
+                    show = shape.selected or is_hovered
+                    if (
+                        not show
+                        and zoom_reveals
+                        and hovered_group is not None
+                        and shape.group_id is not None
+                        and shape.group_id == hovered_group
+                    ):
+                        show = True
+                    if not show:
                         continue
 
                 labels.append((shape, rect, text_pos, label_text))
