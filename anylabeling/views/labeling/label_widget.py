@@ -1494,6 +1494,28 @@ class LabelingWidget(LabelDialog):
             enabled=True,
             auto_trigger=True,
         )
+        keypoint_label_spread = action(
+            self.tr("Keypoint Label Anti-occlusion"),
+            lambda x: self.set_canvas_params("keypoint_label_spread", x),
+            tip=self.tr("Spread overlapping keypoint labels apart"),
+            icon=None,
+            checkable=True,
+            checked=self._config.get("keypoint_label_spread", True),
+            enabled=True,
+            auto_trigger=True,
+        )
+        keypoint_label_leader_line = action(
+            self.tr("Keypoint Label Leader Line"),
+            lambda x: self.set_canvas_params(
+                "keypoint_label_leader_line", x
+            ),
+            tip=self.tr("Draw leader line from label to keypoint"),
+            icon=None,
+            checkable=True,
+            checked=self._config.get("keypoint_label_leader_line", True),
+            enabled=True,
+            auto_trigger=True,
+        )
 
         # Languages
         select_lang_en = action(
@@ -2104,6 +2126,8 @@ class LabelingWidget(LabelDialog):
             show_attributes=show_attributes,
             show_linking=show_linking,
             label_on_selection=label_on_selection,
+            keypoint_label_spread=keypoint_label_spread,
+            keypoint_label_leader_line=keypoint_label_leader_line,
             show_navigator=show_navigator,
             toggle_inspector=toggle_inspector,
             toggle_global_filter_keep=toggle_global_filter_keep,
@@ -2453,6 +2477,8 @@ class LabelingWidget(LabelDialog):
                 show_attributes,
                 show_linking,
                 label_on_selection,
+                keypoint_label_spread,
+                keypoint_label_leader_line,
                 show_groups,
                 hide_selected_polygons,
                 show_hidden_polygons,
