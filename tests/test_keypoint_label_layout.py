@@ -103,6 +103,24 @@ class TestKeypointLabelLayout(unittest.TestCase):
         canvas = QtCore.QRect(0, 0, 800, 600)
         self.assertTrue(canvas.contains(laid[0].rect))
 
+    def test_three_close_points_no_mutual_overlap(self):
+        items = [
+            _make_item(gid=7, px=200, py=200),
+            _make_item(gid=7, px=206, py=200),
+            _make_item(gid=7, px=212, py=200),
+        ]
+        laid, _ = layout_keypoint_labels(
+            items, QtCore.QSize(1000, 800)
+        )
+        for i in range(len(laid)):
+            for j in range(i + 1, len(laid)):
+                a = laid[i].rect.adjusted(-2, -2, 2, 2)
+                b = laid[j].rect.adjusted(-2, -2, 2, 2)
+                self.assertFalse(
+                    a.intersects(b),
+                    f"labels {i} and {j} still overlap",
+                )
+
     def test_out_of_bounds_original_gets_clamped(self):
         rect = QtCore.QRect(900, 100, 40, 14)
         item = LabelItem(
