@@ -198,6 +198,13 @@ class Canvas(
         self.show_attributes = True
         self.show_linking = True
         self.label_on_selection = False
+        # Keypoint label display options.
+        # label_on_selection ON  = sparse: show labels only for
+        #   hovered/selected shapes, or the hovered group when zoomed in.
+        # label_on_selection OFF = show all labels on the canvas.
+        self.label_zoom_threshold = 2.0
+        self.keypoint_label_spread = True
+        self.keypoint_label_leader_line = True
 
         # Set cross line options.
         self.cross_line_show = True
