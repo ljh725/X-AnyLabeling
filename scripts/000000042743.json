@@ -1,0 +1,548 @@
+{
+  "version": "5.4.1",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "l_elb",
+      "points": [
+        [
+          248.45505617977528,
+          197.47191011235955
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_elb",
+      "points": [
+        [
+          136.0,
+          193.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_wri",
+      "points": [
+        [
+          214.0,
+          254.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_wri",
+      "points": [
+        [
+          165.0,
+          237.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_hip",
+      "points": [
+        [
+          205.0,
+          247.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_hip",
+      "points": [
+        [
+          142.0,
+          246.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_knee",
+      "points": [
+        [
+          249.0,
+          332.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_knee",
+      "points": [
+        [
+          112.0,
+          337.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_ank",
+      "points": [
+        [
+          239.0,
+          408.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_ank",
+      "points": [
+        [
+          62.0,
+          435.0
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "person",
+      "points": [
+        [
+          33.24719101123594,
+          48.561797752808985
+        ],
+        [
+          276.24719101123594,
+          484.56179775280896
+        ]
+      ],
+      "group_id": 0,
+      "description": null,
+      "shape_type": "rectangle",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_elb",
+      "points": [
+        [
+          400.0,
+          37.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_elb",
+      "points": [
+        [
+          341.0,
+          37.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_wri",
+      "points": [
+        [
+          379.0,
+          60.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_wri",
+      "points": [
+        [
+          343.0,
+          61.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_hip",
+      "points": [
+        [
+          388.0,
+          59.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_hip",
+      "points": [
+        [
+          353.0,
+          57.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_knee",
+      "points": [
+        [
+          365.0,
+          84.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_knee",
+      "points": [
+        [
+          329.0,
+          83.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "person",
+      "points": [
+        [
+          321.0,
+          5.0
+        ],
+        [
+          412.0,
+          89.0
+        ]
+      ],
+      "group_id": 1,
+      "description": null,
+      "shape_type": "rectangle",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_elb",
+      "points": [
+        [
+          325.0,
+          37.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_elb",
+      "points": [
+        [
+          277.0,
+          34.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_wri",
+      "points": [
+        [
+          297.0,
+          66.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_wri",
+      "points": [
+        [
+          280.0,
+          69.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_hip",
+      "points": [
+        [
+          317.0,
+          61.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_hip",
+      "points": [
+        [
+          284.0,
+          57.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_knee",
+      "points": [
+        [
+          278.0,
+          90.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_knee",
+      "points": [
+        [
+          250.0,
+          85.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "person",
+      "points": [
+        [
+          247.0,
+          4.0
+        ],
+        [
+          332.0,
+          83.0
+        ]
+      ],
+      "group_id": 2,
+      "description": null,
+      "shape_type": "rectangle",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "head",
+      "points": [
+        [
+          178.0,
+          48.0
+        ],
+        [
+          227.0,
+          123.0
+        ]
+      ],
+      "group_id": 3,
+      "description": null,
+      "shape_type": "rectangle",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "face",
+      "points": [
+        [
+          188.0,
+          66.0
+        ],
+        [
+          225.0,
+          122.0
+        ]
+      ],
+      "group_id": 4,
+      "description": null,
+      "shape_type": "rectangle",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_sho",
+      "points": [
+        [
+          147.89325842696627,
+          126.12359550561798
+        ]
+      ],
+      "group_id": 0,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_sho",
+      "points": [
+        [
+          232.16292134831457,
+          126.68539325842697
+        ]
+      ],
+      "group_id": 0,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "nose",
+      "points": [
+        [
+          214.56896551724145,
+          100.34482758620689
+        ]
+      ],
+      "group_id": 0,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_eye",
+      "points": [
+        [
+          206.3566552901024,
+          91.12627986348123
+        ]
+      ],
+      "group_id": 0,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "l_eye",
+      "points": [
+        [
+          221.03242320819112,
+          90.44368600682593
+        ]
+      ],
+      "group_id": 0,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    },
+    {
+      "label": "r_ear",
+      "points": [
+        [
+          185.87883959044368,
+          94.19795221843003
+        ]
+      ],
+      "group_id": 0,
+      "description": "",
+      "shape_type": "point",
+      "flags": {},
+      "mask": null
+    }
+  ],
+  "imagePath": "000000042743.jpg",
+  "imageData": null,
+  "imageHeight": 500,
+  "imageWidth": 425
+}
