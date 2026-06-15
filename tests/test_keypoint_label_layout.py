@@ -109,9 +109,7 @@ class TestKeypointLabelLayout(unittest.TestCase):
             _make_item(gid=7, px=206, py=200),
             _make_item(gid=7, px=212, py=200),
         ]
-        laid, _ = layout_keypoint_labels(
-            items, QtCore.QSize(1000, 800)
-        )
+        laid, _ = layout_keypoint_labels(items, QtCore.QSize(1000, 800))
         for i in range(len(laid)):
             for j in range(i + 1, len(laid)):
                 a = laid[i].rect.adjusted(-2, -2, 2, 2)
