@@ -159,6 +159,9 @@ class PoseRenderer:
         shapes: List[Any],
         pixmap_size: QtCore.QSize,
         scale: float,
+        label_on_selection: bool = False,
+        hovered_group_id: Optional[int] = None,
+        zoom_reveals: bool = False,
     ) -> int:
         """Render all pose annotations and return overlap count.
 
@@ -167,6 +170,12 @@ class PoseRenderer:
             shapes: Canvas shapes list.
             pixmap_size: Image pixel dimensions.
             scale: Current zoom scale.
+            label_on_selection: When True, only render labels for the
+                hovered/selected group (skeleton + keypoints stay
+                visible for all groups).
+            hovered_group_id: The group_id currently under the cursor.
+            zoom_reveals: Whether current zoom level is past the
+                label_zoom_threshold (enables group-reveal).
 
         Returns:
             Number of overlapping label pairs.
@@ -183,24 +192,35 @@ class PoseRenderer:
             person_color = cfg.get_person_color(pi)
             person_rect_shape = person_rects.get(gid)
             bbox = self._get_bbox(person_rect_shape)
+
+            # Determine label visibility for this group.
+            show_labels = True
+            if label_on_selection:
+                is_hovered = gid == hovered_group_id
+                any_selected = any(
+                    getattr(s, "selected", False) for s in kp_shapes
+                )
+                show_labels = is_hovered or any_selected or zoom_reveals
+
             if cfg.show_bbox and bbox is not None:
                 self._draw_bbox(painter, bbox, person_color, scale)
             if cfg.show_midline and mid is not None:
                 self._draw_midline(painter, mid, kp_positions, scale)
             if cfg.show_skeleton:
                 self._draw_skeleton(painter, kp_positions, cfg, pi, scale)
-            items = self._build_label_items(kp_shapes, mid, cfg, pi, scale)
-            items, overlap = apply_layout(
-                items,
-                mid,
-                bbox,
-                cfg.layout_mode,
-                leader_length=cfg.leader_length / scale,
-                column_gap=cfg.column_gap / scale,
-            )
-            total_overlap += overlap
             self._draw_keypoints(painter, kp_shapes, cfg, pi, scale)
-            self._draw_labels(painter, items, cfg, scale)
+            if show_labels:
+                items = self._build_label_items(kp_shapes, mid, cfg, pi, scale)
+                items, overlap = apply_layout(
+                    items,
+                    mid,
+                    bbox,
+                    cfg.layout_mode,
+                    leader_length=cfg.leader_length / scale,
+                    column_gap=cfg.column_gap / scale,
+                )
+                total_overlap += overlap
+                self._draw_labels(painter, items, cfg, scale)
         return total_overlap
 
     # -- Drawing primitives ---------------------------------------------

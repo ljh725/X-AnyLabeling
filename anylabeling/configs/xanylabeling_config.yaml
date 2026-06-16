@@ -27,8 +27,6 @@ show_shapes: true
 show_linking: true
 label_on_selection: true  # ON=sparse(hover/selected/zoom); OFF=show all
 label_zoom_threshold: 2.0  # scale >= this reveals hovered group's all labels
-keypoint_label_spread: true  # run anti-occlusion layout on point labels
-keypoint_label_leader_line: true  # draw thin line from label to keypoint
 show_attributes: true
 logger_level: info
 system_clipboard: false

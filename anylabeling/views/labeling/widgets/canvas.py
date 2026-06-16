@@ -10,10 +10,6 @@ from PyQt6.QtGui import QWheelEvent
 from anylabeling.services.auto_labeling.types import AutoLabelingMode
 from anylabeling.views.labeling.utils.colormap import label_colormap
 from anylabeling.views.labeling.utils.theme import get_theme
-from anylabeling.views.labeling.widgets.keypoint_label_layout import (
-    LabelItem,
-    layout_keypoint_labels,
-)
 from anylabeling.views.labeling.widgets.pose_label import (
     COCO_KEYPOINT_SET,
     PoseDisplayConfig,
@@ -213,8 +209,6 @@ class Canvas(
         #   hovered/selected shapes, or the hovered group when zoomed in.
         # label_on_selection OFF = show all labels on the canvas.
         self.label_zoom_threshold = 2.0
-        self.keypoint_label_spread = True
-        self.keypoint_label_leader_line = True
 
         # Pose view configuration (shared with sidebar panels).
         self.pose_config = PoseDisplayConfig()
@@ -2923,76 +2917,6 @@ class Canvas(
 
                 labels.append((shape, rect, text_pos, label_text))
 
-            # --- Keypoint anti-occlusion layout pass ---
-            leader_segments = []
-            if (
-                self.keypoint_label_spread
-                and self.pixmap is not None
-                and len(labels) >= 2
-            ):
-                point_idxs = [
-                    i
-                    for i, (s, _, _, _) in enumerate(labels)
-                    if s.shape_type == "point"
-                ]
-                if len(point_idxs) >= 2:
-                    obstacles = [
-                        labels[i][1]
-                        for i in range(len(labels))
-                        if labels[i][0].shape_type != "point"
-                    ]
-                    items = [
-                        LabelItem(
-                            shape_ref=labels[i][0],
-                            group_id=labels[i][0].group_id,
-                            anchor=QtCore.QPointF(
-                                labels[i][0].points[0].x(),
-                                labels[i][0].points[0].y(),
-                            ),
-                            rect=labels[i][1],
-                        )
-                        for i in point_idxs
-                        if labels[i][0].points
-                    ]
-                    if items:
-                        laid, leaders = layout_keypoint_labels(
-                            items,
-                            canvas_size=self.pixmap.size(),
-                            step=max(8, int(rect_height)),
-                            max_tries=8,
-                            gap=2,
-                            obstacles=obstacles,
-                        )
-                        for idx, new_item in zip(point_idxs, laid):
-                            s, old_rect, old_text_pos, txt = labels[idx]
-                            dx = new_item.rect.left() - old_rect.left()
-                            dy = new_item.rect.top() - old_rect.top()
-                            labels[idx] = (
-                                s,
-                                new_item.rect,
-                                QtCore.QPoint(
-                                    old_text_pos.x() + dx,
-                                    old_text_pos.y() + dy,
-                                ),
-                                txt,
-                            )
-                        if self.keypoint_label_leader_line:
-                            leader_segments = leaders
-
-            # --- Leader lines (label rect -> keypoint anchor) ---
-            if leader_segments:
-                pen = QtGui.QPen(
-                    QtGui.QColor("#cccccc"),
-                    max(1, int(round(1.0 / Shape.scale))),
-                    Qt.PenStyle.SolidLine,
-                )
-                p.setPen(pen)
-                for anchor_pt, edge_pt in leader_segments:
-                    p.drawLine(
-                        QtCore.QPoint(int(anchor_pt.x()), int(anchor_pt.y())),
-                        edge_pt,
-                    )
-
             p.setPen(Qt.PenStyle.NoPen)
             for shape, rect, _, _ in labels:
                 if not shape.visible or getattr(
@@ -3020,7 +2944,13 @@ class Canvas(
                 and self._has_pose_shapes()
             ):
                 count = self._pose_renderer.render(
-                    p, self.shapes, self.pixmap.size(), self.scale
+                    p,
+                    self.shapes,
+                    self.pixmap.size(),
+                    self.scale,
+                    label_on_selection=self.label_on_selection,
+                    hovered_group_id=hovered_group,
+                    zoom_reveals=zoom_reveals,
                 )
                 if count != self.pose_config.occlusion_count:
                     self.pose_config.occlusion_count = count
