@@ -232,3 +232,33 @@ remote_server_settings:
 digit_shortcuts: null
 rename_shortcuts: null
 digit_shortcut_pages: 1
+
+# Pose keypoint label display
+pose_view:
+  enabled: false
+  layout_mode: "anti"        # direct / anti / column
+  color_mode: "bodypart"     # bodypart / person
+  font_size: 11
+  opacity: 0.85
+  leader_length: 40
+  border_width: 1.5
+  column_gap: 8
+  show_skeleton: true
+  show_midline: false
+  show_bbox: true
+  occlusion_highlight: true
+  show_leader: true
+  font_shadow: true
+  font_color_mode: "white"   # white / black / auto / yellow / custom
+  custom_font_color: "#00ff88"
+  body_colors:
+    head: "#e74c3c"
+    la: "#3498db"
+    ra: "#9b59b6"
+    ll: "#2ecc71"
+    rl: "#f39c12"
+  person_colors:
+    - "#e74c3c"
+    - "#3498db"
+    - "#2ecc71"
+  color_preset: "default"
