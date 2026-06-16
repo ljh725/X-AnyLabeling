@@ -5,6 +5,7 @@ algorithms, and a QPainter-based renderer that integrates with the
 existing Canvas paint pipeline.
 """
 
+from .pose_color_panel import PoseColorPanel
 from .pose_config import PoseDisplayConfig
 from .pose_constants import (
     BODY_PART_ORDER,
@@ -27,12 +28,15 @@ from .pose_layout import (
     compute_direction,
     compute_midline,
 )
+from .pose_settings_panel import PoseSettingsPanel
 from .pose_renderer import PoseRenderer
 
 __all__ = [
+    "PoseColorPanel",
     "PoseDisplayConfig",
     "PoseLabelItem",
     "PoseRenderer",
+    "PoseSettingsPanel",
     "apply_layout",
     "compute_direction",
     "compute_midline",

@@ -111,6 +111,10 @@ from .widgets import (
     KeypointToolWindow,
     InspectorPanel,
 )
+from .widgets.pose_label import (
+    PoseColorPanel,
+    PoseSettingsPanel,
+)
 
 PERF_LOG_ENABLED = os.getenv("XANYLABELING_PERF_LOG") == "1"
 
@@ -2739,6 +2743,27 @@ class LabelingWidget(LabelDialog):
         display_mode_layout.addWidget(self._display_score_cb)
 
         right_sidebar_layout.addWidget(display_mode_panel)
+
+        # Pose View settings + color panels (hidden until Pose View on)
+        pose_cfg = self.canvas.pose_config
+        pose_pv_cfg = self._config.get("pose_view", {})
+        if isinstance(pose_pv_cfg, dict) and pose_pv_cfg:
+            pose_cfg = type(pose_cfg).from_dict(pose_pv_cfg)
+            self.canvas.pose_config.__dict__.update(pose_cfg.__dict__)
+        self.pose_settings_panel = PoseSettingsPanel(
+            self.canvas.pose_config,
+            on_change=self.canvas.update,
+            parent=self,
+        )
+        self.pose_settings_panel.setVisible(self.canvas.pose_config.enabled)
+        right_sidebar_layout.addWidget(self.pose_settings_panel)
+        self.pose_color_panel = PoseColorPanel(
+            self.canvas.pose_config,
+            on_change=self.canvas.update,
+            parent=self,
+        )
+        self.pose_color_panel.setVisible(self.canvas.pose_config.enabled)
+        right_sidebar_layout.addWidget(self.pose_color_panel)
 
         # Shape attributes / info panel
         self.shape_attributes = QLabel(self.tr("对象属性"))
@@ -6949,6 +6974,9 @@ class LabelingWidget(LabelDialog):
         if "pose_view" not in self._config:
             self._config["pose_view"] = {}
         self._config["pose_view"]["enabled"] = enabled
+        if hasattr(self, "pose_settings_panel"):
+            self.pose_settings_panel.setVisible(enabled)
+            self.pose_color_panel.setVisible(enabled)
         self.canvas.update()
 
     def open_settings_dialog(self):
