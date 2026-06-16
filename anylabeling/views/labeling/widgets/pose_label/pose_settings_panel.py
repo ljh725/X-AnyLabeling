@@ -49,7 +49,7 @@ class PoseSettingsPanel(QtWidgets.QFrame):
 
     def _build_header(self, layout: QtWidgets.QVBoxLayout) -> None:
         """Add the panel title label."""
-        hdr = QtWidgets.QLabel(self.tr("Pose View"))
+        hdr = QtWidgets.QLabel(self.tr("姿态视图设置"))
         hdr.setAlignment(Qt.AlignmentFlag.AlignCenter)
         hdr.setStyleSheet("font-weight: bold; font-size: 11px;")
         layout.addWidget(hdr)
@@ -61,9 +61,9 @@ class PoseSettingsPanel(QtWidgets.QFrame):
         row.setSpacing(3)
         self._layout_btns: dict[str, QtWidgets.QPushButton] = {}
         for key, label in [
-            ("direct", self.tr("Direction")),
-            ("anti", self.tr("Anti")),
-            ("column", self.tr("Column")),
+            ("direct", self.tr("方向引线")),
+            ("anti", self.tr("防遮挡")),
+            ("column", self.tr("侧栏列表")),
         ]:
             btn = QtWidgets.QPushButton(label)
             btn.setCheckable(True)
@@ -84,8 +84,8 @@ class PoseSettingsPanel(QtWidgets.QFrame):
         row.setSpacing(3)
         self._color_btns: dict[str, QtWidgets.QPushButton] = {}
         for key, label in [
-            ("bodypart", self.tr("Body Part")),
-            ("person", self.tr("Per Person")),
+            ("bodypart", self.tr("按部位")),
+            ("person", self.tr("按目标")),
         ]:
             btn = QtWidgets.QPushButton(label)
             btn.setCheckable(True)
@@ -104,7 +104,7 @@ class PoseSettingsPanel(QtWidgets.QFrame):
         slider_defs = [
             (
                 "font_size",
-                self.tr("Font Size"),
+                self.tr("标签字号"),
                 8,
                 16,
                 self._config.font_size,
@@ -112,7 +112,7 @@ class PoseSettingsPanel(QtWidgets.QFrame):
             ),
             (
                 "opacity",
-                self.tr("Opacity"),
+                self.tr("透明度"),
                 30,
                 100,
                 int(self._config.opacity * 100),
@@ -120,7 +120,7 @@ class PoseSettingsPanel(QtWidgets.QFrame):
             ),
             (
                 "leader_length",
-                self.tr("Leader Length"),
+                self.tr("引线长度"),
                 15,
                 80,
                 self._config.leader_length,
@@ -128,7 +128,7 @@ class PoseSettingsPanel(QtWidgets.QFrame):
             ),
             (
                 "border_width",
-                self.tr("Border Width"),
+                self.tr("描边宽度"),
                 0,
                 40,
                 int(self._config.border_width * 10),
@@ -136,7 +136,7 @@ class PoseSettingsPanel(QtWidgets.QFrame):
             ),
             (
                 "column_gap",
-                self.tr("Column Gap"),
+                self.tr("列间距"),
                 4,
                 30,
                 self._config.column_gap,
@@ -173,15 +173,15 @@ class PoseSettingsPanel(QtWidgets.QFrame):
     def _build_toggles(self, layout: QtWidgets.QVBoxLayout) -> None:
         """Add display option checkboxes."""
         toggle_defs = [
-            ("show_skeleton", self.tr("Skeleton")),
-            ("show_midline", self.tr("Midline")),
-            ("show_bbox", self.tr("Bounding Box")),
+            ("show_skeleton", self.tr("骨骼连线")),
+            ("show_midline", self.tr("中线参考")),
+            ("show_bbox", self.tr("目标框")),
             (
                 "occlusion_highlight",
-                self.tr("Occlusion Highlight"),
+                self.tr("遮挡高亮"),
             ),
-            ("show_leader", self.tr("Leader Lines")),
-            ("font_shadow", self.tr("Text Shadow")),
+            ("show_leader", self.tr("引线")),
+            ("font_shadow", self.tr("文字阴影")),
         ]
         self._toggles: dict[str, QtWidgets.QCheckBox] = {}
         for key, label_text in toggle_defs:

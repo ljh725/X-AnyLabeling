@@ -29,6 +29,7 @@ from .pose_layout import (
     compute_midline,
 )
 from .pose_settings_panel import PoseSettingsPanel
+from .pose_view_panel import PoseViewPanel
 from .pose_renderer import PoseRenderer
 
 __all__ = [
@@ -37,6 +38,7 @@ __all__ = [
     "PoseLabelItem",
     "PoseRenderer",
     "PoseSettingsPanel",
+    "PoseViewPanel",
     "apply_layout",
     "compute_direction",
     "compute_midline",

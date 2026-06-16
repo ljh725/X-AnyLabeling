@@ -112,8 +112,7 @@ from .widgets import (
     InspectorPanel,
 )
 from .widgets.pose_label import (
-    PoseColorPanel,
-    PoseSettingsPanel,
+    PoseViewPanel,
 )
 
 PERF_LOG_ENABLED = os.getenv("XANYLABELING_PERF_LOG") == "1"
@@ -2744,26 +2743,25 @@ class LabelingWidget(LabelDialog):
 
         right_sidebar_layout.addWidget(display_mode_panel)
 
-        # Pose View settings + color panels (hidden until Pose View on)
-        pose_cfg = self.canvas.pose_config
+        # Pose View panel (QDockWidget, like Inspector — hidden by default)
         pose_pv_cfg = self._config.get("pose_view", {})
         if isinstance(pose_pv_cfg, dict) and pose_pv_cfg:
-            pose_cfg = type(pose_cfg).from_dict(pose_pv_cfg)
-            self.canvas.pose_config.__dict__.update(pose_cfg.__dict__)
-        self.pose_settings_panel = PoseSettingsPanel(
+            _tmp = type(self.canvas.pose_config).from_dict(pose_pv_cfg)
+            self.canvas.pose_config.__dict__.update(_tmp.__dict__)
+        self.pose_view_panel = PoseViewPanel(
             self.canvas.pose_config,
             on_change=self._on_pose_panel_changed,
             parent=self,
         )
-        self.pose_settings_panel.setVisible(self.canvas.pose_config.enabled)
-        right_sidebar_layout.addWidget(self.pose_settings_panel)
-        self.pose_color_panel = PoseColorPanel(
-            self.canvas.pose_config,
-            on_change=self._on_pose_panel_changed,
-            parent=self,
-        )
-        self.pose_color_panel.setVisible(self.canvas.pose_config.enabled)
-        right_sidebar_layout.addWidget(self.pose_color_panel)
+        self.pose_view_panel.setVisible(self.canvas.pose_config.enabled)
+        pose_panel_frame = QFrame()
+        pose_panel_frame.setObjectName("sidebarPanel")
+        pose_panel_frame.setStyleSheet(get_panel_style())
+        pose_frame_layout = QVBoxLayout(pose_panel_frame)
+        pose_frame_layout.setContentsMargins(0, 0, 0, 0)
+        pose_frame_layout.setSpacing(0)
+        pose_frame_layout.addWidget(self.pose_view_panel)
+        right_sidebar_layout.addWidget(pose_panel_frame)
 
         # Shape attributes / info panel
         self.shape_attributes = QLabel(self.tr("对象属性"))
@@ -6972,9 +6970,8 @@ class LabelingWidget(LabelDialog):
         """
         self.canvas.pose_config.enabled = enabled
         self._sync_pose_config()
-        if hasattr(self, "pose_settings_panel"):
-            self.pose_settings_panel.setVisible(enabled)
-            self.pose_color_panel.setVisible(enabled)
+        if hasattr(self, "pose_view_panel"):
+            self.pose_view_panel.setVisible(enabled)
         self.canvas.update()
 
     def _sync_pose_config(self) -> None:

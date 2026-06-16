@@ -17,11 +17,11 @@ from .pose_config import PoseDisplayConfig
 from .pose_constants import BODY_PART_ORDER, COLOR_PRESETS
 
 _BODY_PART_LABELS = {
-    "head": "Head",
-    "la": "Left Arm",
-    "ra": "Right Arm",
-    "ll": "Left Leg",
-    "rl": "Right Leg",
+    "head": "头部",
+    "la": "左上肢",
+    "ra": "右上肢",
+    "ll": "左下肢",
+    "rl": "右下肢",
 }
 
 
@@ -101,7 +101,7 @@ class PoseColorPanel(QtWidgets.QFrame):
 
     def _build_header(self, layout: QtWidgets.QVBoxLayout) -> None:
         """Add the panel title label."""
-        hdr = QtWidgets.QLabel(self.tr("Pose Colors"))
+        hdr = QtWidgets.QLabel(self.tr("姿态颜色配置"))
         hdr.setAlignment(Qt.AlignmentFlag.AlignCenter)
         hdr.setStyleSheet("font-weight: bold; font-size: 11px;")
         layout.addWidget(hdr)
@@ -115,11 +115,11 @@ class PoseColorPanel(QtWidgets.QFrame):
         grid.setSpacing(2)
         for i, (key, label) in enumerate(
             [
-                ("white", self.tr("White")),
-                ("black", self.tr("Black")),
-                ("auto", self.tr("Auto")),
-                ("yellow", self.tr("Yellow")),
-                ("custom", self.tr("Custom")),
+                ("white", self.tr("白色")),
+                ("black", self.tr("黑色")),
+                ("auto", self.tr("自动")),
+                ("yellow", self.tr("黄色")),
+                ("custom", self.tr("自定义")),
             ]
         ):
             rb = QtWidgets.QRadioButton(label)
@@ -141,7 +141,7 @@ class PoseColorPanel(QtWidgets.QFrame):
         self._custom_swatch.setVisible(
             self._config.font_color_mode == "custom"
         )
-        custom_row.addWidget(QtWidgets.QLabel(self.tr("Custom:")))
+        custom_row.addWidget(QtWidgets.QLabel(self.tr("自定义色:")))
         custom_row.addWidget(self._custom_swatch)
         custom_row.addStretch()
         layout.addLayout(custom_row)
@@ -169,8 +169,15 @@ class PoseColorPanel(QtWidgets.QFrame):
         """Add colour preset buttons."""
         row = QtWidgets.QHBoxLayout()
         row.setSpacing(3)
+        _preset_names = {
+            "default": "默认",
+            "pastel": "柔和",
+            "neon": "霓虹",
+            "earth": "大地",
+        }
         for name in COLOR_PRESETS:
-            btn = QtWidgets.QPushButton(self.tr(name.title()))
+            display = _preset_names.get(name, name)
+            btn = QtWidgets.QPushButton(self.tr(display))
             btn.setFixedHeight(22)
             btn.setStyleSheet(
                 "QPushButton { border: 1px solid #555;"
@@ -181,7 +188,7 @@ class PoseColorPanel(QtWidgets.QFrame):
             btn.clicked.connect(lambda _, n=name: self._apply_preset(n))
             row.addWidget(btn)
         layout.addLayout(row)
-        reset_btn = QtWidgets.QPushButton(self.tr("Reset Colors"))
+        reset_btn = QtWidgets.QPushButton(self.tr("恢复默认颜色"))
         reset_btn.setFixedHeight(22)
         reset_btn.setStyleSheet(
             "QPushButton { border: 1px solid #555;"
