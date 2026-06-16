@@ -181,7 +181,7 @@ class PoseColorPanel(QtWidgets.QFrame):
             btn.setFixedHeight(22)
             btn.setStyleSheet(
                 "QPushButton { border: 1px solid #555;"
-                " border-radius: 3px; font-size: 10px;"
+                " border-radius: 3px; font-size: 11px;"
                 " padding: 2px 6px; }"
                 "QPushButton:hover { background: #2e2e44; }"
             )
@@ -192,7 +192,7 @@ class PoseColorPanel(QtWidgets.QFrame):
         reset_btn.setFixedHeight(22)
         reset_btn.setStyleSheet(
             "QPushButton { border: 1px solid #555;"
-            " border-radius: 3px; font-size: 10px;"
+            " border-radius: 3px; font-size: 11px;"
             " padding: 2px 6px; }"
             "QPushButton:hover { background: #f38ba8;"
             " color: #1e1e2e; border-color: #f38ba8; }"

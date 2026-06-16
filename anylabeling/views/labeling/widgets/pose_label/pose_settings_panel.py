@@ -150,7 +150,7 @@ class PoseSettingsPanel(QtWidgets.QFrame):
             lbl = QtWidgets.QLabel(label_text)
             lbl.setStyleSheet("font-size: 11px;")
             val_lbl = QtWidgets.QLabel(self._format_slider(key, val, suffix))
-            val_lbl.setStyleSheet("font-size: 10px; color: #89b4fa;")
+            val_lbl.setStyleSheet("font-size: 11px; color: #89b4fa;")
             val_lbl.setFixedWidth(45)
             val_lbl.setAlignment(
                 Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
