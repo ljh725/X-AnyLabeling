@@ -2752,14 +2752,14 @@ class LabelingWidget(LabelDialog):
             self.canvas.pose_config.__dict__.update(pose_cfg.__dict__)
         self.pose_settings_panel = PoseSettingsPanel(
             self.canvas.pose_config,
-            on_change=self.canvas.update,
+            on_change=self._on_pose_panel_changed,
             parent=self,
         )
         self.pose_settings_panel.setVisible(self.canvas.pose_config.enabled)
         right_sidebar_layout.addWidget(self.pose_settings_panel)
         self.pose_color_panel = PoseColorPanel(
             self.canvas.pose_config,
-            on_change=self.canvas.update,
+            on_change=self._on_pose_panel_changed,
             parent=self,
         )
         self.pose_color_panel.setVisible(self.canvas.pose_config.enabled)
@@ -6971,13 +6971,22 @@ class LabelingWidget(LabelDialog):
             enabled: Whether pose view should be active.
         """
         self.canvas.pose_config.enabled = enabled
-        if "pose_view" not in self._config:
-            self._config["pose_view"] = {}
-        self._config["pose_view"]["enabled"] = enabled
+        self._sync_pose_config()
         if hasattr(self, "pose_settings_panel"):
             self.pose_settings_panel.setVisible(enabled)
             self.pose_color_panel.setVisible(enabled)
         self.canvas.update()
+
+    def _sync_pose_config(self) -> None:
+        """Copy PoseDisplayConfig fields into self._config['pose_view']."""
+        if "pose_view" not in self._config:
+            self._config["pose_view"] = {}
+        self._config["pose_view"].update(self.canvas.pose_config.to_dict())
+
+    def _on_pose_panel_changed(self) -> None:
+        """Handle pose panel parameter changes: repaint + sync config."""
+        self.canvas.update()
+        self._sync_pose_config()
 
     def open_settings_dialog(self):
         if self._settings_controller is None:
@@ -7679,6 +7688,7 @@ class LabelingWidget(LabelDialog):
         if self._settings_controller is not None:
             self._settings_controller.close_session()
 
+        self._sync_pose_config()
         save_config(self._config)
 
         if hasattr(self, "async_exif_scanner") and self.async_exif_scanner:
