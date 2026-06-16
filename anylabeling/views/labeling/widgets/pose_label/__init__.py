@@ -27,10 +27,12 @@ from .pose_layout import (
     compute_direction,
     compute_midline,
 )
+from .pose_renderer import PoseRenderer
 
 __all__ = [
     "PoseDisplayConfig",
     "PoseLabelItem",
+    "PoseRenderer",
     "apply_layout",
     "compute_direction",
     "compute_midline",
