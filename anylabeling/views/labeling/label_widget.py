@@ -174,13 +174,10 @@ class LabelCheckWorker(QtCore.QThread):
                 break
             label_file = osp.splitext(img_path)[0] + ".json"
             if self.output_dir:
-                label_file = (
-                    self.output_dir + "/" + osp.basename(label_file)
-                )
-            has_label = (
-                QtCore.QFile.exists(label_file)
-                and LabelFile.is_label_file(label_file)
-            )
+                label_file = self.output_dir + "/" + osp.basename(label_file)
+            has_label = QtCore.QFile.exists(
+                label_file
+            ) and LabelFile.is_label_file(label_file)
             if has_label:
                 label_paths.append(label_file)
             batch.append((img_path, has_label))
@@ -360,7 +357,9 @@ class LabelingWidget(LabelDialog):
         self.shape_type_filter_combobox.hide()
         self._global_filter_keep_enabled = True  # default ON
         self._pending_filter_restore: Optional[FilterState] = None
-        self._filter_state = FilterState()  # replaces _sticky_filter_state dict
+        self._filter_state = (
+            FilterState()
+        )  # replaces _sticky_filter_state dict
         self._filter_index = None
 
         # Dataset filter index (SQLite derived cache)
@@ -562,12 +561,8 @@ class LabelingWidget(LabelDialog):
         self.canvas.shape_rotated.connect(self.set_dirty)
         self.canvas.selection_changed.connect(self.shape_selection_changed)
         # Inspector table refresh (debounced)
-        self.canvas.new_shape.connect(
-            self._schedule_inspector_table_refresh
-        )
-        self.canvas.shape_moved.connect(
-            self._schedule_inspector_table_refresh
-        )
+        self.canvas.new_shape.connect(self._schedule_inspector_table_refresh)
+        self.canvas.shape_moved.connect(self._schedule_inspector_table_refresh)
         self.canvas.selection_changed.connect(
             self._schedule_inspector_table_refresh
         )
@@ -1153,9 +1148,7 @@ class LabelingWidget(LabelDialog):
             self.tr("Switch Digit Shortcut Page"),
             self.switch_digit_shortcut_page,
             shortcuts["switch_digit_page"],
-            tip=self.tr(
-                "Switch to the next digit shortcut page"
-            ),
+            tip=self.tr("Switch to the next digit shortcut page"),
         )
         label_manager = action(
             self.tr("Label Manager"),
@@ -1506,15 +1499,25 @@ class LabelingWidget(LabelDialog):
         )
         keypoint_label_leader_line = action(
             self.tr("Keypoint Label Leader Line"),
-            lambda x: self.set_canvas_params(
-                "keypoint_label_leader_line", x
-            ),
+            lambda x: self.set_canvas_params("keypoint_label_leader_line", x),
             tip=self.tr("Draw leader line from label to keypoint"),
             icon=None,
             checkable=True,
             checked=self._config.get("keypoint_label_leader_line", True),
             enabled=True,
             auto_trigger=True,
+        )
+        pose_view = action(
+            self.tr("Pose View"),
+            self.toggle_pose_view,
+            tip=self.tr(
+                "Toggle pose keypoint label rendering (colored boxes,"
+                " skeleton, anti-occlusion layout)"
+            ),
+            icon=None,
+            checkable=True,
+            checked=self._config.get("pose_view", {}).get("enabled", False),
+            enabled=True,
         )
 
         # Languages
@@ -1929,9 +1932,7 @@ class LabelingWidget(LabelDialog):
             self.toggle_global_filter_keep,
             None,
             None,
-            self.tr(
-                "When enabled, filter values persist across images"
-            ),
+            self.tr("When enabled, filter values persist across images"),
             checkable=True,
             checked=True,
             enabled=True,
@@ -2479,6 +2480,7 @@ class LabelingWidget(LabelDialog):
                 label_on_selection,
                 keypoint_label_spread,
                 keypoint_label_leader_line,
+                pose_view,
                 show_groups,
                 hide_selected_polygons,
                 show_hidden_polygons,
@@ -2693,7 +2695,9 @@ class LabelingWidget(LabelDialog):
 
         display_mode_header = QLabel(self.tr("标签显示"))
         display_mode_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        display_mode_header.setStyleSheet("font-weight: bold; font-size: 11px;")
+        display_mode_header.setStyleSheet(
+            "font-weight: bold; font-size: 11px;"
+        )
         display_mode_layout.addWidget(display_mode_header)
 
         display_mode_btn_row = QHBoxLayout()
@@ -3335,9 +3339,13 @@ class LabelingWidget(LabelDialog):
         self.canvas.reset_state()
         self.compare_view_manager.reset()
         # Block signals to avoid triggering filter callbacks during reset
-        lbl_blocker = QtCore.QSignalBlocker(self.label_filter_combobox.text_box)
+        lbl_blocker = QtCore.QSignalBlocker(
+            self.label_filter_combobox.text_box
+        )
         gid_blocker = QtCore.QSignalBlocker(self.gid_filter_combobox.gid_box)
-        type_blocker = QtCore.QSignalBlocker(self.shape_type_filter_combobox.type_box)
+        type_blocker = QtCore.QSignalBlocker(
+            self.shape_type_filter_combobox.type_box
+        )
         self.label_filter_combobox.text_box.clear()
         self.gid_filter_combobox.gid_box.clear()
         self.shape_type_filter_combobox.type_box.clear()
@@ -3881,7 +3889,10 @@ class LabelingWidget(LabelDialog):
         if person_shape:
             # Single mode: fill for selected person directly
             if self.keypoint_fill_mode.activate(person_shape.group_id):
-                if hasattr(self, "gid_filter_combobox") and self.gid_filter_combobox:
+                if (
+                    hasattr(self, "gid_filter_combobox")
+                    and self.gid_filter_combobox
+                ):
                     combo = self.gid_filter_combobox.gid_box
                     gid_text = str(person_shape.group_id)
                     target_index = 0
@@ -3902,18 +3913,24 @@ class LabelingWidget(LabelDialog):
                     label_widget=self,
                     parent=self,
                 )
-                self.canvas.new_shape.connect(self.keypoint_tool_window.refresh_all)
+                self.canvas.new_shape.connect(
+                    self.keypoint_tool_window.refresh_all
+                )
 
             self.keypoint_tool_window.refresh_all()
-            person_data = self.keypoint_tool_window.content_widget._get_person_data()
+            person_data = (
+                self.keypoint_tool_window.content_widget._get_person_data()
+            )
             if not person_data:
                 self.status(
-                    self.tr("No objects with group_id found in the image"), 2000
+                    self.tr("No objects with group_id found in the image"),
+                    2000,
                 )
                 return
 
             incomplete_gids = [
-                gid for gid, data in person_data.items()
+                gid
+                for gid, data in person_data.items()
                 if data["completed"] < data["total"]
             ]
             if incomplete_gids:
@@ -3922,7 +3939,9 @@ class LabelingWidget(LabelDialog):
                 )
             else:
                 first_gid = min(person_data.keys())
-                self.keypoint_tool_window.content_widget.switch_to_person(first_gid)
+                self.keypoint_tool_window.content_widget.switch_to_person(
+                    first_gid
+                )
 
             self.keypoint_tool_window.show()
             self.keypoint_tool_window.raise_()
@@ -3932,7 +3951,10 @@ class LabelingWidget(LabelDialog):
         if self.keypoint_fill_mode.is_active:
             self.keypoint_fill_mode.deactivate()
 
-            if hasattr(self, "gid_filter_combobox") and self.gid_filter_combobox:
+            if (
+                hasattr(self, "gid_filter_combobox")
+                and self.gid_filter_combobox
+            ):
                 combo = self.gid_filter_combobox.gid_box
                 combo.blockSignals(True)
                 combo.setCurrentIndex(0)
@@ -3953,11 +3975,15 @@ class LabelingWidget(LabelDialog):
                 label_widget=self,
                 parent=self,
             )
-            self.canvas.new_shape.connect(self.keypoint_tool_window.refresh_all)
+            self.canvas.new_shape.connect(
+                self.keypoint_tool_window.refresh_all
+            )
 
         # Force refresh to get latest data for the new image
         self.keypoint_tool_window.refresh_all()
-        person_data = self.keypoint_tool_window.content_widget._get_person_data()
+        person_data = (
+            self.keypoint_tool_window.content_widget._get_person_data()
+        )
 
         # If exactly one group_id is present, auto-activate
         if len(person_data) == 1:
@@ -3976,7 +4002,9 @@ class LabelingWidget(LabelDialog):
                 label_widget=self,
                 parent=self,
             )
-            self.canvas.new_shape.connect(self.keypoint_tool_window.refresh_all)
+            self.canvas.new_shape.connect(
+                self.keypoint_tool_window.refresh_all
+            )
 
         if self.keypoint_tool_window.isVisible():
             self.keypoint_tool_window.hide()
@@ -4157,13 +4185,13 @@ class LabelingWidget(LabelDialog):
         elif action == copy_path_action:
             self.copy_file_path(item.text())
         elif action == reset_this_image_view:
-            self._reset_image_views_for_files(
-                [item.text()], self.tr("该图像")
-            )
+            self._reset_image_views_for_files([item.text()], self.tr("该图像"))
         elif action == reset_from_this_to_end:
             target_file = item.text()
             filenames = self._get_files_from_target_to_end(target_file)
-            self._reset_image_views_for_files(filenames, self.tr("该图像到末尾"))
+            self._reset_image_views_for_files(
+                filenames, self.tr("该图像到末尾")
+            )
         elif action == reset_all_views:
             self.reset_all_image_views()
 
@@ -4301,9 +4329,7 @@ class LabelingWidget(LabelDialog):
         self, parent_menu, prepend=False, after_filter_actions=None
     ):
         label_menu = QtWidgets.QMenu(self.tr("Filter by Label"), parent_menu)
-        gid_menu = QtWidgets.QMenu(
-            self.tr("Filter by Group ID"), parent_menu
-        )
+        gid_menu = QtWidgets.QMenu(self.tr("Filter by Group ID"), parent_menu)
         type_menu = QtWidgets.QMenu(
             self.tr("Filter by Shape Type"), parent_menu
         )
@@ -4442,9 +4468,7 @@ class LabelingWidget(LabelDialog):
         self._filter_navigation_active = bool(matched)
 
         if not matched:
-            self.status(
-                self.tr("No files match the current filter"), 3000
-            )
+            self.status(self.tr("No files match the current filter"), 3000)
             self._set_filter_navigation_action_checked(False)
             return False
         self._show_filter_navigation_status(
@@ -4486,9 +4510,7 @@ class LabelingWidget(LabelDialog):
     def cancel_dataset_index_build(self):
         if self._dataset_index_worker is not None:
             self._dataset_index_worker.cancel()
-            self.status(
-                self.tr("Cancelling dataset index build..."), 3000
-            )
+            self.status(self.tr("Cancelling dataset index build..."), 3000)
 
     def scan_exif_orientation(self):
         """Manually trigger EXIF orientation scan for all images."""
@@ -4505,13 +4527,9 @@ class LabelingWidget(LabelDialog):
             3000,
         )
 
-    def _start_dataset_index_worker(
-        self, mode, image_files, output_dir=None
-    ):
+    def _start_dataset_index_worker(self, mode, image_files, output_dir=None):
         if self._dataset_index_worker is not None:
-            self.status(
-                self.tr("Dataset index task is already running"), 3000
-            )
+            self.status(self.tr("Dataset index task is already running"), 3000)
             return
         if not image_files:
             self.status(
@@ -4611,9 +4629,7 @@ class LabelingWidget(LabelDialog):
         del blocker
 
     def _show_filter_navigation_status(self, prefix=None):
-        message = self.tr(
-            "Remaining {remaining} / initial {initial}"
-        ).format(
+        message = self.tr("Remaining {remaining} / initial {initial}").format(
             remaining=len(self._filter_navigation_files),
             initial=self._filter_navigation_initial_count,
         )
@@ -4633,18 +4649,14 @@ class LabelingWidget(LabelDialog):
 
         shapes = getattr(self.canvas, "shapes", None)
         if shapes is not None:
-            still_matches = (
-                self._filter_navigation_engine.shapes_match_filter(
-                    shapes, self._filter_navigation_state
-                )
+            still_matches = self._filter_navigation_engine.shapes_match_filter(
+                shapes, self._filter_navigation_state
             )
         else:
-            still_matches = (
-                self._filter_navigation_engine.file_matches_filter(
-                    filename,
-                    self._filter_navigation_state,
-                    self.output_dir,
-                )
+            still_matches = self._filter_navigation_engine.file_matches_filter(
+                filename,
+                self._filter_navigation_state,
+                self.output_dir,
             )
 
         if still_matches:
@@ -4653,14 +4665,10 @@ class LabelingWidget(LabelDialog):
         self._filter_navigation_files.remove(filename)
         if not self._filter_navigation_files:
             self.clear_filter_navigation()
-            self.status(
-                self.tr("Filter result navigation completed"), 3000
-            )
+            self.status(self.tr("Filter result navigation completed"), 3000)
             return
 
-        self._show_filter_navigation_status(
-            self.tr("Current file completed")
-        )
+        self._show_filter_navigation_status(self.tr("Current file completed"))
 
     def _current_image_index(self):
         files = self.image_list
@@ -4703,9 +4711,7 @@ class LabelingWidget(LabelDialog):
 
         filename = self._next_filter_navigation_file(anchor)
         if filename is None:
-            self.status(
-                self.tr("Already at the last filter result"), 2000
-            )
+            self.status(self.tr("Already at the last filter result"), 2000)
             return True
 
         if load:
@@ -4720,9 +4726,7 @@ class LabelingWidget(LabelDialog):
 
         filename = self._prev_filter_navigation_file(anchor)
         if filename is None:
-            self.status(
-                self.tr("Already at the first filter result"), 2000
-            )
+            self.status(self.tr("Already at the first filter result"), 2000)
             return True
 
         self.load_file(filename)
@@ -4829,9 +4833,7 @@ class LabelingWidget(LabelDialog):
             action.setCheckable(True)
             action.setChecked(stype == current_type)
             action.triggered.connect(
-                functools.partial(
-                    self.set_shape_type_filter_value, stype
-                )
+                functools.partial(self.set_shape_type_filter_value, stype)
             )
             action_group.addAction(action)
 
@@ -4844,9 +4846,7 @@ class LabelingWidget(LabelDialog):
             else self.shape_type_filter_combobox.type_box.currentText()
         )
 
-        unique_type_list = (
-            list(precomputed) if precomputed is not None else []
-        )
+        unique_type_list = list(precomputed) if precomputed is not None else []
         if precomputed is None:
             for item in self.label_list:
                 stype = item.shape().shape_type
@@ -4902,7 +4902,9 @@ class LabelingWidget(LabelDialog):
         def is_visible(item):
             return item in matched_items
 
-        visible_count, changed = self._filter_engine.sync_label_list_visibility(is_visible)
+        visible_count, changed = (
+            self._filter_engine.sync_label_list_visibility(is_visible)
+        )
 
         if changed:
             self.canvas.update()
@@ -4929,16 +4931,14 @@ class LabelingWidget(LabelDialog):
                 gid_str = str(shape.group_id)
                 idx["gid"].setdefault(gid_str, []).append(item)
             if shape.shape_type:
-                idx["shape_type"].setdefault(
-                    str(shape.shape_type), []
-                ).append(item)
+                idx["shape_type"].setdefault(str(shape.shape_type), []).append(
+                    item
+                )
         self._filter_index = idx
 
     def toggle_global_filter_keep(self, enabled):
         self._global_filter_keep_enabled = enabled
-        self.settings.setValue(
-            "filter/global_keep_enabled", enabled
-        )
+        self.settings.setValue("filter/global_keep_enabled", enabled)
         if not enabled:
             # Clear filter state and reset comboboxes
             self._filter_state.reset()
@@ -5170,9 +5170,7 @@ class LabelingWidget(LabelDialog):
             return
 
         # If the requested file is not already open, switch to it
-        current_image = (
-            str(self.filename) if self.filename else ""
-        )
+        current_image = str(self.filename) if self.filename else ""
         if current_image != target_image:
             if target_image in self.fn_to_index:
                 idx = self.fn_to_index[target_image]
@@ -5182,9 +5180,7 @@ class LabelingWidget(LabelDialog):
             elif osp.isfile(target_image):
                 self.load_file(target_image)
             else:
-                self.status(
-                    self.tr("Image not found: %s") % target_image
-                )
+                self.status(self.tr("Image not found: %s") % target_image)
                 return
 
         # Verify the file actually loaded before navigating to shape
@@ -5244,7 +5240,9 @@ class LabelingWidget(LabelDialog):
         scroll_area_size = scroll_area.viewport().size()
 
         target_x = x_ratio * canvas_size.width() - scroll_area_size.width() / 2
-        target_y = y_ratio * canvas_size.height() - scroll_area_size.height() / 2
+        target_y = (
+            y_ratio * canvas_size.height() - scroll_area_size.height() / 2
+        )
 
         self.set_scroll(QtCore.Qt.Orientation.Horizontal, target_x)
         self.set_scroll(QtCore.Qt.Orientation.Vertical, target_y)
@@ -5268,9 +5266,7 @@ class LabelingWidget(LabelDialog):
             shape.label = str(value)
         elif field == "group_id":
             try:
-                shape.group_id = (
-                    int(value) if str(value).strip() else None
-                )
+                shape.group_id = int(value) if str(value).strip() else None
             except ValueError:
                 return
         elif field == "description":
@@ -5287,7 +5283,10 @@ class LabelingWidget(LabelDialog):
 
     def _refresh_inspector_table(self):
         """Refresh the inspector editable table from current canvas shapes."""
-        if not hasattr(self, "inspector_panel") or self.inspector_panel is None:
+        if (
+            not hasattr(self, "inspector_panel")
+            or self.inspector_panel is None
+        ):
             return
         # Don't reset the model while the user is editing a cell
         if self.inspector_panel.table_widget.is_editing:
@@ -5303,13 +5302,14 @@ class LabelingWidget(LabelDialog):
 
     def _update_inspector_file_list(self):
         """Feed current file list to the inspector panel."""
-        if not hasattr(self, "inspector_panel") or self.inspector_panel is None:
+        if (
+            not hasattr(self, "inspector_panel")
+            or self.inspector_panel is None
+        ):
             return
         # Collect JSON annotation files from the loaded image_list
         json_paths = []
-        output_dir = (
-            getattr(self, "output_dir", None) or None
-        )
+        output_dir = getattr(self, "output_dir", None) or None
         for f in self.image_list:
             f_str = str(f)
             if f_str.endswith(".json"):
@@ -5332,7 +5332,10 @@ class LabelingWidget(LabelDialog):
 
     def toggle_inspector_panel(self):
         """Show/hide the inspector panel."""
-        if hasattr(self, "inspector_panel") and self.inspector_panel is not None:
+        if (
+            hasattr(self, "inspector_panel")
+            and self.inspector_panel is not None
+        ):
             visible = not self.inspector_panel.isVisible()
             self.inspector_panel.setVisible(visible)
             if hasattr(self, "actions") and hasattr(
@@ -5438,9 +5441,7 @@ class LabelingWidget(LabelDialog):
                 lbl.setStyleSheet(info_style)
                 self.grid_layout.addWidget(lbl, row_counter, 0)
                 if value_widget is not None:
-                    self.grid_layout.addWidget(
-                        value_widget, row_counter, 1
-                    )
+                    self.grid_layout.addWidget(value_widget, row_counter, 1)
                 else:
                     val = QLabel(str(value_text))
                     val.setStyleSheet(val_style)
@@ -5454,9 +5455,7 @@ class LabelingWidget(LabelDialog):
             )
             _add_info_row(self.tr("索引"), None, idx_edit)
 
-            type_edit = QtWidgets.QLineEdit(
-                update_shape.shape_type or ""
-            )
+            type_edit = QtWidgets.QLineEdit(update_shape.shape_type or "")
             type_edit.setReadOnly(True)
             type_edit.setStyleSheet(
                 "QLineEdit { font-size: 11px; padding: 1px 3px; }"
@@ -5484,9 +5483,7 @@ class LabelingWidget(LabelDialog):
                 "QLineEdit { font-size: 11px; padding: 1px 3px; }"
             )
             gid_edit.textChanged.connect(
-                lambda t, idx=shape_index: self._info_panel_gid_changed(
-                    idx, t
-                )
+                lambda t, idx=shape_index: self._info_panel_gid_changed(idx, t)
             )
             _add_info_row(self.tr("Group ID"), None, gid_edit)
 
@@ -5523,9 +5520,7 @@ class LabelingWidget(LabelDialog):
                     widget_type = self.attribute_widget_types.get(
                         update_category, {}
                     ).get(property, "combobox")
-                    current_value = update_shape.attributes.get(
-                        property, None
-                    )
+                    current_value = update_shape.attributes.get(property, None)
                     font_metrics = QFontMetrics(self.scroll_area.font())
                     available_width = self.scroll_area.width() - 30
                     property_display = property
@@ -5560,7 +5555,10 @@ class LabelingWidget(LabelDialog):
                         main_layout.setSpacing(2)
 
                         def get_truncated_text(text, max_width):
-                            if _measure_text_width(font_metrics, text) <= max_width:
+                            if (
+                                _measure_text_width(font_metrics, text)
+                                <= max_width
+                            ):
                                 return text, text
                             truncated = text
                             while (
@@ -5622,7 +5620,10 @@ class LabelingWidget(LabelDialog):
                                 idx += 1
                                 continue
 
-                            if current_row_width + button_width <= available_width:
+                            if (
+                                current_row_width + button_width
+                                <= available_width
+                            ):
                                 current_row_buttons.append(
                                     (display_text, original_text)
                                 )
@@ -5651,30 +5652,35 @@ class LabelingWidget(LabelDialog):
                                             (display_text, original_text),
                                         ]
                                         current_row_width = (
-                                            first_truncated_width + button_width
+                                            first_truncated_width
+                                            + button_width
                                         )
                                         idx += 1
                                     else:
                                         row_layout = QHBoxLayout()
-                                        row_layout.setContentsMargins(0, 0, 0, 0)
+                                        row_layout.setContentsMargins(
+                                            0, 0, 0, 0
+                                        )
                                         row_layout.setSpacing(4)
 
                                         for (
                                             btn_display,
                                             btn_original,
                                         ) in current_row_buttons:
-                                            radio_button = (
-                                                create_radio_button_with_handler(
-                                                    btn_display,
-                                                    btn_original,
-                                                    property,
-                                                    shape_index,
-                                                )
+                                            radio_button = create_radio_button_with_handler(
+                                                btn_display,
+                                                btn_original,
+                                                property,
+                                                shape_index,
                                             )
                                             row_layout.addWidget(radio_button)
-                                            if current_value == btn_original or (
-                                                current_value is None
-                                                and btn_original == options[0]
+                                            if (
+                                                current_value == btn_original
+                                                or (
+                                                    current_value is None
+                                                    and btn_original
+                                                    == options[0]
+                                                )
                                             ):
                                                 radio_button.setChecked(True)
 
@@ -5722,12 +5728,17 @@ class LabelingWidget(LabelDialog):
                             row_layout = QHBoxLayout()
                             row_layout.setContentsMargins(0, 0, 0, 0)
                             row_layout.setSpacing(4)
-                            for btn_display, btn_original in current_row_buttons:
-                                radio_button = create_radio_button_with_handler(
-                                    btn_display,
-                                    btn_original,
-                                    property,
-                                    shape_index,
+                            for (
+                                btn_display,
+                                btn_original,
+                            ) in current_row_buttons:
+                                radio_button = (
+                                    create_radio_button_with_handler(
+                                        btn_display,
+                                        btn_original,
+                                        property,
+                                        shape_index,
+                                    )
                                 )
                                 row_layout.addWidget(radio_button)
                                 if current_value == btn_original or (
@@ -6145,7 +6156,9 @@ class LabelingWidget(LabelDialog):
             self.label_list.setUpdatesEnabled(True)
             self._no_selection_slot = False
         _t_list = time.perf_counter()
-        self.canvas.load_shapes(shapes, replace=replace, store_backup=store_backup)
+        self.canvas.load_shapes(
+            shapes, replace=replace, store_backup=store_backup
+        )
         _t_canvas = time.perf_counter()
         self._refresh_shape_filters()
         _t_filter = time.perf_counter()
@@ -6205,15 +6218,9 @@ class LabelingWidget(LabelDialog):
         # Merge selected labels into the current-image label set
         selected_labels = self._filter_state.labels
         all_label_set = set(labels_set) | selected_labels
-        self.update_combo_box(
-            block_signal=True, precomputed=all_label_set
-        )
-        self.update_gid_box(
-            block_signal=True, precomputed=gids_set
-        )
-        self.update_shape_type_box(
-            block_signal=True, precomputed=types_set
-        )
+        self.update_combo_box(block_signal=True, precomputed=all_label_set)
+        self.update_gid_box(block_signal=True, precomputed=gids_set)
+        self.update_shape_type_box(block_signal=True, precomputed=types_set)
         self._apply_combined_shape_filters()
 
     def apply_label_visibility(self):
@@ -6262,9 +6269,7 @@ class LabelingWidget(LabelDialog):
             else self.gid_filter_combobox.gid_box.currentText()
         )
 
-        unique_gid_list = (
-            list(precomputed) if precomputed is not None else []
-        )
+        unique_gid_list = list(precomputed) if precomputed is not None else []
         if precomputed is None:
             for item in self.label_list:
                 gid = item.shape().group_id
@@ -6341,9 +6346,7 @@ class LabelingWidget(LabelDialog):
             # disable allows next and previous image to proceed
             # Refresh derived index for the saved file
             if self._dataset_index_worker is not None:
-                self._pending_dataset_index_refresh_files.add(
-                    self.image_path
-                )
+                self._pending_dataset_index_refresh_files.add(self.image_path)
             elif self._dataset_filter_index is not None:
                 self._dataset_filter_index.refresh_file(
                     self.image_path, self.output_dir
@@ -6462,7 +6465,9 @@ class LabelingWidget(LabelDialog):
         ):
             shape = self.canvas.shapes[-1] if self.canvas.shapes else None
             if shape and getattr(shape, "shape_type", None) == "point":
-                label, group_id = self.keypoint_fill_mode.get_next_label_and_group_id()
+                label, group_id = (
+                    self.keypoint_fill_mode.get_next_label_and_group_id()
+                )
                 if label and group_id is not None:
                     shape.label = label
                     shape.group_id = group_id
@@ -6934,6 +6939,18 @@ class LabelingWidget(LabelDialog):
         setattr(self.canvas, key, value)
         self.canvas.update()
 
+    def toggle_pose_view(self, enabled: bool) -> None:
+        """Toggle the Pose View rendering mode on the canvas.
+
+        Args:
+            enabled: Whether pose view should be active.
+        """
+        self.canvas.pose_config.enabled = enabled
+        if "pose_view" not in self._config:
+            self._config["pose_view"] = {}
+        self._config["pose_view"]["enabled"] = enabled
+        self.canvas.update()
+
     def open_settings_dialog(self):
         if self._settings_controller is None:
             return
@@ -7337,9 +7354,7 @@ class LabelingWidget(LabelDialog):
     def _setup_instance_visibility_shortcuts(self):
         """Setup keyboard shortcuts for instance visibility control"""
         # H: Hide current instance
-        self.hide_instance_shortcut = QShortcut(
-            QtGui.QKeySequence("H"), self
-        )
+        self.hide_instance_shortcut = QShortcut(QtGui.QKeySequence("H"), self)
         self.hide_instance_shortcut.activated.connect(
             self.hide_current_instance
         )
@@ -7356,9 +7371,7 @@ class LabelingWidget(LabelDialog):
         self.show_all_shortcut = QShortcut(
             QtGui.QKeySequence("Ctrl+Shift+H"), self
         )
-        self.show_all_shortcut.activated.connect(
-            self.show_all_instances
-        )
+        self.show_all_shortcut.activated.connect(self.show_all_instances)
 
         # Alt+H: Toggle auto-focus instance mode
         self.auto_focus_instance = False
@@ -7371,7 +7384,7 @@ class LabelingWidget(LabelDialog):
 
     def hide_current_instance(self):
         """Hide the currently selected instance (same group_id)"""
-        selected_shapes = getattr(self.canvas, 'selected_shapes', [])
+        selected_shapes = getattr(self.canvas, "selected_shapes", [])
         if not selected_shapes:
             self.status(self.tr("No shape selected"))
             return
@@ -7390,7 +7403,7 @@ class LabelingWidget(LabelDialog):
 
     def focus_current_instance(self):
         """Focus mode: hide all instances except current"""
-        selected_shapes = getattr(self.canvas, 'selected_shapes', [])
+        selected_shapes = getattr(self.canvas, "selected_shapes", [])
         if not selected_shapes:
             self.status(self.tr("No shape selected"))
             return
@@ -7400,7 +7413,7 @@ class LabelingWidget(LabelDialog):
             return
         target_group_id = current_shape.group_id
         for shape in self.canvas.shapes:
-            shape.hidden_by_filter = (shape.group_id != target_group_id)
+            shape.hidden_by_filter = shape.group_id != target_group_id
         self.canvas.update()
         self.status(
             self.tr(f"Focus mode: only showing group_id={target_group_id}")
@@ -7417,7 +7430,9 @@ class LabelingWidget(LabelDialog):
         """Toggle auto-focus instance aggregation mode."""
         self.auto_focus_instance = not self.auto_focus_instance
         if self.auto_focus_instance:
-            self.status(self.tr("自动聚合模式已开启（选中即聚焦，ESC 退出聚合）"), 3000)
+            self.status(
+                self.tr("自动聚合模式已开启（选中即聚焦，ESC 退出聚合）"), 3000
+            )
         else:
             self.show_all_instances()
             self.status(self.tr("自动聚合模式已关闭"), 2000)
@@ -7433,7 +7448,7 @@ class LabelingWidget(LabelDialog):
             return
         target_group_id = current_shape.group_id
         for shape in self.canvas.shapes:
-            shape.hidden_by_filter = (shape.group_id != target_group_id)
+            shape.hidden_by_filter = shape.group_id != target_group_id
         self.canvas.update()
         self.status(
             self.tr("自动聚合: group_id={gid}").format(gid=target_group_id),
@@ -7445,8 +7460,7 @@ class LabelingWidget(LabelDialog):
         if not self.auto_focus_instance:
             return False
         has_hidden = any(
-            getattr(s, "hidden_by_filter", False)
-            for s in self.canvas.shapes
+            getattr(s, "hidden_by_filter", False) for s in self.canvas.shapes
         )
         if not has_hidden:
             return False
@@ -7532,9 +7546,7 @@ class LabelingWidget(LabelDialog):
                 is not None
             )
             v_removed = (
-                self.scroll_values[Qt.Orientation.Vertical].pop(
-                    filename, None
-                )
+                self.scroll_values[Qt.Orientation.Vertical].pop(filename, None)
                 is not None
             )
             if removed or zoom_removed or h_removed or v_removed:
@@ -7563,7 +7575,9 @@ class LabelingWidget(LabelDialog):
             self.status(self.tr("没有可重置的图像视图状态"), 3000)
             return
 
-        should_reset_current = self.filename in filenames and self.filename is not None
+        should_reset_current = (
+            self.filename in filenames and self.filename is not None
+        )
         cleared = self._clear_view_state_for_files(filenames)
         if cleared == 0 and not should_reset_current:
             self.status(
@@ -7597,9 +7611,7 @@ class LabelingWidget(LabelDialog):
         if self.filename is None:
             self.status(self.tr("请先打开一张图片"), 3000)
             return
-        self._reset_image_views_for_files(
-            [self.filename], self.tr("当前图像")
-        )
+        self._reset_image_views_for_files([self.filename], self.tr("当前图像"))
 
     def reset_views_from_current_to_end(self):
         """重置从当前图像到末尾的所有图像视图状态。"""

@@ -14,6 +14,11 @@ from anylabeling.views.labeling.widgets.keypoint_label_layout import (
     LabelItem,
     layout_keypoint_labels,
 )
+from anylabeling.views.labeling.widgets.pose_label import (
+    COCO_KEYPOINT_SET,
+    PoseDisplayConfig,
+    PoseRenderer,
+)
 
 from .. import utils
 from ..logger import logger
@@ -83,6 +88,7 @@ class Canvas(
     shape_hover_changed = QtCore.pyqtSignal()
     split_position_changed = QtCore.pyqtSignal(float)
     edit_label_requested = QtCore.pyqtSignal()
+    pose_occlusion_count_changed = QtCore.pyqtSignal(int)
 
     CREATE, EDIT = 0, 1
 
@@ -209,6 +215,10 @@ class Canvas(
         self.label_zoom_threshold = 2.0
         self.keypoint_label_spread = True
         self.keypoint_label_leader_line = True
+
+        # Pose view configuration (shared with sidebar panels).
+        self.pose_config = PoseDisplayConfig()
+        self._pose_renderer = PoseRenderer(self.pose_config)
 
         # Set cross line options.
         self.cross_line_show = True
@@ -1460,9 +1470,7 @@ class Canvas(
             self.set_hiding()
             if shape not in self.selected_shapes:
                 if multiple_selection_mode:
-                    self.selection_changed.emit(
-                        self.selected_shapes + [shape]
-                    )
+                    self.selection_changed.emit(self.selected_shapes + [shape])
                 else:
                     self.selection_changed.emit([shape])
                 self.h_shape_is_selected = False
@@ -1477,9 +1485,7 @@ class Canvas(
             self.set_hiding()
             if shape not in self.selected_shapes:
                 if multiple_selection_mode:
-                    self.selection_changed.emit(
-                        self.selected_shapes + [shape]
-                    )
+                    self.selection_changed.emit(self.selected_shapes + [shape])
                 else:
                     self.selection_changed.emit([shape])
                 self.h_shape_is_selected = False
@@ -1494,25 +1500,21 @@ class Canvas(
                     continue
                 shape_selectable = False
                 if shape.shape_type in ["point", "line", "linestrip"]:
-                    if shape.nearest_vertex(
-                        point, self.epsilon * 3 / self.scale
-                    ) is not None:
+                    if (
+                        shape.nearest_vertex(
+                            point, self.epsilon * 3 / self.scale
+                        )
+                        is not None
+                    ):
                         shape_selectable = True
-                elif (
-                    shape.shape_type == "cuboid"
-                    and len(shape.points) == 8
-                ):
+                elif shape.shape_type == "cuboid" and len(shape.points) == 8:
                     front_path = self.cuboid_face_path(
                         shape, CUBOID_FACE_FRONT
                     )
                     shape_selectable = (
-                        front_path is not None
-                        and front_path.contains(point)
+                        front_path is not None and front_path.contains(point)
                     )
-                elif (
-                    len(shape.points) > 1
-                    and shape.contains_point(point)
-                ):
+                elif len(shape.points) > 1 and shape.contains_point(point):
                     shape_selectable = True
 
                 if shape_selectable:
@@ -1526,7 +1528,7 @@ class Canvas(
                             self.selection_changed.emit([shape])
                         self.h_shape_is_selected = False
                     else:
-                        if getattr(self, 'label_on_selection', False):
+                        if getattr(self, "label_on_selection", False):
                             self.h_shape_is_selected = False
                         else:
                             self.h_shape_is_selected = True
@@ -2244,7 +2246,9 @@ class Canvas(
             p.setPen(pen)
             grouped_shapes = {}
             for shape in self.shapes:
-                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
+                if not shape.visible or getattr(
+                    shape, "hidden_by_filter", False
+                ):
                     continue
                 if shape.group_id is None:
                     continue
@@ -2315,7 +2319,9 @@ class Canvas(
             linking_pairs = []
             group_color = (255, 128, 0)
             for shape in self.shapes:
-                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
+                if not shape.visible or getattr(
+                    shape, "hidden_by_filter", False
+                ):
                     continue
 
                 try:
@@ -2371,7 +2377,9 @@ class Canvas(
         # Draw shape masks
         if self.show_masks:
             for shape in self.shapes:
-                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
+                if not shape.visible or getattr(
+                    shape, "hidden_by_filter", False
+                ):
                     continue
                 if shape.shape_type not in [
                     "polygon",
@@ -2470,7 +2478,7 @@ class Canvas(
 
         # Draw degrees
         for shape in self.shapes:
-            if not shape.visible or getattr(shape, 'hidden_by_filter', False):
+            if not shape.visible or getattr(shape, "hidden_by_filter", False):
                 continue
             if not viewport_rect.intersects(shape.bounding_rect()):
                 continue
@@ -2621,7 +2629,9 @@ class Canvas(
             )
             p.setPen(pen)
             for shape in self.shapes:
-                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
+                if not shape.visible or getattr(
+                    shape, "hidden_by_filter", False
+                ):
                     continue
                 if should_merge_rectangle_text(shape):
                     continue
@@ -2652,7 +2662,9 @@ class Canvas(
             )
             p.setPen(pen)
             for shape in self.shapes:
-                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
+                if not shape.visible or getattr(
+                    shape, "hidden_by_filter", False
+                ):
                     continue
                 if should_merge_rectangle_text(shape):
                     continue
@@ -2703,16 +2715,31 @@ class Canvas(
                             hovered_shape = s
                             break
             hovered_group = (
-                hovered_shape.group_id
-                if hovered_shape is not None
-                else None
+                hovered_shape.group_id if hovered_shape is not None else None
             )
             zoom_reveals = self.scale >= self.label_zoom_threshold
             for shape in self.shapes:
-                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
+                if not shape.visible or getattr(
+                    shape, "hidden_by_filter", False
+                ):
                     continue
+                # Pose View: skip COCO keypoint points and person rects.
+                if self.pose_config.enabled:
+                    if (
+                        shape.shape_type == "point"
+                        and shape.label in COCO_KEYPOINT_SET
+                    ):
+                        continue
+                    if (
+                        shape.shape_type == "rectangle"
+                        and shape.label == "person"
+                        and shape.group_id is not None
+                    ):
+                        continue
                 d_react = shape.point_size / shape.scale
-                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
+                if not shape.visible or getattr(
+                    shape, "hidden_by_filter", False
+                ):
                     continue
                 if shape.label in [
                     "AUTOLABEL_OBJECT",
@@ -2740,10 +2767,7 @@ class Canvas(
                     label_text = shape.label
                 if not label_text:
                     continue
-                if (
-                    shape.score is not None
-                    and self.show_scores
-                ):
+                if shape.score is not None and self.show_scores:
                     label_text += f" {float(shape.score):.2f}"
                 if shape.shape_type == "rectangle":
                     extra_texts = []
@@ -2965,15 +2989,15 @@ class Canvas(
                 p.setPen(pen)
                 for anchor_pt, edge_pt in leader_segments:
                     p.drawLine(
-                        QtCore.QPoint(
-                            int(anchor_pt.x()), int(anchor_pt.y())
-                        ),
+                        QtCore.QPoint(int(anchor_pt.x()), int(anchor_pt.y())),
                         edge_pt,
                     )
 
             p.setPen(Qt.PenStyle.NoPen)
             for shape, rect, _, _ in labels:
-                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
+                if not shape.visible or getattr(
+                    shape, "hidden_by_filter", False
+                ):
                     continue
                 bg_color = QtGui.QColor(shape.line_color)
                 bg_color.setAlphaF(0.85)
@@ -2983,9 +3007,24 @@ class Canvas(
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.setPen(QtGui.QColor("#ffffff"))
             for shape, _, text_pos, label_text in labels:
-                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
+                if not shape.visible or getattr(
+                    shape, "hidden_by_filter", False
+                ):
                     continue
                 p.drawText(text_pos, label_text)
+
+            # Pose View overlay (after standard labels).
+            if (
+                self.pose_config.enabled
+                and self.pixmap is not None
+                and self._has_pose_shapes()
+            ):
+                count = self._pose_renderer.render(
+                    p, self.shapes, self.pixmap.size(), self.scale
+                )
+                if count != self.pose_config.occlusion_count:
+                    self.pose_config.occlusion_count = count
+                    self.pose_occlusion_count_changed.emit(count)
 
         # Draw mouse coordinates
         if self.cross_line_show:
@@ -3013,7 +3052,9 @@ class Canvas(
             attributes_list = []
 
             for shape in self.shapes:
-                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
+                if not shape.visible or getattr(
+                    shape, "hidden_by_filter", False
+                ):
                     continue
                 if should_merge_rectangle_text(shape):
                     continue
@@ -3130,7 +3171,9 @@ class Canvas(
                 )
 
             for shape, rect, _, _ in attributes_list:
-                if not shape.visible or getattr(shape, 'hidden_by_filter', False):
+                if not shape.visible or getattr(
+                    shape, "hidden_by_filter", False
+                ):
                     continue
 
                 background_color = QtGui.QColor(*self.attr_background_color)
@@ -3824,6 +3867,15 @@ class Canvas(
         if clear_shapes:
             self.shapes = []
         self.update()
+
+    def _has_pose_shapes(self):
+        """Return True if any COCO keypoint point shape exists."""
+        if not self.shapes:
+            return False
+        return any(
+            s.shape_type == "point" and s.label in COCO_KEYPOINT_SET
+            for s in self.shapes
+        )
 
     def load_shapes(self, shapes, replace=True, store_backup=True):
         """Load shapes"""
