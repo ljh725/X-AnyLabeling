@@ -2723,10 +2723,6 @@ class Canvas(
                     ):
                         hovered_shape = s
                         break
-        hovered_group = (
-            hovered_shape.group_id if hovered_shape is not None else None
-        )
-        zoom_reveals = self.scale >= self.label_zoom_threshold
 
         # Draw labels
         if self.show_labels and not self.pose_config.enabled:
@@ -2895,19 +2891,12 @@ class Canvas(
                     continue
 
                 # --- Unified label visibility gate ---
-                # label_on_selection ON  = sparse: hover/selected/zoom
-                # label_on_selection OFF = show all labels
+                # label_on_selection ON  = sparse: show only the label of
+                #   the hovered/selected shape itself (NOT its whole group).
+                # label_on_selection OFF = show all labels.
                 if self.label_on_selection:
                     is_hovered = shape == hovered_shape
                     show = shape.selected or is_hovered
-                    if (
-                        not show
-                        and zoom_reveals
-                        and hovered_group is not None
-                        and shape.group_id is not None
-                        and shape.group_id == hovered_group
-                    ):
-                        show = True
                     if not show:
                         continue
 
