@@ -30,6 +30,22 @@ class _FakeShape:
         self.hidden_by_filter = False
         self.line_color = QtGui.QColor(0, 255, 0)
 
+    def bounding_rect(self):
+        """Bounding rect (mirrors Shape for rectangle = 2 diagonal pts)."""
+        if len(self.points) >= 2:
+            p0, p1 = self.points[0], self.points[-1]
+            x = min(p0.x(), p1.x())
+            y = min(p0.y(), p1.y())
+            return QtCore.QRectF(
+                x,
+                y,
+                abs(p1.x() - p0.x()),
+                abs(p1.y() - p0.y()),
+            )
+        if self.points:
+            return QtCore.QRectF(self.points[0].x(), self.points[0].y(), 0, 0)
+        return QtCore.QRectF()
+
 
 def _build_person(gid, ox, oy):
     """Build a person rectangle + 17 COCO keypoints."""

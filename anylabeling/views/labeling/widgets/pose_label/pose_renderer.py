@@ -264,18 +264,22 @@ class PoseRenderer:
     def _get_bbox(
         self, person_rect_shape: Optional[Any]
     ) -> Optional[QtCore.QRectF]:
-        """Extract the bounding rect from a person rectangle shape."""
+        """Extract the bounding rect from a person rectangle shape.
+
+        Uses the shape's own ``bounding_rect`` so the result is correct
+        regardless of whether the rectangle is stored as 2 diagonal
+        points or 4 corner points (the previous pts[0]/pts[1] logic
+        collapsed to a flat top line for 4-point rectangles).
+        """
         if person_rect_shape is None:
             return None
-        pts = person_rect_shape.points
-        if len(pts) < 2:
+        try:
+            rect = person_rect_shape.bounding_rect()
+        except Exception:
             return None
-        p0, p1 = pts[0], pts[1]
-        x = min(p0.x(), p1.x())
-        y = min(p0.y(), p1.y())
-        w = abs(p1.x() - p0.x())
-        h = abs(p1.y() - p0.y())
-        return QtCore.QRectF(x, y, w, h)
+        if rect is None or rect.isEmpty():
+            return None
+        return QtCore.QRectF(rect)
 
     def _draw_bbox(
         self,
