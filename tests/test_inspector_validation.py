@@ -11,26 +11,40 @@ import os.path as osp
 # Add project root to path
 sys.path.insert(0, osp.dirname(osp.dirname(osp.abspath(__file__))))
 
-# Direct imports to avoid PyQt6 dependency
+# Direct imports to avoid PyQt6 dependency.
+# Both modules are registered under a shared pseudo-package name so that
+# the relative import inside validation_engine (`from .flat_index import`)
+# resolves correctly when loaded by file path.
 import importlib.util
 
 inspector_dir = osp.join(
     osp.dirname(osp.dirname(osp.abspath(__file__))),
-    "anylabeling", "views", "labeling", "widgets", "inspector"
+    "anylabeling",
+    "views",
+    "labeling",
+    "widgets",
+    "inspector",
 )
 
+_PKG = "inspector_test"
+
 # Load flat_index module
-spec = importlib.util.spec_from_file_location("flat_index", osp.join(inspector_dir, "flat_index.py"))
+spec = importlib.util.spec_from_file_location(
+    f"{_PKG}.flat_index", osp.join(inspector_dir, "flat_index.py")
+)
 flat_index_mod = importlib.util.module_from_spec(spec)
-sys.modules["flat_index"] = flat_index_mod
+sys.modules[f"{_PKG}.flat_index"] = flat_index_mod
 spec.loader.exec_module(flat_index_mod)
 FlatIndex = flat_index_mod.FlatIndex
 FlattenedRecord = flat_index_mod.FlattenedRecord
 
 # Load validation_engine module
-spec2 = importlib.util.spec_from_file_location("validation_engine", osp.join(inspector_dir, "validation_engine.py"))
+spec2 = importlib.util.spec_from_file_location(
+    f"{_PKG}.validation_engine",
+    osp.join(inspector_dir, "validation_engine.py"),
+)
 validation_engine_mod = importlib.util.module_from_spec(spec2)
-sys.modules["validation_engine"] = validation_engine_mod
+sys.modules[f"{_PKG}.validation_engine"] = validation_engine_mod
 spec2.loader.exec_module(validation_engine_mod)
 
 Issue = validation_engine_mod.Issue
@@ -225,7 +239,7 @@ class TestGroupLabelUniqueness:
     def test_per_file_isolation(self):
         """Duplicates across different files should NOT be reported."""
         rule = GroupLabelUniqueness({"head", "face"})
-        
+
         # Create a FlatIndex with two files having same group_id and label
         index = FlatIndex()
         index._records = [
@@ -254,14 +268,14 @@ class TestGroupLabelUniqueness:
         index._by_group = {
             1: index._records,
         }
-        
+
         issues = rule.check_all(index)
         assert len(issues) == 0, "Cross-file duplicates should not be reported"
 
     def test_same_file_duplicate(self):
         """Duplicates within the same file should be reported."""
         rule = GroupLabelUniqueness({"head", "face"})
-        
+
         index = FlatIndex()
         rec1 = FlattenedRecord(
             file_path="/file1.json",
@@ -286,9 +300,11 @@ class TestGroupLabelUniqueness:
         index._by_group = {
             1: [rec1, rec2],
         }
-        
+
         issues = rule.check_all(index)
-        assert len(issues) == 2, "Same-file duplicates should be reported for both shapes"
+        assert (
+            len(issues) == 2
+        ), "Same-file duplicates should be reported for both shapes"
 
 
 class TestGroupIdUniqueness:
@@ -298,7 +314,7 @@ class TestGroupIdUniqueness:
         """With empty UNIQUE_TYPES, no issues should be reported."""
         rule = GroupIdUniqueness()
         # UNIQUE_TYPES is empty by default
-        
+
         index = FlatIndex()
         rec1 = FlattenedRecord(
             file_path="/file1.json",
@@ -319,9 +335,11 @@ class TestGroupIdUniqueness:
         index._records = [rec1, rec2]
         index._by_file = {"/file1.json": [rec1, rec2]}
         index._by_group = {1: [rec1, rec2]}
-        
+
         issues = rule.check_all(index)
-        assert len(issues) == 0, "Empty UNIQUE_TYPES should not report any issues"
+        assert (
+            len(issues) == 0
+        ), "Empty UNIQUE_TYPES should not report any issues"
 
 
 class TestHeadFaceGroupIdUniqueness:
@@ -330,7 +348,7 @@ class TestHeadFaceGroupIdUniqueness:
     def test_invalid_group_id_filtered(self):
         """Records with invalid group_id should be skipped, not crash."""
         rule = HeadFaceGroupIdUniqueness()
-        
+
         index = FlatIndex()
         rec1 = FlattenedRecord(
             file_path="/file1.json",
@@ -350,10 +368,12 @@ class TestHeadFaceGroupIdUniqueness:
         )
         index._records = [rec1, rec2]
         index._by_file = {"/file1.json": [rec1, rec2]}
-        
+
         # Should not crash
         issues = rule.check_all(index)
-        assert len(issues) == 0, "Invalid group_id records should be filtered out"
+        assert (
+            len(issues) == 0
+        ), "Invalid group_id records should be filtered out"
 
 
 class TestLabelShapeTypeBinding:

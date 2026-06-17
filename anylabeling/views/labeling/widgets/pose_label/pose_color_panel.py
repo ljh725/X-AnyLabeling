@@ -43,7 +43,7 @@ class _ColorSwatchButton(QtWidgets.QPushButton):
         """Refresh the button background."""
         self.setStyleSheet(
             f"QPushButton {{ background: {self._hex};"
-            " border: 1px solid #3a3a52; border-radius: 3px; }}"
+            " border: 1px solid #3a3a52; border-radius: 3px; }"
             "QPushButton:hover { border: 1px solid #89b4fa; }"
         )
 

@@ -161,6 +161,13 @@ addopts = "--doctest-modules --durations=30 --color=yes"
 markers = [
     "slow: skip slow tests unless --slow is set",
 ]
+# Restrict collection to the tests/ tree so --doctest-modules does not walk
+# the source package (which imports optional deps like `supervision` /
+# `onnxruntime` and breaks whole-repo pytest runs).
+testpaths = ["tests"]
+# Require the `test_` prefix so standalone scripts that define a bare
+# `def test(name, condition, ...)` helper are not mis-collected as tests.
+python_functions = "test_*"
 norecursedirs = [".git", "dist", "build"]
 
 [tool.black]

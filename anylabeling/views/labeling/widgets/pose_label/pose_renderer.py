@@ -159,6 +159,7 @@ class PoseRenderer:
         shapes: List[Any],
         pixmap_size: QtCore.QSize,
         scale: float,
+        show_labels: bool = True,
         label_on_selection: bool = False,
         hovered_group_id: Optional[int] = None,
         zoom_reveals: bool = False,
@@ -170,6 +171,7 @@ class PoseRenderer:
             shapes: Canvas shapes list.
             pixmap_size: Image pixel dimensions.
             scale: Current zoom scale.
+            show_labels: When False, do not render labels for any group.
             label_on_selection: When True, only render labels for the
                 hovered/selected group (skeleton + keypoints stay
                 visible for all groups).
@@ -194,13 +196,18 @@ class PoseRenderer:
             bbox = self._get_bbox(person_rect_shape)
 
             # Determine label visibility for this group.
-            show_labels = True
+            group_show_labels = show_labels
             if label_on_selection:
                 is_hovered = gid == hovered_group_id
                 any_selected = any(
                     getattr(s, "selected", False) for s in kp_shapes
+                ) or (
+                    person_rect_shape is not None
+                    and getattr(person_rect_shape, "selected", False)
                 )
-                show_labels = is_hovered or any_selected or zoom_reveals
+                group_show_labels = show_labels and (
+                    is_hovered or any_selected or zoom_reveals
+                )
 
             if cfg.show_bbox and bbox is not None:
                 self._draw_bbox(painter, bbox, person_color, scale)
@@ -209,7 +216,7 @@ class PoseRenderer:
             if cfg.show_skeleton:
                 self._draw_skeleton(painter, kp_positions, cfg, pi, scale)
             self._draw_keypoints(painter, kp_shapes, cfg, pi, scale)
-            if show_labels:
+            if group_show_labels:
                 items = self._build_label_items(kp_shapes, mid, cfg, pi, scale)
                 items, overlap = apply_layout(
                     items,

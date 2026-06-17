@@ -122,7 +122,7 @@ class Canvas(
         self.mask_config = kwargs.pop("mask", {})
         self.brush_config = kwargs.pop("brush", {})
         self.cuboid_config = kwargs.pop("cuboid", {})
-        self.parent = kwargs.pop("parent")
+        self.parent = kwargs.pop("parent", None)
         super().__init__(*args, **kwargs)
         self.setAutoFillBackground(True)
         palette = self.palette()
@@ -480,6 +480,24 @@ class Canvas(
     def is_visible(self, shape):
         """Check if a shape is visible"""
         return self.visible.get(shape, True)
+
+    def is_shape_interactive(self, shape: Shape) -> bool:
+        """Return whether a shape can be hovered, selected, or edited."""
+        return (
+            self.is_visible(shape)
+            and getattr(shape, "visible", True)
+            and not getattr(shape, "hidden_by_filter", False)
+        )
+
+    def _should_draw_standard_label(self, shape: Shape) -> bool:
+        """Return whether the standard Canvas label should be drawn."""
+        if not self.show_labels:
+            return False
+        if self.pose_config.enabled:
+            return False
+        if not self.is_shape_interactive(shape):
+            return False
+        return True
 
     def drawing(self):
         """Check if user is drawing (mode==CREATE)"""
@@ -841,7 +859,9 @@ class Canvas(
         # - Highlight vertex
         # Update shape/vertex fill and tooltip value accordingly.
         # self.setToolTip(self.tr("Image"))
-        for shape in reversed([s for s in self.shapes if self.is_visible(s)]):
+        for shape in reversed(
+            [s for s in self.shapes if self.is_shape_interactive(s)]
+        ):
             if shape.shape_type == "cuboid" and len(shape.points) == 8:
                 index = self.nearest_cuboid_control(
                     shape, pos, self.epsilon / self.scale
@@ -1402,7 +1422,7 @@ class Canvas(
         if self.editing() and self.double_click_edit_label:
             pos = self.transform_pos(ev.position())
             for shape in reversed(self.shapes):
-                if not self.is_visible(shape):
+                if not self.is_shape_interactive(shape):
                     continue
                 hit = False
                 if shape.shape_type in ["point", "line", "linestrip"]:
@@ -1436,8 +1456,12 @@ class Canvas(
 
     def select_shapes(self, shapes):
         """Select some shapes"""
+        shapes = shapes or []
+        interactive_shapes = [
+            s for s in shapes if self.is_shape_interactive(s)
+        ]
         self.set_hiding()
-        self.selection_changed.emit(shapes)
+        self.selection_changed.emit(interactive_shapes)
         self.update()
 
     def select_shape_point(self, point, multiple_selection_mode):
@@ -1490,7 +1514,7 @@ class Canvas(
         else:
             # [修复] 普通形状选择逻辑
             for shape in reversed(self.shapes):
-                if not self.is_visible(shape):
+                if not self.is_shape_interactive(shape):
                     continue
                 shape_selectable = False
                 if shape.shape_type in ["point", "line", "linestrip"]:
@@ -2679,57 +2703,42 @@ class Canvas(
                         description,
                     )
 
+        # Compute hover context once for the unified label gate.
+        hovered_shape = self.h_hape
+        mp = self.prev_move_point
+        if hovered_shape is None:
+            for s in self.shapes:
+                if (
+                    s.shape_type == "point"
+                    and s.points
+                    and self.is_shape_interactive(s)
+                ):
+                    if (
+                        math.hypot(
+                            mp.x() - s.points[0].x(),
+                            mp.y() - s.points[0].y(),
+                        )
+                        * self.scale
+                        <= 10
+                    ):
+                        hovered_shape = s
+                        break
+        hovered_group = (
+            hovered_shape.group_id if hovered_shape is not None else None
+        )
+        zoom_reveals = self.scale >= self.label_zoom_threshold
+
         # Draw labels
-        if self.show_labels:
+        if self.show_labels and not self.pose_config.enabled:
             p.setFont(
                 QtGui.QFont(
                     "Arial", int(max(6.0, int(round(8.0 / Shape.scale))))
                 )
             )
             labels = []
-            # Compute hover context once for the unified label gate.
-            hovered_shape = self.h_hape
-            mp = self.prev_move_point
-            if hovered_shape is None:
-                for s in self.shapes:
-                    if (
-                        s.shape_type == "point"
-                        and s.points
-                        and s.visible
-                        and not getattr(s, "hidden_by_filter", False)
-                    ):
-                        if (
-                            math.hypot(
-                                mp.x() - s.points[0].x(),
-                                mp.y() - s.points[0].y(),
-                            )
-                            * self.scale
-                            <= 10
-                        ):
-                            hovered_shape = s
-                            break
-            hovered_group = (
-                hovered_shape.group_id if hovered_shape is not None else None
-            )
-            zoom_reveals = self.scale >= self.label_zoom_threshold
             for shape in self.shapes:
-                if not shape.visible or getattr(
-                    shape, "hidden_by_filter", False
-                ):
+                if not self._should_draw_standard_label(shape):
                     continue
-                # Pose View: skip COCO keypoint points and person rects.
-                if self.pose_config.enabled:
-                    if (
-                        shape.shape_type == "point"
-                        and shape.label in COCO_KEYPOINT_SET
-                    ):
-                        continue
-                    if (
-                        shape.shape_type == "rectangle"
-                        and shape.label == "person"
-                        and shape.group_id is not None
-                    ):
-                        continue
                 d_react = shape.point_size / shape.scale
                 if not shape.visible or getattr(
                     shape, "hidden_by_filter", False
@@ -2890,19 +2899,6 @@ class Canvas(
                 # label_on_selection OFF = show all labels
                 if self.label_on_selection:
                     is_hovered = shape == hovered_shape
-                    if (
-                        not is_hovered
-                        and shape.shape_type == "point"
-                        and shape.points
-                    ):
-                        is_hovered = (
-                            math.hypot(
-                                mp.x() - shape.points[0].x(),
-                                mp.y() - shape.points[0].y(),
-                            )
-                            * self.scale
-                            <= 10
-                        )
                     show = shape.selected or is_hovered
                     if (
                         not show
@@ -2937,24 +2933,25 @@ class Canvas(
                     continue
                 p.drawText(text_pos, label_text)
 
-            # Pose View overlay (after standard labels).
-            if (
-                self.pose_config.enabled
-                and self.pixmap is not None
-                and self._has_pose_shapes()
-            ):
-                count = self._pose_renderer.render(
-                    p,
-                    self.shapes,
-                    self.pixmap.size(),
-                    self.scale,
-                    label_on_selection=self.label_on_selection,
-                    hovered_group_id=hovered_group,
-                    zoom_reveals=zoom_reveals,
-                )
-                if count != self.pose_config.occlusion_count:
-                    self.pose_config.occlusion_count = count
-                    self.pose_occlusion_count_changed.emit(count)
+        # Pose View overlay (after standard labels).
+        if (
+            self.pose_config.enabled
+            and self.pixmap is not None
+            and self._has_pose_shapes()
+        ):
+            count = self._pose_renderer.render(
+                p,
+                self.shapes,
+                self.pixmap.size(),
+                self.scale,
+                show_labels=True,
+                label_on_selection=True,
+                hovered_group_id=None,
+                zoom_reveals=False,
+            )
+            if count != self.pose_config.occlusion_count:
+                self.pose_config.occlusion_count = count
+                self.pose_occlusion_count_changed.emit(count)
 
         # Draw mouse coordinates
         if self.cross_line_show:

@@ -1,0 +1,87 @@
+import os
+import unittest
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+try:
+    from PyQt6 import QtWidgets
+
+    PYQT_AVAILABLE = True
+except Exception:
+    PYQT_AVAILABLE = False
+
+
+class MockShape:
+    def __init__(
+        self,
+        visible=True,
+        hidden_by_filter=False,
+        group_id=None,
+        label="person",
+        shape_type="rectangle",
+    ):
+        self.visible = visible
+        self.hidden_by_filter = hidden_by_filter
+        self.group_id = group_id
+        self.label = label
+        self.shape_type = shape_type
+
+
+@unittest.skipUnless(PYQT_AVAILABLE, "PyQt6 is required")
+class TestCanvasInteraction(unittest.TestCase):
+    def setUp(self):
+        self.app = QtWidgets.QApplication.instance()
+        if self.app is None:
+            self.app = QtWidgets.QApplication([])
+        from anylabeling.views.labeling.widgets.canvas import Canvas
+
+        self.canvas = Canvas()
+        self.canvas.show_labels = True
+
+    def test_is_shape_interactive_when_visible(self):
+        shape = MockShape()
+        self.canvas.visible = {shape: True}
+        self.assertTrue(self.canvas.is_shape_interactive(shape))
+
+    def test_is_shape_interactive_when_canvas_invisible(self):
+        shape = MockShape()
+        self.canvas.visible = {shape: False}
+        self.assertFalse(self.canvas.is_shape_interactive(shape))
+
+    def test_is_shape_interactive_when_shape_invisible(self):
+        shape = MockShape(visible=False)
+        self.canvas.visible = {shape: True}
+        self.assertFalse(self.canvas.is_shape_interactive(shape))
+
+    def test_is_shape_interactive_when_hidden_by_filter(self):
+        shape = MockShape(hidden_by_filter=True)
+        self.canvas.visible = {shape: True}
+        self.assertFalse(self.canvas.is_shape_interactive(shape))
+
+    def test_should_draw_standard_label_when_pose_view_off(self):
+        shape = MockShape()
+        self.canvas.visible = {shape: True}
+        self.canvas.pose_config.enabled = False
+        self.canvas.show_labels = True
+        self.assertTrue(self.canvas._should_draw_standard_label(shape))
+
+    def test_should_draw_standard_label_hides_when_pose_view_on(self):
+        shape = MockShape()
+        self.canvas.visible = {shape: True}
+        self.canvas.pose_config.enabled = True
+        self.canvas.show_labels = True
+        self.assertFalse(self.canvas._should_draw_standard_label(shape))
+
+    def test_should_draw_standard_label_hides_when_show_labels_off(self):
+        shape = MockShape()
+        self.canvas.visible = {shape: True}
+        self.canvas.pose_config.enabled = False
+        self.canvas.show_labels = False
+        self.assertFalse(self.canvas._should_draw_standard_label(shape))
+
+    def test_should_draw_standard_label_hides_when_not_interactive(self):
+        shape = MockShape(hidden_by_filter=True)
+        self.canvas.visible = {shape: True}
+        self.canvas.pose_config.enabled = False
+        self.canvas.show_labels = True
+        self.assertFalse(self.canvas._should_draw_standard_label(shape))

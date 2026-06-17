@@ -877,6 +877,10 @@ class Shape:
         state["_cached_bbox_key"] = None
         state["_cached_path"] = None
         state["_cached_path_key"] = None
+        # hidden_by_filter is runtime-only (not serialised in to_dict).
+        # Reset it on copy so that Undo backups (store_shapes -> copy) do
+        # not resurrect hidden state when restored. (H1)
+        state["hidden_by_filter"] = False
         return state
 
     def __len__(self):
