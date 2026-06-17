@@ -7624,7 +7624,16 @@ class LabelingWidget(LabelDialog):
         Skipped when the selection originated from the label list
         (``_list_selecting``): list clicks act on the object itself and
         must not trigger focus-hide.
+
+        Also skipped while keypoint fill mode is active: fill mode owns
+        the focus (via its target group_id) and the canvas emits a
+        transient empty selection when entering point-draw mode; without
+        this guard that empty selection would clear the just-built focus
+        (R3).
         """
+        _fill = getattr(self, "keypoint_fill_mode", None)
+        if _fill is not None and getattr(_fill, "is_active", False):
+            return
         if getattr(self, "_auto_focus_in_progress", False):
             return
         if getattr(self, "_list_selecting", False):

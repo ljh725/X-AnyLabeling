@@ -453,3 +453,28 @@ Pose View ON
 回归测试（`tests/test_feature_interactions.py`，全绿）：
 - `test_pose_focus_keeps_label_list_rows_visible`：聚焦后其他组在画布 `hidden_by_filter=True`，但 `_sync_label_list_hidden_by_filter` **未被调用**（行不隐藏）。
 - `test_list_selection_does_not_trigger_pose_focus`：`_list_selecting=True` 时 `_pose_focus_on_selection` 不隐藏任何对象。
+
+### 8.8 与 Keypoint Tool Window 的冲突（动态日志定位 + R3 修复）
+
+> 状态：已用动态日志定位并修复（R3）。
+
+**冲突交汇点**：`gid_selection_changed`（`label_widget.py`）被两边重载——
+- Keypoint Tool Window 的 `_sync_gid_filter` / `enter_keypoint_fill_mode` 假定它是"原生可见性过滤"；
+- Pose View 把它重定义为 `_apply_group_focus`（隐藏其他组 + 选中 + 显标签）。
+
+**静态分析只能猜，动态日志才坐实的真 bug**：进 fill 模式（按 K）的瞬间，`enter_keypoint_fill_mode → toggle_draw_mode(create_mode="point")` 会让画布发一次**程序性空选中** `selection_changed([])`；`_pose_focus_on_selection` 把它误判为"用户点空白退出聚焦" → `show_all_instances` **把刚建的聚焦清掉**。日志铁证：
+```
+enter_keypoint_fill_mode → _apply_group_focus(8) [聚焦建好] →
+  shape_selection_changed n=0 → _pose_focus_on_selection empty -> show_all_instances   [清了]
+  paint: selected=0 hidden=0   [全员又出现]
+```
+
+**修复（R3）**：`_pose_focus_on_selection` 开头加守卫——`keypoint_fill_mode.is_active` 时整体跳过（fill 模式经其 target gid 自管聚焦，那条程序性 `n=0` 不再触发 show_all）。
+```
+shape_selection_changed n=0 fill_active=True → SKIP (keypoint fill mode active)   [不再清]
+paint: selected=0 hidden=110   [聚焦保住]
+```
+
+**次生现象（已知，非 bug）**：fill 期间 `selected=0`（进入 point 绘制模式的标准去选）→ Pose 标签"仅选中显示"导致 fill 时**不显示关键点文字标签**（骨架/圆点仍显示）。fill 状态栏会提示下一个要画的点，故可接受。如日后需要 fill 时也显示标签，需给 pose overlay 传"聚焦组 id"（放宽 req3，仅 fill 场景）。
+
+**日志方法**：本轮用 `[DEBUG-KP]` print + `traceback.print_stack` 探针（`DEBUG_LOGS_GUIDE.md` 模式）在 `gid_selection_changed`/`_apply_group_focus`/`_pose_focus_on_selection`/`shape_selection_changed`/`keypoint_tool_window._sync_gid_filter` 等处抓动态调用链。**诊断完成后探针已全部清除**，不进代码库。
