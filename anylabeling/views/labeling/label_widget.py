@@ -7481,6 +7481,8 @@ class LabelingWidget(LabelDialog):
             # untouched and re-applies on the next filter action. (H2)
             shape.visible = True
             self.canvas.visible[shape] = True
+        # Return to the Pose View overview state (no focused group).
+        self.canvas.pose_focus_group_id = None
         self.canvas.update()
         self._sync_label_list_hidden_by_filter()
         self.status(self.tr("All instances visible"))
@@ -7609,6 +7611,9 @@ class LabelingWidget(LabelDialog):
         finally:
             self._auto_focus_in_progress = False
 
+        # Mark the selected state so the pose overlay renders the focused
+        # group in detail (vs. the colour-coded overview). (two-state)
+        self.canvas.pose_focus_group_id = target_group_id
         self.canvas.update()
         # NOTE: the label list intentionally keeps ALL rows visible in
         # Pose View (only the selection highlight follows the focus);

@@ -163,6 +163,8 @@ class PoseRenderer:
         label_on_selection: bool = False,
         hovered_group_id: Optional[int] = None,
         zoom_reveals: bool = False,
+        overview_mode: bool = False,
+        label_display_mode: str = "label",
     ) -> int:
         """Render all pose annotations and return overlap count.
 
@@ -178,57 +180,84 @@ class PoseRenderer:
             hovered_group_id: The group_id currently under the cursor.
             zoom_reveals: Whether current zoom level is past the
                 label_zoom_threshold (enables group-reveal).
+            overview_mode: Two-state display — when True (no person
+                focused) force per-person colour, no skeleton/midline/
+                labels, bbox on (clean colour-coded overview). When
+                False (a person focused) use the panel config.
+            label_display_mode: Text content of keypoint labels:
+                ``"label"`` / ``"id"`` (group_id) / ``"both"``.
 
         Returns:
             Number of overlapping label pairs.
         """
         cfg = self.config
-        groups, person_rects, ordered_gids = _group_shapes_by_person(shapes)
-        if not groups:
-            return 0
-        total_overlap = 0
-        for pi, gid in enumerate(ordered_gids):
-            kp_shapes = groups[gid]
-            kp_positions = _keypoint_positions(kp_shapes)
-            mid = compute_midline(kp_positions)
-            person_color = cfg.get_person_color(pi)
-            person_rect_shape = person_rects.get(gid)
-            bbox = self._get_bbox(person_rect_shape)
+        # Overview state forces per-person colour so people are
+        # distinguishable at a glance. _get_keypoint_color reads
+        # cfg.color_mode, so swap it for this synchronous paint pass.
+        _saved_color_mode = cfg.color_mode if overview_mode else None
+        if overview_mode:
+            cfg.color_mode = "person"
+        try:
+            groups, person_rects, ordered_gids = _group_shapes_by_person(
+                shapes
+            )
+            if not groups:
+                return 0
+            total_overlap = 0
+            for pi, gid in enumerate(ordered_gids):
+                kp_shapes = groups[gid]
+                kp_positions = _keypoint_positions(kp_shapes)
+                mid = compute_midline(kp_positions)
+                person_color = cfg.get_person_color(pi)
+                person_rect_shape = person_rects.get(gid)
+                bbox = self._get_bbox(person_rect_shape)
 
-            # Determine label visibility for this group.
-            group_show_labels = show_labels
-            if label_on_selection:
-                is_hovered = gid == hovered_group_id
-                any_selected = any(
-                    getattr(s, "selected", False) for s in kp_shapes
-                ) or (
-                    person_rect_shape is not None
-                    and getattr(person_rect_shape, "selected", False)
-                )
-                group_show_labels = show_labels and (
-                    is_hovered or any_selected or zoom_reveals
-                )
+                # Determine label visibility for this group.
+                group_show_labels = show_labels
+                if label_on_selection:
+                    is_hovered = gid == hovered_group_id
+                    any_selected = any(
+                        getattr(s, "selected", False) for s in kp_shapes
+                    ) or (
+                        person_rect_shape is not None
+                        and getattr(person_rect_shape, "selected", False)
+                    )
+                    group_show_labels = show_labels and (
+                        is_hovered or any_selected or zoom_reveals
+                    )
 
-            if cfg.show_bbox and bbox is not None:
-                self._draw_bbox(painter, bbox, person_color, scale)
-            if cfg.show_midline and mid is not None:
-                self._draw_midline(painter, mid, kp_positions, scale)
-            if cfg.show_skeleton:
-                self._draw_skeleton(painter, kp_positions, cfg, pi, scale)
-            self._draw_keypoints(painter, kp_shapes, cfg, pi, scale)
-            if group_show_labels:
-                items = self._build_label_items(kp_shapes, mid, cfg, pi, scale)
-                items, overlap = apply_layout(
-                    items,
-                    mid,
-                    bbox,
-                    cfg.layout_mode,
-                    leader_length=cfg.leader_length / scale,
-                    column_gap=cfg.column_gap / scale,
-                )
-                total_overlap += overlap
-                self._draw_labels(painter, items, cfg, scale)
-        return total_overlap
+                # bbox: always on in overview; else per cfg.
+                bbox_on = True if overview_mode else cfg.show_bbox
+                if bbox_on and bbox is not None:
+                    self._draw_bbox(painter, bbox, person_color, scale)
+                if not overview_mode and cfg.show_midline and mid is not None:
+                    self._draw_midline(painter, mid, kp_positions, scale)
+                if not overview_mode and cfg.show_skeleton:
+                    self._draw_skeleton(painter, kp_positions, cfg, pi, scale)
+                self._draw_keypoints(painter, kp_shapes, cfg, pi, scale)
+                if not overview_mode and group_show_labels:
+                    items = self._build_label_items(
+                        kp_shapes,
+                        mid,
+                        cfg,
+                        pi,
+                        scale,
+                        label_display_mode=label_display_mode,
+                    )
+                    items, overlap = apply_layout(
+                        items,
+                        mid,
+                        bbox,
+                        cfg.layout_mode,
+                        leader_length=cfg.leader_length / scale,
+                        column_gap=cfg.column_gap / scale,
+                    )
+                    total_overlap += overlap
+                    self._draw_labels(painter, items, cfg, scale)
+            return total_overlap
+        finally:
+            if _saved_color_mode is not None:
+                cfg.color_mode = _saved_color_mode
 
     # -- Drawing primitives ---------------------------------------------
 
@@ -344,6 +373,7 @@ class PoseRenderer:
         cfg: PoseDisplayConfig,
         person_index: int,
         scale: float,
+        label_display_mode: str = "label",
     ) -> List[PoseLabelItem]:
         """Construct PoseLabelItem list for layout."""
         font = QtGui.QFont("Arial", max(1, int(round(cfg.font_size / scale))))
@@ -355,11 +385,16 @@ class PoseRenderer:
         for shape in kp_shapes:
             if not shape.points:
                 continue
-            label_text = shape.label
-            if cfg.font_shadow:
-                display_text = label_text
-            else:
-                display_text = label_text
+            gid = getattr(shape, "group_id", None)
+            # Text content follows label_display_mode (label/id/both).
+            if label_display_mode == "id":
+                display_text = str(gid) if gid is not None else ""
+            elif label_display_mode == "both":
+                display_text = (
+                    f"{shape.label} #{gid}" if gid is not None else shape.label
+                )
+            else:  # "label"
+                display_text = shape.label
             text_rect = fm.tightBoundingRect(display_text)
             w = int(text_rect.width() + 2 * pad_x)
             h = int(fm.height() + 2 * pad_y)
@@ -372,9 +407,9 @@ class PoseRenderer:
             items.append(
                 PoseLabelItem(
                     shape_ref=shape,
-                    label=label_text,
+                    label=display_text,
                     keypoint_index=ki,
-                    group_id=getattr(shape, "group_id", None),
+                    group_id=gid,
                     anchor=anchor,
                     rect=rect,
                     direction=direction,

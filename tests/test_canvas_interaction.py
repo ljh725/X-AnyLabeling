@@ -65,12 +65,21 @@ class TestCanvasInteraction(unittest.TestCase):
         self.canvas.show_labels = True
         self.assertTrue(self.canvas._should_draw_standard_label(shape))
 
-    def test_should_draw_standard_label_hides_when_pose_view_on(self):
-        shape = MockShape()
+    def test_should_draw_standard_label_hides_coco_keypoint_in_pose_view(self):
+        # Pose View takes over COCO keypoint labels -> native label hidden.
+        shape = MockShape(label="nose", shape_type="point")
         self.canvas.visible = {shape: True}
         self.canvas.pose_config.enabled = True
         self.canvas.show_labels = True
         self.assertFalse(self.canvas._should_draw_standard_label(shape))
+
+    def test_should_draw_standard_label_shows_non_coco_in_pose_view(self):
+        # Non-COCO shapes keep their native label even in Pose View.
+        shape = MockShape(label="person", shape_type="rectangle")
+        self.canvas.visible = {shape: True}
+        self.canvas.pose_config.enabled = True
+        self.canvas.show_labels = True
+        self.assertTrue(self.canvas._should_draw_standard_label(shape))
 
     def test_should_draw_standard_label_hides_when_show_labels_off(self):
         shape = MockShape()

@@ -478,3 +478,31 @@ paint: selected=0 hidden=110   [聚焦保住]
 **次生现象（已知，非 bug）**：fill 期间 `selected=0`（进入 point 绘制模式的标准去选）→ Pose 标签"仅选中显示"导致 fill 时**不显示关键点文字标签**（骨架/圆点仍显示）。fill 状态栏会提示下一个要画的点，故可接受。如日后需要 fill 时也显示标签，需给 pose overlay 传"聚焦组 id"（放宽 req3，仅 fill 场景）。
 
 **日志方法**：本轮用 `[DEBUG-KP]` print + `traceback.print_stack` 探针（`DEBUG_LOGS_GUIDE.md` 模式）在 `gid_selection_changed`/`_apply_group_focus`/`_pose_focus_on_selection`/`shape_selection_changed`/`keypoint_tool_window._sync_gid_filter` 等处抓动态调用链。**诊断完成后探针已全部清除**，不进代码库。
+
+### 8.9 Pose View 解耦 + 两态显示（总览/选中）
+
+> 状态：已实现。备份点 `backup/before-pose-decouple`。
+
+**解耦（按 shape 类型，不按模式）**：Pose View 只接管 COCO 关键点的标签渲染；矩形/多边形等普通 shape 的标签继续走原生，不再被 pose 压制。
+- `_should_draw_standard_label`：`pose_config.enabled` 时只对 `label in COCO_KEYPOINT_SET` 返回 False（其余 shape 放行）。
+- 外层标签守卫：`if self.show_labels and not pose_config.enabled` → `if self.show_labels`。
+- B 方案：Pose View 下原生 shape 绘制循环跳过 `label=="person"` 的矩形（bbox 由 PoseRenderer 按 person 分色画，避免双绘）；person 文字标签仍走原生。
+
+**两态显示**（由 `canvas.pose_focus_group_id` 驱动；`_apply_group_focus` 置 gid，`show_all_instances` 置 None）：
+
+| 维度 | 总览态（pose_focus_group_id=None） | 选中态（聚焦某人） |
+|------|------|------|
+| 颜色 | 强制 person 分色（临时换 `cfg.color_mode="person"`，save/restore） | 面板配置的 `cfg.color_mode` |
+| bbox | ✅（分色） | 按 `cfg.show_bbox` |
+| 关键点圆点 | ✅（同色） | ✅ |
+| 骨架/中线 | ❌ | 按 `cfg.show_skeleton`/`show_midline` |
+| 关键点标签 | ❌ | ✅（文本受 `label_display_mode`：label/id/both） |
+
+**关键点标签文本**：`PoseRenderer.render` 新增 `label_display_mode`，`_build_label_items` 按其生成（`label`→名称 / `id`→group_id / `both`→`名称 #gid`）。
+
+**分色"不要黑色"**：`DEFAULT_PERSON_COLORS`（红/蓝/绿/橙/紫）本就无黑色，按人循环上色即满足。
+
+**回归测试**：
+- `test_should_draw_standard_label_hides_coco_keypoint_in_pose_view` / `test_should_draw_standard_label_shows_non_coco_in_pose_view`（解耦）
+- `test_render_overview_mode_no_crash` / `test_render_overview_mode_restores_color_mode`（两态 + 换色恢复不变量）/ `test_render_label_display_mode_both`
+- 全量 `167 passed / 16 failed`（16 个预存，零回归）

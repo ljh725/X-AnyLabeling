@@ -213,6 +213,10 @@ class Canvas(
         # Pose view configuration (shared with sidebar panels).
         self.pose_config = PoseDisplayConfig()
         self._pose_renderer = PoseRenderer(self.pose_config)
+        # Focused group in Pose View (None = overview state, an int =
+        # selected state). Set by LabelingWidget._apply_group_focus /
+        # show_all_instances. Drives the overview/selected render branch.
+        self.pose_focus_group_id = None
 
         # Set cross line options.
         self.cross_line_show = True
@@ -493,7 +497,9 @@ class Canvas(
         """Return whether the standard Canvas label should be drawn."""
         if not self.show_labels:
             return False
-        if self.pose_config.enabled:
+        # Pose View takes over only COCO keypoint labels; other shapes
+        # (rectangles, polygons, ...) keep their native labels. (decouple)
+        if self.pose_config.enabled and shape.label in COCO_KEYPOINT_SET:
             return False
         if not self.is_shape_interactive(shape):
             return False
@@ -2500,6 +2506,16 @@ class Canvas(
                 continue
             if not viewport_rect.intersects(shape.bounding_rect()):
                 continue
+            # Pose View: person rectangles are drawn by PoseRenderer (per
+            # -person colour bbox), so skip the native outline here to
+            # avoid double-drawing. (B)
+            if (
+                self.pose_config.enabled
+                and shape.shape_type == "rectangle"
+                and shape.label == "person"
+                and shape.group_id is not None
+            ):
+                continue
             if (
                 shape.selected or not self._hide_backround
             ) and self.is_visible(shape):
@@ -2725,7 +2741,7 @@ class Canvas(
                         break
 
         # Draw labels
-        if self.show_labels and not self.pose_config.enabled:
+        if self.show_labels:
             p.setFont(
                 QtGui.QFont(
                     "Arial", int(max(6.0, int(round(8.0 / Shape.scale))))
@@ -2937,6 +2953,8 @@ class Canvas(
                 label_on_selection=True,
                 hovered_group_id=None,
                 zoom_reveals=False,
+                overview_mode=self.pose_focus_group_id is None,
+                label_display_mode=self.label_display_mode,
             )
             if count != self.pose_config.occlusion_count:
                 self.pose_config.occlusion_count = count

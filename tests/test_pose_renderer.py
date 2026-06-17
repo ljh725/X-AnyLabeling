@@ -153,6 +153,51 @@ class TestPoseRendererSmoke(unittest.TestCase):
         p.end()
         self.assertEqual(count, 0)
 
+    def test_render_overview_mode_no_crash(self):
+        """Overview state (no focus) renders without crashing."""
+        shapes = _build_person(gid=0, ox=200, oy=100)
+        shapes += _build_person(gid=1, ox=450, oy=100)
+        img = QtGui.QImage(800, 600, QtGui.QImage.Format.Format_ARGB32)
+        img.fill(QtCore.Qt.GlobalColor.black)
+        p = QtGui.QPainter(img)
+        cfg = PoseDisplayConfig(enabled=True)
+        r = PoseRenderer(cfg)
+        count = r.render(p, shapes, img.size(), 1.0, overview_mode=True)
+        p.end()
+        self.assertGreaterEqual(count, 0)
+
+    def test_render_overview_mode_restores_color_mode(self):
+        """Overview temporarily forces person colour, then restores
+        cfg.color_mode (save/restore invariant)."""
+        shapes = _build_person(gid=0, ox=200, oy=100)
+        img = QtGui.QImage(800, 600, QtGui.QImage.Format.Format_ARGB32)
+        img.fill(QtCore.Qt.GlobalColor.black)
+        p = QtGui.QPainter(img)
+        cfg = PoseDisplayConfig(enabled=True, color_mode="bodypart")
+        r = PoseRenderer(cfg)
+        r.render(p, shapes, img.size(), 1.0, overview_mode=True)
+        p.end()
+        # colour mode must be restored after the synchronous paint pass
+        self.assertEqual(cfg.color_mode, "bodypart")
+
+    def test_render_label_display_mode_both(self):
+        """Render with label_display_mode='both' (name #gid)."""
+        shapes = _build_person(gid=7, ox=200, oy=100)
+        img = QtGui.QImage(800, 600, QtGui.QImage.Format.Format_ARGB32)
+        img.fill(QtCore.Qt.GlobalColor.black)
+        p = QtGui.QPainter(img)
+        cfg = PoseDisplayConfig(enabled=True)
+        r = PoseRenderer(cfg)
+        count = r.render(
+            p,
+            shapes,
+            img.size(),
+            1.0,
+            label_display_mode="both",
+        )
+        p.end()
+        self.assertGreaterEqual(count, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
