@@ -433,3 +433,23 @@ Pose View ON
 - **两人重叠**：聚焦后其他组隐藏，画布上只能靠 **gid 下拉**切换（req2 存在的理由）。
 - **原生 filter 共存**：Pose View 不触碰 `shape.visible`；退出 Pose View 后原生过滤状态原样恢复。进入 Pose View 时若原生 filter 仍生效，"点空白"的 `show_all_instances` 会清两套（H2 修复），可恢复。
 - **重入**：`_apply_group_focus` 的 emit 复用 `_auto_focus_in_progress` 守卫，不会与 `shape_selection_changed` 互相回调死循环。
+
+### 8.7 列表与聚焦解耦（后续调整）
+
+> 状态：已实现，2 个新测试全绿。
+
+两条调整，把右侧对象列表从聚焦系统里解耦出来：
+
+| 调整 | 行为 | 实现 |
+|------|------|------|
+| **列表始终显示全部对象名** | Pose View 聚焦时只在画布隐藏其他组，**列表行全部保持可见**，仅选中高亮跟随聚焦 | `_apply_group_focus` 移除 `_sync_label_list_hidden_by_filter()` 调用（`label_widget.py:7605`） |
+| **列表点击只作用于对象本身** | 在列表里点击对象 = 选中该对象，**不触发聚焦隐藏** | `label_selection_changed` 用 `_list_selecting` 守卫包住 `select_shapes`；`_pose_focus_on_selection` 检测到该标志即 return |
+
+效果：
+- 画布点击 / gid 下拉 → 触发聚焦（隐藏其他组、显示该组标签）。
+- 列表点击 → 只选中该对象（勾选/高亮变化），不动聚焦状态，列表始终全员可见。
+- 列表因此成为稳定的"全对象索引"，随时可点选任意对象进行编辑/查看，不受当前聚焦影响。
+
+回归测试（`tests/test_feature_interactions.py`，全绿）：
+- `test_pose_focus_keeps_label_list_rows_visible`：聚焦后其他组在画布 `hidden_by_filter=True`，但 `_sync_label_list_hidden_by_filter` **未被调用**（行不隐藏）。
+- `test_list_selection_does_not_trigger_pose_focus`：`_list_selecting=True` 时 `_pose_focus_on_selection` 不隐藏任何对象。

@@ -6454,10 +6454,18 @@ class LabelingWidget(LabelDialog):
                 shape = item.shape()
                 if self.canvas.is_shape_interactive(shape):
                     selected_shapes.append(shape)
-            if selected_shapes:
-                self.canvas.select_shapes(selected_shapes)
-            else:
-                self.canvas.deselect_shape()
+            # Selecting from the list acts on the object itself and must
+            # NOT trigger Pose View's focus-hide. Guard the selection so
+            # the downstream _pose_focus_on_selection skips. (req: list
+            # click selects only, no filter-then-show)
+            self._list_selecting = True
+            try:
+                if selected_shapes:
+                    self.canvas.select_shapes(selected_shapes)
+                else:
+                    self.canvas.deselect_shape()
+            finally:
+                self._list_selecting = False
 
     def label_item_changed(self, item):
         shape = item.shape()
@@ -7602,7 +7610,9 @@ class LabelingWidget(LabelDialog):
             self._auto_focus_in_progress = False
 
         self.canvas.update()
-        self._sync_label_list_hidden_by_filter()
+        # NOTE: the label list intentionally keeps ALL rows visible in
+        # Pose View (only the selection highlight follows the focus);
+        # do not hide rows here. (req: list shows all object names)
 
     def _pose_focus_on_selection(self, selected_shapes):
         """Pose View selection-driven focus. (req5)
@@ -7610,8 +7620,14 @@ class LabelingWidget(LabelDialog):
         - Empty selection (clicked blank) -> exit focus: show all.
         - Selected shape has no group_id -> status hint, do not hide.
         - Otherwise -> focus that group via ``_apply_group_focus``.
+
+        Skipped when the selection originated from the label list
+        (``_list_selecting``): list clicks act on the object itself and
+        must not trigger focus-hide.
         """
         if getattr(self, "_auto_focus_in_progress", False):
+            return
+        if getattr(self, "_list_selecting", False):
             return
         if not selected_shapes:
             self.show_all_instances()

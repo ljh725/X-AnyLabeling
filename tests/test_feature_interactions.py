@@ -263,3 +263,51 @@ def test_gid_dropdown_natural_sort(qapp):
     LabelingWidget.update_gid_box(widget, precomputed=["2", "10", "1"])
 
     assert captured and captured[0] == ["-1", "1", "2", "10"]
+
+
+# -- List / focus decoupling (adjustments) ---------------------------------
+
+
+def test_pose_focus_keeps_label_list_rows_visible(canvas):
+    """Adjustment: Pose View focus hides other groups on the canvas but
+    must NOT hide label-list rows (the list always shows all names)."""
+    from anylabeling.views.labeling.label_widget import LabelingWidget
+
+    a1 = MockShape(group_id=1)
+    b1 = MockShape(group_id=2)
+    canvas.visible[a1] = True
+    canvas.visible[b1] = True
+    canvas.shapes = [a1, b1]
+
+    w = _pose_widget(canvas)
+    sync_calls = []
+    w._sync_label_list_hidden_by_filter = lambda: sync_calls.append(1)
+
+    LabelingWidget._apply_group_focus(w, 1)
+
+    assert b1.hidden_by_filter is True  # canvas still hides other group
+    assert sync_calls == [], (
+        "focus must not call _sync_label_list_hidden_by_filter (rows stay"
+        " visible)"
+    )
+
+
+def test_list_selection_does_not_trigger_pose_focus(canvas):
+    """Adjustment: selecting from the label list acts on the object
+    itself and must not trigger Pose View focus-hide (guarded by
+    ``_list_selecting``)."""
+    from anylabeling.views.labeling.label_widget import LabelingWidget
+
+    a1 = MockShape(group_id=1)
+    b1 = MockShape(group_id=2)
+    canvas.visible[a1] = True
+    canvas.visible[b1] = True
+    canvas.shapes = [a1, b1]
+
+    w = _pose_widget(canvas)
+    w._list_selecting = True  # set by label_selection_changed
+
+    LabelingWidget._pose_focus_on_selection(w, [b1])
+
+    assert a1.hidden_by_filter is False
+    assert b1.hidden_by_filter is False
