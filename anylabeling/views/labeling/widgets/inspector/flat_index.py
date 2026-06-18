@@ -132,8 +132,14 @@ class FlatIndex:
                 break
             try:
                 self._scan_one(path)
-            except Exception as exc:
-                logger.warning(f"Failed to scan {path}: {exc}")
+            except (
+                OSError,
+                json.JSONDecodeError,
+                KeyError,
+                ValueError,
+                TypeError,
+            ) as exc:
+                logger.warning(f"Failed to scan {path}: {exc}", exc_info=True)
                 self._files_failed.append((path, str(exc)))
 
             if progress_callback:
@@ -171,10 +177,8 @@ class FlatIndex:
                 attributes=shape.get("attributes", {}) or {},
                 description=shape.get("description", "") or "",
                 points_count=len(shape.get("points", []) or []),
-                difficulty=bool(
-                    shape.get("difficult", False)
-                    or shape.get("flags", {}).get("difficult", False)
-                ),
+                difficulty=bool(shape.get("difficult", False))
+                or bool((shape.get("flags") or {}).get("difficult", False)),
             )
             records.append(rec)
 
