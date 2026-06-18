@@ -2506,16 +2506,6 @@ class Canvas(
                 continue
             if not viewport_rect.intersects(shape.bounding_rect()):
                 continue
-            # Pose View: person rectangles are drawn by PoseRenderer (per
-            # -person colour bbox), so skip the native outline here to
-            # avoid double-drawing. (B)
-            if (
-                self.pose_config.enabled
-                and shape.shape_type == "rectangle"
-                and shape.label == "person"
-                and shape.group_id is not None
-            ):
-                continue
             if (
                 shape.selected or not self._hide_backround
             ) and self.is_visible(shape):

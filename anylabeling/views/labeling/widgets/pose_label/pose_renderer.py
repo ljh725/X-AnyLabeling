@@ -194,12 +194,11 @@ class PoseRenderer:
                 continue
             kp_positions = _keypoint_positions(kp_shapes)
             mid = compute_midline(kp_positions)
-            person_color = cfg.get_person_color(pi)
             person_rect_shape = person_rects.get(gid)
             bbox = self._get_bbox(person_rect_shape)
 
-            if cfg.show_bbox and bbox is not None:
-                self._draw_bbox(painter, bbox, person_color, scale)
+            # Person bbox is drawn by the native canvas (shape.paint),
+            # not here — avoids a redundant duplicate rectangle.
             if cfg.show_midline and mid is not None:
                 self._draw_midline(painter, mid, kp_positions, scale)
             if cfg.show_skeleton:
