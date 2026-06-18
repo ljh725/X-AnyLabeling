@@ -213,10 +213,10 @@ class Canvas(
         # Pose view configuration (shared with sidebar panels).
         self.pose_config = PoseDisplayConfig()
         self._pose_renderer = PoseRenderer(self.pose_config)
-        # Focused group in Pose View (None = overview state, an int =
-        # selected state). Set by LabelingWidget._apply_group_focus /
-        # show_all_instances. Drives the overview/selected render branch.
-        self.pose_focus_group_id = None
+        # Whether a shape filter is currently active (set by LabelingWidget
+        # after _apply_combined_shape_filters). Pose overlay renders only
+        # when pose view is on AND a filter is active (filtered display).
+        self.pose_filter_active = False
 
         # Set cross line options.
         self.cross_line_show = True
@@ -2939,8 +2939,12 @@ class Canvas(
                 p.drawText(text_pos, label_text)
 
         # Pose View overlay (after standard labels).
+        # Only render when pose view is on AND a filter is active (the
+        # "filtered pose display" — shows skeleton/keypoints/labels for
+        # the visible group). Without a filter, native display is used.
         if (
             self.pose_config.enabled
+            and getattr(self, "pose_filter_active", False)
             and self.pixmap is not None
             and self._has_pose_shapes()
         ):
@@ -2950,10 +2954,9 @@ class Canvas(
                 self.pixmap.size(),
                 self.scale,
                 show_labels=True,
-                label_on_selection=True,
+                label_on_selection=False,
                 hovered_group_id=None,
                 zoom_reveals=False,
-                overview_mode=self.pose_focus_group_id is None,
                 label_display_mode=self.label_display_mode,
             )
             if count != self.pose_config.occlusion_count:

@@ -96,9 +96,6 @@ class Shape:
         self.center = None
         self.show_degrees = True
 
-        # Instance-level visibility filter (runtime only, not serialized)
-        self.hidden_by_filter = False
-
         self._highlight_index = None
         self._highlight_mode = self.NEAR_VERTEX
         self._highlight_settings = {
@@ -877,10 +874,6 @@ class Shape:
         state["_cached_bbox_key"] = None
         state["_cached_path"] = None
         state["_cached_path_key"] = None
-        # hidden_by_filter is runtime-only (not serialised in to_dict).
-        # Reset it on copy so that Undo backups (store_shapes -> copy) do
-        # not resurrect hidden state when restored. (H1)
-        state["hidden_by_filter"] = False
         return state
 
     def __len__(self):

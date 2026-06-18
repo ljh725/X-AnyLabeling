@@ -210,6 +210,7 @@ EXCLUDED_KEYS = frozenset(
         "pose_view.leader_length",
         "pose_view.border_width",
         "pose_view.column_gap",
+        "pose_view.pose_click_to_focus",
         "pose_view.show_skeleton",
         "pose_view.show_midline",
         "pose_view.show_bbox",

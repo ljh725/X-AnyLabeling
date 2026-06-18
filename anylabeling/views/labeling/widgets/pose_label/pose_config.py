@@ -59,8 +59,11 @@ class PoseDisplayConfig:
     font_size: int = 11
     opacity: float = 0.85
     leader_length: int = 40
-    border_width: float = 1.5
+    border_width: float = 0.0
     column_gap: int = 8
+    # When True, clicking a person in Pose View focuses its group via
+    # the gid filter (single-select; no whole-group selection).
+    pose_click_to_focus: bool = True
 
     # Display toggles
     show_skeleton: bool = True
@@ -99,6 +102,7 @@ class PoseDisplayConfig:
             "leader_length": self.leader_length,
             "border_width": self.border_width,
             "column_gap": self.column_gap,
+            "pose_click_to_focus": self.pose_click_to_focus,
             "show_skeleton": self.show_skeleton,
             "show_midline": self.show_midline,
             "show_bbox": self.show_bbox,

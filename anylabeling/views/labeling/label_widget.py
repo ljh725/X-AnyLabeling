@@ -542,7 +542,6 @@ class LabelingWidget(LabelDialog):
         )
 
         # Instance visibility shortcuts
-        self._setup_instance_visibility_shortcuts()
 
         scroll_area = QScrollArea()
         scroll_area.setWidget(self.canvas)
@@ -4878,6 +4877,8 @@ class LabelingWidget(LabelDialog):
 
     def _apply_combined_shape_filters(self):
         has_active_filter = self._filter_state.has_active_filter()
+        # Track for the Pose View overlay (renders only when filter active).
+        self.canvas.pose_filter_active = has_active_filter
 
         if not has_active_filter:
             if getattr(self, "_filter_navigation_active", False):
@@ -6019,10 +6020,12 @@ class LabelingWidget(LabelDialog):
         else:
             self.hide_attributes_panel()
 
-        if self.canvas.pose_config.enabled:
-            self._pose_focus_on_selection(selected_shapes)
-        elif self.auto_focus_instance:
-            self._auto_focus_on_selection(selected_shapes)
+        if (
+            self.canvas.pose_config.enabled
+            and self.canvas.pose_config.pose_click_to_focus
+            and not getattr(self, "_list_selecting", False)
+        ):
+            self._pose_focus_by_filter(selected_shapes)
 
     def add_label(self, shape, update_last_label=True, refresh_filters=True):
         if shape.group_id is None:
@@ -6429,19 +6432,6 @@ class LabelingWidget(LabelDialog):
 
     def gid_selection_changed(self, index):
         raw_gid = self.gid_filter_combobox.gid_box.currentText()
-        if self.canvas.pose_config.enabled:
-            # In Pose View the gid dropdown drives group focus (single
-            # hide mechanism) instead of the native visibility filter,
-            # so it stays consistent with click-to-focus. (req2)
-            if raw_gid in ("", "-1", None):
-                self.show_all_instances()
-            else:
-                try:
-                    gid = int(raw_gid)
-                except (TypeError, ValueError):
-                    return
-                self._apply_group_focus(gid)
-            return
         self._filter_state.set_gid(raw_gid)
         self._apply_combined_shape_filters()
 
@@ -6979,13 +6969,6 @@ class LabelingWidget(LabelDialog):
         """
         self.canvas.pose_config.enabled = enabled
         self._sync_pose_config()
-        if enabled and getattr(self, "auto_focus_instance", False):
-            # Aggregation is mutually exclusive with Pose View's selection
-            # focus; turn it off and restore visibility for a clean state.
-            # (req1b)
-            self.auto_focus_instance = False
-            self.auto_focus_group_id = None
-            self.show_all_instances()
         if hasattr(self, "pose_view_panel"):
             self.pose_view_panel.setVisible(enabled)
         self.canvas.update()
@@ -7400,283 +7383,29 @@ class LabelingWidget(LabelDialog):
 
         return True
 
-    # Instance visibility shortcuts and methods
-    def _setup_instance_visibility_shortcuts(self):
-        """Setup keyboard shortcuts for instance visibility control"""
-        # H: Hide current instance
-        self.hide_instance_shortcut = QShortcut(QtGui.QKeySequence("H"), self)
-        self.hide_instance_shortcut.activated.connect(
-            self.hide_current_instance
-        )
-
-        # Shift+H: Focus mode (hide all except current)
-        self.focus_instance_shortcut = QShortcut(
-            QtGui.QKeySequence("Shift+H"), self
-        )
-        self.focus_instance_shortcut.activated.connect(
-            self.focus_current_instance
-        )
-
-        # Ctrl+Shift+H: Show all instances
-        self.show_all_shortcut = QShortcut(
-            QtGui.QKeySequence("Ctrl+Shift+H"), self
-        )
-        self.show_all_shortcut.activated.connect(self.show_all_instances)
-
-        # Alt+H: Toggle auto-focus instance mode
-        self.auto_focus_instance = False
-        self.auto_focus_group_id = None
-        self.auto_focus_instance_shortcut = QShortcut(
-            QtGui.QKeySequence("Alt+H"), self
-        )
-        self.auto_focus_instance_shortcut.activated.connect(
-            self.toggle_auto_focus_instance
-        )
-
-    def hide_current_instance(self):
-        """Hide the currently selected instance (same group_id)"""
-        selected_shapes = getattr(self.canvas, "selected_shapes", [])
-        if not selected_shapes:
-            self.status(self.tr("No shape selected"))
-            return
-        current_shape = selected_shapes[0]
-        if current_shape.group_id is None:
-            self.status(self.tr("Selected shape has no group_id"))
-            return
-        target_group_id = current_shape.group_id
-        for shape in self.canvas.shapes:
-            if shape.group_id == target_group_id:
-                shape.hidden_by_filter = True
-        self.canvas.update()
-        self.status(
-            self.tr(f"Hidden instance with group_id={target_group_id}")
-        )
-
-    def focus_current_instance(self):
-        """Focus mode: hide all instances except current"""
-        selected_shapes = getattr(self.canvas, "selected_shapes", [])
-        if not selected_shapes:
-            self.status(self.tr("No shape selected"))
-            return
-        current_shape = selected_shapes[0]
-        if current_shape.group_id is None:
-            self.status(self.tr("Selected shape has no group_id"))
-            return
-        target_group_id = current_shape.group_id
-        for shape in self.canvas.shapes:
-            shape.hidden_by_filter = shape.group_id != target_group_id
-        self.canvas.update()
-        self.status(
-            self.tr(f"Focus mode: only showing group_id={target_group_id}")
-        )
-
-    def show_all_instances(self):
-        """Show all instances"""
-        for shape in self.canvas.shapes:
-            shape.hidden_by_filter = False
-            # Also restore the native visibility flags so a shape hidden
-            # by BOTH the auto-focus flag and the native filter engine can
-            # be recovered with a single "show all". Only the *applied*
-            # visibility is reset; FilterEngine persistent state is
-            # untouched and re-applies on the next filter action. (H2)
-            shape.visible = True
-            self.canvas.visible[shape] = True
-        # Return to the Pose View overview state (no focused group).
-        self.canvas.pose_focus_group_id = None
-        self.canvas.update()
-        self._sync_label_list_hidden_by_filter()
-        self.status(self.tr("All instances visible"))
-
-    def _sync_label_list_hidden_by_filter(self):
-        """Show/hide label-list rows based on shape.hidden_by_filter."""
-        selection_model = self.label_list.selectionModel()
-        blocker = QtCore.QSignalBlocker(selection_model)
-        try:
-            for row in range(self.label_list.model().rowCount()):
-                item = self.label_list.model().item(row, 0)
-                if item is None:
-                    continue
-                shape = item.shape()
-                is_hidden = getattr(shape, "hidden_by_filter", False)
-                self.label_list.setRowHidden(row, is_hidden)
-                if is_hidden:
-                    index = self.label_list.model().indexFromItem(item)
-                    if selection_model.isSelected(index):
-                        selection_model.select(
-                            index,
-                            QtCore.QItemSelectionModel.SelectionFlag.Deselect,
-                        )
-        finally:
-            del blocker
-
-    def toggle_auto_focus_instance(self):
-        """Toggle auto-focus instance aggregation mode."""
-        # Auto-aggregation is mutually exclusive with Pose View's
-        # selection-driven focus; refuse here so the two do not collide.
-        # (req1) Alt+H still works in normal annotation mode.
-        if self.canvas.pose_config.enabled:
-            self.status(self.tr("Pose View 下自动聚合不可用"), 2000)
-            return
-        if self.auto_focus_instance:
-            self.auto_focus_instance = False
-            self.auto_focus_group_id = None
-            self.show_all_instances()
-            self.status(self.tr("自动聚合模式已关闭"), 2000)
-        else:
-            self.auto_focus_instance = True
-            self.auto_focus_group_id = None
-            self.status(self.tr("自动聚合已开启，选择目标后聚焦"), 3000)
-
-    def _auto_focus_on_selection(self, selected_shapes):
-        """Auto-focus the selected shape's group_id if auto-focus is on."""
-        if not self.auto_focus_instance:
-            return
-        # Re-entrancy guard: shape_selection_changed (fired by the
-        # selection_changed emit below) calls back into this method at
-        # label_widget.py:6018; skip the recursive invocation. (H3)
-        if getattr(self, "_auto_focus_in_progress", False):
-            return
+    def _pose_focus_by_filter(self, selected_shapes):
+        """Pose View click-to-focus: set the gid filter to the clicked
+        shape's group so the native filter engine drives visibility
+        (shape.visible). Selection itself stays single (the clicked
+        shape only) so delete/edit act on one shape, not the whole
+        group.
+        """
         if not selected_shapes:
             return
-
-        current_shape = None
+        current = None
         for shape in selected_shapes:
             if (
                 self.canvas.is_shape_interactive(shape)
                 and shape.group_id is not None
             ):
-                current_shape = shape
+                current = shape
                 break
-        if current_shape is None:
+        if current is None:
             return
-
-        target_group_id = current_shape.group_id
-        self.auto_focus_group_id = target_group_id
-
-        for shape in self.canvas.shapes:
-            if shape.group_id != target_group_id:
-                if getattr(shape, "selected", False):
-                    shape.selected = False
-                shape.hidden_by_filter = True
-            else:
-                shape.hidden_by_filter = False
-
-        # Broadcast the filtered selection through the standard signal so
-        # the label list / attributes panel stay in sync. Guarded against
-        # the re-entrant call from shape_selection_changed. (H3)
-        new_selection = [
-            s
-            for s in self.canvas.selected_shapes
-            if getattr(s, "group_id", None) == target_group_id
-        ]
-        self._auto_focus_in_progress = True
-        try:
-            self.canvas.selection_changed.emit(new_selection)
-        finally:
-            self._auto_focus_in_progress = False
-
-        self.canvas.update()
-        self._sync_label_list_hidden_by_filter()
-        self.status(
-            self.tr("自动聚合: group_id={gid}").format(gid=target_group_id),
-            2000,
-        )
-
-    def _apply_group_focus(self, target_group_id):
-        """Hide every shape outside ``target_group_id`` and select that
-        group, so Pose View shows only it (skeleton + labels).
-
-        Reuses the ``hidden_by_filter`` mechanism (protected by the H1/H3
-        fixes) so Pose View keeps a single hide system. Guarded against
-        the re-entrant ``selection_changed`` triggered by the emit. (req5)
-        """
-        if getattr(self, "_auto_focus_in_progress", False):
-            return
-        for shape in self.canvas.shapes:
-            if shape.group_id != target_group_id:
-                if getattr(shape, "selected", False):
-                    shape.selected = False
-                shape.hidden_by_filter = True
-            else:
-                shape.hidden_by_filter = False
-
-        new_selection = [
-            s
-            for s in self.canvas.shapes
-            if getattr(s, "group_id", None) == target_group_id
-        ]
-        self._auto_focus_in_progress = True
-        try:
-            self.canvas.selection_changed.emit(new_selection)
-        finally:
-            self._auto_focus_in_progress = False
-
-        # Mark the selected state so the pose overlay renders the focused
-        # group in detail (vs. the colour-coded overview). (two-state)
-        self.canvas.pose_focus_group_id = target_group_id
-        self.canvas.update()
-        # NOTE: the label list intentionally keeps ALL rows visible in
-        # Pose View (only the selection highlight follows the focus);
-        # do not hide rows here. (req: list shows all object names)
-
-    def _pose_focus_on_selection(self, selected_shapes):
-        """Pose View selection-driven focus. (req5)
-
-        - Empty selection (clicked blank) -> exit focus: show all.
-        - Selected shape has no group_id -> status hint, do not hide.
-        - Otherwise -> focus that group via ``_apply_group_focus``.
-
-        Skipped when the selection originated from the label list
-        (``_list_selecting``): list clicks act on the object itself and
-        must not trigger focus-hide.
-
-        Also skipped while keypoint fill mode is active: fill mode owns
-        the focus (via its target group_id) and the canvas emits a
-        transient empty selection when entering point-draw mode; without
-        this guard that empty selection would clear the just-built focus
-        (R3).
-        """
-        _fill = getattr(self, "keypoint_fill_mode", None)
-        if _fill is not None and getattr(_fill, "is_active", False):
-            return
-        if getattr(self, "_auto_focus_in_progress", False):
-            return
-        if getattr(self, "_list_selecting", False):
-            return
-        if not selected_shapes:
-            self.show_all_instances()
-            return
-        current_shape = None
-        for shape in selected_shapes:
-            if (
-                self.canvas.is_shape_interactive(shape)
-                and shape.group_id is not None
-            ):
-                current_shape = shape
-                break
-        if current_shape is None:
-            self.status(self.tr("该对象无 group_id，无法聚焦"), 3000)
-            return
-        self._apply_group_focus(current_shape.group_id)
-
-    def _escape_auto_focus_if_active(self):
-        """Handle ESC in auto-focus mode: turn aggregation off."""
-        if not self.auto_focus_instance:
-            return False
-        self.auto_focus_instance = False
-        self.auto_focus_group_id = None
-        self.show_all_instances()
-        self.status(self.tr("已关闭自动聚合"), 2000)
-        return True
+        self.set_gid_filter_value(str(current.group_id))
 
     # QT Overload
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_Escape:
-            if self._escape_auto_focus_if_active():
-                event.accept()
-                return
-            event.accept()
-            return
         super(LabelingWidget, self).keyPressEvent(event)
 
     def resizeEvent(self, _):

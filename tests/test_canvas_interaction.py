@@ -15,13 +15,11 @@ class MockShape:
     def __init__(
         self,
         visible=True,
-        hidden_by_filter=False,
         group_id=None,
         label="person",
         shape_type="rectangle",
     ):
         self.visible = visible
-        self.hidden_by_filter = hidden_by_filter
         self.group_id = group_id
         self.label = label
         self.shape_type = shape_type
@@ -53,11 +51,6 @@ class TestCanvasInteraction(unittest.TestCase):
         self.canvas.visible = {shape: True}
         self.assertFalse(self.canvas.is_shape_interactive(shape))
 
-    def test_is_shape_interactive_when_hidden_by_filter(self):
-        shape = MockShape(hidden_by_filter=True)
-        self.canvas.visible = {shape: True}
-        self.assertFalse(self.canvas.is_shape_interactive(shape))
-
     def test_should_draw_standard_label_when_pose_view_off(self):
         shape = MockShape()
         self.canvas.visible = {shape: True}
@@ -66,7 +59,6 @@ class TestCanvasInteraction(unittest.TestCase):
         self.assertTrue(self.canvas._should_draw_standard_label(shape))
 
     def test_should_draw_standard_label_hides_coco_keypoint_in_pose_view(self):
-        # Pose View takes over COCO keypoint labels -> native label hidden.
         shape = MockShape(label="nose", shape_type="point")
         self.canvas.visible = {shape: True}
         self.canvas.pose_config.enabled = True
@@ -74,7 +66,6 @@ class TestCanvasInteraction(unittest.TestCase):
         self.assertFalse(self.canvas._should_draw_standard_label(shape))
 
     def test_should_draw_standard_label_shows_non_coco_in_pose_view(self):
-        # Non-COCO shapes keep their native label even in Pose View.
         shape = MockShape(label="person", shape_type="rectangle")
         self.canvas.visible = {shape: True}
         self.canvas.pose_config.enabled = True
@@ -89,7 +80,7 @@ class TestCanvasInteraction(unittest.TestCase):
         self.assertFalse(self.canvas._should_draw_standard_label(shape))
 
     def test_should_draw_standard_label_hides_when_not_interactive(self):
-        shape = MockShape(hidden_by_filter=True)
+        shape = MockShape(visible=False)
         self.canvas.visible = {shape: True}
         self.canvas.pose_config.enabled = False
         self.canvas.show_labels = True
