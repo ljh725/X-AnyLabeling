@@ -180,7 +180,7 @@ def layout_direct(
     items: List[PoseLabelItem],
     mid: MidLine,
     leader_length: float,
-    gap: float = 5.0,
+    gap: float = 2.0,
 ) -> List[PoseLabelItem]:
     """Place labels along each keypoint's outward direction.
 
@@ -238,7 +238,7 @@ def layout_anti(
     items: List[PoseLabelItem],
     mid: MidLine,
     leader_length: float,
-    gap: float = 5.0,
+    gap: float = 2.0,
     search_step: float = 4.0,
     search_max: float = 120.0,
 ) -> List[PoseLabelItem]:
@@ -354,7 +354,7 @@ def layout_column(
     for item in left_items:
         ny = max(item.anchor_y - item.rect.height() / 2, cy)
         item.rect.moveTo(int(lx), int(ny))
-        item.leader_start = QtCore.QPointF(item.anchor_x - 5, item.anchor_y)
+        item.leader_start = QtCore.QPointF(item.anchor_x - 2, item.anchor_y)
         item.leader_end = QtCore.QPoint(
             item.rect.right(), int(item.rect.y() + item.rect.height() / 2)
         )
@@ -364,7 +364,7 @@ def layout_column(
     for item in right_items:
         ny = max(item.anchor_y - item.rect.height() / 2, cy)
         item.rect.moveTo(int(rx2), int(ny))
-        item.leader_start = QtCore.QPointF(item.anchor_x + 5, item.anchor_y)
+        item.leader_start = QtCore.QPointF(item.anchor_x + 2, item.anchor_y)
         item.leader_end = QtCore.QPoint(
             item.rect.left(), int(item.rect.y() + item.rect.height() / 2)
         )
@@ -376,7 +376,7 @@ def layout_column(
         nx = tcx + col * (max_w / 2 + gap / 2) - item.rect.width() / 2
         ny = cy - item.rect.height() - gap
         item.rect.moveTo(int(nx), int(ny))
-        item.leader_start = QtCore.QPointF(item.anchor_x, item.anchor_y - 5)
+        item.leader_start = QtCore.QPointF(item.anchor_x, item.anchor_y - 2)
         item.leader_end = QtCore.QPoint(
             int(item.rect.x() + item.rect.width() / 2), item.rect.bottom()
         )

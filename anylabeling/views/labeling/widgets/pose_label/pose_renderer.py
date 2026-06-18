@@ -460,17 +460,6 @@ class PoseRenderer:
             painter.setBrush(bg)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(item.rect, 3, 3)
-            if cfg.border_width > 0:
-                border_color = (
-                    QtGui.QColor("#f38ba8")
-                    if item.occluded and cfg.occlusion_highlight
-                    else QtGui.QColor("#000000")
-                )
-                painter.setPen(
-                    QtGui.QPen(border_color, cfg.border_width / scale)
-                )
-                painter.setBrush(Qt.BrushStyle.NoBrush)
-                painter.drawRect(item.rect)
             fc_hex = _get_font_color(cfg, bg_hex)
             text_x = item.rect.x() + pad_x
             text_y = item.rect.y() + pad_y + painter.fontMetrics().ascent()
