@@ -241,6 +241,7 @@ pose_view:
   leader_length: 40
   border_width: 1.5
   column_gap: 8
+  pose_click_to_focus: true
   show_skeleton: true
   show_midline: false
   show_bbox: true

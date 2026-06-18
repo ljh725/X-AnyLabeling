@@ -7406,6 +7406,13 @@ class LabelingWidget(LabelDialog):
 
     # QT Overload
     def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            # Clear the gid filter (exit pose focus -> native display).
+            # MUST accept to prevent QDialog.reject() from hiding the
+            # entire LabelingWidget (which inherits from QDialog).
+            self.set_gid_filter_value("-1")
+            event.accept()
+            return
         super(LabelingWidget, self).keyPressEvent(event)
 
     def resizeEvent(self, _):
