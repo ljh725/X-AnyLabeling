@@ -64,6 +64,7 @@ class PoseSettingsPanel(QtWidgets.QFrame):
             ("direct", self.tr("方向引线")),
             ("anti", self.tr("防遮挡")),
             ("column", self.tr("侧栏列表")),
+            ("category", self.tr("类别分组")),
         ]:
             btn = QtWidgets.QPushButton(label)
             btn.setCheckable(True)

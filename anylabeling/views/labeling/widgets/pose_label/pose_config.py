@@ -24,7 +24,8 @@ class PoseDisplayConfig:
     Attributes:
         enabled: Master switch.  When ``True`` the Canvas delegates
             COCO keypoint rendering to :class:`PoseRenderer`.
-        layout_mode: ``"direct"`` | ``"anti"`` | ``"column"``.
+        layout_mode: ``"direct"`` | ``"anti"`` | ``"column"`` |
+            ``"category"``.
         color_mode: ``"bodypart"`` | ``"person"``.
         font_size: Label font size in "CSS px" (divided by scale at
             render time so the screen size stays constant).

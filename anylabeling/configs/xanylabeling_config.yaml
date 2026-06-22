@@ -234,7 +234,7 @@ digit_shortcut_pages: 1
 # Pose keypoint label display
 pose_view:
   enabled: false
-  layout_mode: "anti"        # direct / anti / column
+  layout_mode: "anti"        # direct / anti / column / category
   color_mode: "bodypart"     # bodypart / person
   font_size: 11
   opacity: 0.85

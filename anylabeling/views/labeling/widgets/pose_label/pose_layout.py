@@ -20,11 +20,13 @@ from typing import Dict, List, Optional, Tuple
 from PyQt6 import QtCore
 
 from .pose_constants import (
+    BODY_PARTS,
     COCO_KEYPOINT_INDEX,
     DIRECTION_VECTORS,
     LAYOUT_PRIORITY,
     LABEL_TO_BODY_PART,
 )
+from .pose_category_layout import layout_category
 
 # Type aliases
 MidLine = Optional[Tuple[float, float]]  # (mid_x, shoulder_distance)
@@ -420,7 +422,8 @@ def apply_layout(
         items: Label candidates (rects will be modified in-place).
         mid: Body midline from :func:`compute_midline`.
         bbox: Person bounding rect (for column layout).
-        layout_mode: ``"direct"`` | ``"anti"`` | ``"column"``.
+        layout_mode: ``"direct"`` | ``"anti"`` | ``"column"`` |
+            ``"category"``.
         leader_length: Base leader length in image px.
         column_gap: Vertical gap for column layout.
 
@@ -435,6 +438,15 @@ def apply_layout(
         layout_anti(items, mid, leader_length)
     elif layout_mode == "column":
         layout_column(items, mid, bbox, column_gap)
+    elif layout_mode == "category":
+        layout_category(
+            items,
+            mid,
+            bbox,
+            column_gap,
+            coco_keypoint_index=COCO_KEYPOINT_INDEX,
+            body_parts=BODY_PARTS,
+        )
     else:
         layout_direct(items, mid, leader_length)
     overlap_count = _count_overlaps(items)
