@@ -34,13 +34,15 @@ pose_qa/
 │   └── export_vitpose_onnx.py         ← 步骤 1:ViTPose → ONNX
 ├── inference/
 │   ├── vitpose_inference_demo.py      ← 步骤 2a:单图推理 + 可视化(已验证)
-│   └── batch_infer.py                 ← 步骤 2b:批量推理(待写)
+│   └── batch_infer.py                 ← 步骤 2b:批量推理(遍历目录)
 └── qa/
-    └── pose_qa_compare.py             ← 步骤 3:OKS 比对 + 排序 + 报告
+    ├── pose_qa_compare.py             ← 步骤 3:OKS 比对 + 排序 + 报告
+    └── export_for_inspector.py        ← 步骤 4:QA 报告 → Inspector 跳转
 ```
 
-三阶段对应流水线的"导出模型 → 推理 → 比对排序",互相解耦:推理结果存成
-`<stem>_pred.json` 后,QA 比对是**纯 CPU**,不依赖模型。
+四阶段对应流水线的"导出模型 → 推理 → 比对排序 → 导入 Inspector 复查",互相解耦:
+推理结果存成 `<stem>_pred.json` 后,QA 比对是**纯 CPU**,不依赖模型;最后把可疑
+清单转成 Inspector 格式,在 UI 里点击跳转复查。
 
 ## 环境
 
@@ -98,9 +100,19 @@ python pose_qa\inference\vitpose_inference_demo.py ^
 - `<output>` 可视化图(彩色=模型点+骨架,橙色空心圈=人工点)
 - `<json 同目录>/<stem>_pred.json`(模型预测,QA 步骤的输入)
 
-### 步骤 2b:批量推理(待写 `inference/batch_infer.py`)
+### 步骤 2b:批量推理(`inference/batch_infer.py`)
 
-遍历整个标注目录,为每张图生成 `_pred.json`。为 3.5 万图准备,GPU 约半小时。
+遍历整个标注目录,为每张图生成 `_pred.json`。支持断点续跑(跳过已有 pred)、
+JSON↔图片分目录、dry-run。为 3.5 万图准备,GPU 约半小时。
+
+```cmd
+python pose_qa\inference\batch_infer.py ^
+    --json-dir   D:\data\labels ^
+    --image-dir  D:\data\images ^
+    --onnx       D:\AI_yolo_mode\vitPose\vitpose-base-simple.onnx ^
+    --pred-dir   D:\data\preds  ^
+    --workers 4
+```
 
 ### 步骤 3:QA 比对 + 排序(`x-anylabeling-cu12` 环境,纯 CPU)
 
@@ -116,6 +128,39 @@ python pose_qa\qa\pose_qa_compare.py ^
 - `<prefix>.json` —— 完整报告(配置 + 摘要 + 每图每人 OKS)
 - `<prefix>.md` —— 人类可读,含 Top-N 可疑目标表
 - `<prefix>_tail.txt` —— 可疑图片名清单(可直接喂给复查工具)
+
+### 步骤 4:导入 Inspector 跳转复查(`x-anylabeling-cu12` 环境)
+
+把 QA 报告的可疑清单转成 Inspector 原生格式,然后在 UI 里点击 issue 直接跳转到
+对应图片并选中整个 person(框 + 17 个关键点)。
+
+**4a. 转换报告**(纯 CPU):
+
+```cmd
+python pose_qa\qa\export_for_inspector.py ^
+    --qa-report D:\report\pose_qa.json ^
+    --gt-dir    D:\data\labels ^
+    --output    D:\report\pose_qa_inspector.json
+```
+
+默认只导出尾部可疑 person(`in_tail==true`),避免 inspector 被几万条 issue 淹没。
+severity 按 risk 自动映射:>0.7 error、>0.4 warning、其余 info。每个 issue 的
+`shape_index` 指向该 group 的 person 框,点击跳转高亮 person 框 + 连带选中同组
+关键点。
+
+**4b. 在 X-AnyLabeling 里导入**:
+
+1. 打开图片目录(`Ctrl+O`),让目标图片进入 image_list(QA 的 file_path 靠
+   basename 匹配,必须先打开目录)。
+2. 显示 Inspector 面板(菜单「Inspector」或对应快捷键)。
+3. 点 Inspector 面板头部的「导入」按钮,选 `pose_qa_inspector.json`。
+4. Issue 列表按 `pose_qa_disagreement` 规则分组,每条是一个尾部 person。
+5. 单击/双击某条 issue → 自动跳转到该图片 → 选中该 group 的 person 框 + 所有关键点 → 画布居中。
+
+**已知边界**(非本次引入,使用时注意):
+- 目标图片必须已在当前打开的目录里(`_json_path_to_image` 靠 basename 匹配)。
+- 若该 shape 被当前 label/gid/type 过滤器隐藏,跳转后不会高亮(`select_shapes`
+  会过滤掉非 interactive 的 shape)。需要先清除过滤器。
 
 ## 关键参数
 
@@ -137,6 +182,6 @@ python pose_qa\qa\pose_qa_compare.py ^
 
 ## 状态
 
-- ✅ 导出脚本 + demo + QA 比对:已用 `s1860.jpg` 跑通验证
-- ⏳ 批量推理 `batch_infer.py`:待写
-- ⏳ 全量 3.5 万图运行:待批量脚本完成后
+- ✅ 导出脚本 + demo + QA 比对 + 批量推理 + Inspector 跳转:已用 `s1860.jpg` 跑通验证
+- ✅ `_on_inspector_navigate` group 聚合选中已增强(`label_widget.py`)
+- ⏳ 全量 3.5 万图运行:待用户跑批量推理后验证
