@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Rename `_pred.json` annotations to match image stems.
+"""Merge VitPose prediction JSONs into X-AnyLabeling base JSONs by group_id.
 
-For every JSON file in `json_dir` ending with `{suffix}.json`, check whether an
-image with the same stem exists in `images_dir`. If so, copy the JSON to
-`output_dir` with the suffix removed.
+For every prediction JSON `{stem}_pred.json` in `pred_json_dir`, find the
+matching base annotation `{stem}.json` in `base_json_dir` and image `{stem}` in
+`images_dir`. Clear the keypoint `points` in the base JSON and inject the
+keypoints from the prediction JSON by `group_id`, preserving all other metadata.
+
+Original files are never modified; output is written to `output_dir`.
 """
 
 import argparse
-import csv
-import shutil
+import json
 import sys
+from copy import deepcopy
 from pathlib import Path
 
 IMAGE_EXTENSIONS = {
@@ -29,11 +32,36 @@ IMAGE_EXTENSIONS = {
 # ---------------------------------------------------------------------------
 # When running from an IDE (PyCharm / VS Code / etc.), set these defaults:
 IDE_IMAGES_DIR = r"D:\A0_part1_kps_3_class_dataset\HK-Hard\images"
-IDE_JSON_DIR = r"D:\A0_part1_kps_3_class_dataset\HK-Hard\sort_json_preds_1458"
-IDE_OUTPUT_DIR = r"D:\A0_part1_kps_3_class_dataset\HK-Hard\renamed_jsons"
+IDE_BASE_JSON_DIR = r"D:\A0_part1_kps_3_class_dataset\HK-Hard\sort_json_1458"
+IDE_PRED_JSON_DIR = (
+    r"D:\A0_part1_kps_3_class_dataset\HK-Hard\sort_json_preds_1458"
+)
+IDE_OUTPUT_DIR = r"D:\A0_part1_kps_3_class_dataset\HK-Hard\merged_jsons"
 IDE_SUFFIX = "_pred"
 IDE_DRY_RUN = True
 # ---------------------------------------------------------------------------
+
+
+# COCO-style 17 keypoints order used by VitPose / data2.
+KEYPOINT_LABELS = [
+    "nose",
+    "l_eye",
+    "r_eye",
+    "l_ear",
+    "r_ear",
+    "l_sho",
+    "r_sho",
+    "l_elb",
+    "r_elb",
+    "l_wri",
+    "r_wri",
+    "l_hip",
+    "r_hip",
+    "l_knee",
+    "r_knee",
+    "l_ank",
+    "r_ank",
+]
 
 
 def validate_directory(path: Path, label: str) -> Path:
@@ -56,14 +84,74 @@ def collect_image_stems(images_dir: Path) -> set[str]:
     return stems
 
 
-def rename_pred_jsons(
+def load_json(path: Path) -> dict:
+    """Load a JSON file and return its content."""
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_json(path: Path, data: dict) -> None:
+    """Save data to a JSON file with readable formatting."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+def merge_keypoints_into_base(
+    base_data: dict,
+    pred_persons: list[dict],
+) -> dict:
+    """Return a new base JSON with pred keypoints injected by group_id.
+
+    Keypoint `points` in the base JSON are cleared first. Then for each person
+    in `pred_persons`, the 17 COCO keypoints are written into the matching
+    keypoint shapes by `group_id` and label.
+    """
+    merged_data = deepcopy(base_data)
+
+    label_to_index = {label: idx for idx, label in enumerate(KEYPOINT_LABELS)}
+
+    # Build lookup: (group_id, label) -> shape
+    shape_lookup = {}
+    for shape in merged_data.get("shapes", []):
+        label = shape.get("label")
+        group_id = shape.get("group_id")
+        if label in label_to_index and group_id is not None:
+            shape_lookup[(group_id, label)] = shape
+
+    # Clear keypoint points first.
+    for shape in merged_data.get("shapes", []):
+        if shape.get("label") in label_to_index:
+            shape["points"] = []
+
+    # Inject predicted keypoints.
+    for person in pred_persons:
+        group_id = person.get("group_id")
+        keypoints = person.get("keypoints", [])
+
+        if group_id is None or not keypoints:
+            continue
+
+        for idx, point in enumerate(keypoints):
+            if idx >= len(KEYPOINT_LABELS):
+                continue
+            label = KEYPOINT_LABELS[idx]
+            shape = shape_lookup.get((group_id, label))
+            if shape is not None:
+                shape["points"] = [point]
+
+    return merged_data
+
+
+def merge_pred_jsons(
     images_dir: Path,
-    json_dir: Path,
+    base_json_dir: Path,
+    pred_json_dir: Path,
     output_dir: Path,
     suffix: str = "_pred",
     dry_run: bool = False,
 ) -> list[dict]:
-    """Copy matched `_pred.json` files to output_dir without the suffix."""
+    """Merge prediction JSONs into base JSONs for matching image stems."""
     image_stems = collect_image_stems(images_dir)
     if not image_stems:
         print("Error: no image files found.", file=sys.stderr)
@@ -72,25 +160,28 @@ def rename_pred_jsons(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     rows = []
-    copied = 0
+    merged = 0
     skipped_no_image = 0
-    skipped_exists = 0
-    seen_targets = set()
+    skipped_no_base = 0
+    skipped_malformed = 0
 
-    for json_path in sorted(json_dir.iterdir(), key=lambda p: p.name.lower()):
-        if not json_path.is_file() or json_path.suffix.lower() != ".json":
+    for pred_path in sorted(
+        pred_json_dir.iterdir(), key=lambda p: p.name.lower()
+    ):
+        if not pred_path.is_file() or pred_path.suffix.lower() != ".json":
             continue
 
-        name = json_path.stem
+        name = pred_path.stem
         if not name.endswith(suffix):
             continue
 
         stem = name[: -len(suffix)]
+
         if stem not in image_stems:
             skipped_no_image += 1
             rows.append(
                 {
-                    "source": str(json_path),
+                    "source": str(pred_path),
                     "target": "",
                     "status": "skipped_no_image",
                     "note": f"no image for stem '{stem}'",
@@ -98,78 +189,87 @@ def rename_pred_jsons(
             )
             continue
 
-        target_name = f"{stem}.json"
-        target_path = output_dir / target_name
-
-        if target_name in seen_targets:
-            skipped_exists += 1
+        base_path = base_json_dir / f"{stem}.json"
+        if not base_path.is_file():
+            skipped_no_base += 1
             rows.append(
                 {
-                    "source": str(json_path),
-                    "target": str(target_path),
-                    "status": "skipped_duplicate_target",
-                    "note": f"target '{target_name}' already used",
+                    "source": str(pred_path),
+                    "target": "",
+                    "status": "skipped_no_base_json",
+                    "note": f"no base JSON for stem '{stem}'",
                 }
             )
             continue
 
-        if target_path.exists():
-            skipped_exists += 1
+        try:
+            base_data = load_json(base_path)
+            pred_data = load_json(pred_path)
+        except json.JSONDecodeError as exc:
+            skipped_malformed += 1
             rows.append(
                 {
-                    "source": str(json_path),
-                    "target": str(target_path),
-                    "status": "skipped_target_exists",
-                    "note": "target file already exists",
+                    "source": str(pred_path),
+                    "target": "",
+                    "status": "skipped_malformed",
+                    "note": str(exc),
                 }
             )
             continue
 
-        seen_targets.add(target_name)
+        pred_persons = pred_data.get("persons", [])
+        if not pred_persons:
+            skipped_malformed += 1
+            rows.append(
+                {
+                    "source": str(pred_path),
+                    "target": "",
+                    "status": "skipped_no_persons",
+                    "note": "prediction JSON has no 'persons'",
+                }
+            )
+            continue
+
+        merged_data = merge_keypoints_into_base(base_data, pred_persons)
+        target_path = output_dir / f"{stem}.json"
+
         if not dry_run:
-            shutil.copy2(str(json_path), str(target_path))
+            save_json(target_path, merged_data)
 
-        copied += 1
+        merged += 1
         rows.append(
             {
-                "source": str(json_path),
+                "source": str(pred_path),
                 "target": str(target_path),
-                "status": "copied" if not dry_run else "would_copy",
+                "status": "merged" if not dry_run else "would_merge",
                 "note": "",
             }
         )
 
-    total_scanned = copied + skipped_no_image + skipped_exists
+    total_scanned = (
+        merged + skipped_no_image + skipped_no_base + skipped_malformed
+    )
     print(f"Image stems found: {len(image_stems)}")
-    print(f"JSON files scanned: {total_scanned}")
-    print(f"Copied: {copied}")
+    print(f"Prediction JSON files scanned: {total_scanned}")
+    print(f"Merged: {merged}")
     print(f"Skipped (no matching image): {skipped_no_image}")
-    print(f"Skipped (target exists/duplicate): {skipped_exists}")
+    print(f"Skipped (no base JSON): {skipped_no_base}")
+    print(f"Skipped (malformed/empty): {skipped_malformed}")
 
     return rows
 
 
-def write_report(report_path: Path, rows: list[dict]) -> None:
-    """Write operation report as UTF-8 CSV."""
-    fieldnames = ["source", "target", "status", "note"]
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    with report_path.open("w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 def main() -> None:
-    """Parse arguments and run the rename workflow."""
+    """Parse arguments and run the merge workflow."""
     parser = argparse.ArgumentParser(
         description=(
-            "Copy JSON files ending with `{suffix}.json` to output_dir, "
-            "removing the suffix when a matching image stem exists."
+            "Merge VitPose prediction JSONs into X-AnyLabeling base JSONs. "
+            "Keypoints are injected by group_id; original files are preserved."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples:
-  %(prog)s --images-dir ./images --json-dir ./json --output-dir ./out
-  %(prog)s --images-dir ./images --json-dir ./json --output-dir ./out --dry-run
+  %(prog)s --images-dir ./images --base-json-dir ./base --pred-json-dir ./pred --output-dir ./out
+  %(prog)s --images-dir ./images --base-json-dir ./base --pred-json-dir ./pred --output-dir ./out --dry-run
 """,
     )
     parser.add_argument(
@@ -179,62 +279,72 @@ def main() -> None:
         help="Directory containing images.",
     )
     parser.add_argument(
-        "--json-dir",
+        "--base-json-dir",
         type=Path,
         default=None,
-        help="Directory containing JSON files.",
+        help="Directory containing base X-AnyLabeling JSON files.",
+    )
+    parser.add_argument(
+        "--pred-json-dir",
+        type=Path,
+        default=None,
+        help="Directory containing prediction JSON files (e.g. *_pred.json).",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=None,
-        help="Directory for renamed JSON files.",
+        help="Directory for merged JSON files.",
     )
     parser.add_argument(
         "--suffix",
         default="_pred",
-        help="Suffix before .json to remove (default: _pred).",
+        help="Suffix before .json in prediction files (default: _pred).",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
         default=None,
-        help="Preview changes without copying files.",
-    )
-    parser.add_argument(
-        "--report",
-        type=Path,
-        default=None,
-        help="Optional CSV report path.",
+        help="Preview changes without writing files.",
     )
 
     args = parser.parse_args()
 
     using_ide_defaults = not any(
-        [args.images_dir, args.json_dir, args.output_dir]
+        [
+            args.images_dir,
+            args.base_json_dir,
+            args.pred_json_dir,
+            args.output_dir,
+        ]
     )
+
     images_dir = args.images_dir if args.images_dir else Path(IDE_IMAGES_DIR)
-    json_dir = args.json_dir if args.json_dir else Path(IDE_JSON_DIR)
+    base_json_dir = (
+        args.base_json_dir if args.base_json_dir else Path(IDE_BASE_JSON_DIR)
+    )
+    pred_json_dir = (
+        args.pred_json_dir if args.pred_json_dir else Path(IDE_PRED_JSON_DIR)
+    )
     output_dir = args.output_dir if args.output_dir else Path(IDE_OUTPUT_DIR)
+
     if using_ide_defaults:
         dry_run = IDE_DRY_RUN if args.dry_run is None else args.dry_run
     else:
         dry_run = bool(args.dry_run)
 
     images_dir = validate_directory(images_dir, "--images-dir")
-    json_dir = validate_directory(json_dir, "--json-dir")
+    base_json_dir = validate_directory(base_json_dir, "--base-json-dir")
+    pred_json_dir = validate_directory(pred_json_dir, "--pred-json-dir")
 
-    rows = rename_pred_jsons(
+    merge_pred_jsons(
         images_dir,
-        json_dir,
+        base_json_dir,
+        pred_json_dir,
         output_dir,
         suffix=args.suffix,
         dry_run=dry_run,
     )
-
-    if args.report:
-        write_report(args.report, rows)
-        print(f"Report saved to: {args.report}")
 
 
 if __name__ == "__main__":
@@ -243,49 +353,44 @@ if __name__ == "__main__":
 
 """
 功能说明：
-    这个脚本用来把 `_pred.json` 结尾的标注文件重命名为与图片同名的 `.json`，
-    并复制到指定输出目录。
+    这个脚本把 VitPose 预测生成的 `_pred.json` 关键点数据合并到
+    X-AnyLabeling 的基础标注 JSON 中。
 
     处理逻辑：
-    - 扫描图片目录，收集所有图片文件的 stem（去掉扩展名）。
-    - 扫描 JSON 目录，找出以 `_pred.json` 结尾的文件。
-    - 去掉 `_pred` 后缀得到候选 stem，若该 stem 在图片 stem 集合中存在，
-      则复制为 `{stem}.json` 到输出目录。
-    - 没有对应图片的 JSON 文件直接跳过。
+    - 扫描图片目录，收集所有图片文件的 stem。
+    - 扫描预测 JSON 目录，找出以 `_pred.json` 结尾的文件。
+    - 对每个预测文件，检查是否存在同名的基础 JSON `{stem}.json`。
+    - 加载基础 JSON，复制完整结构（深拷贝），不会修改原始文件。
+    - 清空基础 JSON 中所有关键点 shape 的 `points`。
+    - 按 `group_id` 匹配 person，把预测 JSON 中的 17 个关键点按
+      COCO 顺序写入对应 label 的 `points`。
+    - 将合并后的新 JSON 保存到 `--output-dir`，文件名为 `{stem}.json`。
 
-    支持命令行参数，也支持在脚本顶部的 IDE_* 常量中设置默认参数，方便
-    在 IDE 中直接运行。
+    原始数据不会被修改。
+
+关键点顺序映射（数据2 index -> 数据1 label）：
+    0 nose, 1 l_eye, 2 r_eye, 3 l_ear, 4 r_ear,
+    5 l_sho, 6 r_sho, 7 l_elb, 8 r_elb, 9 l_wri, 10 r_wri,
+    11 l_hip, 12 r_hip, 13 l_knee, 14 r_knee, 15 l_ank, 16 r_ank
 
 运行命令样例：
 
   # 基础用法
-  python scripts/rename_pred_jsons.py \
+  python scripts/vitpose_labels_rename_pred_jsons.py \
       --images-dir "D:\\A0_part1_kps_3_class_dataset\\HK-Hard\\images" \
-      --json-dir "D:\\A0_part1_kps_3_class_dataset\\HK-Hard\\sort_json_preds_1458" \
-      --output-dir "D:\\A0_part1_kps_3_class_dataset\\HK-Hard\\renamed_jsons"
+      --base-json-dir "D:\\A0_part1_kps_3_class_dataset\\HK-Hard\\sort_json_1458" \
+      --pred-json-dir "D:\\A0_part1_kps_3_class_dataset\\HK-Hard\\sort_json_preds_1458" \
+      --output-dir "D:\\A0_part1_kps_3_class_dataset\\HK-Hard\\merged_jsons"
 
-  # 仅预览，不复制
-  python scripts/rename_pred_jsons.py \
+  # 仅预览，不写入
+  python scripts/vitpose_labels_rename_pred_jsons.py \
       --images-dir "D:\\A0_part1_kps_3_class_dataset\\HK-Hard\\images" \
-      --json-dir "D:\\A0_part1_kps_3_class_dataset\\HK-Hard\\sort_json_preds_1458" \
-      --output-dir "D:\\A0_part1_kps_3_class_dataset\\HK-Hard\\renamed_jsons" \
+      --base-json-dir "D:\\A0_part1_kps_3_class_dataset\\HK-Hard\\sort_json_1458" \
+      --pred-json-dir "D:\\A0_part1_kps_3_class_dataset\\HK-Hard\\sort_json_preds_1458" \
+      --output-dir "D:\\A0_part1_kps_3_class_dataset\\HK-Hard\\merged_jsons" \
       --dry-run
 
-  # 自定义后缀
-  python scripts/rename_pred_jsons.py \
-      --images-dir ./images \
-      --json-dir ./json \
-      --output-dir ./out \
-      --suffix "_prediction"
-
-  # 生成 CSV 报告
-  python scripts/rename_pred_jsons.py \
-      --images-dir ./images \
-      --json-dir ./json \
-      --output-dir ./out \
-      --report ./report.csv
-
   # 在 IDE 中直接运行（不用命令行参数）
-  # 修改脚本顶部的 IDE_IMAGES_DIR、IDE_JSON_DIR、IDE_OUTPUT_DIR、
-  # IDE_SUFFIX、IDE_DRY_RUN 即可
+  # 修改脚本顶部的 IDE_IMAGES_DIR、IDE_BASE_JSON_DIR、IDE_PRED_JSON_DIR、
+  # IDE_OUTPUT_DIR、IDE_SUFFIX、IDE_DRY_RUN 即可
 """

@@ -159,12 +159,16 @@ def parse_annotation(json_path: str) -> tuple[list, dict]:
         desc = sh.get("description")
 
         if label == "person" and stype == "rectangle" and len(pts) >= 2:
-            (x1, y1), (x2, y2) = pts[0], pts[1]
+            # Rectangle may be stored as 2 diagonal points OR 4 corners
+            # (the project's native format uses 4 corners). Take min/max
+            # across ALL listed points so the box is correct either way.
+            xs = [p[0] for p in pts]
+            ys = [p[1] for p in pts]
             box = (
-                float(min(x1, x2)),
-                float(min(y1, y2)),
-                float(max(x1, x2)),
-                float(max(y1, y2)),
+                float(min(xs)),
+                float(min(ys)),
+                float(max(xs)),
+                float(max(ys)),
             )
             groups[gid]["person_box"] = box
         elif stype == "point" and label in LABEL_TO_IDX and len(pts) >= 1:
@@ -223,8 +227,11 @@ def crop_and_align(
     Returns:
         Tuple of:
         - blob: (N, 3, input_h, input_w) normalized float32.
-        - centers: list of (2,) arrays.
-        - scales: list of (2,) arrays.
+        - warp_mats: list of (2,3) forward affine matrices (original ->
+          cropped). Kept so decode_heatmaps can invert the transform
+          exactly (the scale returned by bbox_xyxy2cs is a relative scale
+          wrt /200, NOT pixel w/h, so the old linear remap was wrong and
+          keypoints flew off the box).
     """
     # Import the project's geometry helpers (no need to reimplement).
     # This file lives at <proj_root>/pose_qa/inference/, so the project
@@ -235,42 +242,55 @@ def crop_and_align(
     if proj_root not in sys.path:
         sys.path.insert(0, proj_root)
     from anylabeling.services.auto_labeling.pose.dwpose_onnx import (  # noqa: E402
+        _fix_aspect_ratio,
         bbox_xyxy2cs,
-        top_down_affine,
+        get_warp_matrix,
     )
 
-    blobs, centers, scales = [], [], []
+    # Replicate top_down_affine's geometry so we can keep the affine matrix.
+    # top_down_affine itself only returns (img, scale), not the matrix, so
+    # we redo the same steps here and retain warp_mat for exact inversion.
+    aspect_ratio = input_w / input_h
+    blobs, warp_mats = [], []
     for bbox in bboxes:
         center, scale = bbox_xyxy2cs(
             np.array(bbox, dtype=np.float32), padding=1.25
         )
-        resized, scale = top_down_affine(
-            (input_w, input_h), scale, center, image_bgr
+        scale_fixed = _fix_aspect_ratio(scale, aspect_ratio=aspect_ratio)
+        warp_mat = get_warp_matrix(
+            center, scale_fixed, rot=0.0, output_size=(input_w, input_h)
+        )
+        resized = cv2.warpAffine(
+            image_bgr, warp_mat, (input_w, input_h),
+            flags=cv2.INTER_LINEAR,
         )
         # resized is BGR uint8 -> RGB -> /255 -> normalize.
         rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB).astype(np.float32)
         normed = (rgb / 255.0 - IMAGE_MEAN) / IMAGE_STD
         blob = np.transpose(normed, (2, 0, 1))  # (3, H, W)
         blobs.append(blob)
-        centers.append(np.asarray(center, dtype=np.float32))
-        scales.append(np.asarray(scale, dtype=np.float32))
+        warp_mats.append(warp_mat.astype(np.float32))
     blob = np.stack(blobs, axis=0).astype(np.float32)
-    return blob, centers, scales
+    return blob, warp_mats
 
 
 def decode_heatmaps(
     heatmaps: np.ndarray,
-    centers: list,
-    scales: list,
+    warp_mats: list,
     input_w: int = 192,
     input_h: int = 256,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Decode (N, 17, h, w) heatmaps to original-image coordinates.
 
+    Uses the INVERSE of the forward affine matrix to map cropped-image
+    coordinates back to the original image. This exactly reverses the
+    crop+align transform (including aspect-ratio padding), so keypoints
+    land correctly even for thin/side-view boxes.
+
     Args:
         heatmaps: (N, 17, h, w) raw model output.
-        centers: list of (2,) center arrays (from crop_and_align).
-        scales: list of (2,) scale arrays (from crop_and_align).
+        warp_mats: list of (2,3) forward affine matrices (from
+            crop_and_align).
         input_w: Model input width.
         input_h: Model input height.
 
@@ -292,13 +312,18 @@ def decode_heatmaps(
         scores[i] = flat[np.arange(k), idx]
         py = (idx // hm_w).astype(np.float32)
         px = (idx % hm_w).astype(np.float32)
-        kpts_in = np.stack([px * stride_x, py * stride_y], axis=1)  # (17,2)
-        # Remap to original image (formula from dwpose_onnx.postprocess).
-        s = scales[i]
-        c = centers[i]
-        kpts_in[:, 0] = kpts_in[:, 0] / input_w * s[0] + c[0] - s[0] / 2
-        kpts_in[:, 1] = kpts_in[:, 1] / input_h * s[1] + c[1] - s[1] / 2
-        keypoints[i] = kpts_in
+        # Cropped-image coords of each keypoint (stride maps heatmap -> input).
+        kpts_in = np.stack(
+            [px * stride_x, py * stride_y], axis=1
+        )  # (17, 2)
+
+        # Map back to original image via the inverse affine transform.
+        # cv2.invertAffineTransform inverts the (2,3) forward matrix from
+        # crop_and_align exactly, undoing the aspect-ratio padding too.
+        inv_mat = cv2.invertAffineTransform(warp_mats[i])  # (2, 3)
+        ones = np.ones((k, 1), dtype=np.float32)
+        homog = np.hstack([kpts_in, ones])  # (17, 3)
+        keypoints[i] = homog @ inv_mat.T    # (17, 2)
     return keypoints, scores
 
 
@@ -370,6 +395,7 @@ def visualize(
 
 
 def save_prediction_json(
+    gt_json_path: str,
     image_path: str,
     persons: list,
     pred_kpts: np.ndarray,
@@ -377,60 +403,89 @@ def save_prediction_json(
     score_thr: float,
     out_path: str,
 ) -> None:
-    """Save ViTPose predictions as JSON for the QA pipeline.
+    """Save ViTPose predictions as a project-native annotation JSON.
 
-    Format matches the QA pipeline's 'external model results' schema so it
-    can be consumed directly by the OKS-comparison step:
+    The output uses the SAME structure as a human annotation file
+    (version/flags/shapes[]/imagePath/...), so it can be opened directly in
+    X-AnyLabeling. shapes[] contains, per person group:
+      - the person rectangle (copied verbatim from the GT, same group_id)
+      - 17 keypoint points (label = COCO name, coords = model prediction)
 
-    ```
-    {
-      "image": "<basename>",
-      "image_path": "<abs path>",
-      "source": "vitpose-base-simple",
-      "score_thr": 0.3,
-      "persons": [
-        {
-          "group_id": 0,
-          "bbox": [x1, y1, x2, y2],
-          "keypoints": [[x, y], ...],   # 17, original-image coords
-          "scores": [s, ...],            # 17, confidence
-          "mean_score": 0.85,
-          "valid_kpts": 16               # count where score >= score_thr
-        }, ...
-      ]
-    }
-    ```
+    keypoints below `score_thr` are still written (with their low score in
+    the shape's `score` field) so nothing is silently dropped; downstream
+    code can filter by score.
+
+    File name uses the same basename as the GT (e.g. s55.json); the caller
+    is responsible for putting it in a separate directory to avoid
+    overwriting the human annotation.
 
     Args:
+        gt_json_path: Path to the source annotation JSON (for metadata).
         image_path: Path to the source image.
         persons: Parsed annotation list (from parse_annotation).
         pred_kpts: (N, 17, 2) model keypoints.
         pred_scores: (N, 17) model scores.
-        score_thr: Score threshold used to count valid keypoints.
+        score_thr: Score threshold (informational; all points are written).
         out_path: Output JSON path.
     """
-    persons_out = []
+    # Load GT to copy top-level metadata + the person rectangle shapes.
+    with open(gt_json_path, "r", encoding="utf-8") as f:
+        gt_data = json.load(f)
+
+    # Index person rectangles by group_id so we can copy them verbatim.
+    person_rects_by_gid: dict = {}
+    for sh in gt_data.get("shapes", []):
+        if (
+            isinstance(sh, dict)
+            and sh.get("label") == "person"
+            and sh.get("shape_type") == "rectangle"
+            and sh.get("group_id") is not None
+        ):
+            person_rects_by_gid[sh["group_id"]] = sh
+
+    shapes_out: list = []
     for i, p in enumerate(persons):
-        valid = pred_scores[i] >= score_thr
-        mean_s = float(pred_scores[i][valid].mean()) if valid.any() else 0.0
-        persons_out.append(
-            {
-                "group_id": p["group_id"],
-                "bbox": [float(v) for v in p["bbox"]],
-                "keypoints": [
-                    [float(x), float(y)] for x, y in pred_kpts[i]
-                ],
-                "scores": [float(s) for s in pred_scores[i]],
-                "mean_score": mean_s,
-                "valid_kpts": int(valid.sum()),
-            }
-        )
+        gid = p["group_id"]
+
+        # 1. Person rectangle (verbatim from GT, same group_id).
+        rect = person_rects_by_gid.get(gid)
+        if rect is not None:
+            shapes_out.append(rect)
+
+        # 2. 17 keypoint points (coords from the model).
+        for j, kpt_name in enumerate(COCO_17_ORDER):
+            x = float(pred_kpts[i][j][0])
+            y = float(pred_kpts[i][j][1])
+            s = float(pred_scores[i][j])
+            shapes_out.append(
+                {
+                    "mask": None,
+                    "label": kpt_name,
+                    "score": s,
+                    "points": [[x, y]],
+                    "group_id": gid,
+                    "description": None,
+                    "difficult": False,
+                    "shape_type": "point",
+                    "flags": {},
+                    "attributes": {},
+                    "kie_linking": [],
+                }
+            )
+
     record = {
-        "image": osp.basename(image_path),
-        "image_path": osp.abspath(image_path),
-        "source": "vitpose-base-simple",
-        "score_thr": score_thr,
-        "persons": persons_out,
+        "version": gt_data.get("version", "4.0.0-beta.4"),
+        "flags": gt_data.get("flags", {}),
+        "checked": gt_data.get("checked", False),
+        "shapes": shapes_out,
+        "imagePath": osp.basename(image_path),
+        "imageData": None,
+        "imageHeight": gt_data.get("imageHeight"),
+        "imageWidth": gt_data.get("imageWidth"),
+        "description": (
+            f"ViTPose predictions (score_thr={score_thr}); "
+            "keypoint coords are model output."
+        ),
     }
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(record, f, ensure_ascii=False, indent=2)
@@ -477,7 +532,7 @@ def main() -> int:
     input_h, input_w = int(in_shape[2]), int(in_shape[3])
 
     bboxes = np.array([p["bbox"] for p in persons], dtype=np.float32)
-    blob, centers, scales = crop_and_align(
+    blob, warp_mats = crop_and_align(
         image_bgr, bboxes, input_w=input_w, input_h=input_h
     )
     print(
@@ -492,7 +547,7 @@ def main() -> int:
         single = blob[bi:bi + 1]  # (1,3,H,W)
         heatmaps = sess.run(None, {in_name: single})[0]  # (1,17,h,w)
         kpts, scs = decode_heatmaps(
-            heatmaps, [centers[bi]], [scales[bi]],
+            heatmaps, [warp_mats[bi]],
             input_w=input_w, input_h=input_h,
         )
         pred_kpts_list.append(kpts[0])
@@ -524,7 +579,7 @@ def main() -> int:
             json_dir, osp.splitext(osp.basename(args.json))[0] + "_pred.json"
         )
     save_prediction_json(
-        args.image, persons, pred_kpts, pred_scores,
+        args.json, args.image, persons, pred_kpts, pred_scores,
         args.score_thr, pred_out,
     )
     return 0

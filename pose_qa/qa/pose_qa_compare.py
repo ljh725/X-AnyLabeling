@@ -113,7 +113,8 @@ GT_DIR: str = r"D:\data\labels"
 PRED_DIR: str = r"D:\data\preds"
 OUTPUT_PREFIX: str = r"D:\report\pose_qa"
 GT_SUFFIX: str = ".json"
-PRED_SUFFIX: str = "_pred.json"
+PRED_SUFFIX: str = ".json"      # SAME basename as GT (s55.json); pred must
+                                # live in a separate --pred-dir.
 TAIL_PERCENT: float = 10.0
 KPT_SCORE_THR: float = 0.3
 OKS_WARN: float = 0.5          # OKS below this -> directly suspicious
@@ -209,30 +210,70 @@ def parse_gt_json(
 def parse_pred_json(
     pred_path: str,
 ) -> list:
-    """Parse a model prediction JSON.
+    """Parse a model prediction JSON (project-native annotation format).
+
+    The prediction file uses the SAME structure as a human annotation
+    (version/flags/shapes[]/...), produced by save_prediction_json /
+    batch_infer. shapes[] contains person rectangles + keypoint points;
+    each keypoint's confidence is stored in the shape's `score` field.
 
     Args:
-        pred_path: Path to the <stem>_pred.json file.
+        pred_path: Path to the prediction JSON (same basename as GT).
 
     Returns:
-        List of {group_id, bbox, keypoints (17,2), scores (17,)}.
+        List of {group_id, bbox, keypoints (17,2 NaN-filled),
+        scores (17,)}. bbox is the person rectangle; keypoints are the
+        model-predicted coords; scores are the per-keypoint confidences.
     """
     with open(pred_path, "r", encoding="utf-8") as f:
         data = json.load(f)
+    shapes = data.get("shapes", [])
+
+    groups: dict = defaultdict(
+        lambda: {"person_box": None, "points": {}}
+    )
+    for sh in shapes:
+        if not isinstance(sh, dict):
+            continue
+        gid = sh.get("group_id")
+        if gid is None:
+            continue
+        label = sh.get("label", "")
+        stype = sh.get("shape_type", "")
+        pts = sh.get("points", [])
+        score = sh.get("score")
+
+        if label == "person" and stype == "rectangle" and len(pts) >= 2:
+            # Person rectangle may be stored as 2 corners or 4 corners;
+            # normalize to (x1,y1,x2,y2).
+            xs = [p[0] for p in pts[:4]]
+            ys = [p[1] for p in pts[:4]]
+            box = (
+                float(min(xs)),
+                float(min(ys)),
+                float(max(xs)),
+                float(max(ys)),
+            )
+            groups[gid]["person_box"] = box
+        elif stype == "point" and label in LABEL_TO_IDX and len(pts) >= 1:
+            x, y = pts[0]
+            s = float(score) if isinstance(score, (int, float)) else 0.0
+            groups[gid]["points"][label] = (float(x), float(y), s)
+
     out = []
-    for p in data.get("persons", []):
-        kpts = np.array(p["keypoints"], dtype=np.float32)
-        scs = np.array(p["scores"], dtype=np.float32)
-        if kpts.ndim == 2 and kpts.shape[0] == 17:
-            pass
-        else:
-            kpts = np.full((17, 2), np.nan, dtype=np.float32)
+    for gid, g in groups.items():
+        kpts = np.full((17, 2), np.nan, dtype=np.float32)
+        scores = np.zeros((17,), dtype=np.float32)
+        for label, (x, y, s) in g["points"].items():
+            i = LABEL_TO_IDX[label]
+            kpts[i] = [x, y]
+            scores[i] = s
         out.append(
             {
-                "group_id": p.get("group_id"),
-                "bbox": p.get("bbox"),
+                "group_id": gid,
+                "bbox": g["person_box"],
                 "keypoints": kpts,
-                "scores": scs,
+                "scores": scores,
             }
         )
     return out
@@ -568,11 +609,15 @@ def collect_pairs(
 ) -> list:
     """Collect (gt_path, pred_path) pairs by stem matching.
 
+    GT and predictions are matched by filename stem. Since both now use the
+    same basename (e.g. s55.json) but live in SEPARATE directories, no
+    suffix-based exclusion is needed.
+
     Args:
         gt_dir: Directory of human annotation JSONs.
-        pred_dir: Directory of model prediction JSONs.
+        pred_dir: Directory of model prediction JSONs (separate from gt_dir).
         gt_suffix: GT filename suffix.
-        pred_suffix: Prediction filename suffix.
+        pred_suffix: Prediction filename suffix (usually same as gt_suffix).
 
     Returns:
         List of (gt_path, pred_path) tuples.
@@ -580,7 +625,6 @@ def collect_pairs(
     gt_files = [
         p for p in Path(gt_dir).iterdir()
         if p.is_file() and p.name.endswith(gt_suffix)
-        and not p.name.endswith(pred_suffix)
     ]
     pred_stems = {
         p.name[: -len(pred_suffix)]
@@ -663,8 +707,9 @@ def parse_args() -> argparse.Namespace:
         help=f"GT filename suffix (default: {GT_SUFFIX}).",
     )
     parser.add_argument(
-        "--pred-suffix", default="_pred.json",
-        help=f"Pred filename suffix (default: {PRED_SUFFIX}).",
+        "--pred-suffix", default=".json",
+        help=f"Pred filename suffix (default: {PRED_SUFFIX}; same basename "
+        "as GT, so pred must be in a separate --pred-dir).",
     )
     parser.add_argument(
         "--tail-percent", "-t", type=float,

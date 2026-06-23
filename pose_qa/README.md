@@ -98,11 +98,15 @@ python pose_qa\inference\vitpose_inference_demo.py ^
 
 产出:
 - `<output>` 可视化图(彩色=模型点+骨架,橙色空心圈=人工点)
-- `<json 同目录>/<stem>_pred.json`(模型预测,QA 步骤的输入)
+- `<json 同目录>/<stem>_pred.json` —— 模型预测,**项目原生标注格式**
+  (version/shapes[]/imagePath/...),可直接用 X-AnyLabeling 打开。shapes[]
+  含 person 框(从 GT 原样复制)+ 17 个关键点 point(坐标为模型预测,置信度
+  存在 shape 的 `score` 字段)。
 
 ### 步骤 2b:批量推理(`inference/batch_infer.py`)
 
-遍历整个标注目录,为每张图生成 `_pred.json`。支持断点续跑(跳过已有 pred)、
+遍历整个标注目录,为每张图生成预测 json。**文件名与 GT 同名**(`s55.json`),
+因此 `--pred-dir` 必须是独立目录,避免覆盖人工标注。支持断点续跑、
 JSON↔图片分目录、dry-run。为 3.5 万图准备,GPU 约半小时。
 
 ```cmd
@@ -113,6 +117,9 @@ python pose_qa\inference\batch_infer.py ^
     --pred-dir   D:\data\preds  ^
     --workers 4
 ```
+
+> ⚠️ pred 文件与 GT 同名(都叫 `s55.json`),靠**不同目录**区分:
+> `--json-dir`(人工标注) vs `--pred-dir`(模型预测)。切勿设成同目录。
 
 ### 步骤 3:QA 比对 + 排序(`x-anylabeling-cu12` 环境,纯 CPU)
 

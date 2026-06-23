@@ -68,7 +68,9 @@ IMAGE_DIR: str = r"D:\A0_part1_kps_3_class_dataset\HK-Hard\images"
 ONNX_PATH: str = r"D:\AI_yolo_mode\vitPose\vitpose-base-simple.onnx"
 PRED_DIR: str = r"D:\A0_part1_kps_3_class_dataset\HK-Hard\sort_json_preds_1458"
 GT_SUFFIX: str = ".json"
-PRED_SUFFIX: str = "_pred.json"
+PRED_SUFFIX: str = ".json"      # SAME basename as GT (s55.json), caller
+                                # MUST use a separate --pred-dir to avoid
+                                # overwriting the human annotation.
 SCORE_THR: float = 0.3
 WORKERS: int = 8            # image *reading* threads (inference is serial)
 NO_PROGRESS: bool = False
@@ -126,10 +128,12 @@ def collect_jobs(
         List of job dicts {stem, json_path, image_path, pred_path,
         skipped_reason}.
     """
+    # Collect GT JSONs. GT and predictions are expected to live in SEPARATE
+    # directories (pred uses the same basename as GT), so we don't need to
+    # filter out pred files here.
     json_files = [
-        p for p in json_dir.iterdir()
-        if p.is_file() and p.name.endswith(gt_suffix)
-        and not p.name.endswith(pred_suffix)
+        p for p in json_dir.iterdir() if p.is_file()
+        and p.name.endswith(gt_suffix)
     ]
     jobs = []
     skipped_no_image = 0
@@ -205,7 +209,7 @@ def process_one(
             }
         image_bgr = demo.load_image(job["image_path"])
         bboxes = np.array([p["bbox"] for p in persons], dtype=np.float32)
-        blob, centers, scales = demo.crop_and_align(
+        blob, warp_mats = demo.crop_and_align(
             image_bgr, bboxes, input_w=input_w, input_h=input_h
         )
 
@@ -214,7 +218,7 @@ def process_one(
             single = blob[bi:bi + 1]
             heatmaps = sess.run(None, {in_name: single})[0]
             kpts, scs = demo.decode_heatmaps(
-                heatmaps, [centers[bi]], [scales[bi]],
+                heatmaps, [warp_mats[bi]],
                 input_w=input_w, input_h=input_h,
             )
             pred_kpts_list.append(kpts[0])
@@ -223,8 +227,8 @@ def process_one(
         pred_scores = np.stack(pred_scores_list, axis=0)
 
         demo.save_prediction_json(
-            job["image_path"], persons, pred_kpts, pred_scores,
-            score_thr, job["pred_path"],
+            job["json_path"], job["image_path"], persons, pred_kpts,
+            pred_scores, score_thr, job["pred_path"],
         )
         return {
             "stem": job["stem"], "status": "ok",
