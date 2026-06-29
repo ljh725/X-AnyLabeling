@@ -85,7 +85,9 @@ beta.11：统一 `_shape_hit_candidates`，按 **`(级别, 距离, 面积, -栈�
 - [x] 分步 commit 完成（6 个提交）
 - [x] push 到 GitHub `feature/selection-optimization` 分支
 - [x] 更新本文档
-- [ ] 端到端冒烟测试（见下方清单）— ⏳ 待人工验证
+- [x] **基础回归测试已通过**（人工，2026-06-29）：渲染/悬停/顶点/边/单击/Ctrl多选/双击均正常，未破坏原有行为
+- [x] **算法优先级验证已通过**（自动化，`tests/test_shape_hit_candidates.py`）：嵌套/顶点优先/近邻顶点/空白点击/元组排序 6 场景全过
+- [ ] **核心改进 GUI 验证**（重叠/嵌套真实标注图）— ⏳ 待人工验证
 
 ---
 
@@ -147,3 +149,15 @@ beta.11：统一 `_shape_hit_candidates`，按 **`(级别, 距离, 面积, -栈�
 git reset --hard selection-migration/baseline-2026-06-29   # 整体回退
 git reset --hard HEAD~N                                     # 回退 N 个提交
 ```
+
+---
+
+## 八、关键点（pose keypoint）多选说明
+
+> 经确认（2026-06-29）：beta.4 关键点 = `shape_type == "point"` 的独立 Shape。
+
+- **多选方式：点击式**。依次 `Ctrl+点击`不同关键点（每次点击后**松开鼠标**）即可累加多选。
+  - Ctrl + 点击关键点A → 松开 → Ctrl + 点击关键点B → A、B 同选 → ...
+- **注意避免**：`Ctrl` 按下后**不松手直接拖动**会被 `mouseMoveEvent` 的"已选对象拖动"分支接管（`:863 bounded_move_shapes`），导致关键点跟着鼠标跑（这是拖动，不是多选）。
+- **此行为迁移前后一致**（`:863` 拖动逻辑迁移未改动，diff 为空），非迁移引入。
+- **功能C对关键点的正向影响**：多个关键点紧邻时（如 COCO pose 手肘/手腕相邻），迁移后会优先选中**离光标更近**的关键点，比 beta.4 的栈序选择更准。
