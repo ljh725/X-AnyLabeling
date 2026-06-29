@@ -1610,46 +1610,26 @@ class Canvas(
             self.calculate_offsets(point)
             return
         else:
-            # [修复] 普通形状选择逻辑
-            for shape in reversed(self.shapes):
-                if not self.is_shape_interactive(shape):
-                    continue
-                shape_selectable = False
-                if shape.shape_type in ["point", "line", "linestrip"]:
-                    if (
-                        shape.nearest_vertex(
-                            point, self.epsilon * 3 / self.scale
+            # [迁移自 beta.11 功能C] 普通形状选择逻辑
+            # 用 _shape_hit_candidates 的优先级排序取代 reversed+首次contains命中,
+            # 使重叠/嵌套场景下优先选中最近的顶点/边/小面积对象。
+            for shape in self._shape_hit_candidates(point):
+                self.set_hiding()
+                if shape not in self.selected_shapes:
+                    if multiple_selection_mode:
+                        self.selection_changed.emit(
+                            self.selected_shapes + [shape]
                         )
-                        is not None
-                    ):
-                        shape_selectable = True
-                elif shape.shape_type == "cuboid" and len(shape.points) == 8:
-                    front_path = self.cuboid_face_path(
-                        shape, CUBOID_FACE_FRONT
-                    )
-                    shape_selectable = (
-                        front_path is not None and front_path.contains(point)
-                    )
-                elif len(shape.points) > 1 and shape.contains_point(point):
-                    shape_selectable = True
-
-                if shape_selectable:
-                    self.set_hiding()
-                    if shape not in self.selected_shapes:
-                        if multiple_selection_mode:
-                            self.selection_changed.emit(
-                                self.selected_shapes + [shape]
-                            )
-                        else:
-                            self.selection_changed.emit([shape])
+                    else:
+                        self.selection_changed.emit([shape])
+                    self.h_shape_is_selected = False
+                else:
+                    if getattr(self, "label_on_selection", False):
                         self.h_shape_is_selected = False
                     else:
-                        if getattr(self, "label_on_selection", False):
-                            self.h_shape_is_selected = False
-                        else:
-                            self.h_shape_is_selected = True
-                    self.calculate_offsets(point)
-                    return
+                        self.h_shape_is_selected = True
+                self.calculate_offsets(point)
+                return
         self.deselect_shape()
 
     def calculate_offsets(self, point):
