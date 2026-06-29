@@ -1519,27 +1519,15 @@ class Canvas(
 
         if self.editing() and self.double_click_edit_label:
             pos = self.transform_pos(ev.position())
-            for shape in reversed(self.shapes):
-                if not self.is_shape_interactive(shape):
-                    continue
-                hit = False
-                if shape.shape_type in ["point", "line", "linestrip"]:
-                    if (
-                        shape.nearest_vertex(
-                            pos, self.epsilon * 3 / self.scale
-                        )
-                        is not None
-                    ):
-                        hit = True
-                elif len(shape.points) > 1 and shape.contains_point(pos):
-                    hit = True
-                if hit:
-                    self._undo_pending_edge_point()
-                    if shape not in self.selected_shapes:
-                        self.selection_changed.emit([shape])
-                    self.h_shape_is_selected = False
-                    self.edit_label_requested.emit()
-                    return
+            # [迁移自 beta.11 功能C] 用优先级排序候选列表取代 reversed+首次命中,
+            # 使双击嵌套对象时优先编辑内层(小面积)对象。
+            for shape in self._shape_hit_candidates(pos):
+                self._undo_pending_edge_point()
+                if shape not in self.selected_shapes:
+                    self.selection_changed.emit([shape])
+                self.h_shape_is_selected = False
+                self.edit_label_requested.emit()
+                return
 
         # For polygon/quadrilateral the mousePress handler adds a spurious
         # duplicate point before this handler fires, so we pop it first.
