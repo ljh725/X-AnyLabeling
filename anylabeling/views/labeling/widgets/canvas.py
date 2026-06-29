@@ -957,9 +957,9 @@ class Canvas(
         # - Highlight vertex
         # Update shape/vertex fill and tooltip value accordingly.
         # self.setToolTip(self.tr("Image"))
-        for shape in reversed(
-            [s for s in self.shapes if self.is_shape_interactive(s)]
-        ):
+        # [迁移自 beta.11 功能C] 用优先级排序候选列表取代 reversed+首次命中,
+        # 使重叠/嵌套场景下优先高亮最近的顶点/边/小面积对象。
+        for shape in self._shape_hit_candidates(pos):
             if shape.shape_type == "cuboid" and len(shape.points) == 8:
                 index = self.nearest_cuboid_control(
                     shape, pos, self.epsilon / self.scale
