@@ -90,6 +90,10 @@ class Shape:
         self.cache_label = None
         self.cache_description = None
         self.visible = True
+        # [迁移自 beta.11 功能C] 选择优化 _shape_hit_candidates 内含
+        # `not shape.locked` 守卫；beta.4 不实现锁定功能，此处仅给默认值
+        # 让该守卫永远为 True（no-op），不引入锁定的 UI/持久化/删除保护。
+        self.locked = False
 
         # Rotation setting
         self.direction = direction
