@@ -31,6 +31,7 @@ beta.11：统一 `_shape_hit_candidates`，按 **`(级别, 距离, 面积, -栈�
 | 备份 tag（本地） | `selection-migration/baseline-2026-06-29` | ✅ 已创建 |
 | 备份 tag（异地 GitHub） | `origin/selection-migration/baseline-2026-06-29` | ✅ 已推送 |
 | 迁移分支 | `feature/selection-optimization`（基于 `feature/label-display-mode @ a2d7f9d`） | ✅ 已创建并切换 |
+| 迁移分支（异地 GitHub） | `origin/feature/selection-optimization` | ✅ 已推送 |
 | 基线 HEAD | `a2d7f9d 260629_移走无关信息` | ✅ |
 
 ### 三级回退兜底
@@ -52,45 +53,39 @@ beta.11：统一 `_shape_hit_candidates`，按 **`(级别, 距离, 面积, -栈�
 - [x] 写本文档
 
 ### 阶段 1：轻量适配 locked 字段
-- [ ] `shape.py` `__init__` 在 `self.visible = True` 后加 `self.locked = False`
-- **回归测试**：打开任意带标注图，无报错、shape 正常显示
+- [x] `shape.py` `__init__` 在 `self.visible = True` 后加 `self.locked = False`
+- [x] 语法检查通过 (commit `68e30f5`)
+- **回归测试**：打开任意带标注图，无报错、shape 正常显示 — ⏳ 待人工验证
 
 ### 阶段 2：新增核心方法 `_shape_hit_candidates`
-- [ ] `canvas.py` 在 `is_shape_interactive`（:488）后插入新方法（~75 行，移植自 beta.11 :497-571）
-- [ ] 语法检查通过
-- **依赖已确认**：`self.epsilon`(:97)、`self.scale`(:155)、`is_visible`、`utils.distance`、`utils.distance_to_line`、`nearest_cuboid_control`(:1731)、`cuboid_face_path`(:1756)、`cuboid_face_hit_test`(:1770)、`CUBOID_FACE_FRONT`(:54)
+- [x] `canvas.py` 在 `is_shape_interactive` 后插入新方法（92 行含注释，移植自 beta.11）
+- [x] 语法检查通过 (commit `83adef6`)
+- **依赖已确认**：`self.epsilon`、`self.scale`、`is_shape_interactive`、`utils.distance`、`utils.distance_to_line`、`nearest_cuboid_control`、`cuboid_face_path`、`cuboid_face_hit_test`、`cuboid_control_point`、`CUBOID_FACE_FRONT` — 全部存在
 
-### 阶段 3：重写调用点① —— 悬停高亮 `mouseMoveEvent`（:591）
-- [ ] `for shape in reversed([s for s in self.shapes if self.is_shape_interactive(s)]):`（:868-1050）→ `for shape in self._shape_hit_candidates(pos):`
-- [ ] `else` 分支还原为 beta.4 原样 `self.un_highlight()`（不引入 group）
-- [ ] 保持 `self.h_hape` 命名不变（不连锁改名）
-- **回归测试点**：
-  - [ ] 顶点附近 → 顶点高亮 + 手指 cursor
-  - [ ] 边附近 → 边高亮 + "加点"提示
-  - [ ] shape 内部 → 整体高亮 + 抓手 cursor
-  - [ ] 重叠时移到最近顶点 → 优先高亮该顶点所属对象
+### 阶段 3：重写调用点① —— 悬停高亮 `mouseMoveEvent`
+- [x] 循环头改为 `for shape in self._shape_hit_candidates(pos):` (commit `b7d3222`)
+- [x] `else` 分支保持 beta.4 原样 `self.un_highlight()`（不引入 group）
+- [x] 保持 `self.h_hape` 命名不变
+- **回归测试点**：⏳ 待人工验证（见下方清单）
 
-### 阶段 4：重写调用点② —— 点击选择 `select_shape_point`（:1473）
-- [ ] `else` 分支 `for shape in reversed(self.shapes):`（:1520-1560）→ `for shape in self._shape_hit_candidates(point):`
-- [ ] 末尾保留 beta.4 原样 `self.deselect_shape()`（:1561，不引入 group）
-- **回归测试点**：
-  - [ ] 单击未选中对象 → 选中
-  - [ ] Ctrl+单击 → 多选累加
-  - [ ] 单击空白 → 取消选中
-  - [ ] 重叠时点击交叠区 → 选到最近顶点/边所属对象（核心改进）
-  - [ ] 嵌套时点击内层 → 内层（面积小）优先选中（核心改进）
+### 阶段 4：重写调用点② —— 点击选择 `select_shape_point`
+- [x] `else` 分支改为 `for shape in self._shape_hit_candidates(point):` (commit `0b4dea3`)
+- [x] 末尾保持 beta.4 原样 `self.deselect_shape()`（不引入 group）
+- [x] 消除重复判定逻辑（净减 20 行）
+- **回归测试点**：⏳ 待人工验证（见下方清单）
 
-### 阶段 5：重写调用点③ —— 双击编辑 `mouseDoubleClickEvent`（:1414）
-- [ ] `if self.editing() and self.double_click_edit_label:` 下 `for shape in reversed(self.shapes):`（:1430-1450）→ `for shape in self._shape_hit_candidates(pos):`
-- **回归测试点**：
-  - [ ] 双击对象 → 弹出标签编辑框
-  - [ ] 双击嵌套对象内层 → 编辑内层而非外层（核心改进）
+### 阶段 5：重写调用点③ —— 双击编辑 `mouseDoubleClickEvent`
+- [x] `double_click_edit_label` 分支改为 `for shape in self._shape_hit_candidates(pos):` (commit `38d6cb1`)
+- [x] 消除重复判定逻辑（净减 12 行）
+- **回归测试点**：⏳ 待人工验证（见下方清单）
 
 ### 阶段 6：收尾与提交
-- [ ] `shape.py` / `canvas.py` 语法检查
-- [ ] 端到端冒烟测试（上述全部回归点）
-- [ ] 分步 commit（每阶段一个）+ push 到 GitHub `feature/selection-optimization`
-- [ ] 更新本文档勾选
+- [x] `shape.py` / `canvas.py` 语法检查通过
+- [x] 完整性检查：已无遗留 `reversed(self.shapes)` 选择循环；`_shape_hit_candidates` 出现 5 次（1 定义 + 3 调用 + 1 文档提及）
+- [x] 分步 commit 完成（6 个提交）
+- [x] push 到 GitHub `feature/selection-optimization` 分支
+- [x] 更新本文档
+- [ ] 端到端冒烟测试（见下方清单）— ⏳ 待人工验证
 
 ---
 
@@ -115,3 +110,40 @@ beta.11：统一 `_shape_hit_candidates`，按 **`(级别, 距离, 面积, -栈�
 ## 六、执行日志
 
 - **2026-06-29 阶段0**：tag + 远程推送 + 迁移分支创建完成。当前位于 `feature/selection-optimization`。
+- **2026-06-29 阶段1-5**：代码迁移全部完成，6 个分步提交（`f7f0b15`→`38d6cb1`）。
+- **2026-06-29 阶段6**：语法检查/完整性检查通过，分支已 push GitHub。**待人工冒烟测试。**
+
+### 迁移总改动量（相对 baseline）
+| 文件 | 增 | 删 | 净 |
+|------|----|----|----|
+| `anylabeling/views/labeling/shape.py` | +4 | 0 | +4 |
+| `anylabeling/views/labeling/widgets/canvas.py` | +121 | -61 | +60 |
+| `docs/SELECTION_MIGRATION_PLAN.md` | +117 | 0 | +117 |
+| **合计** | | | **+181** |
+
+---
+
+## 七、人工回归测试清单 ⏳
+
+请在 `feature/selection-optimization` 分支上启动应用，用**带重叠/嵌套标注的图**验证以下场景：
+
+### 基础回归（确认未破坏原有行为）
+- [ ] **渲染**：打开带标注图，所有 shape 正常显示，无报错
+- [ ] **悬停**：鼠标移到顶点附近 → 顶点高亮、cursor 变手指
+- [ ] **悬停**：鼠标移到边上 → 边高亮、提示"加点"
+- [ ] **悬停**：鼠标移到 shape 内部 → 整体高亮、cursor 变抓手
+- [ ] **单击**：未选中对象 → 选中
+- [ ] **Ctrl+单击**：多选累加
+- [ ] **单击空白**：取消选中
+- [ ] **双击**：弹出标签编辑框
+
+### 核心改进验证（功能C的价值点）
+- [ ] **重叠对象**：移到/点击交叠区 → 优先选中最近顶点/边所属对象（beta.4 会选栈顶）
+- [ ] **嵌套对象**：点击/双击内层 → 内层（面积小）优先选中/编辑（beta.4 会选大框）
+- [ ] **cuboid**：8 点立方体的顶点/面/边高亮与拖动正常（cuboid 分支已迁移）
+
+### 失败时回退
+```bash
+git reset --hard selection-migration/baseline-2026-06-29   # 整体回退
+git reset --hard HEAD~N                                     # 回退 N 个提交
+```
