@@ -493,6 +493,98 @@ class Canvas(
             and not getattr(shape, "hidden_by_filter", False)
         )
 
+    def _shape_hit_candidates(self, point):
+        """Return shapes under a point in interaction priority order.
+
+        [迁移自 beta.11 功能C] 取代旧的 ``reversed(shapes) + 首次命中即返回``
+        选择策略。对所有候选 shape 计算一个 4 元组优先级并排序，最终返回
+        按交互优先级从高到低排列的 ``[shape, ...]`` 列表，供悬停/点击/双击
+        三处统一消费。
+
+        优先级元组 ``priority = (级别, 距离, 面积, -stack_index)``，全部
+        升序(越小越优先)：
+            - 级别 0: 附近顶点(可抓取编辑点)——最高优先
+            - 级别 1: 附近可编辑边(可双击加点)
+            - 级别 2: 整体命中(contains_point)——兜底
+            - 同级别下: 距离更近者优先；仍相同时面积更小者优先(嵌套场景下
+              小对象优先于大对象)；最后后创建者(栈顶)优先。
+        ``not shape.locked`` 守卫: beta.4 未实现锁定, shape.locked 恒为
+        False, 故锁定 shape 与普通 shape 行为一致(守卫为 no-op)。
+        """
+        candidates = []
+        epsilon = self.epsilon / self.scale
+        for stack_index, shape in enumerate(self.shapes):
+            if not self.is_shape_interactive(shape):
+                continue
+
+            rect = shape.bounding_rect()
+            area = max(0.0, rect.width()) * max(0.0, rect.height())
+            vertex_distance = None
+            if not shape.locked:
+                if shape.shape_type == "cuboid" and len(shape.points) == 8:
+                    vertex_index = self.nearest_cuboid_control(
+                        shape, point, epsilon
+                    )
+                    vertex = (
+                        self.cuboid_control_point(shape, vertex_index)
+                        if vertex_index is not None
+                        else None
+                    )
+                else:
+                    vertex_index = shape.nearest_vertex(point, epsilon)
+                    vertex = (
+                        shape.points[vertex_index]
+                        if vertex_index is not None
+                        else None
+                    )
+                if vertex is not None:
+                    vertex_distance = utils.distance(vertex - point)
+
+            if vertex_distance is not None:
+                priority = (0, vertex_distance, area, -stack_index)
+                candidates.append((priority, shape))
+                continue
+
+            if (
+                not shape.locked
+                and len(shape.points) > 1
+                and shape.can_add_point()
+                and shape.shape_type != "quadrilateral"
+            ):
+                edge_index = shape.nearest_edge(point, epsilon)
+                if edge_index is not None:
+                    line = [
+                        shape.points[edge_index - 1],
+                        shape.points[edge_index],
+                    ]
+                    edge_distance = utils.distance_to_line(point, line)
+                    priority = (1, edge_distance, area, -stack_index)
+                    candidates.append((priority, shape))
+                    continue
+
+            if shape.shape_type in ["point", "line", "linestrip"]:
+                vertex_index = shape.nearest_vertex(point, epsilon * 3)
+                if vertex_index is None:
+                    continue
+                distance = utils.distance(shape.points[vertex_index] - point)
+                priority = (1, distance, area, -stack_index)
+                candidates.append((priority, shape))
+                continue
+
+            if shape.shape_type == "cuboid" and len(shape.points) == 8:
+                front_path = self.cuboid_face_path(shape, CUBOID_FACE_FRONT)
+                hit = (
+                    front_path is not None and front_path.contains(point)
+                ) or self.cuboid_face_hit_test(shape, point) is not None
+            else:
+                hit = len(shape.points) > 1 and shape.contains_point(point)
+            if hit:
+                priority = (2, area, 0.0, -stack_index)
+                candidates.append((priority, shape))
+
+        candidates.sort(key=lambda item: item[0])
+        return [shape for _, shape in candidates]
+
     def _should_draw_standard_label(self, shape: Shape) -> bool:
         """Return whether the standard Canvas label should be drawn."""
         if not self.show_labels:
