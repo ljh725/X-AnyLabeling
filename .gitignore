@@ -189,3 +189,17 @@ conversations/
 exported/
 .specstory/
 .understand-anything/
+
+# 个人临时数据/调试样本 (不进仓库，保留本地)
+# - 顶层散落的调试截图与临时导出
+/s55_crop*.jpg
+/tmp_export.json
+/line-*.json
+/glm-code-xianshimoshi.html
+/html-case/
+# - scripts 下的调试样本 (保留 scripts/*.py 脚本本身)
+/scripts/s*.jpg
+/scripts/s*.json
+/scripts/s*_pred.json
+# - pose_qa 下的数据样本 (保留 pose_qa/*.py 与 *.md)
+/pose_qa/s*.json
