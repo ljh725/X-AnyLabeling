@@ -189,3 +189,6 @@ conversations/
 exported/
 .specstory/
 .understand-anything/
+
+# Windows 误生成的空设备文件（Git Bash 里 > nul 重定向会落盘成真实文件）
+nul

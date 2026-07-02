@@ -2017,7 +2017,15 @@ class LabelDialog(QtWidgets.QDialog):
         self.delete_flags()
         for key in flags:
             item = QtWidgets.QCheckBox(key, self)
-            item.setChecked(flags[key])
+            # [DEBUG] 排查 flags 值为非 bool 的来源
+            if not isinstance(flags[key], bool):
+                logger.error(
+                    "非布尔 flags 值: key=%r, value=%r, type=%s",
+                    key,
+                    flags[key],
+                    type(flags[key]).__name__,
+                )
+            item.setChecked(bool(flags[key]))
             self.flags_layout.addWidget(item)
             item.show()
 
