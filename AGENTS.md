@@ -109,6 +109,33 @@ python scripts/compile_languages.py # Rebuild .qm + resources.py after .ts chang
 - 表格刷新时检查 `table_widget.is_editing` 防止模型重置杀掉编辑器
 - `_json_path_to_image()` 通过 basename（非完整路径）匹配 JSON → 图片，支持图片/JSON 分目录存放
 
+### 阶段一 L1/L2 质检模块 (`anylabeling/views/labeling/widgets/inspector/quality/`)
+
+纯 Python（不依赖 PyQt6），可独立 import。规格见 `docs/阶段一L1_L2质检规则阈值与输出规格_v0.md`。
+
+| 文件 | 职责 |
+|------|------|
+| `threshold_profile.py` | YAML loader + schema 校验（direction/error_requires/two_sided） |
+| `quality_issue.py` | `QcShape`/`QcFile`/`QcShapeLoader`（保留原始 points）+ `QualityIssue`/`QualityReport` |
+| `geometry.py` | bbox/overlap/containment/overflow/expand/归一化距离/y_rel/body band |
+| `matching.py` | face→head（严格）+ head→person（宽松）硬过滤+打分+ambiguous |
+| `severity_eval.py` | 共享阈值评估：direction + `error_requires` 二次确认 |
+| `l1_rules.py` | L1 硬规则（label/shape_type/points/group_id/bbox 合法性） |
+| `l2_rules.py` | 12 条 L2 规则（L2-01~L2-12），按 `_L2_RUNNERS` 注册 |
+| `report_writer.py` | `run_quality_check()` 主驱动 → `review.tsv` + `report.json` |
+| `feedback.py` | 读 `review_feedback.tsv`，校验 decision/final_action 枚举 |
+| `threshold_suggestion.py` | 9 级优先级触发 → `threshold_suggestion.json`（恒 pending） |
+
+**关键约束**：
+- 质检只读，绝不写回 JSON；`qa_entity_id` 不写入正式 shape。
+- 跨类 face/head/person 关系只是 QA 临时推断，不绑定正式 `group_id`。
+- `error_requires` 未满足时 error 自动降级为 warning。
+- `threshold_suggestion.json` 的 `approval.status` 恒为 `pending`，不自动改 YAML。
+- 现有 `FlattenedRecord` 只存 `points_count` 不存原始 points，故质检用独立 `QcShapeLoader`。
+- 阈值配置：`anylabeling/configs/quality/l1_l2_threshold_profile_v0.yaml`（`profile_id: v0_default`）。
+- CLI：`scripts/run_l1l2_qc.py`（生成 review.tsv+report.json）、`scripts/gen_threshold_suggestion.py`（生成建议）。
+- 测试：`tests/test_quality_{geometry,matching,thresholds,output,suggestion}.py`（101 用例）。
+
 ## Agent tasks
 - **Add auto-labeling model**: wrapper in `anylabeling/services/auto_labeling/` (or `__base__/` for family bases), YAML config in `anylabeling/configs/auto_labeling/`, entry in `anylabeling/configs/models.yaml`, ONNX export script in `tools/onnx_exporter/` if needed.
 - **Add label converter**: extend `BaseLabelConverter` in `tools/label_converter.py`, wire into `anylabeling/views/common/converter.py` for CLI access.

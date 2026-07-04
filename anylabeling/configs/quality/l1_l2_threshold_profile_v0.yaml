@@ -1,0 +1,307 @@
+# 阶段一 L1/L2 质检阈值配置 v0
+#
+# 定位：高风险样本发现器，不是自动判官。跨类几何关系只作为 QA 临时
+# 推断，不写回正式 group_id，也不写回正式 JSON。
+#
+# 规划原则：
+#   规则算法写在代码里。
+#   阈值参数写在配置里。
+#   后续调参只改配置，不改规则代码。
+#
+# 字段说明：
+#   rule_id              稳定编号，例如 L2-02
+#   rule_name            稳定名称，issue / feedback 回连主键
+#   enabled              是否启用
+#   default_severity     规则默认初始风险（error/warning/info）
+#   primary_metric       主指标名，用于排序、复盘和阈值回流
+#   direction            higher_is_worse / lower_is_worse /
+#                        two_sided / higher_abs_is_worse
+#   warning_threshold    触发 warning 的阈值（dict 或 scalar）
+#   error_threshold      触发 error 的阈值；null/“-” 表示不建议仅凭
+#                        primary_metric 直接升为 error
+#   error_requires       error 二次确认条件（list[str]），空表示无需
+#                        二次确认即可直接升 error
+#
+# 详见 docs/阶段一L1_L2质检规则阈值与输出规格_v0.md 第 2、3 节。
+
+profile_id: v0_default
+schema_version: l1_l2_qc.v1
+description: >-
+  阶段一保守基线。宁可把不确定样本作为 warning / info 交给人工复核，
+  也不把合法的单类 head / face 场景直接判成错误。
+
+# face -> head 候选硬过滤阈值（见规格第 4 节）
+face_head_hard_filter:
+  min_x_overlap: 0.25
+  min_y_overlap: 0.15
+  max_face_head_area_ratio: 0.85
+  head_expand_ratio: 0.15
+  max_overflow_ratio: 0.30
+
+# face -> head 打分权重
+face_head_score_weights:
+  containment: 0.35
+  center_alignment: 0.20
+  area_ratio: 0.20
+  overlap: 0.25
+
+# head -> person 候选硬过滤阈值（见规格第 5 节）
+head_person_hard_filter:
+  min_x_overlap: 0.15
+  max_head_y_rel_in_person: 0.60
+  max_head_person_area_ratio: 0.40
+  person_expand_ratio: 0.20
+
+# head -> person 打分权重
+head_person_score_weights:
+  upper_body_position: 0.30
+  x_overlap: 0.25
+  area_ratio: 0.20
+  center_distance: 0.15
+  keypoint_support: 0.10
+
+# 匹配阈值
+matching:
+  min_accept_score: 0.55      # 候选最高分低于此值视为无可靠匹配
+  ambiguous_top_gap: 0.12     # top1 与 top2 分差小于此值视为 ambiguous
+  top_n_candidates: 3         # 每条匹配类 issue 至少保留的候选数
+
+# 关键点 -> 人体分区期望 y_rel 区间（见规格 L2-10）
+body_part_bands:
+  nose:
+    label_aliases: [nose]
+    y_rel_max: 0.35
+  eye:
+    label_aliases: [l_eye, r_eye]
+    y_rel_max: 0.35
+  ear:
+    label_aliases: [l_ear, r_ear]
+    y_rel_max: 0.35
+  shoulder:
+    label_aliases: [l_sho, r_sho]
+    y_rel_min: 0.10
+    y_rel_max: 0.50
+  hip:
+    label_aliases: [l_hip, r_hip]
+    y_rel_min: 0.35
+    y_rel_max: 0.85
+  ankle:
+    label_aliases: [l_ank, r_ank]
+    y_rel_min: 0.55
+
+# 躯干关键点（L2-09 越界更严重）
+torso_keypoints:
+  - l_sho
+  - r_sho
+  - l_hip
+  - r_hip
+
+# 头部点标签（L2-11）
+head_keypoint_labels:
+  - nose
+  - l_eye
+  - r_eye
+  - l_ear
+  - r_ear
+
+# person 扩展参数（L2-09）
+person_expand_for_keypoints:
+  ratio: 0.05
+  min_pixels: 8.0
+
+rules:
+  # ---- L1 硬规则（JSON 字段 / 基础合法性）----
+  - rule_id: L1-01
+    rule_name: label_required
+    enabled: true
+    default_severity: error
+    primary_metric: null
+    direction: higher_is_worse
+    warning_threshold: null
+    error_threshold: 1
+    error_requires: []
+
+  - rule_id: L1-02
+    rule_name: shape_type_binding
+    enabled: true
+    default_severity: error
+    primary_metric: null
+    direction: higher_is_worse
+    warning_threshold: null
+    error_threshold: 1
+    error_requires: []
+
+  - rule_id: L1-03
+    rule_name: points_required
+    enabled: true
+    default_severity: error
+    primary_metric: null
+    direction: higher_is_worse
+    warning_threshold: null
+    error_threshold: 1
+    error_requires: []
+
+  - rule_id: L1-04
+    rule_name: group_id_required
+    enabled: true
+    default_severity: error
+    primary_metric: null
+    direction: higher_is_worse
+    warning_threshold: null
+    error_threshold: 1
+    error_requires: []
+
+  - rule_id: L1-05
+    rule_name: bbox_geom_valid
+    enabled: true
+    default_severity: error
+    primary_metric: bbox_validity
+    direction: lower_is_worse
+    warning_threshold: null
+    error_threshold: 1
+    error_requires: []
+
+  # ---- L2 几何 / 视觉关系规则 ----
+  - rule_id: L2-01
+    rule_name: face_matched_head_candidate
+    enabled: true
+    default_severity: warning
+    primary_metric: face_head_match_gap
+    direction: higher_is_worse
+    warning_threshold:
+      min_accept_score: 0.55   # best score < 0.55 → gap >= 0.45
+    error_threshold: null
+    error_requires: []
+
+  - rule_id: L2-02
+    rule_name: face_inside_matched_head
+    enabled: true
+    default_severity: warning
+    primary_metric: face_head_overflow_ratio
+    direction: higher_is_worse
+    warning_threshold: 0.10
+    error_threshold: 0.20
+    error_requires: []
+
+  - rule_id: L2-03
+    rule_name: face_head_area_ratio
+    enabled: true
+    default_severity: warning
+    primary_metric: face_head_area_ratio
+    direction: two_sided
+    warning_threshold:
+      min: 0.05
+      max: 0.70
+    error_threshold:
+      # 上界：>=0.85 或 face >= head
+      max: 0.85
+    error_requires:
+      - face_area_ge_head_area   # face_area >= head_area 时直接 error
+
+  - rule_id: L2-04
+    rule_name: face_head_center_alignment
+    enabled: true
+    default_severity: warning
+    primary_metric: face_head_center_distance_norm
+    direction: higher_is_worse
+    warning_threshold: 0.35
+    error_threshold: 0.50
+    error_requires: []
+
+  - rule_id: L2-05
+    rule_name: head_matched_person_candidate
+    enabled: true
+    default_severity: info
+    primary_metric: head_person_match_gap
+    direction: higher_is_worse
+    warning_threshold:
+      min_accept_score: 0.55
+    error_threshold: null
+    error_requires: []
+
+  - rule_id: L2-06
+    rule_name: head_person_spatial
+    enabled: true
+    default_severity: warning
+    primary_metric: head_person_spatial_violation_score
+    direction: higher_is_worse
+    warning_threshold: 0.35
+    error_threshold: 0.70
+    error_requires:
+      - head_center_y_rel_gt_0_80      # head 中心 y_rel > 0.80
+      - x_overlap_ratio_lt_0_05        # x 重叠 < 0.05
+      - outside_expanded_person        # head 明显离开 person 扩展框
+
+  - rule_id: L2-07
+    rule_name: head_person_area_ratio
+    enabled: true
+    default_severity: warning
+    primary_metric: head_person_area_ratio
+    direction: two_sided
+    warning_threshold:
+      min: 0.015
+      max: 0.35
+    error_threshold:
+      max: 0.50
+    error_requires: []
+
+  - rule_id: L2-08
+    rule_name: cross_class_size_order
+    enabled: true
+    default_severity: warning
+    primary_metric: size_order_violation_score
+    direction: higher_is_worse
+    warning_threshold: 0.0
+    error_threshold:
+      face_head: 0.95    # face_area >= head_area * 0.95
+      head_person: 0.50  # head_area >= person_area * 0.50
+    error_requires:
+      - face_ge_head_0_95
+      - head_ge_person_0_50
+
+  - rule_id: L2-09
+    rule_name: keypoint_inside_person
+    enabled: true
+    default_severity: warning
+    primary_metric: keypoint_outside_distance_norm
+    direction: higher_is_worse
+    warning_threshold: 0.0
+    error_threshold: 0.08
+    error_requires:
+      - torso_keypoint_outside          # 躯干点越界
+      - outside_count_ge_3             # 越界点数量 >= 3
+      - farthest_outside_exceeds_margin # 最远越界距离明显超过扩展框
+
+  - rule_id: L2-10
+    rule_name: body_part_vertical_band
+    enabled: true
+    default_severity: warning
+    primary_metric: body_part_band_violation_distance
+    direction: higher_is_worse
+    warning_threshold: 0.0
+    error_threshold: 0.20
+    error_requires:
+      - keypoint_crossed_wrong_band     # 跨到明显错误身体区
+      - multiple_keypoints_anomalous    # 同一 person 多点同时异常
+
+  - rule_id: L2-11
+    rule_name: head_keypoints_near_head_face
+    enabled: true
+    default_severity: warning
+    primary_metric: head_keypoint_box_distance_norm
+    direction: higher_is_worse
+    warning_threshold: 0.0
+    error_threshold: 0.20
+    error_requires:
+      - at_least_two_head_keypoints_far  # nose/eye/ear 至少 2 个远离
+
+  - rule_id: L2-12
+    rule_name: image_level_class_density
+    enabled: true
+    default_severity: info
+    primary_metric: class_density_zscore
+    direction: higher_abs_is_worse
+    warning_threshold:
+      abs_z: 3.5
+    error_threshold: null
+    error_requires: []

@@ -1,44 +1,64 @@
-# flake8: noqa
+"""Lazy exports for labeling widgets.
 
-from .about_dialog import AboutDialog
-from .auto_labeling import AutoLabelingWidget
-from .brightness_contrast_dialog import BrightnessContrastDialog
-from .canvas import Canvas
-from .compare_view import CompareViewManager, CompareViewSlider
-from .chatbot_dialog import ChatbotDialog
-from .classifier_dialog import ClassifierDialog
-from .crosshair_settings_dialog import CrosshairSettingsDialog
-from .file_dialog_preview import FileDialogPreview
-from .filter_label_widget import (
-    GroupIDFilterComboBox,
-    LabelFilterComboBox,
-    ShapeTypeFilterComboBox,
-)
-from .shape_dialog import ShapeModifyDialog
-from .digit_shortcut_page_manager import DigitShortcutPageManager
-from .digit_rename_manager import (
-    DigitRenameManager,
-    DigitRenameShortcutDialog,
-)
-from .label_dialog import (
-    DigitShortcutDialog,
-    GroupIDModifyDialog,
-    LabelDialog,
-    LabelModifyDialog,
-    LabelQLineEdit,
-)
-from .label_list_widget import LabelListWidget, LabelListWidgetItem
-from .model_dropdown_widget import SearchBar
-from .navigator_widget import NavigatorDialog
-from .overview_dialog import OverviewDialog
-from .polygon_sides_dialog import PolygonSidesDialog
-from .ppocr_dialog import PPOCRDialog
-from .popup import Popup
-from .toolbar import ToolBar
-from .unique_label_qlist_widget import UniqueLabelQListWidget
-from .vqa_dialog import VQADialog
-from .keypoint_fill_mode import KeypointFillMode
-from .keypoint_tool_window import KeypointToolWindow
-from .inspector import InspectorPanel
-from .viewport_controller import ViewportController
-from .zoom_widget import ZoomWidget
+Keeping this package import-light lets pure-Python subpackages such as
+``widgets.inspector.quality`` be imported without loading PyQt widgets.
+"""
+
+from __future__ import annotations
+
+from importlib import import_module
+from typing import Any, Dict
+
+_LAZY_IMPORTS: Dict[str, str] = {
+    "AboutDialog": "about_dialog",
+    "AutoLabelingWidget": "auto_labeling",
+    "BrightnessContrastDialog": "brightness_contrast_dialog",
+    "Canvas": "canvas",
+    "CompareViewManager": "compare_view",
+    "CompareViewSlider": "compare_view",
+    "ChatbotDialog": "chatbot_dialog",
+    "ClassifierDialog": "classifier_dialog",
+    "CrosshairSettingsDialog": "crosshair_settings_dialog",
+    "DigitRenameManager": "digit_rename_manager",
+    "DigitRenameShortcutDialog": "digit_rename_manager",
+    "DigitShortcutDialog": "label_dialog",
+    "DigitShortcutPageManager": "digit_shortcut_page_manager",
+    "FileDialogPreview": "file_dialog_preview",
+    "GroupIDFilterComboBox": "filter_label_widget",
+    "GroupIDModifyDialog": "label_dialog",
+    "InspectorPanel": "inspector",
+    "KeypointFillMode": "keypoint_fill_mode",
+    "KeypointToolWindow": "keypoint_tool_window",
+    "LabelDialog": "label_dialog",
+    "LabelFilterComboBox": "filter_label_widget",
+    "LabelListWidget": "label_list_widget",
+    "LabelListWidgetItem": "label_list_widget",
+    "LabelModifyDialog": "label_dialog",
+    "LabelQLineEdit": "label_dialog",
+    "NavigatorDialog": "navigator_widget",
+    "OverviewDialog": "overview_dialog",
+    "PPOCRDialog": "ppocr_dialog",
+    "PolygonSidesDialog": "polygon_sides_dialog",
+    "Popup": "popup",
+    "SearchBar": "model_dropdown_widget",
+    "ShapeModifyDialog": "shape_dialog",
+    "ShapeTypeFilterComboBox": "filter_label_widget",
+    "ToolBar": "toolbar",
+    "UniqueLabelQListWidget": "unique_label_qlist_widget",
+    "ViewportController": "viewport_controller",
+    "VQADialog": "vqa_dialog",
+    "ZoomWidget": "zoom_widget",
+}
+
+__all__ = tuple(_LAZY_IMPORTS)
+
+
+def __getattr__(name: str) -> Any:
+    """Import widget symbols only when they are requested."""
+    module_name = _LAZY_IMPORTS.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module = import_module(f"{__name__}.{module_name}")
+    value = getattr(module, name)
+    globals()[name] = value
+    return value
