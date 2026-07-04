@@ -269,20 +269,18 @@ class QualityIssue:
     review_status: str = "unreviewed"
 
     def issue_id(self) -> str:
-        """Stable id: run_id + file + shape + rule + primary metric value.
+        """Stable id: file + shape + rule + primary metric value.
 
-        Stable across re-runs on the same input + threshold profile so
-        human feedback can be re-linked after a re-scan.
+        ``run_id`` intentionally stays out of this id. Full-dataset scans
+        and single-file re-scans produce different run ids, but they still
+        need to re-link the same human review decision.
         """
         metric_key = ""
         if self.primary_metric is not None:
             metric_key = (
                 f"{self.primary_metric.name}:{self.primary_metric.value:.4f}"
             )
-        raw = (
-            f"{self.run_id}|{self.file_path}|{self.shape_index}|"
-            f"{self.rule_name}|{metric_key}"
-        )
+        raw = f"{self.file_path}|{self.shape_index}|{self.rule_name}|{metric_key}"
         return hashlib.md5(raw.encode("utf-8")).hexdigest()[:16]
 
     def to_dict(self) -> Dict[str, Any]:

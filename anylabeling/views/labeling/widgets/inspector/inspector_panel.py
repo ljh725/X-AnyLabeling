@@ -41,6 +41,21 @@ from .editable_table_widget import EditableTableWidget
 from .rule_config_widget import RuleConfigWidget
 from .export_manager import ExportManager, ExportResult
 from .external_result_importer import ExternalResultImporter
+from .quality_scan_worker import QualityScanThread
+from .quality_review_widget import QualityReviewWidget
+from .quality.quality_issue import QualityReport
+from .quality.quality_review_queue import (
+    QualityReviewItem,
+    QualityReviewQueue,
+)
+from .quality.threshold_profile import (
+    ThresholdProfile,
+    load_threshold_profile,
+)
+from .quality.threshold_suggestion import (
+    SuggestionContext,
+    generate_threshold_suggestion,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +199,13 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._issue_list = IssueListWidget()
         self._tab_widget.addTab(self._issue_list, self.tr("数据检查"))
 
+        # L1/L2 quality review queue tab (inserted at index 1, right
+        # after 数据检查, leaving the existing IssueListWidget untouched).
+        self._quality_review = QualityReviewWidget()
+        self._tab_widget.insertTab(
+            1, self._quality_review, self.tr("质检复核")
+        )
+
         self._table_widget = EditableTableWidget()
         self._tab_widget.addTab(self._table_widget, self.tr("数据表格"))
 
@@ -203,9 +225,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
             self.issue_navigate_requested.emit
         )
         self._issue_list.rescan_requested.connect(self.run_scan)
-        self._issue_list.scan_current_requested.connect(
-            self.run_scan_current
-        )
+        self._issue_list.scan_current_requested.connect(self.run_scan_current)
         self._issue_list.import_requested.connect(
             self._on_import_external_results
         )
@@ -220,11 +240,42 @@ class InspectorPanel(QtWidgets.QDockWidget):
 
         self._rule_config.config_changed.connect(self._on_rule_config_changed)
 
+        # ── wire quality review signals ─────────────────────────
+        # navigation reuses the existing issue_navigate_requested path so
+        # the parent label_widget needs no changes.
+        self._quality_review.issue_clicked.connect(
+            self.issue_navigate_requested.emit
+        )
+        self._quality_review.import_requested.connect(
+            self._on_import_quality_report
+        )
+        self._quality_review.rescan_current_requested.connect(
+            self._on_rescan_current_quality
+        )
+        self._quality_review.generate_suggestion_requested.connect(
+            self._on_generate_quality_suggestion
+        )
+        self._quality_review.review_changed.connect(
+            self._on_quality_review_changed
+        )
+
         # ── state ────────────────────────────────────────────────
         self._last_report: Optional[ValidationReport] = None
         self._file_list: List[str] = []
         self._scan_thread: Optional[InspectorScanThread] = None
         self._current_file_path: Optional[str] = None
+        # L1/L2 quality review state
+        self._quality_thread: Optional[QualityScanThread] = None
+        self._quality_scan_target_path: Optional[str] = None
+        self._quality_profile: Optional[ThresholdProfile] = None
+        self._quality_feedback_path: Optional[str] = None
+        self._quality_feedback_dirty = False
+        self._quality_feedback_save_timer = QtCore.QTimer(self)
+        self._quality_feedback_save_timer.setSingleShot(True)
+        self._quality_feedback_save_timer.setInterval(1500)
+        self._quality_feedback_save_timer.timeout.connect(
+            self._flush_quality_feedback
+        )
 
         # Populate rule config UI from initial engine
         self._rule_config.populate(self._engine.rules)
@@ -451,6 +502,265 @@ class InspectorPanel(QtWidgets.QDockWidget):
             self._issue_list.summary_label.setToolTip("")
             self._issue_list.summary_label.setText(summary)
 
+    # ── L1/L2 quality review handlers ────────────────────────────
+
+    def _ensure_quality_profile(self) -> ThresholdProfile:
+        """Lazily load the bundled v0 threshold profile on first use."""
+        if self._quality_profile is None:
+            try:
+                self._quality_profile = load_threshold_profile()
+            except Exception:  # noqa: BLE001
+                logger.exception("Failed to load quality threshold profile")
+                raise
+        return self._quality_profile
+
+    def _on_import_quality_report(self) -> None:
+        """Import a CLI-generated report.json / review.tsv into the queue."""
+        if self._quality_thread is not None:
+            return
+        start_dir = (
+            osp.dirname(self._file_list[0])
+            if self._file_list
+            else os.path.expanduser("~")
+        )
+        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            self.tr("导入 L1/L2 质检结果"),
+            start_dir,
+            self.tr("Quality Report (*.json *.tsv);;All Files (*)"),
+        )
+        if not file_path:
+            return
+
+        queue: QualityReviewQueue = self._quality_review.queue
+        queue.clear()
+        self._quality_feedback_path = None
+        self._quality_feedback_dirty = False
+        self._quality_feedback_save_timer.stop()
+        try:
+            if file_path.lower().endswith(".json"):
+                queue.load_report(file_path)
+            else:
+                queue.load_review_tsv(file_path)
+            # overlay existing feedback if a sidecar review_feedback.tsv
+            # sits next to the imported file
+            sidecar = osp.join(osp.dirname(file_path), "review_feedback.tsv")
+            if osp.isfile(sidecar):
+                queue.merge_feedback(sidecar)
+                self._quality_feedback_path = sidecar
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Failed to import quality report")
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("导入失败"),
+                self.tr("无法导入质检结果: %s") % str(exc),
+            )
+            return
+
+        self._quality_review.populate()
+        self._tab_widget.setCurrentWidget(self._quality_review)
+
+    def _on_quality_review_changed(self) -> None:
+        """Schedule review_feedback.tsv writing without blocking each click."""
+        self._quality_feedback_dirty = True
+        self._quality_feedback_save_timer.start()
+
+    def _flush_quality_feedback(self) -> None:
+        """Flush the current review state to review_feedback.tsv."""
+        if not self._quality_feedback_dirty:
+            return
+        path = self._choose_quality_feedback_path()
+        if path is None:
+            return
+        try:
+            self._quality_review.queue.write_feedback(path)
+            self._quality_feedback_dirty = False
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Failed to write review_feedback.tsv")
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("写反馈失败"),
+                self.tr("无法写入 review_feedback.tsv: %s") % str(exc),
+            )
+
+    def _choose_quality_feedback_path(self) -> Optional[str]:
+        """Resolve where to write review_feedback.tsv.
+
+        Defaults to a sidecar next to the imported report; otherwise asks.
+        """
+        if self._quality_feedback_path:
+            return self._quality_feedback_path
+        queue = self._quality_review.queue
+        base = queue.report_path
+        if base:
+            self._quality_feedback_path = osp.join(
+                osp.dirname(base), "review_feedback.tsv"
+            )
+            return self._quality_feedback_path
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            self.tr("保存复核反馈"),
+            "review_feedback.tsv",
+            self.tr("TSV (*.tsv)"),
+        )
+        if path:
+            self._quality_feedback_path = path
+        return self._quality_feedback_path or None
+
+    def _on_rescan_current_quality(self) -> None:
+        """Re-scan the current file's L1/L2 issues in the background."""
+        if self._quality_thread is not None:
+            return
+        json_path = (
+            self._quality_review.current_rescan_file()
+            or self._resolve_current_json_path()
+        )
+        if not json_path or not osp.isfile(json_path):
+            QtWidgets.QMessageBox.information(
+                self,
+                self.tr("复扫当前"),
+                self.tr("没有可复扫的当前文件。"),
+            )
+            return
+        try:
+            profile = self._ensure_quality_profile()
+        except Exception:
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("复扫当前"),
+                self.tr("无法加载阈值配置，复扫中止。"),
+            )
+            return
+
+        self._quality_thread = QualityScanThread(
+            json_paths=[json_path],
+            profile=profile,
+            input_root=osp.dirname(json_path),
+            parent=self,
+        )
+        self._quality_scan_target_path = json_path
+        self._quality_thread.scan_finished.connect(
+            self._on_quality_scan_finished
+        )
+        self._quality_thread.error.connect(self._on_quality_scan_error)
+        self._quality_review.rescan_btn.setEnabled(False)
+        self._quality_thread.start()
+
+    def _on_quality_scan_finished(self, report: QualityReport) -> None:
+        """Merge a single-file re-scan into the queue without losing
+        prior feedback (disappeared issues tagged resolved_after_rescan)."""
+        self._quality_thread = None
+        json_path = self._quality_scan_target_path
+        self._quality_scan_target_path = None
+        self._quality_review.rescan_btn.setEnabled(
+            self._quality_review.current_rescan_file() is not None
+        )
+        if json_path is None:
+            return
+        # convert the freshly-scanned QualityReport issues into
+        # QualityReviewItems for the same file
+        new_items: List[QualityReviewItem] = []
+        for issue in report.issues:
+            pm = issue.primary_metric
+            new_items.append(
+                QualityReviewItem(
+                    issue_id=issue.issue_id(),
+                    run_id=report.run_id,
+                    file_path=issue.file_path,
+                    shape_index=issue.shape_index,
+                    rule_id=issue.rule_id,
+                    rule_name=issue.rule_name,
+                    severity=issue.severity,
+                    message=issue.message,
+                    label=issue.label,
+                    group_id=issue.group_id,
+                    primary_metric_name=(pm.name if pm is not None else ""),
+                    primary_metric_value=(pm.value if pm is not None else 0.0),
+                    primary_metric_direction=(
+                        pm.direction if pm is not None else "higher_is_worse"
+                    ),
+                    original_severity=issue.severity,
+                )
+            )
+        result = self._quality_review.queue.rescan_file(json_path, new_items)
+        self._quality_review.populate()
+        logger.info(
+            "quality rescan merged: added=%d resolved=%d total=%d",
+            result["added"],
+            result["resolved"],
+            result["total"],
+        )
+
+    def _on_quality_scan_error(self, message: str) -> None:
+        self._quality_thread = None
+        self._quality_scan_target_path = None
+        self._quality_review.rescan_btn.setEnabled(
+            self._quality_review.current_rescan_file() is not None
+        )
+        QtWidgets.QMessageBox.warning(self, self.tr("复扫失败"), message)
+
+    def _on_generate_quality_suggestion(self) -> None:
+        """Generate threshold_suggestion.json (always pending, non-binding)."""
+        queue = self._quality_review.queue
+        report_path = queue.report_path
+        if (
+            not queue.has_report
+            or not report_path
+            or not osp.isfile(report_path)
+        ):
+            QtWidgets.QMessageBox.information(
+                self,
+                self.tr("生成建议"),
+                self.tr("请先导入 report.json 质检结果。"),
+            )
+            return
+        # ensure feedback is written first so the suggestion reflects
+        # the latest review decisions
+        feedback_path = self._choose_quality_feedback_path()
+        if feedback_path:
+            try:
+                self._flush_quality_feedback()
+            except Exception:  # noqa: BLE001
+                logger.exception("Failed to write feedback before suggestion")
+
+        out_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            self.tr("保存阈值建议"),
+            osp.join(osp.dirname(report_path), "threshold_suggestion.json"),
+            self.tr("JSON (*.json)"),
+        )
+        if not out_path:
+            return
+        try:
+            ctx = SuggestionContext(
+                report_path=report_path,
+                feedback_path=feedback_path or "",
+                base_threshold_profile=(
+                    self._quality_profile.profile_id
+                    if self._quality_profile
+                    else "v0_default"
+                ),
+            )
+            generate_threshold_suggestion(ctx, out_path)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Failed to generate threshold suggestion")
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("生成建议失败"),
+                self.tr("无法生成阈值建议: %s") % str(exc),
+            )
+            return
+        # emphasize the suggestion is non-binding
+        QtWidgets.QMessageBox.information(
+            self,
+            self.tr("阈值建议已生成"),
+            self.tr(
+                "建议已写入：\n%1\n\n"
+                "approval.status = pending，建议未生效，"
+                "不会自动修改阈值 YAML。"
+            ).arg(out_path),
+        )
+
     # ── Scan progress helpers ────────────────────────────────────
 
     def _set_scan_controls_enabled(self, enabled: bool) -> None:
@@ -529,9 +839,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._issue_list.populate(report)
         self.scan_finished.emit(report)
         self._update_export_button()
-        self._issue_list.scan_current_btn.setEnabled(
-            self._can_scan_current()
-        )
+        self._issue_list.scan_current_btn.setEnabled(self._can_scan_current())
 
         logger.info(
             "Inspector scan finished: %d issues (%d errors, %d warnings)",
@@ -588,6 +896,8 @@ class InspectorPanel(QtWidgets.QDockWidget):
         """
         self._current_file_path = file_path
         self._issue_list.scan_current_btn.setEnabled(self._can_scan_current())
+        # keep the quality review widget in sync (drives 复扫当前 + filter)
+        self._quality_review.set_current_file(file_path)
 
     def run_scan_current(self) -> None:
         """Re-scan and re-validate only the currently viewed file.
@@ -698,6 +1008,9 @@ class InspectorPanel(QtWidgets.QDockWidget):
         """Cancel an active background scan when the dock is closed."""
         if self._scan_thread is not None:
             self._scan_thread.cancel()
+        if self._quality_thread is not None:
+            self._quality_thread.cancel()
+        self._flush_quality_feedback()
         super().closeEvent(event)
 
     # ── Editable table API ───────────────────────────────────────

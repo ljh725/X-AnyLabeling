@@ -136,6 +136,27 @@ python scripts/compile_languages.py # Rebuild .qm + resources.py after .ts chang
 - CLI：`scripts/run_l1l2_qc.py`（生成 review.tsv+report.json）、`scripts/gen_threshold_suggestion.py`（生成建议）。
 - 测试：`tests/test_quality_{geometry,matching,thresholds,output,suggestion}.py`（101 用例）。
 
+### 质检复核队列（Inspector 第 2 个 Tab「质检复核」）
+
+把 L1/L2 质检接入 Inspector，形成人工复核工作台。**纯 Python 与 PyQt 严格分层**。
+
+| 文件 | 类型 | 职责 |
+|------|------|------|
+| `inspector/quality/quality_review_queue.py` | **纯 Python** | `QualityReviewItem` + `QualityReviewQueue`：加载 report.json/review.tsv、合并 feedback、筛选/排序、upsert、写回 TSV、复扫合并（标 `resolved_after_rescan`） |
+| `inspector/quality_scan_worker.py` | PyQt | `QualityScanThread(QThread)` 后台 worker，复用 `run_quality_check` 核心 |
+| `inspector/quality_review_widget.py` | PyQt | `QualityReviewWidget(QWidget)`：树表+筛选+复核动作+备注+进度摘要。信号 `issue_clicked(str,int)` 与现有导航契约一致 |
+| `inspector/inspector_panel.py`（扩展） | PyQt | 第 5 Tab 插在 index 1（`数据检查 \| 质检复核 \| 数据表格 \| 规则配置 \| 导出`），导入/复扫/阈值建议入口 |
+
+**关键约束**：
+- `quality/` 子包**绝不引 PyQt**（质量验收硬约束）；PyQt 文件在 `inspector/` 层。
+- 复核队列是 view，逻辑全在纯 Python `QualityReviewQueue`（可无 Qt 单测）。
+- 复核动作自动写 `review_feedback.tsv`（保留已有反馈，按 `issue_id` 合并）。
+- 复扫当前文件后：消失 issue 标 `resolved_after_rescan`（不删反馈），新 issue 追加为 pending。
+- 阈值建议入口调 `generate_threshold_suggestion`，UI 文案明确「建议未生效」。
+- 导航信号转发到现有 `issue_navigate_requested(str,int)`，`label_widget` 无需改。
+- 不破坏现有 `数据检查` Tab（8 条基础规则不变）。
+- 测试：`tests/test_quality_review_queue.py`（22 用例）+ `tests/test_quality_review_widget.py`（11 用例，PyQt offscreen）。
+
 ## Agent tasks
 - **Add auto-labeling model**: wrapper in `anylabeling/services/auto_labeling/` (or `__base__/` for family bases), YAML config in `anylabeling/configs/auto_labeling/`, entry in `anylabeling/configs/models.yaml`, ONNX export script in `tools/onnx_exporter/` if needed.
 - **Add label converter**: extend `BaseLabelConverter` in `tools/label_converter.py`, wire into `anylabeling/views/common/converter.py` for CLI access.
