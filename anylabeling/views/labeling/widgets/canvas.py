@@ -17,6 +17,7 @@ from anylabeling.views.labeling.widgets.pose_label import (
 )
 
 from .. import utils
+from .. import rect_edge_alignment as rea
 from ..logger import logger
 from ..shape import Shape
 
@@ -267,6 +268,20 @@ class Canvas(
         # Compare view support
         self.compare_pixmap = None
         self.split_position = 0.5
+
+        # Rectangle edge alignment mode (see rect_edge_alignment.py).
+        # All of these are purely transient in-memory state; none of them is
+        # persisted to JSON. ``rect_edge_reference_edge`` holds an in-memory
+        # ``RectEdgeRef`` that is never written into ``Shape.other_data``.
+        self.rect_edge_align_enabled = False
+        self.rect_edge_hover_edge = None
+        self.rect_edge_reference_edge = None
+        self.rect_edge_active_edge = None
+        self.rect_edge_dragging = False
+        self.rect_edge_drag_start_points = None
+        self.rect_edge_snap_active = False
+        self.rect_edge_snap_coord = None
+        self.rect_edge_invalid_edge = None
 
     def set_loading(self, is_loading: bool, loading_text: str = None):
         """Set loading state"""
@@ -950,6 +965,60 @@ class Canvas(
 
             return
 
+        # --------------------------------------------------------------
+        # Rectangle edge alignment (stage E.1 / D.2).
+        # Highest priority when active: if a target edge drag is in
+        # progress, update the preview live; otherwise compute the hover
+        # edge candidate. Both branches are no-ops when the mode is off.
+        # --------------------------------------------------------------
+        if self.rect_edge_align_enabled:
+            if self.rect_edge_dragging and self.rect_edge_active_edge is not None:
+                active = self.rect_edge_active_edge
+                reference = self.rect_edge_reference_edge
+                if active.axis == rea.RECT_EDGE_AXIS_X:
+                    coord = pos.x()
+                else:
+                    coord = pos.y()
+
+                snap_active = False
+                snap_coord = None
+                if reference is not None:
+                    snap_threshold_image = (
+                        rea.RECT_EDGE_SNAP_SCREEN_PX / self.scale
+                    )
+                    if abs(coord - reference.coord) <= snap_threshold_image:
+                        coord = reference.coord
+                        snap_active = True
+                        snap_coord = coord
+
+                self.rect_edge_snap_active = snap_active
+                self.rect_edge_snap_coord = snap_coord
+                # Live preview: mutate the target shape in place. The drag
+                # start points are preserved so Esc can restore them.
+                rea.apply_edge_coord(active.shape, active.edge_name, coord)
+                self.update()
+                return
+
+            # Hover candidate computation.
+            if not self.rect_edge_dragging:
+                prev_hover = self.rect_edge_hover_edge
+                candidate = self._rect_edge_hit_candidate(pos)
+                if (
+                    candidate is None
+                    or prev_hover is None
+                    or candidate.shape is not prev_hover.shape
+                    or candidate.edge_name != prev_hover.edge_name
+                ):
+                    self.rect_edge_hover_edge = candidate
+                    self.update()
+                # Still fall through to the normal hover loop below so that
+                # vertex hover keeps working when no edge is hovered.
+                if candidate is not None:
+                    # Edge hovered: suppress the default hover loop to avoid
+                    # clobbering the edge highlight with a whole-shape fill.
+                    self.show_shape.emit(-1, -1, pos)
+                    return
+
         self.show_shape.emit(-1, -1, pos)
 
         # Just hovering over the canvas, 2 possibilities:
@@ -1228,6 +1297,46 @@ class Canvas(
         pos = self.transform_pos(ev.position())
 
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
+            # ----------------------------------------------------------
+            # Rectangle edge alignment (stage D.3 / D.4).
+            # Handle early, but only while the mode is on, in editing mode,
+            # and a hovered edge exists. Loading/draw paths are unaffected
+            # because this block returns before reaching them only when the
+            # above preconditions hold.
+            # ----------------------------------------------------------
+            if (
+                self.rect_edge_align_enabled
+                and self.editing()
+                and self.rect_edge_hover_edge is not None
+            ):
+                hover = self.rect_edge_hover_edge
+                if self.rect_edge_reference_edge is None:
+                    # First click: pick the reference edge.
+                    self.rect_edge_reference_edge = hover
+                    self.rect_edge_active_edge = None
+                    self.rect_edge_snap_active = False
+                    self.rect_edge_snap_coord = None
+                    self.update()
+                    return
+                else:
+                    reference = self.rect_edge_reference_edge
+                    if rea.edges_are_compatible(reference, hover):
+                        # Second click: begin dragging the target edge.
+                        self.rect_edge_active_edge = hover
+                        self.rect_edge_dragging = True
+                        self.rect_edge_drag_start_points = list(
+                            hover.shape.points
+                        )
+                        self.rect_edge_snap_active = False
+                        self.rect_edge_snap_coord = None
+                        self.update()
+                        return
+                    else:
+                        # Incompatible (different axis or same shape): do
+                        # not start a drag. Flag for a brief invalid hint.
+                        self.rect_edge_invalid_edge = hover
+                        self.update()
+                        return
             if self.drawing():
                 if self.current:
                     # Add point to existing shape.
@@ -1455,6 +1564,35 @@ class Canvas(
                 self.selected_shapes_copy = []
                 self.repaint()
         elif ev.button() == QtCore.Qt.MouseButton.LeftButton:
+            # ----------------------------------------------------------
+            # Rectangle edge alignment (stage E.2): commit on release.
+            # One release forms exactly one undo granularity and only
+            # stores/emits when the geometry actually changed.
+            # ----------------------------------------------------------
+            if self.rect_edge_dragging:
+                active = self.rect_edge_active_edge
+                start_points = self.rect_edge_drag_start_points
+                changed = False
+                if active is not None and start_points is not None:
+                    current = active.shape.points
+                    if len(current) != len(start_points):
+                        changed = True
+                    else:
+                        for cur_pt, old_pt in zip(current, start_points):
+                            if (
+                                cur_pt.x() != old_pt.x()
+                                or cur_pt.y() != old_pt.y()
+                            ):
+                                changed = True
+                                break
+                if changed:
+                    self.store_shapes()
+                    self.shape_moved.emit()
+                # Clear target/drag/snap state but keep the reference edge so
+                # the user can align the next target.
+                self.clear_rect_edge_alignment(keep_reference=True)
+                self.update()
+                return
             if self.editing():
                 if (
                     self.h_hape is not None
@@ -3701,6 +3839,134 @@ class Canvas(
             if new_point is not None:
                 shape.points[i] = new_point
 
+    # ------------------------------------------------------------------
+    # Rectangle edge alignment mode (stages C/D/E).
+    # See docs/矩形边对齐功能实现任务文档.md and rect_edge_alignment.py.
+    # All logic here is guarded by ``self.rect_edge_align_enabled`` so the
+    # default editing experience is unchanged when the mode is off.
+    # ------------------------------------------------------------------
+
+    def set_rect_edge_align_enabled(self, enabled):
+        """Enable or disable the rectangle edge alignment mode.
+
+        When disabling, all transient edge state is cleared. Enabling does
+        not pick any edge and never creates a shape.
+
+        Args:
+            enabled: Whether the mode should be active.
+        """
+        self.rect_edge_align_enabled = bool(enabled)
+        if not self.rect_edge_align_enabled:
+            self.clear_rect_edge_alignment()
+        self.update()
+
+    def clear_rect_edge_alignment(self, keep_reference=False):
+        """Clear transient edge-alignment interaction state.
+
+        Args:
+            keep_reference: When True, keep the current reference edge but
+                clear the active target edge and drag/snap state. Used after
+                a release so the user can align the next target onto the
+                same reference.
+        """
+        self.rect_edge_hover_edge = None
+        self.rect_edge_active_edge = None
+        self.rect_edge_dragging = False
+        self.rect_edge_drag_start_points = None
+        self.rect_edge_snap_active = False
+        self.rect_edge_snap_coord = None
+        self.rect_edge_invalid_edge = None
+        if not keep_reference:
+            self.rect_edge_reference_edge = None
+
+    def cancel_rect_edge_drag(self):
+        """Cancel an in-progress edge drag and restore the pre-drag points.
+
+        Returns:
+            True if a drag was cancelled, False when no drag was active.
+        """
+        if not self.rect_edge_dragging:
+            return False
+
+        active = self.rect_edge_active_edge
+        start_points = self.rect_edge_drag_start_points
+        if active is not None and start_points is not None:
+            # Restore the target shape's points exactly as they were before
+            # the drag preview mutated them in place.
+            active.shape.points = list(start_points)
+            active.shape._invalidate_cache()
+
+        # Keep the reference edge so the user may pick another target.
+        self.clear_rect_edge_alignment(keep_reference=True)
+        self.update()
+        return True
+
+    def _handle_rect_edge_escape(self):
+        """Handle Esc while the edge alignment mode is active.
+
+        Cancels an in-progress drag, otherwise clears the reference edge.
+        Esc never toggles the mode itself nor the View-menu action.
+
+        Returns:
+            True when the key event was consumed, False to let the caller
+            fall through to the default Esc behaviour.
+        """
+        if self.rect_edge_dragging:
+            self.cancel_rect_edge_drag()
+            return True
+        if self.rect_edge_reference_edge is not None:
+            self.clear_rect_edge_alignment()
+            self.update()
+            return True
+        return False
+
+    def _rect_edge_hit_candidate(self, point):
+        """Return the best rectangle edge candidate under ``point``.
+
+        Only runs while the mode is enabled and the canvas is in editing
+        mode. Vertex hits take priority over edge hits: if a shape has a
+        vertex within epsilon, that shape is skipped (no edge candidate).
+
+        Candidates are ranked like ``_shape_hit_candidates``:
+        ``(1, edge_distance, area, -stack_index)`` — closer, smaller and
+        more-recently-created shapes win.
+
+        Args:
+            point: Mouse position in image coordinates.
+
+        Returns:
+            The best ``RectEdgeRef`` or ``None``.
+        """
+        if not self.rect_edge_align_enabled or not self.editing():
+            return None
+
+        epsilon = self.epsilon / self.scale
+
+        candidates = []
+        for stack_index, shape in enumerate(self.shapes):
+            if not self.is_shape_interactive(shape):
+                continue
+            if shape.shape_type != "rectangle":
+                continue
+            # Vertex priority: if a vertex is in range, defer to the normal
+            # vertex interaction instead of offering an edge candidate.
+            if shape.nearest_vertex(point, epsilon) is not None:
+                continue
+            result = rea.nearest_edge(shape, point, epsilon)
+            if result is None:
+                continue
+            edge, distance = result
+            rect = shape.bounding_rect()
+            area = abs(rect.width() * rect.height())
+            candidates.append(
+                ((1, distance, area, -stack_index), edge)
+            )
+
+        if not candidates:
+            return None
+        candidates.sort(key=lambda item: item[0])
+        return candidates[0][1]
+
     def move_by_keyboard(self, offset):
         """Move selected shapes by an offset (using keyboard)"""
         if self.selected_shapes:
@@ -3725,6 +3991,22 @@ class Canvas(
     # QT Overload
     def keyPressEvent(self, ev):
         """Key press event"""
+        key = ev.key()
+        # Rectangle edge alignment (stage E.3): Esc cancels the current
+        # process but never toggles the mode or the View-menu action. The
+        # default key handling lives in ``_dispatch_default_key_press`` so
+        # this dispatcher stays under the McCabe complexity cap.
+        if key == QtCore.Qt.Key.Key_Escape and self.rect_edge_align_enabled:
+            if self._handle_rect_edge_escape():
+                return
+        self._dispatch_default_key_press(ev)
+
+    def _dispatch_default_key_press(self, ev):
+        """Dispatch the pre-rect-edge-alignment key handling.
+
+        Args:
+            ev: The original :class:`QKeyEvent`.
+        """
         modifiers = ev.modifiers()
         key = ev.key()
         if self.drawing():
@@ -3884,6 +4166,9 @@ class Canvas(
         self.h_vertex = None
         self.h_edge = None
         self.h_cuboid_face = None
+        # Drop any in-progress rectangle edge alignment so no reference edge
+        # leaks across images.
+        self.clear_rect_edge_alignment()
         self.update()
         _t_total = time.perf_counter()
         total_time = _t_total - _t0
