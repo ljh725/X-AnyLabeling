@@ -4044,12 +4044,18 @@ class LabelingWidget(LabelDialog):
                 self.exit_keypoint_fill_mode()
 
         # Rectangle edge alignment is an edit-mode tool and is mutually
-        # exclusive with create modes. When entering any create mode (or
-        # when the mode flag is otherwise stale), drop edge alignment.
+        # exclusive with create modes. Only drop it when actually entering a
+        # create mode (edit=False). Returning to edit mode (e.g. via
+        # set_edit_mode() from toggle_rect_edge_align itself) must NOT clear
+        # the action, otherwise the menu and canvas state desync.
         rect_edge_action = getattr(
             self.actions, "toggle_rect_edge_align", None
         )
-        if rect_edge_action is not None and rect_edge_action.isChecked():
+        if (
+            not edit
+            and rect_edge_action is not None
+            and rect_edge_action.isChecked()
+        ):
             rect_edge_action.blockSignals(True)
             rect_edge_action.setChecked(False)
             rect_edge_action.blockSignals(False)

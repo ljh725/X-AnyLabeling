@@ -996,6 +996,14 @@ class Canvas(
                 # Live preview: mutate the target shape in place. The drag
                 # start points are preserved so Esc can restore them.
                 rea.apply_edge_coord(active.shape, active.edge_name, coord)
+                # Refresh the active edge from the just-mutated geometry so
+                # the overlay (orange/green status colour) follows the live
+                # preview position instead of the original edge.
+                updated_geom = rea.geometry_from_shape(active.shape)
+                if updated_geom is not None:
+                    self.rect_edge_active_edge = rea.edge_from_geometry(
+                        active.shape, updated_geom, active.edge_name
+                    )
                 self.update()
                 return
 
@@ -1014,8 +1022,12 @@ class Canvas(
                 # Still fall through to the normal hover loop below so that
                 # vertex hover keeps working when no edge is hovered.
                 if candidate is not None:
-                    # Edge hovered: suppress the default hover loop to avoid
-                    # clobbering the edge highlight with a whole-shape fill.
+                    # Edge hovered: clear any stale shape/vertex/edge/cuboid
+                    # hover state left over from a previous frame so the old
+                    # highlight does not bleed through, then suppress the
+                    # default hover loop (which would draw a whole-shape
+                    # fill and clobber the edge highlight).
+                    self.un_highlight()
                     self.show_shape.emit(-1, -1, pos)
                     return
 
