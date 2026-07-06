@@ -3151,6 +3151,13 @@ class Canvas(
                 self.pose_config.occlusion_count = count
                 self.pose_occlusion_count_changed.emit(count)
 
+        # Rectangle edge alignment overlay (stage F). Drawn after the main
+        # shape pass so the status colour covers the underlying rectangle
+        # edge. Shape.scale is already set and the painter is in pixmap
+        # space, matching the convention used by the cross-line below.
+        if self.rect_edge_align_enabled:
+            self._draw_rect_edge_alignment_overlay(p)
+
         # Draw mouse coordinates
         if self.cross_line_show:
             pen = QtGui.QPen(
@@ -3966,6 +3973,93 @@ class Canvas(
             return None
         candidates.sort(key=lambda item: item[0])
         return candidates[0][1]
+
+    def _draw_rect_edge_alignment_overlay(self, painter):
+        """Draw the rectangle edge alignment status overlay (stage F).
+
+        Status colours only cover the specific edge each interaction is
+        about; non-participating rectangles keep their original colour:
+
+        ===========  =============  =======
+        state        colour         style
+        ===========  =============  =======
+        hover        white          thin solid
+        reference    blue           medium dash
+        active       orange         medium solid
+        snap         green          thick solid
+        invalid      red (transient) medium solid
+        ===========  =============  =======
+
+        Line widths are scaled by ``Shape.scale`` so they stay visually
+        stable across zoom levels and never grow thick when zoomed in.
+
+        Args:
+            painter: The active :class:`QPainter` (already scaled to pixmap
+                space by ``paintEvent``).
+        """
+        # Snap overrides the active edge colour.
+        active = self.rect_edge_active_edge
+        if active is not None:
+            if self.rect_edge_snap_active:
+                self._draw_edge(
+                    painter, active, QtGui.QColor(0, 200, 0), width=3.0
+                )
+            else:
+                self._draw_edge(
+                    painter, active, QtGui.QColor(255, 165, 0), width=2.0
+                )
+
+        reference = self.rect_edge_reference_edge
+        if reference is not None:
+            self._draw_edge(
+                painter,
+                reference,
+                QtGui.QColor(0, 120, 255),
+                width=2.0,
+                dash=True,
+            )
+
+        hover = self.rect_edge_hover_edge
+        # Don't repaint the hover edge if it coincides with a higher-priority
+        # active/reference state (avoids colour flicker).
+        if hover is not None:
+            if active is not None and hover.shape is active.shape:
+                pass
+            elif (
+                reference is not None and hover.shape is reference.shape
+            ):
+                pass
+            else:
+                self._draw_edge(
+                    painter, hover, QtGui.QColor(255, 255, 255), width=1.5
+                )
+
+        invalid = self.rect_edge_invalid_edge
+        if invalid is not None:
+            self._draw_edge(
+                painter, invalid, QtGui.QColor(255, 60, 60), width=2.0
+            )
+
+    @staticmethod
+    def _draw_edge(painter, edge, color, width=2.0, dash=False):
+        """Draw a single edge segment with a screen-stable pen.
+
+        Args:
+            painter: The active :class:`QPainter`.
+            edge: The :class:`RectEdgeRef` to draw.
+            color: The :class:`QtGui.QColor` for the edge.
+            width: Base line width (divided by ``Shape.scale``).
+            dash: When True, use a dashed style.
+        """
+        style = Qt.PenStyle.DashLine if dash else Qt.PenStyle.SolidLine
+        pen = QtGui.QPen(
+            color,
+            max(1, int(round(width / Shape.scale))),
+            style,
+        )
+        painter.setPen(pen)
+        painter.setOpacity(1.0)
+        painter.drawLine(edge.p1, edge.p2)
 
     def move_by_keyboard(self, offset):
         """Move selected shapes by an offset (using keyboard)"""
