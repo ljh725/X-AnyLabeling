@@ -1501,6 +1501,15 @@ class LabelingWidget(LabelDialog):
             checked=self._config.get("pose_view", {}).get("enabled", False),
             enabled=True,
         )
+        toggle_rect_edge_align = action(
+            self.tr("矩形边对齐"),
+            self.toggle_rect_edge_align,
+            tip=self.tr("开启矩形边对齐模式"),
+            icon=None,
+            checkable=True,
+            checked=False,  # Not persisted; always off at startup (per spec).
+            enabled=True,
+        )
 
         # Languages
         select_lang_en = action(
@@ -2109,6 +2118,7 @@ class LabelingWidget(LabelDialog):
             show_attributes=show_attributes,
             show_linking=show_linking,
             label_on_selection=label_on_selection,
+            toggle_rect_edge_align=toggle_rect_edge_align,
             show_navigator=show_navigator,
             toggle_inspector=toggle_inspector,
             toggle_global_filter_keep=toggle_global_filter_keep,
@@ -2459,6 +2469,7 @@ class LabelingWidget(LabelDialog):
                 show_linking,
                 label_on_selection,
                 pose_view,
+                toggle_rect_edge_align,
                 show_groups,
                 hide_selected_polygons,
                 show_hidden_polygons,
@@ -4031,6 +4042,18 @@ class LabelingWidget(LabelDialog):
         ):
             if edit or create_mode != "point":
                 self.exit_keypoint_fill_mode()
+
+        # Rectangle edge alignment is an edit-mode tool and is mutually
+        # exclusive with create modes. When entering any create mode (or
+        # when the mode flag is otherwise stale), drop edge alignment.
+        rect_edge_action = getattr(
+            self.actions, "toggle_rect_edge_align", None
+        )
+        if rect_edge_action is not None and rect_edge_action.isChecked():
+            rect_edge_action.blockSignals(True)
+            rect_edge_action.setChecked(False)
+            rect_edge_action.blockSignals(False)
+            self.canvas.set_rect_edge_align_enabled(False)
 
         # Disable auto labeling if needed
         if (
@@ -6972,6 +6995,21 @@ class LabelingWidget(LabelDialog):
         if hasattr(self, "pose_view_panel"):
             self.pose_view_panel.setVisible(enabled)
         self.canvas.update()
+
+    def toggle_rect_edge_align(self, enabled: bool) -> None:
+        """Toggle the rectangle edge alignment mode.
+
+        Edge alignment is an editing tool and is mutually exclusive with the
+        create/draw modes: enabling it forces a return to edit mode so the
+        two interactions never overlap.
+
+        Args:
+            enabled: Whether the rectangle edge alignment mode is on.
+        """
+        if enabled and self.canvas.drawing():
+            # Exit any active create mode so edge picking has the canvas.
+            self.set_edit_mode()
+        self.canvas.set_rect_edge_align_enabled(enabled)
 
     def _sync_pose_config(self) -> None:
         """Copy PoseDisplayConfig fields into self._config['pose_view']."""
