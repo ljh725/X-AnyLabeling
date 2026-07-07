@@ -20,8 +20,6 @@ from anylabeling.views.labeling.rect_edge_alignment import (  # noqa: E402
     RECT_EDGE_RIGHT,
     RECT_EDGE_TOP,
     apply_edge_coord,
-    edge_from_geometry,
-    edges_are_compatible,
     geometry_from_shape,
     geometry_with_edge_coord,
     iter_edges,
@@ -173,38 +171,6 @@ class TestNearestEdge(unittest.TestCase):
         # point clearly outside the epsilon envelope on the diagonal.
         result = nearest_edge(shape, QtCore.QPointF(50, 60), epsilon=2.0)
         self.assertIsNone(result)
-
-
-class TestEdgesAreCompatible(unittest.TestCase):
-    """B.5 — compatibility matrix."""
-
-    def _make_edge(self, edge_name, axis, shape):
-        geom = geometry_from_shape(shape)
-        return edge_from_geometry(shape, geom, edge_name)
-
-    def test_different_shape_same_axis_is_compatible(self):
-        a = self._make_edge(
-            RECT_EDGE_LEFT, RECT_EDGE_AXIS_X, _rect([(0, 0), (10, 10)])
-        )
-        b = self._make_edge(
-            RECT_EDGE_RIGHT, RECT_EDGE_AXIS_X, _rect([(20, 0), (30, 10)])
-        )
-        self.assertTrue(edges_are_compatible(a, b))
-
-    def test_same_shape_is_incompatible(self):
-        shape = _rect([(0, 0), (10, 10)])
-        a = self._make_edge(RECT_EDGE_LEFT, RECT_EDGE_AXIS_X, shape)
-        b = self._make_edge(RECT_EDGE_RIGHT, RECT_EDGE_AXIS_X, shape)
-        self.assertFalse(edges_are_compatible(a, b))
-
-    def test_different_axis_is_incompatible(self):
-        a = self._make_edge(
-            RECT_EDGE_LEFT, RECT_EDGE_AXIS_X, _rect([(0, 0), (10, 10)])
-        )
-        b = self._make_edge(
-            RECT_EDGE_TOP, RECT_EDGE_AXIS_Y, _rect([(20, 0), (30, 10)])
-        )
-        self.assertFalse(edges_are_compatible(a, b))
 
 
 class TestGeometryWithEdgeCoord(unittest.TestCase):

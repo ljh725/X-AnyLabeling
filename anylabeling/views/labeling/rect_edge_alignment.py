@@ -1,8 +1,8 @@
-"""Rectangle edge alignment geometry helper.
+"""Rectangle edge editing geometry helper.
 
 This module is a lightweight, QtWidgets-free helper that provides the
-geometry primitives used by the "rectangle edge alignment" interaction on
-the canvas.
+geometry primitives used by the rectangle edge editing interaction on the
+canvas.
 
 Scope (see ``docs/矩形边对齐功能实现任务文档.md``):
 
@@ -44,12 +44,6 @@ RECT_EDGE_NAMES = (
 RECT_EDGE_AXIS_X = "x"
 RECT_EDGE_AXIS_Y = "y"
 
-# Snap threshold expressed in screen pixels. The Canvas converts it to image
-# space via ``snap_threshold_image = RECT_EDGE_SNAP_SCREEN_PX / canvas.scale``.
-# Kept as a module-level constant on purpose (no UI config in v1).
-RECT_EDGE_SNAP_SCREEN_PX = 8.0
-
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -61,7 +55,7 @@ class RectGeometry:
 
     The geometry is always stored as min/max coordinates, regardless of the
     input point ordering. This is the canonical working model for the edge
-    alignment feature.
+    edge editing feature.
     """
 
     x_min: float
@@ -316,36 +310,6 @@ def nearest_edge(
         if dist <= epsilon and (best is None or dist < best[1]):
             best = (edge, dist)
     return best
-
-
-# ---------------------------------------------------------------------------
-# Compatibility
-# ---------------------------------------------------------------------------
-
-
-def edges_are_compatible(
-    reference: RectEdgeRef,
-    target: RectEdgeRef,
-) -> bool:
-    """Return whether ``target`` can be aligned onto ``reference``.
-
-    Two edges are compatible when they belong to different shapes and share
-    the same axis (cross-axis alignment is not supported in v1).
-
-    Args:
-        reference: The previously-picked reference edge.
-        target: The candidate target edge.
-
-    Returns:
-        True when the target may be aligned onto the reference.
-    """
-    if reference is None or target is None:
-        return False
-    if reference.shape is target.shape:
-        return False
-    if reference.axis != target.axis:
-        return False
-    return True
 
 
 # ---------------------------------------------------------------------------

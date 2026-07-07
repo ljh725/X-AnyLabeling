@@ -1502,9 +1502,9 @@ class LabelingWidget(LabelDialog):
             enabled=True,
         )
         toggle_rect_edge_align = action(
-            self.tr("矩形边对齐"),
+            self.tr("矩形边编辑"),
             self.toggle_rect_edge_align,
-            tip=self.tr("开启矩形边对齐模式"),
+            tip=self.tr("开启矩形边编辑模式"),
             icon=None,
             checkable=True,
             checked=False,  # Not persisted; always off at startup (per spec).
@@ -4043,7 +4043,7 @@ class LabelingWidget(LabelDialog):
             if edit or create_mode != "point":
                 self.exit_keypoint_fill_mode()
 
-        # Rectangle edge alignment is an edit-mode tool and is mutually
+        # Rectangle edge editing is an edit-mode tool and is mutually
         # exclusive with create modes. Only drop it when actually entering a
         # create mode (edit=False). Returning to edit mode (e.g. via
         # set_edit_mode() from toggle_rect_edge_align itself) must NOT clear
@@ -7003,14 +7003,14 @@ class LabelingWidget(LabelDialog):
         self.canvas.update()
 
     def toggle_rect_edge_align(self, enabled: bool) -> None:
-        """Toggle the rectangle edge alignment mode.
+        """Toggle the rectangle edge editing mode.
 
-        Edge alignment is an editing tool and is mutually exclusive with the
+        Edge editing is an editing tool and is mutually exclusive with the
         create/draw modes: enabling it forces a return to edit mode so the
         two interactions never overlap.
 
         Args:
-            enabled: Whether the rectangle edge alignment mode is on.
+            enabled: Whether the rectangle edge editing mode is on.
         """
         if enabled and self.canvas.drawing():
             # Exit any active create mode so edge picking has the canvas.
