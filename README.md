@@ -1,270 +1,215 @@
-<!--
-  ============================================================================
-  PERSONAL FORKL BANNER — do not remove this block when syncing upstream.
-  Upstream README content starts at the second <div align="center"> below.
-  ============================================================================
--->
-> ## 🔧 Personal Fork — Extended Features by [@ljh725](https://github.com/ljh725)
->
-> This is a personal fork of [CVHub520/X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling) (beta.4).
-> I extended it with **6 feature modules** focused on **data-quality inspection,
-> canvas interaction, and pose-annotation workflows**.
->
-> | # | Module | LOC | Tests | One-liner |
-> |---|--------|-----|-------|-----------|
-> | 1 | [L1/L2 Quality Engine](docs/portfolio/01-quality-engine.md) | ~4.4k | 148 | 12 geometry/visual rules + cross-class matching, pure-Python (no PyQt) |
-> | 2 | [Inspector Panel](docs/portfolio/02-inspector-panel.md) | ~3.8k | 60+ | 5-tab QA workbench, plug-in rule engine, click-to-navigate |
-> | 3 | [Selection Optimization](docs/portfolio/03-selection-optimization.md) | ~90 core | 6 | Priority-tuple hit ranking for dense/nested annotations |
-> | 4 | [Rect Edge Editing](docs/portfolio/04-rect-edge-edit.md) | ~660 | 21 | Drag a single rectangle edge independently, anti-flip clamp |
-> | 5 | [Pose View Decoupling](docs/portfolio/05-pose-view.md) | ~2.0k | 36 | filter-driven label/focus decoupling, 4 layout algorithms |
-> | 6 | [Data Toolkit](docs/portfolio/06-data-toolkit.md) | 40 scripts | — | YOLO-Pose pipeline + ViTPose pre-label diff + QC CLI |
->
-> **👉 Full portfolio:** [**docs/PORTFOLIO_EN.md**](docs/PORTFOLIO_EN.md) · [中文版](docs/PORTFOLIO.md)
-> — 93 commits · ~15k LOC · 230+ test cases · 116 design docs
->
-> *The original upstream README continues below.*
-
 <div align="center">
-  <p>
-    <a href="https://github.com/CVHub520/X-AnyLabeling/" target="_blank">
-      <img alt="X-AnyLabeling" height="200px" src="https://github.com/user-attachments/assets/0714a182-92bd-4b47-b48d-1c5d7c225176"></a>
-  </p>
 
-[English](README.md) | [简体中文](README_zh-CN.md)
+# X-AnyLabeling · Personal Extension
+
+### Data-Quality Inspection · Canvas Interaction · Pose-Annotation Workflows
+
+[![License](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](./LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11+-aff.svg)](https://www.python.org/)
+[![PyQt6](https://img.shields.io/badge/GUI-PyQt6-green.svg)](https://www.riverbankcomputing.com/software/pyqt/)
+[![Upstream](https://img.shields.io/badge/upstream-CVHub520-orange.svg)](https://github.com/CVHub520/X-AnyLabeling)
+
+**[English](README.md)** | **[简体中文](README_zh-CN.md)**
 
 </div>
 
-<p align="center">
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-LGPL%20v3-blue.svg"></a>
-    <a href=""><img src="https://img.shields.io/github/v/release/CVHub520/X-AnyLabeling?color=ffa"></a>
-    <a href=""><img src="https://img.shields.io/pypi/v/x-anylabeling-cvhub?logo=pypi&logoColor=white"></a>
-    <a href=""><img src="https://img.shields.io/badge/python-3.11+-aff.svg"></a>
-    <a href=""><img src="https://img.shields.io/badge/os-linux%2C%20win%2C%20mac-pink.svg"></a>
-    <a href=""><img src="https://img.shields.io/github/downloads/CVHub520/X-AnyLabeling/total?label=downloads"></a>
-    <a href="https://modelscope.cn/collections/X-AnyLabeling-7b0e1798bcda43"><img src="https://img.shields.io/badge/modelscope-X--AnyLabeling-6750FF?link=https%3A%2F%2Fmodelscope.cn%2Fcollections%2FX-AnyLabeling-7b0e1798bcda43"></a>
-</p>
+---
 
-![](https://user-images.githubusercontent.com/18329471/234640541-a6a65fbc-d7a5-4ec3-9b65-55305b01a7aa.png)
-
-<video src="https://github.com/user-attachments/assets/25957cae-4dbd-494c-9923-e959d985674e" width="100%" controls>
-</video>
-
-<details>
-<summary><strong>Auto-Training</strong></summary>
-
-<video src="https://github.com/user-attachments/assets/c0ab2056-2743-4a2c-ba93-13f478d3481e" width="100%" controls>
-</video>
-</details>
-
-<details>
-<summary><strong>Auto-Labeling</strong></summary>
-
-<video src="https://github.com/user-attachments/assets/f517fa94-c49c-4f05-864e-96b34f592079" width="100%" controls>
-</video>
-</details>
-
-<details>
-<summary><strong>Detect Anything</strong></summary>
-
-<img src="https://github.com/user-attachments/assets/7f43bcec-96fd-48d1-bd36-9e5a440a66f6" width="100%" />
-</details>
-
-<details>
-<summary><strong>Segment Anything</strong></summary>
-
-<img src="https://github.com/user-attachments/assets/208dc9ed-b8c9-4127-9e5b-e76f53892f03" width="100%" />
-</details>
-
-<details>
-<summary><strong>Promptable Concept Grounding</strong></summary>
-
-<video src="https://github.com/user-attachments/assets/52cbdb5d-cc60-4be5-826f-903ea4330ca8" width="100%" controls>
-</video>
-</details>
-
-<details>
-<summary><strong>VQA</strong></summary>
-
-<video src="https://github.com/user-attachments/assets/53adcff4-b962-41b7-a408-3afecd8d8c82" width="100%" controls>
-</video>
-</details>
-
-<details>
-<summary><strong>Chatbot</strong></summary>
-
-<img src="https://github.com/user-attachments/assets/56c9a20b-c836-47aa-8b54-bad5bb99b735" width="100%" />
-</details>
-
-<details>
-<summary><strong>Image Classifier</strong></summary>
-
-<video src="https://github.com/user-attachments/assets/0652adfb-48a4-4219-9b18-16ff5ce31be0" width="100%" controls>
-</video>
-</details>
-
-<details>
-<summary><strong>OCR</strong></summary>
-
-<video src="https://github.com/user-attachments/assets/493183fd-6cbe-45fb-9808-ec2b0af7a0f9" width="100%" controls>
-</video>
-</details>
-
-## 🥳 What's New
-
-- `2026-04-19`: Added annotation check status workflow for reviewing labeled images.
-- `2026-04-19`: Added support for TensorRT backend inference for YOLO models.
-- `2026-04-18`: Added support exporting annotation visualizations as images or videos.
-- `2026-04-18`: Added support for [PaddleOCR](./docs/en/paddle_ocr.md) document parsing and intelligent text recognition annotation panel.
-- `2026-04-01`: Added support for Japanese and Korean UI languages (`ja_JP`, `ko_KR`).
-- `2026-03-22`: Added support for built-in Settings in the GUI for directly adjusting common options.
-- `2026-03-10`: Added support for 3D Cuboid shape annotation from rectangle.
-- `2026-03-01`: Completed the PyQt5-to-PyQt6 upgrade refactor (Beta release), along with additional feature fixes and optimizations.
-- For more details, please refer to the [CHANGELOG](./CHANGELOG.md)
-
-## X-AnyLabeling
-
-**X-AnyLabeling** is a powerful annotation tool that integrates an AI engine for fast and automatic labeling. It's designed for multi-modal data engineers, offering industrial-grade solutions for complex tasks.
-
-Also, we highly recommend trying out [X-AnyLabeling-Server](https://github.com/CVHub520/X-AnyLabeling-Server), a simple, lightweight, and extensible framework that enables remote inference capabilities for X-AnyLabeling.
-
-## Features
-
-<img src="https://github.com/user-attachments/assets/c65db18f-167b-49e8-bea3-fcf4b43a8ffd" width="100%" />
-
-- Supports remote inference service.
-- Processes both `images` and `videos`.
-- Supports flexible backends including `ONNX Runtime`, `TensorRT`, and `OpenCV DNN`.
-- Supports UI localization in `English`, `Chinese`, `Japanese`, and `Korean`.
-- Allows custom models and secondary development.
-- Supports one-click inference for all images in the current task.
-- Supports import/export for formats like `COCO`, `VOC`, `YOLO`, `DOTA`, `MOT`, `MASK`, `PPOCR`, `MMGD`, `VLM-R1`, `ShareGPT`.
-- Handles tasks like `classification`, `detection`, `segmentation`, `caption`, `rotation`, `tracking`, `estimation`, `ocr`, `vqa`, `grounding`, `document parsing` and so on.
-- Supports diverse annotation styles: `polygons`, `rectangles`, `cuboids`, `rotated boxes`, `quadrilaterals`, `circles`, `lines`, `line strips`, `points`, and annotations for `text detection`, `recognition`, and `KIE`.
-
-### Model library
-
-| **Task Category** | **Supported Models** |
-| :--- | :--- |
-| 🖼️ Image Classification | YOLOv5-Cls, YOLOv8-Cls, YOLO11-Cls, InternImage, PULC |
-| 🎯 Object Detection | YOLOv5/6/7/8/9/10, YOLO11/12/26, YOLOX, YOLO-NAS, D-FINE, DAMO-YOLO, Gold_YOLO, RT-DETR, RF-DETR, DEIMv2 |
-| 🖌️ Instance Segmentation | YOLOv5-Seg, YOLOv8-Seg, YOLO11-Seg, YOLO26-Seg, Hyper-YOLO-Seg, RF-DETR-Seg |
-| 🏃 Pose Estimation | YOLOv8-Pose, YOLO11-Pose, YOLO26-Pose, DWPose, RTMO |
-| 👣 Tracking | Bot-SORT, ByteTrack, SAM2/3-Video |
-| 🔄 Rotated Object Detection | YOLOv5-Obb, YOLOv8-Obb, YOLO11-Obb, YOLO26-Obb |
-| 📏 Depth Estimation | Depth Anything |
-| 🧩 Segment Anything | SAM 1/2/3, SAM-HQ, SAM-Med2D, EdgeSAM, EfficientViT-SAM, MobileSAM |
-| ✂️ Image Matting | RMBG 1.4/2.0 |
-| 💡 Proposal | UPN |
-| 🏷️ Tagging | RAM, RAM++ |
-| 📄 OCR | PP-OCRv4, PP-OCRv5 |
-| 🧾 Layout Analysis | PP-DocLayoutV3 |
-| 📑 Document Parsing | PaddleOCR-VL, PaddleOCR-VL-1.5 |
-| 🗣️ Vision Foundation Models | Rex-Omni, Florence2 |
-| 👁️ Vision Language Models | Qwen3-VL, Gemini, ChatGPT, GLM |
-| 🛣️ Lane Detection | CLRNet |
-| 📍 Grounding | CountGD, GeCO, Grounding DINO, YOLO-World, YOLOE |
-| 📚 Other | 👉 [model_zoo](./docs/en/model_zoo.md) 👈 |
-
-## Docs
-
-0. [Remote Inference Service](https://github.com/CVHub520/X-AnyLabeling-Server)
-1. [Installation & Quickstart](./docs/en/get_started.md)
-2. [Usage](./docs/en/user_guide.md)
-3. [Command Line Interface](./docs/en/cli.md)
-4. [Customize a model](./docs/en/custom_model.md)
-5. [Chatbot](./docs/en/chatbot.md)
-6. [VQA](./docs/en/vqa.md)
-7. [Multi-class Image Classifier](./docs/en/image_classifier.md)
-8. [Document Parsing and Intelligent Text Recognition](./docs/en/paddle_ocr.md)
-
-## Examples
-
-- [Classification](./examples/classification/)
-  - [Image-Level](./examples/classification/image-level/README.md)
-  - [Shape-Level](./examples/classification/shape-level/README.md)
-- [Detection](./examples/detection/)
-  - [HBB Object Detection](./examples/detection/hbb/README.md)
-  - [OBB Object Detection](./examples/detection/obb/README.md)
-- [Segmentation](./examples/segmentation/README.md)
-  - [Instance Segmentation](./examples/segmentation/instance_segmentation/)
-  - [Binary Semantic Segmentation](./examples/segmentation/binary_semantic_segmentation/)
-  - [Multiclass Semantic Segmentation](./examples/segmentation/multiclass_semantic_segmentation/)
-- [Description](./examples/description/)
-  - [Tagging](./examples/description/tagging/README.md)
-  - [Captioning](./examples/description/captioning/README.md)
-- [Estimation](./examples/estimation/)
-  - [Pose Estimation](./examples/estimation/pose_estimation/README.md)
-  - [Depth Estimation](./examples/estimation/depth_estimation/README.md)
-- [OCR](./examples/optical_character_recognition/)
-  - [Text Recognition](./examples/optical_character_recognition/text_recognition/)
-  - [Key Information Extraction](./examples/optical_character_recognition/key_information_extraction/README.md)
-- [MOT](./examples/multiple_object_tracking/README.md)
-  - [Tracking by HBB Object Detection](./examples/multiple_object_tracking/README.md)
-  - [Tracking by OBB Object Detection](./examples/multiple_object_tracking/README.md)
-  - [Tracking by Instance Segmentation](./examples/multiple_object_tracking/README.md)
-  - [Tracking by Pose Estimation](./examples/multiple_object_tracking/README.md)
-- [iVOS](./examples/interactive_video_object_segmentation)
-  - [SAM2-Video](./examples/interactive_video_object_segmentation/sam2/README.md)
-  - [SAM3-Video](./examples/interactive_video_object_segmentation/sam3/README.md)
-- [Matting](./examples/matting/)
-  - [Image Matting](./examples/matting/image_matting/README.md)
-- [Vision-Language](./examples/vision_language/)
-  - [Rex-Omni](./examples/vision_language/rexomni/README.md)
-  - [Florence 2](./examples/vision_language/florence2/README.md)
-- [Counting](./examples/counting/)
-  - [GeCo](./examples/counting/geco/README.md)
-- [Grounding](./examples/grounding/)
-  - [YOLOE](./examples/grounding/yoloe/README.md)
-  - [SAM 3](./examples/grounding/sam3/README.md)
-- [Training](./examples/training/)
-  - [Ultralytics](./examples/training/ultralytics/README.md)
-
-
-## Contribute
-
-We believe in open collaboration! **X‑AnyLabeling** continues to grow with the support of the community. Whether you're fixing bugs, improving documentation, or adding new features, your contributions make a real impact.
-
-To get started, please read our [Contributing Guide](./CONTRIBUTING.md) and make sure to agree to the [Contributor License Agreement (CLA)](./CLA.md) before submitting a pull request.
-
-If you find this project helpful, please consider giving it a ⭐️ star! Have questions or suggestions? Open an [issue](https://github.com/CVHub520/X-AnyLabeling/issues) or email us at cv_hub@163.com.
-
-A huge thank you 🙏 to everyone helping to make X‑AnyLabeling better.
-
-## License
-
-This project is licensed under the [GPL-3.0 license](./LICENSE) and is completely open source and free. The original intention is to enable more developers, researchers, and enterprises to conveniently use this AI application platform, promoting the development of the entire industry. We encourage everyone to use it freely (including commercial use), and you can also add features based on this project and commercialize it, but you must retain the brand identity and indicate the source project address.
-
-Additionally, to understand the ecosystem and usage of X-AnyLabeling, if you use this project for academic, research, teaching, or enterprise purposes, please fill out the [registration form](https://forms.gle/MZCKhU7UJ4TRSWxR7). This registration is only for statistical purposes and will not incur any fees. We will strictly keep all information confidential.
-
-X-AnyLabeling is independently developed and maintained by an individual. If this project has been helpful to you, we welcome your support through the donation links below to help sustain the project's continued development. Your support is the greatest encouragement! If you have any questions about the project or would like to collaborate, please feel free to contact via WeChat: ww10874 or email provided above.
-
-## Sponsors
-
-- [buy-me-a-coffee](https://ko-fi.com/cvhub520)
-- [Wechat/Alipay](https://github.com/CVHub520/X-AnyLabeling/blob/main/README_zh-CN.md#%E8%B5%9E%E5%8A%A9)
-
-## Acknowledgement
-
-I extend my heartfelt thanks to the developers and contributors of [AnyLabeling](https://github.com/vietanhdev/anylabeling), [LabelMe](https://github.com/wkentaro/labelme), [LabelImg](https://github.com/tzutalin/labelImg), [roLabelImg](https://github.com/cgvict/roLabelImg), [PPOCRLabel](https://github.com/PFCCLab/PPOCRLabel) and [CVAT](https://github.com/opencv/cvat), whose work has been crucial to the success of this project.
-
-## Citing
-
-If you use this software in your research, please cite it as below:
+> This is a personal fork of [CVHub520/X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling) (beta.4).
+> I extended it with **6 feature modules** focused on **data-quality inspection,
+> canvas interaction, and pose-annotation workflows**.
+> The [original upstream README is preserved here](README_upstream.md).
 
 ```
-@misc{X-AnyLabeling,
-  year = {2023},
-  author = {Wei Wang},
-  publisher = {Github},
-  organization = {CVHub},
-  journal = {Github repository},
-  title = {Advanced Auto Labeling Solution with Added Features},
-  howpublished = {\url{https://github.com/CVHub520/X-AnyLabeling}}
-}
+CVHub520/X-AnyLabeling (upstream, beta.4)
+        │  fork
+        ▼
+ljh725/X-AnyLabeling  ← this repo (93 commits / ~15k LOC of extensions)
 ```
+
+| Metric | Value |
+|--------|-------|
+| Commits | **93** (vs upstream main) |
+| New code | **~15,000 lines** (features + tests) |
+| Test cases | **230+** (feature-related) |
+| Design docs | **116** (in `docs/`) |
+| Feature modules | **6** |
 
 ---
 
-![Star History Chart](https://api.star-history.com/svg?repos=CVHub520/X-AnyLabeling&type=Date)
+## Feature Matrix
 
-<div align="center"><a href="#top">🔝 Back to Top</a></div>
+| # | Module | LOC | Tests | Core value | Details |
+|---|--------|-----|-------|-----------|---------|
+| 1 | **L1/L2 Quality Engine** | 4,354 / 12 files | 148 | 12 geometry/visual-relationship rules + face→head→person cross-class matching, pure Python (zero PyQt), CLI/UI share one logic core | [→ 01](docs/portfolio/01-quality-engine.md) |
+| 2 | **Inspector Panel** | 3,785 / 10 files | 60+ | 5-tab QA workbench, plug-in rule engine, click-to-navigate, in-app quality loop | [→ 02](docs/portfolio/02-inspector-panel.md) |
+| 3 | **Selection Optimization** | ~90 core | 6 | "Decision-to-Sort" pattern: 4-tuple priority ranking replaces if-elif chains, solves mis-selection in dense/nested annotations | [→ 03](docs/portfolio/03-selection-optimization.md) |
+| 4 | **Rect Edge Editing** | 407 geometry + ~250 canvas | 21 | Drag a single rectangle edge independently, geometry/UI decoupling, anti-flip clamp | [→ 04](docs/portfolio/04-rect-edge-edit.md) |
+| 5 | **Pose View Decoupling** | 1,994 / 9 files | 36 | filter-driven single-field decoupling of label list vs focus, 4 occlusion-free layout algorithms, overview/selected two-state display | [→ 05](docs/portfolio/05-pose-view.md) |
+| 6 | **Data Toolkit** | 40 scripts (3,000+ core) | — | YOLO-Pose 3-step pipeline + ViTPose pre-label diff + QC CLI, full pose-data-production chain | [→ 06](docs/portfolio/06-data-toolkit.md) |
+
+---
+
+## Module Highlights
+
+### 1. L1/L2 Quality Engine
+
+**Problem**: Pose-annotation datasets are large; manually checking the geometric relationships among face/head/person boxes (is the face inside the head? is the head at the top of the person? are keypoints out of bounds?) is prohibitively expensive, and rules are hard to reuse.
+
+**Solution**: A pure-Python two-tier quality engine — L1 checks JSON structural validity, L2 evaluates cross-class relationships via 12 geometry/visual rules, paired with a face→head→person cross-class matching algorithm (hard filter + weighted scoring) and a threshold-evaluation system.
+
+**Highlights**:
+- 🏗️ **Strict pure-Python / PyQt layering**: 12 files in `quality/` with **zero PyQt imports** — runs headless in CI, CLI and UI share one logic core
+- 🎯 **12 L2 rules**: L2-01 face matches head, L2-03 face/head area ratio, L2-06 head/person spatial position, L2-09 keypoint overflow, L2-12 image-level density anomaly...
+- 🔗 **Cross-class matching**: face→head (strict, 5 hard filters + 4-dim scoring) / head→person (loose, 4 hard filters + 5-dim scoring), triangular peak decay for smooth scoring
+- ⚖️ **Threshold evaluation**: 4 directions + `error_requires` secondary-confirmation downgrade (error hits but confirmation fails → auto-downgrade to warning)
+- 💡 **Threshold suggestion**: 9-level priority trigger table, produces non-binding suggestions from human-review stats (always pending, never auto-edits config)
+
+📊 Stats: 4,354 lines · 148 test cases · [Details →](docs/portfolio/01-quality-engine.md)
+
+---
+
+### 2. Inspector Panel
+
+**Problem**: The original workflow was "annotate → export JSON → external Python script check → manually locate problem files → open & fix one by one → re-export → re-check". The QC loop lived in external scripts; discovered issues couldn't jump back to the annotation position for fixing.
+
+**Solution**: A 5-tab QDockWidget workbench (Data Check / Quality Review / Data Table / Rule Config / Export) that brings external-script capabilities in-app — click an issue to jump straight to the shape on Canvas.
+
+**Highlights**:
+- 🧩 **Plug-in rule engine**: `ValidationRule` ABC + `check`/`check_all` dual-level, zero-intrusion to add rules
+- 📋 **8 built-in rules**: label allowlist, group_id uniqueness, person-requires-gid, label-shape binding, keypoint integrity...
+- 🔁 **Signal-contract reuse**: the Quality Review tab reuses the existing `issue_navigate_requested` path — **parent LabelingWidget needs zero changes**
+- 🗂️ **3-dim in-memory index**: `FlatIndex`'s `_by_file/_by_label/_by_group` supports 500–1000 files/batch scanning
+
+📊 Stats: 3,785 lines · 60+ test cases · [Details →](docs/portfolio/02-inspector-panel.md)
+
+---
+
+### 3. Selection Optimization
+
+**Problem**: In dense/nested annotations (overlapping boxes, keypoints on top of rectangles, large background box containing small targets), the old `reversed + first-hit` strategy only selects "the last-created object that contains the point" — frequently mis-selecting or failing to reach the intended object.
+
+**Solution**: The "Decision-to-Sort" pattern — compute a 4-tuple priority for each candidate shape, sort lexicographically, and let "grab vertex > grab edge > grab small object > grab top-of-stack" emerge naturally from the sort.
+
+**Core algorithm**:
+
+```python
+# canvas.py:515-523  — priority = (level, distance, area, -stack_index), ascending
+#   level 0: nearby vertex (grabbable edit point) — highest priority
+#   level 1: nearby editable edge (double-click to add point)
+#   level 2: whole-shape hit (contains_point) — fallback
+#   within same level: nearer wins; then smaller area wins (nested → small object);
+#     finally later-created (top-of-stack) wins.
+```
+
+**Highlights**:
+- 🎯 **4-tuple priority**: `(level, distance/area, area, -stack_index)`, zero if-branches
+- 🧠 **Area as "specificity" proxy**: nested small objects sort first because they're smaller
+- 🔁 **Three-entry reuse**: hover highlight, click-select, double-click-edit all consume the sorted first candidate
+- 🧪 **Pure-algorithm unit-testable**: 6 scenarios verified without PyQt
+
+📊 Stats: ~90 lines core algorithm · 6 scenario tests · [Details →](docs/portfolio/03-selection-optimization.md)
+
+---
+
+### 4. Rect Edge Editing
+
+**Problem**: Refining a single rectangle edge (snapping to an image boundary, aligning with an adjacent box) is hard — native editing only drags corner vertices, which simultaneously moves two edges and breaks alignment on the other axis.
+
+**Solution**: Independently select and drag any one of a rectangle's four edges (left/right/top/bottom), keeping the other three unchanged. Geometry and Canvas UI are strictly decoupled.
+
+**Anti-flip clamp** (rectangle never collapses when dragged past the opposite edge):
+
+```python
+# rect_edge_alignment.py:320-370
+if edge_name == RECT_EDGE_LEFT:
+    x_min = min(coord, x_max - min_size)      # never passes right edge
+elif edge_name == RECT_EDGE_RIGHT:
+    x_max = max(coord, x_min + min_size)      # never below left edge
+elif edge_name == RECT_EDGE_TOP:
+    y_min = min(coord, y_max - min_size)
+elif edge_name == RECT_EDGE_BOTTOM:
+    y_max = max(coord, y_min + min_size)
+```
+
+**Highlights**:
+- 📐 **Geometry/UI decoupling**: `RectEdgeRef` is a transient edit handle, **never written back to JSON or `Shape.other_data`**
+- 🛡️ **Anti-flip clamp**: `min < max` always holds
+- 🔄 **Canvas state machine**: hover → press → live update → release-to-commit → Esc-to-cancel
+- 🔒 **Bidirectional draw-mode mutex**: entering create mode auto-disables edge editing and vice versa
+- 📝 **Honest evolution**: went through "edge alignment (snap to reference) → simplified to edge editing"; docs record this faithfully
+
+📊 Stats: 407-line geometry + ~250 lines canvas · 21 test cases · [Details →](docs/portfolio/04-rect-edge-edit.md)
+
+---
+
+### 5. Pose View Decoupling
+
+**Problem**: Enabling Pose View made the renderer take over the entire image, hiding ordinary rectangle/polygon labels (a strong "split feeling"); and selecting a person polluted the selection state of the normal-label flow.
+
+**Solution**: A filter-driven architecture — a single field `pose_focus_group_id` decouples the label list from selection focus; filtering is by shape type (not by mode toggle), letting Pose View coexist with native labels.
+
+**Highlights**:
+- 🎛️ **Filter-driven single-field decoupling**: `pose_focus_group_id` drives overview/selected two-state switching without polluting native selection
+- 📐 **4 occlusion-free layouts**: direct / anti (priority-sorted overlap removal) / column (quadrant stacking) / category (by body part)
+- 👁️ **Overview/selected two-state**: overview shows person color-coding for the big picture; selected shows skeleton+labels+leaders for detail
+- 🧱 **Pure-module-first**: `pose_constants`/`pose_config`/`pose_layout` have zero QWidget deps, unit-testable standalone
+- 🔧 **Event-source disambiguation**: Keypoint Fill mode's programmatic empty-selection is guarded by `is_active`
+
+📊 Stats: 1,994 lines / 9 files · 36 test cases · [Details →](docs/portfolio/05-pose-view.md)
+
+---
+
+### 6. Data Toolkit
+
+**Problem**: Pose-data production is a full pipeline (annotation → format conversion → dataset split → visual verification → model pre-label diff → rule-based QC); each step needs a dedicated tool, and scattered scripts are hard to maintain.
+
+**Solution**: 40 unified `argparse`-style CLI scripts covering the entire pose-data-production chain, deeply integrated with spec docs and the Inspector queue.
+
+**Featured scripts**:
+- 🔄 **YOLO-Pose 3-step pipeline**: `step1-convert_json_to_yolopose.py` (604 lines) → `step2-split_yolov8pose_dataset.py` → `step3-visualize_yolo_dataset.py`
+- 🤖 **ViTPose pre-label diff**: inject predicted keypoints by group_id, use model predictions to surface human-annotation blind spots
+- ✅ **QC CLI**: `run_l1l2_qc.py` (outputs review.tsv + report.json), `gen_threshold_suggestion.py`
+- 📊 **Dataset stats/diff**: unique-label extraction, stem comparison, shape statistics
+
+📊 Stats: 40 scripts (3,000+ core lines) · [Details →](docs/portfolio/06-data-toolkit.md)
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| GUI framework | PyQt6 (QMainWindow / QDockWidget / QGraphicsView) |
+| Quality engine | Pure Python (stdlib + PyYAML), zero PyQt dependency |
+| Config-driven | YAML threshold profile + 21 pose_view config keys |
+| CLI tools | argparse + ProcessPoolExecutor + tqdm |
+| Testing | pytest + unittest, headless Qt (`QT_QPA_PLATFORM=offscreen`) |
+| Code quality | black (line 79) + flake8 (max complexity 18) + Google docstrings |
+
+---
+
+## Full Portfolio
+
+For architecture diagrams, code snippets with `file:line` links, and deeper technical write-ups:
+
+- 📄 **[Portfolio main page (中文)](docs/PORTFOLIO.md)** · **[English](docs/PORTFOLIO_EN.md)**
+- 📁 **[6 module deep-dives](docs/portfolio/)** — each contains Problem / Architecture / Highlights / File Map / Tests
+- 📚 **[116 design docs](docs/)** — methodology, pattern cards, refactoring plans
+
+---
+
+## Design-Methodology Notes
+
+While implementing these features, I distilled reusable design decisions into "pattern cards" and design docs (in Chinese):
+
+- [PATTERN_CARD_001 Decision-to-Sort](docs/PATTERN_CARD_001_decision_to_sort.md) — turning multi-way if-elif decisions into comparable tuple sorts
+- [filter_state_engine_pattern.md](docs/filter_state_engine_pattern.md) — single-field-driven state-machine pattern
+- [canvas_refactor_plan.md](docs/canvas_refactor_plan.md) — Canvas analysis & refactoring methodology
+
+---
+
+## Acknowledgements
+
+- [CVHub520/X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling) — the excellent open-source annotation tool this fork builds upon
+- The original upstream README is preserved at [README_upstream.md](README_upstream.md) / [README_upstream_zh-CN.md](README_upstream_zh-CN.md)

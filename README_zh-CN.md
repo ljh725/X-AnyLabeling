@@ -1,267 +1,214 @@
-<!--
-  ============================================================================
-  个人 Fork 横幅 —— 同步 upstream 时请勿删除本块。
-  upstream 原始 README 从下方第二个 <div align="center"> 开始。
-  ============================================================================
--->
-> ## 🔧 个人 Fork —— [@ljh725](https://github.com/ljh725) 扩展功能
->
-> 本仓库是 [CVHub520/X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling)（beta.4）的个人 fork。
-> 我在原版基础上扩展了 **6 个功能模块**，聚焦于**数据质量检查、画布交互优化、姿态标注工作流**。
->
-> | # | 模块 | 代码量 | 测试 | 一句话价值 |
-> |---|------|--------|------|-----------|
-> | 1 | [L1/L2 质检引擎](docs/portfolio/01-quality-engine.md) | ~4.4k 行 | 148 | 12 条几何/视觉规则 + 跨类匹配，纯 Python（零 PyQt 依赖） |
-> | 2 | [Inspector 数据检查面板](docs/portfolio/02-inspector-panel.md) | ~3.8k 行 | 60+ | 5-Tab 质检工作台、插件化规则引擎、点击即跳转 |
-> | 3 | [优先级排序拾取](docs/portfolio/03-selection-optimization.md) | ~90 行核心 | 6 | 4 维优先级元组，解决密集/嵌套标注选错痛点 |
-> | 4 | [矩形边编辑](docs/portfolio/04-rect-edge-edit.md) | ~660 行 | 21 | 独立拖动单条矩形边，反翻转 clamp |
-> | 5 | [Pose View 标签解耦](docs/portfolio/05-pose-view.md) | ~2.0k 行 | 36 | filter-driven 解耦架构、4 种布局算法 |
-> | 6 | [数据处理脚本集](docs/portfolio/06-data-toolkit.md) | 40 个脚本 | — | YOLO Pose 流水线 + ViTPose 预标注对比 + 质检 CLI |
->
-> **👉 作品集主页：[docs/PORTFOLIO.md](docs/PORTFOLIO.md)** · [English](docs/PORTFOLIO_EN.md)
-> — 93 次提交 · ~1.5 万行代码 · 230+ 测试用例 · 116 篇设计文档
->
-> *原版 upstream README 接续在下方。*
-
 <div align="center">
-  <p>
-    <a href="https://github.com/CVHub520/X-AnyLabeling/" target="_blank">
-      <img alt="X-AnyLabeling" height="200px" src="https://github.com/user-attachments/assets/0714a182-92bd-4b47-b48d-1c5d7c225176"></a>
-  </p>
 
-[简体中文](README_zh-CN.md) | [English](README.md)
+# X-AnyLabeling · 个人扩展版
+
+### 数据质量检查 · 画布交互优化 · 姿态标注工作流
+
+[![License](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](./LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11+-aff.svg)](https://www.python.org/)
+[![PyQt6](https://img.shields.io/badge/GUI-PyQt6-green.svg)](https://www.riverbankcomputing.com/software/pyqt/)
+[![Upstream](https://img.shields.io/badge/upstream-CVHub520-orange.svg)](https://github.com/CVHub520/X-AnyLabeling)
+
+**[English](README.md)** | **[简体中文](README_zh-CN.md)**
 
 </div>
 
-<p align="center">
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-LGPL%20v3-blue.svg"></a>
-    <a href=""><img src="https://img.shields.io/github/v/release/CVHub520/X-AnyLabeling?color=ffa"></a>
-    <a href=""><img src="https://img.shields.io/badge/python-3.11+-aff.svg"></a>
-    <a href=""><img src="https://img.shields.io/badge/os-linux%2C%20win%2C%20mac-pink.svg"></a>
-    <a href=""><img src="https://img.shields.io/github/downloads/CVHub520/X-AnyLabeling/total?label=downloads"></a>
-    <a href="https://modelscope.cn/collections/X-AnyLabeling-7b0e1798bcda43"><img src="https://img.shields.io/badge/modelscope-X--AnyLabeling-6750FF?link=https%3A%2F%2Fmodelscope.cn%2Fcollections%2FX-AnyLabeling-7b0e1798bcda43"></a>
-</p>
+---
 
-![](https://user-images.githubusercontent.com/18329471/234640541-a6a65fbc-d7a5-4ec3-9b65-55305b01a7aa.png)
-
-<video src="https://github.com/user-attachments/assets/25957cae-4dbd-494c-9923-e959d985674e" width="100%" controls>
-</video>
-
-<details>
-<summary><strong>自动训练</strong></summary>
-
-<video src="https://github.com/user-attachments/assets/c0ab2056-2743-4a2c-ba93-13f478d3481e" width="100%" controls>
-</video>
-</details>
-
-<details>
-<summary><strong>自动标注</strong></summary>
-
-<video src="https://github.com/user-attachments/assets/f517fa94-c49c-4f05-864e-96b34f592079" width="100%" controls>
-</video>
-</details>
-
-<details>
-<summary><strong>检测一切</strong></summary>
-
-<img src="https://github.com/user-attachments/assets/7f43bcec-96fd-48d1-bd36-9e5a440a66f6" width="100%" />
-</details>
-
-<details>
-<summary><strong>分割一切</strong></summary>
-
-<img src="https://github.com/user-attachments/assets/208dc9ed-b8c9-4127-9e5b-e76f53892f03" width="100%" />
-</details>
-
-<details>
-<summary><strong>可提示概念定位</strong></summary>
-
-<video src="https://github.com/user-attachments/assets/52cbdb5d-cc60-4be5-826f-903ea4330ca8" width="100%" controls>
-</video>
-</details>
-
-<details>
-<summary><strong>视觉问答</strong></summary>
-
-<video src="https://github.com/user-attachments/assets/53adcff4-b962-41b7-a408-3afecd8d8c82" width="100%" controls>
-</video>
-</details>
-
-<details>
-<summary><strong>聊天机器人</strong></summary>
-
-<img src="https://github.com/user-attachments/assets/56c9a20b-c836-47aa-8b54-bad5bb99b735" width="100%" />
-</details>
-
-<details>
-<summary><strong>图像分类器</strong></summary>
-
-<video src="https://github.com/user-attachments/assets/0652adfb-48a4-4219-9b18-16ff5ce31be0" width="100%" controls>
-</video>
-</details>
-
-<details>
-<summary><strong>OCR识别</strong></summary>
-
-<video src="https://github.com/user-attachments/assets/493183fd-6cbe-45fb-9808-ec2b0af7a0f9" width="100%" controls>
-</video>
-</details>
-
-## 🥳 新功能
-
-- `2026-04-19`: 新增标注检查状态流程，便于快速复核已标注图片。
-- `2026-04-19`: 新增支持 YOLO 模型 TensorRT 后端推理。
-- `2026-04-18`: 新增支持将标注可视化结果导出为图片或视频。
-- `2026-04-18`: 新增支持 [PaddleOCR](./docs/zh_cn/paddle_ocr.md) 文档解析与智能文字识别标注面板。
-- `2026-04-01`: 新增支持日语和韩语界面语言（`ja_JP`、`ko_KR`）。
-- `2026-03-22`: 新增支持在 GUI 中通过内置设置面板直接调整常用选项。
-- `2026-03-10`: 新增支持从矩形生成 3D Cuboid 对象标注。
-- `2026-03-01`: 完成 PyQt5 到 PyQt6 的升级重构（Beta 版本），并同步修复与优化若干功能细节。
-- 更多详情，请参考[更新日志](./CHANGELOG.md)
-
-## 简介
-
-**X-AnyLabeling** 是一款基于AI推理引擎和丰富功能特性于一体的强大辅助标注工具，其专注于实际应用，致力于为多模态数据工程师提供工业级的一站式解决方案，可自动快速进行各种复杂任务的标定。
-
-此外，我们强烈推荐您尝试 [X-AnyLabeling-Server](https://github.com/CVHub520/X-AnyLabeling-Server)，这是一个简单、轻量级且可扩展的框架，为 X-AnyLabeling 提供远程推理能力。
-
-## 新特性
-
-<img src="https://github.com/user-attachments/assets/c65db18f-167b-49e8-bea3-fcf4b43a8ffd" width="100%" />
-
-- 支持远程推理服务。
-- 支持 `ONNX Runtime`、`TensorRT`、`OpenCV DNN` 等灵活后端加速推理。
-- 支持一键预测所有图像。
-- 支持`图像`和`视频`处理。
-- 支持`英文`、`中文`、`日文`、`韩文` 四种界面语言。
-- 支持自定义模型和二次开发。
-- 支持一键导入和导出多种标签格式，如 `COCO`、`VOC`、`YOLO`、`DOTA`、`MOT`、`MASK`、`PPOCR`、`MMGF`、`VLM-R1`、`ShareGPT` 等；
-- 支持多种图像标注样式，包括 `多边形`、`矩形`、`长方体`、`旋转框`、`圆形`、`线条`、`点`，以及 `文本检测`、`识别` 和 `KIE` 标注；
-- 支持各类视觉任务，如`图像分类`、`目标检测`、`实例分割`、`姿态估计`、`旋转检测`、`多目标跟踪`、`光学字符识别`、`图像文本描述`、`车道线检测`、`分割一切`、`视觉问答`、`文档解析`等。
-
-### 模型库
-
-| **任务类别** | **支持模型** |
-| :--- | :--- |
-| 🖼️ **图像分类** | YOLOv5-Cls, YOLOv8-Cls, YOLO11-Cls, InternImage, PULC |
-| 🎯 **目标检测** | YOLOv5/6/7/8/9/10, YOLO11/12/26, YOLOX, YOLO-NAS, D-FINE, DAMO-YOLO, Gold_YOLO, RT-DETR, RF-DETR, DEIMv2 |
-| 🖌️ **实例分割** | YOLOv5-Seg, YOLOv8-Seg, YOLO11-Seg, YOLO26-Seg, Hyper-YOLO-Seg, RF-DETR-Seg |
-| 🏃 **姿态估计** | YOLOv8-Pose, YOLO11-Pose, YOLO26-Pose, DWPose, RTMO |
-| 👣 **目标跟踪** | Bot-SORT, ByteTrack, SAM2/3-Video |
-| 🔄 **旋转目标检测** | YOLOv5-Obb, YOLOv8-Obb, YOLO11-Obb, YOLO26-Obb |
-| 📏 **深度估计** | Depth Anything |
-| 🧩 **分割一切** | SAM 1/2/3, SAM-HQ, SAM-Med2D, EdgeSAM, EfficientViT-SAM, MobileSAM |
-| ✂️ **图像抠图** | RMBG 1.4/2.0 |
-| 💡 **候选框提取** | UPN |
-| 🏷️ **图像标记** | RAM, RAM++ |
-| 📄 **光学字符识别** | PP-OCRv4, PP-OCRv5 |
-| 🧾 **综合版面分析** | PP-DocLayoutV3 |
-| 📑 **文档解析** | PaddleOCR-VL, PaddleOCR-VL-1.5 |
-| 🗣️ **视觉基础模型** | Rex-Omni, Florence2 |
-| 👁️ **视觉语言模型** | Qwen3-VL, Gemini, ChatGPT, GLM |
-| 🛣️ **车道线检测** | CLRNet |
-| 📍 **Grounding** | CountGD, GeCO, Grounding DINO, YOLO-World, YOLOE |
-| 📚 **其他** | 👉 [model_zoo](./docs/en/model_zoo.md) 👈 |
-
-## 文档
-
-0. [远程推理服务](https://github.com/CVHub520/X-AnyLabeling-Server)
-1. [安装文档](./docs/zh_cn/get_started.md)
-2. [用户手册](./docs/zh_cn/user_guide.md)
-3. [命令行界面](./docs/zh_cn/cli.md)
-4. [自定义模型](./docs/zh_cn/custom_model.md)
-5. [常见问题答疑](./docs/zh_cn/faq.md)
-6. [聊天机器人](./docs/zh_cn/chatbot.md)
-7. [视觉问答](./docs/zh_cn/vqa.md)
-8. [多类别图像分类器](./docs/zh_cn/image_classifier.md)
-9. [文档解析与智能文字识别](./docs/zh_cn/paddle_ocr.md)
-
-## 示例
-
-- [Classification](./examples/classification/)
-  - [Image-Level](./examples/classification/image-level/README.md)
-  - [Shape-Level](./examples/classification/shape-level/README.md)
-- [Detection](./examples/detection/)
-  - [HBB Object Detection](./examples/detection/hbb/README.md)
-  - [OBB Object Detection](./examples/detection/obb/README.md)
-- [Segmentation](./examples/segmentation/README.md)
-  - [Instance Segmentation](./examples/segmentation/instance_segmentation/)
-  - [Binary Semantic Segmentation](./examples/segmentation/binary_semantic_segmentation/)
-  - [Multiclass Semantic Segmentation](./examples/segmentation/multiclass_semantic_segmentation/)
-- [Description](./examples/description/)
-  - [Tagging](./examples/description/tagging/README.md)
-  - [Captioning](./examples/description/captioning/README.md)
-- [Estimation](./examples/estimation/)
-  - [Pose Estimation](./examples/estimation/pose_estimation/README.md)
-  - [Depth Estimation](./examples/estimation/depth_estimation/README.md)
-- [OCR](./examples/optical_character_recognition/)
-  - [Text Recognition](./examples/optical_character_recognition/text_recognition/)
-  - [Key Information Extraction](./examples/optical_character_recognition/key_information_extraction/README.md)
-- [MOT](./examples/multiple_object_tracking/README.md)
-  - [Tracking by HBB Object Detection](./examples/multiple_object_tracking/README.md)
-  - [Tracking by OBB Object Detection](./examples/multiple_object_tracking/README.md)
-  - [Tracking by Instance Segmentation](./examples/multiple_object_tracking/README.md)
-  - [Tracking by Pose Estimation](./examples/multiple_object_tracking/README.md)
-- [iVOS](./examples/interactive_video_object_segmentation)
-  - [SAM2-Video](./examples/interactive_video_object_segmentation/sam2/README.md)
-  - [SAM3-Video](./examples/interactive_video_object_segmentation/sam3/README.md)
-- [Matting](./examples/matting/)
-  - [Image Matting](./examples/matting/image_matting/README.md)
-- [Vision-Language](./examples/vision_language/)
-  - [Rex-Omni](./examples/vision_language/rexomni/README.md)
-  - [Florence 2](./examples/vision_language/florence2/README.md)
-- [Counting](./examples/counting/)
-  - [GeCo](./examples/counting/geco/README.md)
-- [Grounding](./examples/grounding/)
-  - [YOLOE](./examples/grounding/yoloe/README.md)
-  - [SAM 3](./examples/grounding/sam3/README.md)
-- [Training](./examples/training/)
-  - [Ultralytics](./examples/training/ultralytics/README.md)
-
-## 贡献指南
-
-我们欢迎社区协作！**X‑AnyLabeling** 项目的成长离不开开发者们的共同参与，无论是修复 Bug、优化文档、还是添加新功能，您的贡献都非常宝贵。
-
-在参与前请阅读我们的 [贡献指南](./CONTRIBUTING.md)，并在提交 Pull Request 前确认您已同意 [贡献者许可协议 (CLA)](./CLA.md)。
-
-如果你觉得这个项目有帮助，请点亮右上角的⭐星标⭐。如有任何问题或疑问，欢迎[创建 issue](https://github.com/CVHub520/X-AnyLabeling/issues) 或发送邮件至 cv_hub@163.com。
-
-衷心感谢每一位为项目贡献力量的朋友 🙏
-
-## 许可
-
-本项目遵循 [GPL-3.0 license](./LICENSE) 协议，完全开源免费，初衷是希望让更多开发者、研究者和企业能够便捷地使用 AI 应用平台，推动整个行业的发展。我们鼓励大家自由使用（包括商业用途），也可以基于本项目添加功能并进行商业化，但必须保留品牌标识并标注源项目地址。
-
-此外，为了了解 X-AnyLabeling 的生态和使用情况，如果您将本项目用于学术、科研、教学或是企业用户，请在此[填写登记表](https://forms.gle/MZCKhU7UJ4TRSWxR7)。此登记仅用于统计使用情况，不会产生任何费用，我们会对信息严格保密。
-
-X-AnyLabeling 由个人独立开发和维护。如果本项目对您有所帮助，欢迎通过下方捐赠链接支持项目持续发展，您的支持是对我最大的鼓励！如对项目有任何疑问或希望合作，欢迎随时微信联系：ww10874。
-
-## 赞助
-
-| **微信支付** | **支付宝** |
-| :---: | :---: |
-| <img src="https://github.com/user-attachments/assets/0178cf76-3627-426e-8432-ec031c9278ae" width="400px" height="400px" style="object-fit: contain;" /> | <img src="https://github.com/user-attachments/assets/87544ff8-3560-4696-b035-1fd26ecd162b" width="400px" height="400px" style="object-fit: contain;" /> |
-
-感谢您的支持！
-
-## 引用
-
-如果您在研究中使用了这个软件，请按照以下方式引用它：
+> 本仓库是 [CVHub520/X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling)（beta.4）的个人 fork。
+> 我在原版基础上扩展了 **6 个功能模块**，聚焦于**数据质量检查、画布交互优化、姿态标注工作流**。
+> [原版 upstream README 保留在此](README_upstream_zh-CN.md)。
 
 ```
-@misc{X-AnyLabeling,
-  year = {2023},
-  author = {Wei Wang},
-  publisher = {Github},
-  organization = {CVHub},
-  journal = {Github repository},
-  title = {Advanced Auto Labeling Solution with Added Features},
-  howpublished = {\url{https://github.com/CVHub520/X-AnyLabeling}}
-}
+CVHub520/X-AnyLabeling (upstream, beta.4)
+        │  fork
+        ▼
+ljh725/X-AnyLabeling  ← 本仓库（93 commits / ~1.5 万行扩展代码）
 ```
+
+| 维度 | 数据 |
+|------|------|
+| 提交数 | **93**（相对 upstream main） |
+| 新增代码 | **~15,000 行**（功能代码 + 测试） |
+| 测试用例 | **230+**（功能相关） |
+| 设计文档 | **116 篇**（`docs/` 目录） |
+| 功能模块 | **6 个** |
 
 ---
 
-![Star History Chart](https://api.star-history.com/svg?repos=CVHub520/X-AnyLabeling&type=Date)
+## 功能矩阵
 
-<div align="center"><a href="#top">🔝 返回顶部</a></div>
+| # | 模块 | 代码规模 | 测试 | 核心价值 | 详述 |
+|---|------|---------|------|---------|------|
+| 1 | **L1/L2 质检引擎** | 4,354 行 / 12 文件 | 148 | 12 条几何/视觉关系规则 + face→head→person 跨类匹配，纯 Python（零 PyQt 依赖），CLI/UI 共享同一份逻辑 | [→ 01](docs/portfolio/01-quality-engine.md) |
+| 2 | **Inspector 数据检查面板** | 3,785 行 / 10 文件 | 60+ | 5-Tab 质检工作台、插件化规则引擎、点击问题即跳转 Canvas，标注-质检闭环内化 | [→ 02](docs/portfolio/02-inspector-panel.md) |
+| 3 | **优先级排序拾取模式** | ~90 行核心算法 | 6 | 「决策转排序」范式：4 维优先级元组取代 if-elif 链，解决密集/嵌套标注选错痛点 | [→ 03](docs/portfolio/03-selection-optimization.md) |
+| 4 | **矩形边编辑** | 407 行几何 + ~250 行 canvas | 21 | 独立拖动矩形单条边，几何层/UI 层严格解耦，反翻转 clamp 保证矩形永不坍塌 | [→ 04](docs/portfolio/04-rect-edge-edit.md) |
+| 5 | **Pose View 标签解耦** | 1,994 行 / 9 文件 | 36 | filter-driven 单字段解耦标签列表与选中焦点，4 种防遮挡布局算法，总览/选中两态显示 | [→ 05](docs/portfolio/05-pose-view.md) |
+| 6 | **数据处理脚本集** | 40 个脚本（核心逾 3,000 行） | — | YOLO Pose 三步流水线 + ViTPose 预标注对比 + 质检 CLI，覆盖姿态数据生产全链路 | [→ 06](docs/portfolio/06-data-toolkit.md) |
+
+---
+
+## 模块亮点
+
+### 1. L1/L2 数据质检引擎
+
+**痛点**：姿态标注数据集通常包含 face（人脸框）、head（头部框）、person（人体框）三类对象，外加 COCO 17 关键点。人工逐张检查它们的几何关系（face 是否在 head 内、head 是否在 person 上端、关键点是否越界）成本极高，且规则难以复用。
+
+**方案**：一套纯 Python 的双层质检引擎——L1 检查 JSON 结构合法性，L2 用 12 条几何/视觉规则评估跨类关系，配 face→head→person 跨类匹配算法（硬过滤 + 加权打分）和阈值评估系统。
+
+**亮点**：
+- 🏗️ **纯 Python / PyQt 严格分层**：`quality/` 12 个文件 **0 个 PyQt import**，可在无显示器 CI 环境直接跑批，CLI 与 UI 共享同一份逻辑
+- 🎯 **12 条 L2 规则**：L2-01 face 匹配 head、L2-03 face/head 面积比、L2-06 head/person 空间位置、L2-09 关键点越界、L2-12 图级密度异常……
+- 🔗 **跨类匹配**：face→head（严格，5 条硬过滤 + 4 维打分）/ head→person（宽松，4 条硬过滤 + 5 维打分），三角函数峰值衰减做平滑评分
+- ⚖️ **阈值评估**：4 种 direction + `error_requires` 二次确认降级（error 命中但确认条件不满足时自动降级为 warning）
+- 💡 **阈值建议**：9 级优先级触发表，基于人工复核统计产出非约束性建议（永远 pending，不自动改配置）
+
+📊 数据：4,354 行 · 148 测试用例 · [详细文档 →](docs/portfolio/01-quality-engine.md)
+
+---
+
+### 2. Inspector 数据检查面板
+
+**痛点**：原工作流是「标注 → 导出 JSON → 外部 Python 脚本检查 → 手动定位问题文件 → 逐张打开修复 → 再导出 → 再检查」，质检闭环在外部脚本，发现的问题无法直接跳转回标注位修复。
+
+**方案**：一个 5-Tab 的 QDockWidget 工作台（数据检查 / 质检复核 / 数据表格 / 规则配置 / 导出），把外部脚本能力搬进标注工具，点击问题点直接跳转 Canvas 上的 shape。
+
+**亮点**：
+- 🧩 **插件化规则引擎**：`ValidationRule` ABC + `check`/`check_all` 双层级，新增规则零侵入
+- 📋 **8 条内置规则**：标签白名单、group_id 唯一性、person 框必须有 gid、label-shape 绑定、关键点完整性……
+- 🔁 **信号契约复用**：质检复核 Tab 复用既有 `issue_navigate_requested` 通路，**父级 LabelingWidget 零改动**即可接入新功能
+- 🗂️ **三维内存索引**：`FlatIndex` 的 `_by_file/_by_label/_by_group` 支撑 500~1000 文件/批次扫描
+
+📊 数据：3,785 行 · 60+ 测试用例 · [详细文档 →](docs/portfolio/02-inspector-panel.md)
+
+---
+
+### 3. 优先级排序拾取模式
+
+**痛点**：密集/嵌套标注场景（多框堆叠、关键点压在矩形上、大背景框套小目标框）下，旧的 `reversed + 首次命中` 策略只能选到"最后创建且整体命中"的对象，经常选错或选不到想要的对象。
+
+**方案**：「决策转排序（Decision → Sort）」范式——对每个候选 shape 计算 4 维优先级元组，按字典序排序，让"抓顶点 > 抓边 > 抓小对象 > 抓栈顶"在排序中自然生效。
+
+**核心算法**：
+
+```python
+# canvas.py:515-523 — 优先级 priority = (级别, 距离, 面积, -stack_index)，升序(越小越优先)
+#   级别 0: 附近顶点(可抓取编辑点)——最高优先
+#   级别 1: 附近可编辑边(可双击加点)
+#   级别 2: 整体命中(contains_point)——兜底
+#   同级别下: 距离更近者优先；仍相同时面积更小者优先(嵌套场景下小对象优先)；
+#     最后后创建者(栈顶)优先。
+```
+
+**亮点**：
+- 🎯 **4 维优先级元组**：`(级别, 距离/面积, 面积, -stack_index)`，零 if 分支
+- 🧠 **面积当"具体性"代理**：嵌套场景下小对象面积小自然排前面
+- 🔁 **三入口统一复用**：悬停高亮、点击选择、双击编辑都取排序后的首个候选
+- 🧪 **纯算法可单测**：6 个场景在无 PyQt 环境下验证
+
+📊 数据：~90 行核心算法 · 6 场景测试 · [详细文档 →](docs/portfolio/03-selection-optimization.md)
+
+---
+
+### 4. 矩形边编辑
+
+**痛点**：标注矩形时经常需要精修某条边（贴合图像边界、对齐相邻框），但原生编辑只能拖角点——拖角点会同时改变两条边，破坏另一方向的对齐。
+
+**方案**：独立选中并拖动矩形的任意一条边（左/右/上/下），保留其他三条边不变。几何计算层与 Canvas UI 层严格解耦。
+
+**反翻转 clamp**（矩形拖过头也不会坍塌）：
+
+```python
+# rect_edge_alignment.py:320-370
+if edge_name == RECT_EDGE_LEFT:
+    x_min = min(coord, x_max - min_size)      # 不会超过右边
+elif edge_name == RECT_EDGE_RIGHT:
+    x_max = max(coord, x_min + min_size)      # 不会低于左边
+elif edge_name == RECT_EDGE_TOP:
+    y_min = min(coord, y_max - min_size)
+elif edge_name == RECT_EDGE_BOTTOM:
+    y_max = max(coord, y_min + min_size)
+```
+
+**亮点**：
+- 📐 **几何层/UI 层解耦**：`RectEdgeRef` 只是临时编辑句柄，**绝不写回 JSON/不进 Shape.other_data**
+- 🛡️ **反翻转 clamp**：`min < max` 永远成立
+- 🔄 **Canvas 状态机**：hover → 按下选中 → 实时改坐标 → 松开提交 → Esc 取消恢复
+- 🔒 **绘制模式双向互斥**：进 create 模式自动关闭边编辑，反之亦然
+- 📝 **诚实呈现**：经历了「边对齐（吸附参考边）→ 简化为边编辑」的演进，文档如实记录
+
+📊 数据：407 行几何 + ~250 行 canvas · 21 测试用例 · [详细文档 →](docs/portfolio/04-rect-edge-edit.md)
+
+---
+
+### 5. Pose View 标签解耦
+
+**痛点**：开启 Pose View 后渲染器完全接管整张图，普通矩形/多边形标签被隐藏，"分割感"强；且选中某人会污染普通标签流程的选中态。
+
+**方案**：filter-driven 架构——用单一字段 `pose_focus_group_id` 驱动标签列表与选中焦点的解耦；按 shape 类型过滤而非模式切换，让 Pose View 与原生标签共存。
+
+**亮点**：
+- 🎛️ **filter-driven 单字段解耦**：`pose_focus_group_id` 一个字段驱动总览/选中两态切换，不污染原生选中流程
+- 📐 **4 种防遮挡布局**：direct / anti（优先级排序消重叠）/ column（四象限垂直堆叠）/ category（按部位分组）
+- 👁️ **总览/选中两态显示**：总览态 person 分色看全景，选中态显示骨架+标签+引线看细节
+- 🧱 **纯模块优先原则**：`pose_constants`/`pose_config`/`pose_layout` 零 QWidget 依赖，可独立单测
+- 🔧 **事件来源区分**：Keypoint Fill 模式的程序性空选中用 `is_active` 守卫，避免误清聚焦
+
+📊 数据：1,994 行 / 9 文件 · 36 测试用例 · [详细文档 →](docs/portfolio/05-pose-view.md)
+
+---
+
+### 6. 数据处理脚本集
+
+**痛点**：姿态数据生产是一个完整链路（标注 → 格式转换 → 数据集划分 → 可视化核验 → 模型预标注对比 → 规则质检），每一步都需要专门工具，散落各处难以维护。
+
+**方案**：40 个统一 `argparse` CLI 风格的脚本，覆盖姿态数据生产全链路，与规格文档、Inspector 队列深度集成。
+
+**代表脚本**：
+- 🔄 **YOLO Pose 三步流水线**：`step1-convert_json_to_yolopose.py`（604 行）→ `step2-split_yolov8pose_dataset.py` → `step3-visualize_yolo_dataset.py`
+- 🤖 **ViTPose 预标注对比**：按 group_id 注入预测关键点，用模型预测反查人工标注盲点
+- ✅ **质检 CLI**：`run_l1l2_qc.py`（输出 review.tsv + report.json）、`gen_threshold_suggestion.py`
+- 📊 **数据集统计/对比**：唯一 label 提取、stem 对比、shape 统计
+
+📊 数据：40 个脚本（核心逾 3,000 行） · [详细文档 →](docs/portfolio/06-data-toolkit.md)
+
+---
+
+## 技术栈
+
+| 层 | 技术 |
+|----|------|
+| GUI 框架 | PyQt6（QMainWindow / QDockWidget / QGraphicsView） |
+| 质检引擎 | 纯 Python（stdlib + PyYAML），零 PyQt 依赖 |
+| 配置驱动 | YAML 阈值 profile + 21 项 pose_view 配置键 |
+| CLI 工具 | argparse + ProcessPoolExecutor + tqdm |
+| 测试 | pytest + unittest，headless Qt（`QT_QPA_PLATFORM=offscreen`） |
+| 代码质量 | black（line 79）+ flake8（max complexity 18）+ Google docstring |
+
+---
+
+## 完整作品集
+
+如需架构图、带 `file:line` 可点击链接的代码片段、以及更深的技术解读：
+
+- 📄 **[作品集主页 English](docs/PORTFOLIO_EN.md)** · **[中文](docs/PORTFOLIO.md)**
+- 📁 **[6 个模块深度文档](docs/portfolio/)** — 每篇含痛点/架构图/技术亮点/代码定位/测试覆盖
+- 📚 **[116 篇设计文档](docs/)** — 方法论、模式卡片、重构计划
+
+---
+
+## 设计方法论沉淀
+
+实现这些功能时，我把可复用的设计决策记录成了「模式卡片」和设计文档：
+
+- [PATTERN_CARD_001 决策转排序](docs/PATTERN_CARD_001_decision_to_sort.md)——把多重 if-elif 决策转成可比较的元组排序
+- [filter_state_engine_pattern.md](docs/filter_state_engine_pattern.md)——单字段驱动状态机模式
+- [canvas_refactor_plan.md](docs/canvas_refactor_plan.md)——Canvas 分析与重构方法论
+
+---
+
+## 致谢
+
+- [CVHub520/X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling)——优秀的开源标注工具，是本 fork 的基础
+- 原版 upstream README 保留在 [README_upstream_zh-CN.md](README_upstream_zh-CN.md) / [README_upstream.md](README_upstream.md)
