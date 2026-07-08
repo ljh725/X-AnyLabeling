@@ -1,3 +1,28 @@
+<!--
+  ============================================================================
+  个人 Fork 横幅 —— 同步 upstream 时请勿删除本块。
+  upstream 原始 README 从下方第二个 <div align="center"> 开始。
+  ============================================================================
+-->
+> ## 🔧 个人 Fork —— [@ljh725](https://github.com/ljh725) 扩展功能
+>
+> 本仓库是 [CVHub520/X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling)（beta.4）的个人 fork。
+> 我在原版基础上扩展了 **6 个功能模块**，聚焦于**数据质量检查、画布交互优化、姿态标注工作流**。
+>
+> | # | 模块 | 代码量 | 测试 | 一句话价值 |
+> |---|------|--------|------|-----------|
+> | 1 | [L1/L2 质检引擎](docs/portfolio/01-quality-engine.md) | ~4.4k 行 | 148 | 12 条几何/视觉规则 + 跨类匹配，纯 Python（零 PyQt 依赖） |
+> | 2 | [Inspector 数据检查面板](docs/portfolio/02-inspector-panel.md) | ~3.8k 行 | 60+ | 5-Tab 质检工作台、插件化规则引擎、点击即跳转 |
+> | 3 | [优先级排序拾取](docs/portfolio/03-selection-optimization.md) | ~90 行核心 | 6 | 4 维优先级元组，解决密集/嵌套标注选错痛点 |
+> | 4 | [矩形边编辑](docs/portfolio/04-rect-edge-edit.md) | ~660 行 | 21 | 独立拖动单条矩形边，反翻转 clamp |
+> | 5 | [Pose View 标签解耦](docs/portfolio/05-pose-view.md) | ~2.0k 行 | 36 | filter-driven 解耦架构、4 种布局算法 |
+> | 6 | [数据处理脚本集](docs/portfolio/06-data-toolkit.md) | 40 个脚本 | — | YOLO Pose 流水线 + ViTPose 预标注对比 + 质检 CLI |
+>
+> **👉 作品集主页：[docs/PORTFOLIO.md](docs/PORTFOLIO.md)** · [English](docs/PORTFOLIO_EN.md)
+> — 93 次提交 · ~1.5 万行代码 · 230+ 测试用例 · 116 篇设计文档
+>
+> *原版 upstream README 接续在下方。*
+
 <div align="center">
   <p>
     <a href="https://github.com/CVHub520/X-AnyLabeling/" target="_blank">

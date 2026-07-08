@@ -1,3 +1,29 @@
+<!--
+  ============================================================================
+  PERSONAL FORKL BANNER — do not remove this block when syncing upstream.
+  Upstream README content starts at the second <div align="center"> below.
+  ============================================================================
+-->
+> ## 🔧 Personal Fork — Extended Features by [@ljh725](https://github.com/ljh725)
+>
+> This is a personal fork of [CVHub520/X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling) (beta.4).
+> I extended it with **6 feature modules** focused on **data-quality inspection,
+> canvas interaction, and pose-annotation workflows**.
+>
+> | # | Module | LOC | Tests | One-liner |
+> |---|--------|-----|-------|-----------|
+> | 1 | [L1/L2 Quality Engine](docs/portfolio/01-quality-engine.md) | ~4.4k | 148 | 12 geometry/visual rules + cross-class matching, pure-Python (no PyQt) |
+> | 2 | [Inspector Panel](docs/portfolio/02-inspector-panel.md) | ~3.8k | 60+ | 5-tab QA workbench, plug-in rule engine, click-to-navigate |
+> | 3 | [Selection Optimization](docs/portfolio/03-selection-optimization.md) | ~90 core | 6 | Priority-tuple hit ranking for dense/nested annotations |
+> | 4 | [Rect Edge Editing](docs/portfolio/04-rect-edge-edit.md) | ~660 | 21 | Drag a single rectangle edge independently, anti-flip clamp |
+> | 5 | [Pose View Decoupling](docs/portfolio/05-pose-view.md) | ~2.0k | 36 | filter-driven label/focus decoupling, 4 layout algorithms |
+> | 6 | [Data Toolkit](docs/portfolio/06-data-toolkit.md) | 40 scripts | — | YOLO-Pose pipeline + ViTPose pre-label diff + QC CLI |
+>
+> **👉 Full portfolio:** [**docs/PORTFOLIO_EN.md**](docs/PORTFOLIO_EN.md) · [中文版](docs/PORTFOLIO.md)
+> — 93 commits · ~15k LOC · 230+ test cases · 116 design docs
+>
+> *The original upstream README continues below.*
+
 <div align="center">
   <p>
     <a href="https://github.com/CVHub520/X-AnyLabeling/" target="_blank">
