@@ -116,6 +116,7 @@ class SettingsRuntimeApplier:
             "shortcuts.toggle_auto_use_last_gid": self._widget.actions.auto_use_last_gid_mode,
             "shortcuts.toggle_visibility_shapes": self._widget.actions.visibility_shapes_mode,
             "shortcuts.toggle_compare_view": self._widget.actions.toggle_compare_view,
+            "shortcuts.toggle_rect_edge_align": self._widget.actions.toggle_rect_edge_align,
             "shortcuts.auto_label": self._widget.actions.toggle_auto_labeling_widget,
             "shortcuts.auto_run": self._widget.actions.run_all_images,
             "shortcuts.loop_thru_labels": self._widget.actions.loop_thru_labels,

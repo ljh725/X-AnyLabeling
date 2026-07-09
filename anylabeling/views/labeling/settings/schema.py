@@ -1059,6 +1059,7 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "toggle_compare_view",
             "toggle_keep_prev_mode",
             "toggle_visibility_shapes",
+            "toggle_rect_edge_align",
             "zoom_in",
             "zoom_out",
             "zoom_to_original",

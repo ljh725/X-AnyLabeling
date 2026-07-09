@@ -7,7 +7,7 @@ import os.path as osp
 import re
 import shutil
 import time
-from typing import Optional, Set
+from typing import Callable, Optional, Set
 
 import cv2
 import numpy as np
@@ -1504,6 +1504,7 @@ class LabelingWidget(LabelDialog):
         toggle_rect_edge_align = action(
             self.tr("矩形边编辑"),
             self.toggle_rect_edge_align,
+            shortcut=shortcuts["toggle_rect_edge_align"],
             tip=self.tr("开启矩形边编辑模式"),
             icon=None,
             checkable=True,
@@ -6938,28 +6939,77 @@ class LabelingWidget(LabelDialog):
             zoom_value = math.floor(zoom_value)
         self.set_zoom(zoom_value)
 
+    @staticmethod
+    def _clamp_scroll_value(scroll_bar, value):
+        """Clamp a target scroll value to the scrollbar's valid range.
+
+        Avoids persisting unreachable target values into ``scroll_values``
+        when the image is smaller than the viewport (maximum == 0).
+        """
+        return max(scroll_bar.minimum(), min(scroll_bar.maximum(), value))
+
+    def _zoom_around_canvas_pos(
+        self,
+        canvas_pos,
+        apply_zoom,
+    ):
+        """Apply zoom while keeping the image point under canvas_pos stable.
+
+        Uses the full coordinate model
+        ``widget_pos = (image_pos + offset_to_center) * scale`` (the inverse
+        of ``Canvas.transform_pos``), so the compensation stays correct for
+        portrait images whose canvas widget width is clamped by
+        ``setWidgetResizable(True)`` and no longer reflects the real scale.
+
+        ``apply_zoom`` must trigger ``paint_canvas()`` (directly or via
+        ``zoom_widget.setValue``) so ``canvas.scale``/``adjustSize`` are
+        updated before ``new_offset`` is sampled.
+        """
+        if self.canvas.pixmap is None or self.canvas.pixmap.isNull():
+            apply_zoom()
+            return
+
+        # Sync the widget size to the *current* scale before sampling
+        # old_offset; ``update()`` only queues a repaint and is NOT a
+        # synchronous layout flush.
+        self.canvas.adjustSize()
+
+        old_scale = self.canvas.scale
+        old_offset = self.canvas.offset_to_center()
+        old_pos = QtCore.QPointF(canvas_pos)
+        image_pos = old_pos / old_scale - old_offset
+
+        h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
+        v_bar = self.scroll_bars[Qt.Orientation.Vertical]
+        old_h = h_bar.value()
+        old_v = v_bar.value()
+
+        apply_zoom()
+
+        new_scale = self.canvas.scale
+        new_offset = self.canvas.offset_to_center()
+        new_pos = (image_pos + new_offset) * new_scale
+        # Symbol verified: new_scroll = old_scroll + delta keeps the
+        # image point's screen position invariant
+        # (screen_pos = widget_pos - scroll_value). See
+        # docs/zoom_center_drift_implementation_plan.md sec 2 & step 2.5.
+        delta = new_pos - old_pos
+
+        target_h = self._clamp_scroll_value(h_bar, old_h + delta.x())
+        target_v = self._clamp_scroll_value(v_bar, old_v + delta.y())
+
+        self.set_scroll(Qt.Orientation.Horizontal, target_h)
+        self.set_scroll(Qt.Orientation.Vertical, target_v)
+
     def zoom_request(self, delta, pos):
-        canvas_width_old = self.canvas.width()
         units = 1.1
         if delta < 0:
             units = 0.9
-        self.add_zoom(units)
 
-        canvas_width_new = self.canvas.width()
-        if canvas_width_old != canvas_width_new:
-            canvas_scale_factor = canvas_width_new / canvas_width_old
-
-            x_shift = round(pos.x() * canvas_scale_factor - pos.x())
-            y_shift = round(pos.y() * canvas_scale_factor - pos.y())
-
-            self.set_scroll(
-                Qt.Orientation.Horizontal,
-                self.scroll_bars[Qt.Orientation.Horizontal].value() + x_shift,
-            )
-            self.set_scroll(
-                Qt.Orientation.Vertical,
-                self.scroll_bars[Qt.Orientation.Vertical].value() + y_shift,
-            )
+        self._zoom_around_canvas_pos(
+            pos,
+            lambda: self.add_zoom(units),
+        )
 
     def set_fit_window(self, value=True):
         if value:

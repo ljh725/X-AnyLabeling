@@ -207,6 +207,7 @@ shortcuts:
   toggle_auto_use_last_gid: Ctrl+Shift+G
   toggle_visibility_shapes: Ctrl+H
   toggle_compare_view: Ctrl+Alt+C
+  toggle_rect_edge_align: Ctrl+Shift+E
 
   auto_label: Ctrl+A
   auto_run: Ctrl++Shift+B
