@@ -208,6 +208,7 @@ shortcuts:
   toggle_visibility_shapes: Ctrl+H
   toggle_compare_view: Ctrl+Alt+C
   toggle_rect_edge_align: Ctrl+Shift+E
+  toggle_stable_preview: Ctrl+Alt+P
 
   auto_label: Ctrl+A
   auto_run: Ctrl++Shift+B

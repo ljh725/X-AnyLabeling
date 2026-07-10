@@ -15,16 +15,49 @@ pip install -e ".[gpu-cu11,dev]"  # CUDA 11.x
 - Dev deps include `PySide6` (needed for `pyside6-rcc` fallback in `compile_languages.py`, even though runtime uses PyQt6).
 
 ## Dev commands
-```bash
-# IMPORTANT: Use conda environment 'x-anylabeling-cu12' for all operations
-conda activate x-anylabeling-cu12
+```powershell
+$ErrorActionPreference = 'Stop'
+$py = "$env:USERPROFILE\.conda\envs\x-anylabeling-cu12\python.exe"
 
-pytest                              # Run tests (add --slow for slow tests)
-bash scripts/format_code.sh         # black -l 79
-flake8 anylabeling/                 # Lint (max complexity 18)
-pre-commit run --all-files          # Pre-commit gate
-python scripts/compile_languages.py # Rebuild .qm + resources.py after .ts changes
+& $py -m pytest                              # Run tests (add --slow for slow tests)
+& $py -m black -l 79 anylabeling             # Format code
+& $py -m flake8 anylabeling/                 # Lint (max complexity 18)
+pre-commit run --all-files                   # Pre-commit gate
+& $py scripts/compile_languages.py           # Rebuild .qm + resources.py after .ts changes
 ```
+
+### Windows / PowerShell command rules
+
+All agent-run CLI work in this repo should use PowerShell syntax. Do not mix in
+Bash-only forms such as `source activate`, `cmd /c`, heredocs, or `&&` command
+chains.
+
+Use this shape for commands:
+
+```powershell
+$ErrorActionPreference = 'Stop'
+& 'C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe' -m pytest tests/test_rect_edge_alignment.py -q
+```
+
+Practical rules:
+
+- Put `$ErrorActionPreference = 'Stop'` at the top of every multi-line command.
+- Use PowerShell invocation `& 'path\to\tool.exe' ...` for paths with spaces or explicit interpreters.
+- Prefer object commands (`Get-ChildItem`, `Select-Object`, `Where-Object`, `Select-String`) over text parsing.
+- Use `Get-Content -Encoding UTF8` / `Set-Content -Encoding UTF8` when reading or writing text with Chinese.
+- Do not rely on `conda run` in Codex shell sessions; it has repeatedly hung here.
+- Do not rely on interactive `conda activate` inside one-off tool commands; activation does not reliably persist.
+- For tests and Python utilities, call the env interpreter directly:
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$py = "$env:USERPROFILE\.conda\envs\x-anylabeling-cu12\python.exe"
+& $py -m pytest tests/test_rect_edge_alignment.py -q
+& $py -m py_compile anylabeling\views\labeling\widgets\canvas.py
+```
+
+If PyQt6 fails inside the sandbox with a Qt DLL access error, rerun the same
+command with approval outside the sandbox instead of changing the environment.
 
 ### opencode Integration
 - opencode must be started **after** activating the conda environment
@@ -164,14 +197,3 @@ python scripts/compile_languages.py # Rebuild .qm + resources.py after .ts chang
 
 ## Security note
 Model downloads from GitHub releases disable SSL cert verification (`ssl._create_unverified_context`) to allow downloads behind corporate proxies.
-
-
-# 💻 PowerShell 执行规范
-
-在执行任何脚本、命令或处理环境交互时，所有 CLI 命令和脚本执行必须严格遵守以下 PowerShell 规则：
-
-1. **统一 Shell 环境**：所有命令必须使用 PowerShell (推荐 `pwsh` 即 PowerShell 7 以上)。禁止使用 Windows 旧版 `cmd.exe` 或默认 `powershell.exe`。
-2. **转义字符约束**：Bash 与 PowerShell 的转义规则不同，在编写跨平台脚本时，禁止混用 Shell 语法。
-3. **严格的错误处理**：所有脚本首部必须包含 `$ErrorActionPreference = 'Stop'`，确保遇到错误时立即中断并报错，避免静默失败。
-4. **编码规范**：脚本文件生成与读写必须强制指定 `-Encoding UTF8`，防止中文字符或特殊符号乱码。
-5. **管道与对象优先**：在处理数据解析时，优先使用 PowerShell 的对象管道特性（如 `Select-Object`, `Where-Object`），避免过度依赖传统的文本截取。

@@ -1512,6 +1512,17 @@ class LabelingWidget(LabelDialog):
             enabled=True,
         )
 
+        toggle_stable_preview = action(
+            self.tr("稳定精修预览"),
+            self.toggle_stable_preview,
+            shortcut=shortcuts.get("toggle_stable_preview"),
+            tip=self.tr("选中矩形或拖动矩形边时显示稳定的局部放大预览"),
+            icon=None,
+            checkable=True,
+            checked=False,  # Not persisted; always off at startup.
+            enabled=True,
+        )
+
         # Languages
         select_lang_en = action(
             "English",
@@ -2120,6 +2131,7 @@ class LabelingWidget(LabelDialog):
             show_linking=show_linking,
             label_on_selection=label_on_selection,
             toggle_rect_edge_align=toggle_rect_edge_align,
+            toggle_stable_preview=toggle_stable_preview,
             show_navigator=show_navigator,
             toggle_inspector=toggle_inspector,
             toggle_global_filter_keep=toggle_global_filter_keep,
@@ -2471,6 +2483,7 @@ class LabelingWidget(LabelDialog):
                 label_on_selection,
                 pose_view,
                 toggle_rect_edge_align,
+                toggle_stable_preview,
                 show_groups,
                 hide_selected_polygons,
                 show_hidden_polygons,
@@ -4061,6 +4074,12 @@ class LabelingWidget(LabelDialog):
             rect_edge_action.setChecked(False)
             rect_edge_action.blockSignals(False)
             self.canvas.set_rect_edge_align_enabled(False)
+
+        # Stable refine preview is a passive observer of rect-edge drags;
+        # it carries no editing semantics and need not be force-disabled
+        # on mode switch. The Canvas already clears any in-flight
+        # drag-locked state via set_editing(False), so leaving the master
+        # switch on is harmless and preserves the user's preference.
 
         # Disable auto labeling if needed
         if (
@@ -7059,6 +7078,9 @@ class LabelingWidget(LabelDialog):
         create/draw modes: enabling it forces a return to edit mode so the
         two interactions never overlap.
 
+        A status-bar notification (same spot as the live mouse coordinate /
+        H-W readout) confirms the on/off state.
+
         Args:
             enabled: Whether the rectangle edge editing mode is on.
         """
@@ -7066,6 +7088,22 @@ class LabelingWidget(LabelDialog):
             # Exit any active create mode so edge picking has the canvas.
             self.set_edit_mode()
         self.canvas.set_rect_edge_align_enabled(enabled)
+        if enabled:
+            self.status(self.tr("矩形边编辑模式已开启"))
+        else:
+            self.status(self.tr("矩形边编辑模式已关闭"))
+
+    def toggle_stable_preview(self, enabled: bool) -> None:
+        """Toggle the stable refine preview master switch.
+
+        The preview is purely observational: it can show a selected
+        rectangle target preview and a drag-locked rect-edge preview, but
+        never participates in mouse-event arbitration.
+
+        Args:
+            enabled: Whether the stable refine preview is on.
+        """
+        self.canvas.set_stable_preview_enabled(enabled)
 
     def _sync_pose_config(self) -> None:
         """Copy PoseDisplayConfig fields into self._config['pose_view']."""
