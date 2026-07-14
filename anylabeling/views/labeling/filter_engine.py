@@ -16,9 +16,9 @@ class ShapeFilterEngine:
 
     def __init__(
         self,
-        label_list,              # LabelListWidget
-        canvas,                  # Canvas
-        get_label_info,          # callable -> dict
+        label_list,  # LabelListWidget
+        canvas,  # Canvas
+        get_label_info,  # callable -> dict
         update_select_toggle_tooltip=None,  # optional callable
     ):
         self._label_list = label_list

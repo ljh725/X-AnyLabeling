@@ -38,10 +38,26 @@ logger = logging.getLogger(__name__)
 # ── Default project label set (20 labels) ───────────────────────
 DEFAULT_SHARED_LABELS = ",".join(
     [
-        "person", "head", "face",
-        "nose", "l_eye", "r_eye", "l_ear", "r_ear",
-        "l_sho", "r_sho", "l_elb", "r_elb", "l_wri", "r_wri",
-        "l_hip", "r_hip", "l_knee", "r_knee", "l_ank", "r_ank",
+        "person",
+        "head",
+        "face",
+        "nose",
+        "l_eye",
+        "r_eye",
+        "l_ear",
+        "r_ear",
+        "l_sho",
+        "r_sho",
+        "l_elb",
+        "r_elb",
+        "l_wri",
+        "r_wri",
+        "l_hip",
+        "r_hip",
+        "l_knee",
+        "r_knee",
+        "l_ank",
+        "r_ank",
     ]
 )
 
@@ -51,13 +67,31 @@ DEFAULT_RECT_LABELS = "person,head,face"
 # Point labels default (17 keypoints)
 DEFAULT_POINT_LABELS = ",".join(
     [
-        "nose", "l_eye", "r_eye", "l_ear", "r_ear",
-        "l_sho", "r_sho", "l_elb", "r_elb", "l_wri", "r_wri",
-        "l_hip", "r_hip", "l_knee", "r_knee", "l_ank", "r_ank",
+        "nose",
+        "l_eye",
+        "r_eye",
+        "l_ear",
+        "r_ear",
+        "l_sho",
+        "r_sho",
+        "l_elb",
+        "r_elb",
+        "l_wri",
+        "r_wri",
+        "l_hip",
+        "r_hip",
+        "l_knee",
+        "r_knee",
+        "l_ank",
+        "r_ank",
     ]
 )
 
-_SEVERITY_COLORS = {"error": "#DC3545", "warning": "#FFC107", "info": "#0D6EFD"}
+_SEVERITY_COLORS = {
+    "error": "#DC3545",
+    "warning": "#FFC107",
+    "info": "#0D6EFD",
+}
 
 # ── Rule metadata ───────────────────────────────────────────────
 # (rule_name, display, description, severity, enabled_by_default, params_meta)
@@ -181,9 +215,13 @@ class RuleConfigWidget(QtWidgets.QWidget):
         shared_layout = QtWidgets.QHBoxLayout()
         shared_layout.addWidget(QtWidgets.QLabel("项目标签集:"))
         self._shared_labels_edit = QtWidgets.QLineEdit()
-        self._shared_labels_edit.setPlaceholderText("逗号分隔，如 person,head,face")
+        self._shared_labels_edit.setPlaceholderText(
+            "逗号分隔，如 person,head,face"
+        )
         self._shared_labels_edit.setText(DEFAULT_SHARED_LABELS)
-        self._shared_labels_edit.textChanged.connect(self._on_shared_labels_changed)
+        self._shared_labels_edit.textChanged.connect(
+            self._on_shared_labels_changed
+        )
         shared_layout.addWidget(self._shared_labels_edit)
         layout.addLayout(shared_layout)
 
@@ -204,7 +242,9 @@ class RuleConfigWidget(QtWidgets.QWidget):
         # scroll area for rule rows
         scroll = QtWidgets.QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
 
         rules_container = QtWidgets.QWidget()
@@ -237,9 +277,7 @@ class RuleConfigWidget(QtWidgets.QWidget):
         # pre-fill shared label editor if given
         if shared_labels:
             self._shared_labels_edit.blockSignals(True)
-            self._shared_labels_edit.setText(
-                ",".join(sorted(shared_labels))
-            )
+            self._shared_labels_edit.setText(",".join(sorted(shared_labels)))
             self._shared_labels_edit.blockSignals(False)
 
         # build rule name → instance map
@@ -341,17 +379,18 @@ class RuleConfigWidget(QtWidgets.QWidget):
 
             edit = QtWidgets.QLineEdit()
             edit.setEnabled(enabled)
-            edit.setStyleSheet("QLineEdit { padding: 1px 3px; font-size: 8.5pt; }")
+            edit.setStyleSheet(
+                "QLineEdit { padding: 1px 3px; font-size: 8.5pt; }"
+            )
 
             # read current value from rule or use default
-            current_val = self._extract_rule_param(
-                rule, pname, default_val
-            )
+            current_val = self._extract_rule_param(rule, pname, default_val)
             edit.setText(current_val)
 
             edit.textChanged.connect(
-                lambda text, rn=rule_name, pn=pname:
-                self._on_param_changed(rn, pn, text)
+                lambda text, rn=rule_name, pn=pname: self._on_param_changed(
+                    rn, pn, text
+                )
             )
 
             h.addWidget(edit)

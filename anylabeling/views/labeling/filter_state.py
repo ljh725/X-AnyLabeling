@@ -47,7 +47,11 @@ class FilterState:
     # Queries
     # ------------------------------------------------------------------
     def has_active_filter(self) -> bool:
-        return bool(self.labels) or self.gid != self.DEFAULT_GID or self.shape_type != self.DEFAULT_TYPE
+        return (
+            bool(self.labels)
+            or self.gid != self.DEFAULT_GID
+            or self.shape_type != self.DEFAULT_TYPE
+        )
 
     # ------------------------------------------------------------------
     # Serialization helpers (used by pending restore)

@@ -185,7 +185,7 @@ shortcuts:
   edit_group_id: Alt+G
   edit_labels: Alt+L
   enter_keypoint_fill_mode: K
-  toggle_keypoint_tool_window: Ctrl+K
+  toggle_keypoint_tool_window: Ctrl+Shift+K
   switch_to_prev_person: Ctrl+Shift+[
   switch_to_next_person: Ctrl+Shift+]
   edit_shapes: Alt+S
@@ -209,9 +209,11 @@ shortcuts:
   toggle_compare_view: Ctrl+Alt+C
   toggle_rect_edge_align: Ctrl+Shift+E
   toggle_stable_preview: Ctrl+Alt+P
+  toggle_precision_mode_lock: Ctrl+Alt+F
+  trigger_edge_snap: Ctrl+Alt+E
 
   auto_label: Ctrl+A
-  auto_run: Ctrl++Shift+B
+  auto_run: Ctrl+Shift+B
   loop_thru_labels: Ctrl+Shift+N
   loop_select_labels: Ctrl+Shift+C
 
@@ -232,6 +234,14 @@ remote_server_settings:
 digit_shortcuts: null
 rename_shortcuts: null
 digit_shortcut_pages: 1
+digit_shortcut_mode: rename  # rename | bind_draw
+
+# Manual person annotation refinement
+auto_person_instance: false  # auto-create new group_id when drawing person rectangle
+canvas_precision_mode: zoom  # fixed | zoom
+canvas_precision_max_factor: 2.0  # max slowdown factor for zoom precision mode
+canvas_precision_factor: 4  # mouse drag slowdown factor in precision mode
+canvas_edge_snap_range: 4  # search range in image pixels for local edge snap
 
 # Pose keypoint label display
 pose_view:

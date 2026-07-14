@@ -529,9 +529,11 @@ class QualityReviewWidget(QtWidgets.QWidget):
         start_idx = (
             issue_ids.index(start_issue_id)
             if start_issue_id and start_issue_id in issue_ids
-            else issue_ids.index(cur.issue_id)
-            if cur and cur.issue_id in issue_ids
-            else -1
+            else (
+                issue_ids.index(cur.issue_id)
+                if cur and cur.issue_id in issue_ids
+                else -1
+            )
         )
         rng = (
             range(start_idx + 1, len(issue_ids))

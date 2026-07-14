@@ -85,9 +85,7 @@ class IssueListWidget(QtWidgets.QWidget):
         self.scan_current_btn = QtWidgets.QPushButton("扫描当前")
         self.scan_current_btn.setFixedHeight(24)
         self.scan_current_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.scan_current_btn.setToolTip(
-            "扫描当前文件的标注（需先全量扫描）"
-        )
+        self.scan_current_btn.setToolTip("扫描当前文件的标注（需先全量扫描）")
         self.scan_current_btn.setEnabled(False)
         header_layout.addWidget(self.scan_current_btn)
 
@@ -124,9 +122,7 @@ class IssueListWidget(QtWidgets.QWidget):
 
     def _connect_signals(self) -> None:
         self.scan_btn.clicked.connect(self.rescan_requested.emit)
-        self.scan_current_btn.clicked.connect(
-            self.scan_current_requested.emit
-        )
+        self.scan_current_btn.clicked.connect(self.scan_current_requested.emit)
         self.import_btn.clicked.connect(self.import_requested.emit)
         self.tree.itemClicked.connect(self._on_item_clicked)
         self.tree.itemDoubleClicked.connect(self._on_item_double_clicked)

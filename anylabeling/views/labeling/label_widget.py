@@ -95,6 +95,7 @@ from .widgets import (
     LabelListWidgetItem,
     DigitRenameManager,
     DigitRenameShortcutDialog,
+    DigitBindDrawManager,
     DigitShortcutDialog,
     DigitShortcutPageManager,
     LabelModifyDialog,
@@ -246,6 +247,7 @@ class LabelingWidget(LabelDialog):
         self.digit_to_label = None
         self.drawing_digit_shortcuts = self._config.get("digit_shortcuts", {})
         self.digit_rename_manager = DigitRenameManager(self)
+        self.digit_bind_draw_manager = DigitBindDrawManager(self)
         self._runtime_shape_color_shift = int(
             self._config.get("shift_auto_shape_color", 0)
         )
@@ -570,6 +572,9 @@ class LabelingWidget(LabelDialog):
         )
         self.canvas.drawing_polygon.connect(self.toggle_drawing_sensitive)
         self.canvas.edit_label_requested.connect(self.edit_label)
+        self.canvas.keyboard_edge_selected.connect(
+            self._show_keyboard_edge_selected
+        )
         # [Feature] support for automatically switching to editing mode
         # when the cursor moves over an object
         self.canvas.h_shape_is_hovered = self._config.get(
@@ -1522,6 +1527,24 @@ class LabelingWidget(LabelDialog):
             checked=False,  # Not persisted; always off at startup.
             enabled=True,
         )
+        toggle_precision_mode_lock = action(
+            self.tr("精修模式锁定"),
+            self.toggle_precision_mode_lock,
+            shortcut=shortcuts.get("toggle_precision_mode_lock"),
+            tip=self.tr("锁定鼠标精修降速，不必持续按 Ctrl"),
+            icon=None,
+            checkable=True,
+            checked=False,
+            enabled=True,
+        )
+        trigger_edge_snap = action(
+            self.tr("局部边缘吸附"),
+            self.trigger_edge_snap,
+            shortcut=shortcuts.get("trigger_edge_snap"),
+            tip=self.tr("将当前键盘选中的矩形边吸附到附近可靠图像边缘"),
+            icon=None,
+            enabled=True,
+        )
 
         # Languages
         select_lang_en = action(
@@ -2132,6 +2155,8 @@ class LabelingWidget(LabelDialog):
             label_on_selection=label_on_selection,
             toggle_rect_edge_align=toggle_rect_edge_align,
             toggle_stable_preview=toggle_stable_preview,
+            toggle_precision_mode_lock=toggle_precision_mode_lock,
+            trigger_edge_snap=trigger_edge_snap,
             show_navigator=show_navigator,
             toggle_inspector=toggle_inspector,
             toggle_global_filter_keep=toggle_global_filter_keep,
@@ -2275,6 +2300,8 @@ class LabelingWidget(LabelDialog):
         self.addAction(self.actions.switch_to_prev_person)
         self.addAction(self.actions.switch_to_next_person)
         self.addAction(self.actions.toggle_annotation_checked)
+        self.addAction(self.actions.toggle_precision_mode_lock)
+        self.addAction(self.actions.trigger_edge_snap)
 
         self.canvas.vertex_selected.connect(
             self.actions.remove_point.setEnabled
@@ -2484,6 +2511,8 @@ class LabelingWidget(LabelDialog):
                 pose_view,
                 toggle_rect_edge_align,
                 toggle_stable_preview,
+                toggle_precision_mode_lock,
+                trigger_edge_snap,
                 show_groups,
                 hide_selected_polygons,
                 show_hidden_polygons,
@@ -3484,6 +3513,10 @@ class LabelingWidget(LabelDialog):
 
     # Callbacks
     def undo_shape_edit(self):
+        # Drop any pending bind-draw context (task 3.14): the source
+        # shape's group_id was never written (lazy backfill), so there
+        # is nothing to revert on the source — only clear the intent.
+        self.digit_bind_draw_manager.clear_pending()
         self.canvas.restore_shape()
         self.label_list.clear()
         self.load_shapes(self.canvas.shapes, update_last_label=False)
@@ -3864,6 +3897,13 @@ class LabelingWidget(LabelDialog):
         self.actions.union_selection.setEnabled(not drawing)
 
     def create_digit_mode(self, digit_num):
+        if (
+            self._config.get("digit_shortcut_mode") == "bind_draw"
+            and self.digit_bind_draw_manager.is_active()
+        ):
+            self.digit_bind_draw_manager.handle_digit(digit_num)
+            return
+
         if self.digit_rename_manager.is_rename_mode_active():
             self.digit_rename_manager.trigger_rename(digit_num)
             return
@@ -6524,7 +6564,56 @@ class LabelingWidget(LabelDialog):
         self.canvas.load_shapes([item.shape() for item in self.label_list])
 
     # Callback functions:
-    def new_shape(self):
+    def _consume_digit_bind(self, last_gid):
+        """Feature 2: consume a bind_draw pending context if present.
+
+        Returns ``(text, group_id)`` when a pending bind exists and
+        passes validation, after backfilling the source shape's
+        group_id (D2: before set_last_label, same undo snapshot).
+        Returns ``None`` when no pending bind is active.
+        """
+        pending = self.digit_bind_draw_manager.consume_pending()
+        if pending is None:
+            return None
+        p_label, p_gid, p_source, p_backfill = pending
+        if p_backfill and p_source in self.canvas.shapes:
+            p_source.group_id = p_gid
+        self.digit_bind_draw_manager.clear_pending()
+        return p_label, p_gid
+
+    def _apply_auto_person_instance(self, text):
+        """Feature 1: mint a fresh group_id for a manually drawn person
+        rectangle when ``auto_person_instance`` is enabled.
+
+        Returns the new group_id, or None when the feature does not
+        apply. Emits status hints for the priority interactions
+        (Decisions 2 and 3). Does NOT fire on the auto-labeling path.
+        """
+        if (
+            text == "person"
+            and getattr(self.canvas.shapes[-1], "shape_type", None)
+            == "rectangle"
+            and self._config.get("auto_person_instance")
+        ):
+            new_gid = self.canvas.gen_new_group_id()
+            self.status(self.tr("已创建 person #%d") % new_gid, 2000)
+            if self._config.get("auto_use_last_gid"):
+                self.status(
+                    self.tr(
+                        "已启用“新建 person 自动创建人物实例”，"
+                        "新建 person 不沿用上一组 ID"
+                    ),
+                    3000,
+                )
+            if self._config.get("auto_use_last_label"):
+                self.status(
+                    self.tr("连续绘制 person 将自动生成新的 group_id"),
+                    3000,
+                )
+            return new_gid
+        return None
+
+    def new_shape(self):  # noqa: C901
         """Pop-up and give focus to the label editor.
 
         position MUST be in global coordinates.
@@ -6555,6 +6644,7 @@ class LabelingWidget(LabelDialog):
             text = items[0].data(Qt.ItemDataRole.UserRole)
         flags = {}
         group_id = None
+        bound = None
         description = ""
         difficult = False
         kie_linking = []
@@ -6578,7 +6668,15 @@ class LabelingWidget(LabelDialog):
             if self.digit_to_label is not None:
                 text = self.digit_to_label
                 self.digit_to_label = None
-                if last_gid is not None:
+                # Feature 2: bind_draw pending (Decision 3 priority:
+                # bind_draw > auto_person_instance > auto_use_last_gid).
+                # Consumed BEFORE last_gid is applied so the
+                # inherited/minted gid wins; source backfill happens
+                # before set_last_label (D2: same undo snapshot).
+                bound = self._consume_digit_bind(last_gid)
+                if bound is not None:
+                    text, group_id = bound
+                elif last_gid is not None:
                     group_id = last_gid
             elif self._config["auto_use_last_label"] and last_label:
                 text = last_label
@@ -6600,6 +6698,20 @@ class LabelingWidget(LabelDialog):
                 )
                 if not text:
                     self.label_dialog.edit.setText(previous_text)
+
+        # Feature 1: auto-create new person instance group_id.
+        # Priority: bind_draw pending (DigitBindDrawManager) >
+        # auto_person_instance > auto_use_last_gid > manual input.
+        # When auto_person_instance is ON and the new shape is a person
+        # rectangle, a fresh group_id is minted and OVERRIDES any
+        # group_id that auto_use_last_gid may have just assigned (Decision
+        # 3). Only the manual new_shape path triggers this; the
+        # auto-labeling landing (finish_auto_labeling_object) does NOT
+        # (Non-Goal).
+        if bound is None:
+            person_gid = self._apply_auto_person_instance(text)
+            if person_gid is not None:
+                group_id = person_gid
 
         if text and not self.validate_label(text):
             self.error_message(
@@ -7105,6 +7217,81 @@ class LabelingWidget(LabelDialog):
         """
         self.canvas.set_stable_preview_enabled(enabled)
 
+    def toggle_precision_mode_lock(self, enabled: bool) -> None:
+        """Toggle the precision-drag lock (Feature 3, task 5.5/D6).
+
+        When locked, mouse drags use the precision gain without needing
+        to hold Ctrl. Status hint reports the current factor.
+        """
+        self.canvas.precision_mode_locked = enabled
+        self.canvas.set_precision_mode(
+            self._config.get("canvas_precision_mode", "fixed")
+        )
+        self.canvas.set_precision_max_factor(
+            self._config.get("canvas_precision_max_factor", 2.0)
+        )
+        self.canvas.set_precision_factor(
+            self._config.get("canvas_precision_factor", 4)
+        )
+        factor = self.canvas.precision_factor
+        if enabled:
+            self.status(
+                self.tr(
+                    "精修模式已锁定（1/{f} 降速），松开 Ctrl 仍生效"
+                ).format(f="{:g}".format(factor)),
+                2000,
+            )
+        else:
+            self.status(self.tr("精修模式锁定已解除"), 2000)
+
+    def trigger_edge_snap(self) -> None:
+        """Trigger local edge snapping on the keyboard-selected edge
+        (Feature 4, task 6.11). Bound to a keypress (not realtime).
+
+        Decision 12: refuses while a bind_draw is pending.
+        """
+        if self.digit_bind_draw_manager.pending is not None:
+            self.status(self.tr("绑定绘制进行中，请先完成或取消"), 2000)
+            return
+        result = self.canvas.snap_active_edge(
+            search_range=self._config.get("canvas_edge_snap_range", 4)
+        )
+        if not result or result.get("status") == "inactive":
+            self.status(self.tr("请先选中矩形并按 Tab 选择一条边"), 2000)
+            return
+        if result.get("status") != "success":
+            self.status(self.tr("未找到可靠边缘，保持当前位置"), 2000)
+            return
+        self.status(
+            self.tr(
+                "已吸附 {edge} 边：{old:.1f} -> {new:.1f}（{delta:+.1f}px）"
+            ).format(
+                edge=result["edge"],
+                old=result["old_coord"],
+                new=result["new_coord"],
+                delta=result["delta"],
+            ),
+            2500,
+        )
+
+    def _show_keyboard_edge_selected(self, edge: str) -> None:
+        """Show a status hint for the keyboard-selected rectangle edge."""
+        if not edge:
+            self.status(self.tr("请先选中一个矩形框后再按 Tab 选择边"), 2000)
+            return
+        edge_names = {
+            "left": self.tr("左"),
+            "top": self.tr("上"),
+            "right": self.tr("右"),
+            "bottom": self.tr("下"),
+        }
+        self.status(
+            self.tr(
+                "已选择矩形{edge}边；方向键微调，Ctrl+Alt+E 局部吸附，Esc 退出"
+            ).format(edge=edge_names.get(edge, edge)),
+            3000,
+        )
+
     def _sync_pose_config(self) -> None:
         """Copy PoseDisplayConfig fields into self._config['pose_view']."""
         if "pose_view" not in self._config:
@@ -7230,6 +7417,11 @@ class LabelingWidget(LabelDialog):
     def load_file(self, filename=None):  # noqa: C901
         """Load the specified file, or the last opened file if None."""
         _t_load = time.perf_counter()
+
+        # Clear any pending bind-draw context on image switch (task 3.14).
+        # The source shape reference is invalid after the switch; the
+        # lazy-backfill guarantee means the source is left untouched.
+        self.digit_bind_draw_manager.clear_pending()
 
         # NOTE(jack): Does we need to save the config here?
         # save_config(self._config)
@@ -7560,6 +7752,17 @@ class LabelingWidget(LabelDialog):
         if self.image.isNull():
             return
         self.canvas.scale = 0.01 * self.zoom_widget.value()
+        # Push the precision config to the canvas (task 5.6).
+        # Lazily read so config changes take effect on the next paint.
+        self.canvas.set_precision_mode(
+            self._config.get("canvas_precision_mode", "fixed")
+        )
+        self.canvas.set_precision_max_factor(
+            self._config.get("canvas_precision_max_factor", 2.0)
+        )
+        self.canvas.set_precision_factor(
+            self._config.get("canvas_precision_factor", 4)
+        )
         self.canvas.adjustSize()
         self.canvas.update()
         self.update_navigator_viewport()

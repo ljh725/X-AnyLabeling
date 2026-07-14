@@ -118,6 +118,8 @@ class SettingsRuntimeApplier:
             "shortcuts.toggle_compare_view": self._widget.actions.toggle_compare_view,
             "shortcuts.toggle_rect_edge_align": self._widget.actions.toggle_rect_edge_align,
             "shortcuts.toggle_stable_preview": self._widget.actions.toggle_stable_preview,
+            "shortcuts.toggle_precision_mode_lock": self._widget.actions.toggle_precision_mode_lock,
+            "shortcuts.trigger_edge_snap": self._widget.actions.trigger_edge_snap,
             "shortcuts.auto_label": self._widget.actions.toggle_auto_labeling_widget,
             "shortcuts.auto_run": self._widget.actions.run_all_images,
             "shortcuts.loop_thru_labels": self._widget.actions.loop_thru_labels,
@@ -238,6 +240,15 @@ class SettingsRuntimeApplier:
         if key == "canvas.mask.opacity":
             self.apply_canvas_mask()
             return
+        if key == "canvas_precision_mode":
+            self._widget.canvas.set_precision_mode(value)
+            return
+        if key == "canvas_precision_max_factor":
+            self._widget.canvas.set_precision_max_factor(value)
+            return
+        if key == "canvas_precision_factor":
+            self._widget.canvas.set_precision_factor(value)
+            return
         if key == "shift_auto_shape_color":
             self._widget._runtime_shape_color_shift = int(
                 self._widget._config.get("shift_auto_shape_color", 0)
@@ -266,6 +277,9 @@ class SettingsRuntimeApplier:
             "switch_to_checked",
             "file_list_checkbox_editable",
             "system_clipboard",
+            "auto_person_instance",
+            "digit_shortcut_mode",
+            "canvas_edge_snap_range",
         }:
             self.apply_behavior_flags(key)
             return
@@ -453,6 +467,13 @@ class SettingsRuntimeApplier:
         elif key == "system_clipboard":
             self._widget.toggle_system_clipboard(
                 self._widget._config.get("system_clipboard", False)
+            )
+        elif key == "digit_shortcut_mode":
+            self._widget.digit_bind_draw_manager.clear_pending()
+            mode = self._widget._config.get("digit_shortcut_mode", "rename")
+            self._widget.status(
+                self._widget.tr("数字快捷模式：%s") % mode,
+                2000,
             )
 
     def apply_label_dialog_runtime(self, key: str) -> None:

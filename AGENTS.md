@@ -2,6 +2,12 @@
 
 > High-signal notes only. Omit anything obvious from filenames or standard Python/PyQt conventions.
 
+## Thinking posture
+- 不要只回答用户字面上的问题。
+- 判断用户的问题是不是问窄了。
+- 将用户的问题改写成更高层、更本质的问题。
+- 指出用户可能因为知识边界而遗漏了哪些角度。
+
 ## One-line summary
 PyQt6 desktop app for AI-powered image/video annotation. Entry point: `xanylabeling = anylabeling.app:main`.
 

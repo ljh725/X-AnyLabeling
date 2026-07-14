@@ -21,10 +21,10 @@ ljh725/X-AnyLabeling  ← this repo (93 commits / ~15k LOC of extensions)
 | Metric | Value |
 |--------|-------|
 | Commits | **93** (vs upstream main) |
-| New code | **~15,000 lines** (features + tests) |
-| Test cases | **230+** (feature-related) |
+| New code | **~18,500 lines** (features + tests) |
+| Test cases | **300+** (feature-related) |
 | Design docs | **116** (in `docs/`) |
-| Feature modules | **6** |
+| Feature modules | **15** |
 
 ---
 
@@ -38,6 +38,15 @@ ljh725/X-AnyLabeling  ← this repo (93 commits / ~15k LOC of extensions)
 | 4 | **Rect Edge Editing** | 407 geometry + ~250 canvas | 21 | Drag a single rectangle edge independently, geometry/UI decoupling, anti-flip clamp | [→ 04](portfolio/04-rect-edge-edit.md) |
 | 5 | **Pose View Decoupling** | 1,994 / 9 files | 36 | filter-driven single-field decoupling of label list vs focus, 4 occlusion-free layout algorithms, overview/selected two-state display | [→ 05](portfolio/05-pose-view.md) |
 | 6 | **Data Toolkit** | 40 scripts (3,000+ core) | — | YOLO-Pose 3-step pipeline + ViTPose pre-label diff + QC CLI, full pose-data-production chain | [→ 06](portfolio/06-data-toolkit.md) |
+| 7 | **Auto Person Instance** | ~60 core + settings/integration | 9 | Auto-mint group_id on manual person-rectangle draw; priority chain `bind_draw > this > auto_use_last_gid`; static Non-Goal test | [→ 07](portfolio/07-auto-person-instance.md) |
+| 8 | **Digit Bind Draw** | 414-line manager + integration | 19 | Select source, press digit to draw same-instance box; lazy backfill for undo atomicity; two-stage TOCTOU duplicate guard | [→ 08](portfolio/08-digit-bind-draw.md) |
+| 9 | **Precision Refinement** | ~250 canvas + settings | 14 | zoom/fixed drag slowdown + Tab edge-select + 1px/5px single-edge nudge; virtual-cursor isolation zero-pollutes base interactions | [→ 09](portfolio/09-precision-mode.md) |
+| 10 | **Local Edge Snap (experimental)** | 212 pure Python + canvas bridge | 11 | Sobel-gradient ±4px search + dual threshold, pure-algorithm unit-testable; honestly records "directional bias" and self-deprio'd | [→ 10](portfolio/10-local-edge-snap.md) |
+| 11 | **Filter System** | ~1,400 / 5 files | — | Filter persistence across image switches + JSON engine + SQLite index cache (5k-image speedup) + cross-file navigation; State/Engine/UI layering | [→ 11](portfolio/11-filter-system.md) |
+| 12 | **Zoom Center Fix** | ~70 core + 2 analysis docs | — | Fixes upstream portrait-image zoom drift (width-detection no-ops + y misuses width ratio); rewritten with transform_pos inverse | [→ 12](portfolio/12-zoom-center-fix.md) |
+| 13 | **Digit Shortcut Pagination** | 311-line page manager | — | Extends upstream's 10-key limit: F1 page-switch, 10×N slots, single-page is fully backward-compatible | [→ 13](portfolio/13-digit-shortcut-pagination.md) |
+| 14 | **Digit Shortcut Rename** | 400-line manager + dialog | — | Select shapes, press digit to batch-relabel (no upstream equivalent); independent config + full side-effect chain | [→ 14](portfolio/14-digit-rename.md) |
+| 15 | **Viewport Persistence** | 359-line controller | — | Keep zoom + view center across image switches; image-coordinate persistence survives size changes, reuses module 12's coordinate model | [→ 15](portfolio/15-viewport-persistence.md) |
 
 ---
 
@@ -139,6 +148,153 @@ ljh725/X-AnyLabeling  ← this repo (93 commits / ~15k LOC of extensions)
 - 📊 **Dataset stats/diff**: unique-label extraction, stem comparison, shape statistics
 
 📊 Stats: 40 scripts (3,000+ core lines) · [Details](portfolio/06-data-toolkit.md)
+
+---
+
+> **Modules 7–10** revolve around one theme — "manual annotation refinement" — across two directions: **person-instance binding** (7, 8) auto-generates/inherits/backfills `group_id`, and **box refinement** (9, 10) reduces 1–3px error. Design notes unified in [docs/feature_summary.md](feature_summary.md).
+
+### 7. Auto Create Person Instance
+
+**Problem**: Manually typing a `group_id` for every `person` box is pure-mechanical, error-prone, low-value work (skipped/duplicate/wrong IDs).
+
+**Solution**: On committing a manually drawn `person` rectangle, auto-call `gen_new_group_id()` (max+1) and flash "已创建 person #n" in the status bar.
+
+**Highlights**:
+- 🔗 **Priority chain**: `bind_draw > auto_person_instance > auto_use_last_gid > manual`, guarded by `if bound is None` — structurally impossible to conflict with bind_draw
+- ♾️ **Orthogonal coexistence**: not mutually exclusive with `auto_use_last_label` — label reused, gid fresh per box
+- 🔒 **Static Non-Goal test**: `inspect.getsource` asserts the key exists only in the manual path, never in the auto-labeling landing path
+- ⚡ **Read-on-demand**: setting isn't cached on a widget attribute; read live, zero state-sync code
+
+📊 Stats: ~60 core lines + settings/integration · 9 test cases · [Details](portfolio/07-auto-person-instance.md)
+
+---
+
+### 8. Digit Bind Draw
+
+**Problem**: Adding head/face to an existing person requires manually "copying" the `group_id` from the source box to each new box — slow and error-prone.
+
+**Solution**: With `Digit Shortcut Mode = bind_draw`, select a person/head/face source box, press a digit key to enter bind-draw, and the new box inherits or backfills the source's `group_id` on commit.
+
+**Highlights**:
+- 🧩 **Self-contained manager + narrow interface**: `DigitBindDrawManager` (414 lines) holds the whole state machine; only 4 touch-points with `LabelWidget`
+- ⏳ **Lazy backfill**: the source's `group_id` is *never* written at key-press; deferred to commit so backfill + new-box creation share one undo snapshot
+- 🛡️ **Two-stage TOCTOU duplicate guard**: checked at key-press *and* just before commit — data changes mid-draw can't produce an illegal state
+- 🚦 **Single-point boundary decision table**: boundary with module 7 short-circuits at the `handle_digit` entry, before source validation
+
+📊 Stats: 414-line manager + integration · 19 test cases · [Details](portfolio/08-digit-bind-draw.md)
+
+---
+
+### 9. Precision Refinement
+
+**Problem**: At 400% zoom, hand tremor causes 1–3px overshoot/undershoot; keyboard whole-box move can't move a single edge.
+
+**Solution**: Mouse precision slowdown (`zoom`/`fixed`) + Ctrl temporary precision + Tab keyboard edge-select + arrow 1px / Shift+5px single-edge nudge. This is the refinement main workflow.
+
+**Highlights**:
+- 🎯 **Virtual-cursor isolation**: a separate accumulator scales delta, **never mutates `prev_point`** — hit-test/hover/transform stay zero-pollution, regression risk is zero
+- 📈 **zoom mode kills stiffness**: `min(scale, max_factor)` + `max(1.0, ...)` dual clamp — at 400% it slows to 1/2 not 1/4
+- ⌨️ **Tab single-edge operation**: selecting an edge makes arrows move only that edge (anti-flip clamp); `merge_window=0.5` collapses rapid presses into one undo
+- ⚡ **Ctrl per-event**: unlocked mode checks the modifier per mouseMove — hold to slow, release to resume, zero state switching
+
+📊 Stats: ~250 canvas lines + settings · 14 test cases · [Details](portfolio/09-precision-mode.md)
+
+---
+
+### 10. Local Edge Snap (experimental)
+
+**Problem** (and reflection): Envisioned "refine to nearby → algorithm completes the last 1–3px via image edges", but after building it I found **image strong edge ≠ correct annotation boundary** (fuzzy person contours, clothing-texture interference, spec-required margin).
+
+**Solution**: A one-shot command (Ctrl+Alt+E) that, for the Tab-selected edge, searches ±4 px via Sobel gradient + dual threshold (adaptive 0.6 + absolute floor 10) and snaps if both pass. **Currently experimental, not the main workflow.**
+
+**Highlights**:
+- 🧪 **Pure-Python scorer**: `edge_snap.py` (212 lines) has zero PyQt; 11 tests run without Qt
+- ⚖️ **Dual threshold**: `k×local_max` (adaptive) + `abs_floor` (absolute) must *both* pass — stable across contrast levels
+- 🔒 **Validate-before-apply**: if the candidate would be clamped, it's treated as failure (not partial apply) — no misleading "snap"
+- 📝 **Honest self-deprioritization**: I flagged the "directional bias" and froze it as experimental — the engineering value is making "should this method even be used?" explicit
+
+📊 Stats: 212 pure-Python lines + canvas bridge · 11 test cases · [Details](portfolio/10-local-edge-snap.md)
+
+---
+
+> **Modules 11–14** are early infrastructure extensions: the **Filter System** (11) and **Zoom Fix** (12) address base-experience gaps in upstream, while **Digit-Shortcut Pagination / Rename** (13, 14) extend upstream's 10-key shortcut system into a multi-page, batch-capable workflow.
+
+### 11. Filter System (Persistence · Engine · Index · Navigation)
+
+**Problem**: Upstream had only two bare `QComboBox`es — filters were lost on image switch, a 5,000-image workload froze on full-JSON scans, no navigation among filtered results, and logic was coupled to UI (untestable).
+
+**Solution**: A 4-layer subsystem — `FilterState` (normalized state + snapshot/restore) / `ShapeFilterEngine` (match computation, no UI) / SQLite derived index (disposable, rebuildable) / `FilterNavigationEngine` (cross-file navigation, pure logic).
+
+**Highlights**:
+- 🔒 **Filter persistence across image switches**: `load_file()` snapshot/restore chain keeps label/gid/shape_type alive across images
+- ⚡ **SQLite derived index**: 5,000 images / 18,000 shapes from frozen to instant; JSON remains the single source of truth, index is disposable/rebuildable
+- 🧱 **State/Engine/UI layering**: Engine has zero PyQt, unit-testable without Qt; `filter_state_engine_pattern` is a reusable template
+- 🧭 **Cross-file navigation**: jump only among files matching the active filter
+
+📊 Stats: ~1,400 lines / 5 files · [Details](portfolio/11-filter-system.md)
+
+---
+
+### 12. Zoom Center Fix
+
+**Problem**: Upstream beta.4's Ctrl+scroll zoom drifted the point under the cursor on **portrait images** — `setWidgetResizable(True)` clamps canvas width so the guard evaluates False (compensation skipped), and the y-axis misuses the width ratio.
+
+**Solution**: Replace the width-ratio heuristic with the precise inverse of `transform_pos` (a coordinate-anchor algorithm), guaranteeing the image point under the cursor stays fixed across zoom.
+
+**Highlights**:
+- 📐 **Inverse-transform over heuristic**: `image_pos = widget_pos/scale - offset` — no `setWidgetResizable` failure path
+- 🛡️ **`_clamp_scroll_value`**: when the image is smaller than the viewport (maximum==0), unreachable scroll values aren't persisted
+- 📝 **Symbol-verified docs**: the design doc has a dedicated section proving `new_scroll = old_scroll + delta` preserves the invariant
+- 🎯 **Honest scoping**: explicitly notes navigator methods still use the old model (deferred to Phase 2) — no "fixed everything" claim
+
+📊 Stats: ~70 core lines + 2 analysis docs · [Details](portfolio/12-zoom-center-fix.md)
+
+---
+
+### 13. Digit Shortcut Pagination Extension
+
+**Problem**: Upstream's digit shortcuts are limited to 0–9 (10 slots), but a labeling task often needs >10 label+shape_type combinations.
+
+**Solution**: Add a pagination index layer to upstream's `create_digit_mode`; `F1` switches pages, 10×N slots, and single-page mode is fully backward-compatible with upstream.
+
+**Highlights**:
+- ⬅️ **Backward-compatible**: with the default 1 page, `get_actual_index` returns the raw digit — existing configs need zero migration
+- 🔢 **Config-driven page count**: `digit_shortcut_pages` controls the slot ceiling; circular page-switch + signal notification
+- 🧩 **Shared index layer**: pagination applies to all three digit modes (draw / rename / bind_draw)
+
+📊 Stats: 311-line page manager · [Details](portfolio/13-digit-shortcut-pagination.md)
+
+---
+
+### 14. Digit Shortcut Rename
+
+**Problem**: Relabeling an existing shape requires double-clicking each one to open the label dialog — prohibitively slow for batch-correcting AI pre-labels; upstream had no such capability at all.
+
+**Solution**: In edit mode, select shapes and press a digit key — all selected shapes are instantly relabeled to that key's bound label in one batch operation.
+
+**Highlights**:
+- 🔄 **Full side-effect chain**: one rename handles undo snapshot + label update + list refresh + history + dirty flag + filter refresh
+- 🔀 **Mutually-exclusive dispatch**: `digit_shortcut_mode` switches rename/draw/bind_draw; entry-point dispatch, zero conflict
+- 📋 **Independent config**: `rename_shortcuts` is separate from draw's `digit_shortcuts`, no interference
+- 🔗 **Pagination-aware**: also goes through `digit_page_manager`, so each page offers 10 rename slots
+
+📊 Stats: 400-line manager + dialog · [Details](portfolio/14-digit-rename.md)
+
+---
+
+### 15. Viewport Persistence
+
+**Problem**: While reviewing annotations image-by-image, you zoom into a level and focus on a region — switching images resets to fit-window, so every one of 5,000 images needs re-zooming and re-positioning. Upstream's `keep_prev_scale` keeps only the zoom ratio, not "which position am I looking at."
+
+**Solution**: `ViewportController` caches `(zoom_mode, zoom_value, center_x, center_y)` keyed by filename, with the center stored in **image coordinates** (not scrollbar pixels) — surviving widget resizes and differing image sizes.
+
+**Highlights**:
+- 📐 **Image-coordinate persistence**: capture via `transform_pos` inverse, restore via forward transform — never stores volatile scrollbar pixels
+- 🔁 **Reuses module 12's coordinate model**: the same formula pair, proven once and reused, zero new coordinate math
+- 🏆 **Three-tier resolution priority**: exact history > `keep_prev_viewport` inheritance > none (fallback), with stale-state cleanup
+- 🎚️ **All three zoom modes preserved**: FIT_WINDOW / FIT_WIDTH / MANUAL_ZOOM restored along with their values
+
+📊 Stats: 359-line controller · [Details](portfolio/15-viewport-persistence.md)
 
 ---
 

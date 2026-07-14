@@ -22,14 +22,14 @@ except Exception:
 class TestSettingsSchema(unittest.TestCase):
 
     def test_field_count(self):
-        self.assertEqual(len(SETTING_FIELDS), 120)
+        self.assertEqual(len(SETTING_FIELDS), 137)
 
     def test_shortcut_and_non_shortcut_count(self):
         shortcut_fields = [
             field for field in SETTING_FIELDS if field.primary == "Shortcuts"
         ]
-        self.assertEqual(len(shortcut_fields), 73)
-        self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 47)
+        self.assertEqual(len(shortcut_fields), 85)
+        self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 52)
 
     def test_defaults_cover_all_keys(self):
         defaults = defaults_map()
@@ -47,6 +47,12 @@ class TestSettingsSchema(unittest.TestCase):
             "canvas.crosshair.color",
             "canvas.crosshair.opacity",
             "canvas.brush.point_distance",
+            "auto_person_instance",
+            "digit_shortcut_mode",
+            "canvas_precision_mode",
+            "canvas_precision_max_factor",
+            "canvas_precision_factor",
+            "canvas_edge_snap_range",
             "model_hub",
             "logger_level",
             "shortcuts.open",
@@ -56,6 +62,8 @@ class TestSettingsSchema(unittest.TestCase):
             "shortcuts.open_settings",
             "shortcuts.auto_labeling_add_point",
             "shortcuts.auto_labeling_finish_object",
+            "shortcuts.toggle_precision_mode_lock",
+            "shortcuts.trigger_edge_snap",
         }
         for key in expected_keys:
             self.assertIn(key, SETTINGS_KEYS)
@@ -68,7 +76,7 @@ class TestSettingsSchema(unittest.TestCase):
             SETTINGS_PRIMARY_ORDER,
             ("Shortcuts", "General", "Shape", "Canvas"),
         )
-        self.assertEqual(len(SETTINGS_GENERAL_KEYS), 8)
+        self.assertEqual(len(SETTINGS_GENERAL_KEYS), 9)
         self.assertEqual(len(SETTINGS_SHAPE_KEYS), 9)
         self.assertEqual(len(SETTINGS_SHORTCUT_KEYS_CORE), 24)
         for key in SETTINGS_GENERAL_KEYS:
@@ -95,17 +103,20 @@ class TestSettingsSchema(unittest.TestCase):
         self.assertIn("shape.line_width", shape_keys)
         self.assertEqual(
             len(shortcut_fields),
-            73,
+            85,
         )
         for key in SETTINGS_SHORTCUT_KEYS_CORE:
             self.assertIn(key, [field.key for field in shortcut_fields])
-        self.assertEqual(len(canvas_fields), 20)
+        self.assertEqual(len(canvas_fields), 24)
         canvas_keys = {field.key for field in canvas_fields}
         self.assertIn("canvas.crosshair.show", canvas_keys)
         self.assertIn("canvas.crosshair.width", canvas_keys)
         self.assertIn("canvas.crosshair.color", canvas_keys)
         self.assertIn("canvas.crosshair.opacity", canvas_keys)
         self.assertIn("canvas.brush.point_distance", canvas_keys)
+        self.assertIn("canvas_precision_max_factor", canvas_keys)
+        self.assertIn("canvas_precision_factor", canvas_keys)
+        self.assertIn("canvas_edge_snap_range", canvas_keys)
 
     def test_visible_non_shortcut_fields_have_descriptions(self):
         fields = (

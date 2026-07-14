@@ -22,10 +22,23 @@ logger = logging.getLogger(__name__)
 
 # COCO 17 关键点标准顺序
 KEYPOINT_ORDER = [
-    "nose", "l_eye", "r_eye", "l_ear", "r_ear",
-    "l_sho", "r_sho", "l_elb", "r_elb", "l_wri",
-    "r_wri", "l_hip", "r_hip", "l_knee", "r_knee",
-    "l_ank", "r_ank",
+    "nose",
+    "l_eye",
+    "r_eye",
+    "l_ear",
+    "r_ear",
+    "l_sho",
+    "r_sho",
+    "l_elb",
+    "r_elb",
+    "l_wri",
+    "r_wri",
+    "l_hip",
+    "r_hip",
+    "l_knee",
+    "r_knee",
+    "l_ank",
+    "r_ank",
 ]
 
 
@@ -66,11 +79,15 @@ class KeypointDockContent(QtWidgets.QWidget):
         layout.setSpacing(5)
 
         # Auto-activation toggle
-        self.auto_activate_cb = QtWidgets.QCheckBox("自动锁定目标 (Auto-Activate)")
+        self.auto_activate_cb = QtWidgets.QCheckBox(
+            "自动锁定目标 (Auto-Activate)"
+        )
         self.auto_activate_cb.setToolTip(
             "开启后，切换图片时若检测到唯一对象将自动进入补全模式"
         )
-        self.auto_activate_cb.stateChanged.connect(self._on_auto_activate_changed)
+        self.auto_activate_cb.stateChanged.connect(
+            self._on_auto_activate_changed
+        )
         layout.addWidget(self.auto_activate_cb)
 
         # Header
@@ -154,9 +171,13 @@ class KeypointDockContent(QtWidgets.QWidget):
         if hasattr(self.fill_mode, "mode_activated"):
             self.fill_mode.mode_activated.connect(self._on_fill_mode_activated)
         if hasattr(self.fill_mode, "mode_deactivated"):
-            self.fill_mode.mode_deactivated.connect(self._on_fill_mode_deactivated)
+            self.fill_mode.mode_deactivated.connect(
+                self._on_fill_mode_deactivated
+            )
         if hasattr(self.fill_mode, "current_label_changed"):
-            self.fill_mode.current_label_changed.connect(self._on_label_changed)
+            self.fill_mode.current_label_changed.connect(
+                self._on_label_changed
+            )
 
     def eventFilter(self, obj: object, event: QtCore.QEvent) -> bool:
         """拦截 person_list 的滚轮事件，向上/向下切换组 ID.
@@ -164,7 +185,10 @@ class KeypointDockContent(QtWidgets.QWidget):
         滚轮切换时默认不进入补全模式；
         仅当“自动锁定目标”勾选后才自动进入补全模式。
         """
-        if obj is self.person_list and event.type() == QtCore.QEvent.Type.Wheel:
+        if (
+            obj is self.person_list
+            and event.type() == QtCore.QEvent.Type.Wheel
+        ):
             delta = event.angleDelta().y()
             auto_activate = self.auto_activate_enabled
             if delta > 0:
@@ -186,14 +210,22 @@ class KeypointDockContent(QtWidgets.QWidget):
                 continue
             gid = shape.group_id
             if gid not in person_data:
-                person_data[gid] = {"completed": 0, "total": len(KEYPOINT_ORDER), "rect": None}
+                person_data[gid] = {
+                    "completed": 0,
+                    "total": len(KEYPOINT_ORDER),
+                    "rect": None,
+                }
             if shape.label == "person" and shape.shape_type == "rectangle":
                 person_data[gid]["rect"] = shape
             if shape.shape_type == "point" and shape.label in KEYPOINT_ORDER:
                 person_data[gid]["completed"] += 1
 
         # 过滤掉既无 person 框也无关键点的 group
-        return {gid: d for gid, d in person_data.items() if d["rect"] is not None or d["completed"] > 0}
+        return {
+            gid: d
+            for gid, d in person_data.items()
+            if d["rect"] is not None or d["completed"] > 0
+        }
 
     def _get_keypoint_status(self, group_id: int) -> Set[str]:
         """获取指定 group_id 已完成的关键点标签集合."""
@@ -238,7 +270,9 @@ class KeypointDockContent(QtWidgets.QWidget):
 
     def switch_to_person(self, group_id: int, activate: bool = True) -> None:
         """切换到指定 person 对象."""
-        logger.debug(f"Switching to person with group_id: {group_id}, activate={activate}")
+        logger.debug(
+            f"Switching to person with group_id: {group_id}, activate={activate}"
+        )
 
         # 退出当前 fill mode
         if self.fill_mode.is_active:
@@ -259,11 +293,15 @@ class KeypointDockContent(QtWidgets.QWidget):
             # 激活 fill mode
             success = self.fill_mode.activate(group_id)
             if success:
-                self.label_widget.toggle_draw_mode(edit=False, create_mode="point")
+                self.label_widget.toggle_draw_mode(
+                    edit=False, create_mode="point"
+                )
                 self._update_current_person_info()
             else:
                 self._update_current_person_info()
-                self._show_hint(f"Group {group_id}: 所有关键点已完成", complete=True)
+                self._show_hint(
+                    f"Group {group_id}: 所有关键点已完成", complete=True
+                )
         else:
             self._update_current_person_info()
 
@@ -307,11 +345,15 @@ class KeypointDockContent(QtWidgets.QWidget):
         """刷新全部数据显示."""
         person_data = self._get_person_data()
         total = len(person_data)
-        completed = sum(1 for d in person_data.values() if d["completed"] == d["total"])
+        completed = sum(
+            1 for d in person_data.values() if d["completed"] == d["total"]
+        )
         incomplete = total - completed
 
         self.header_label.setText(f"共 {total} 人")
-        self.stats_label.setText(f"未完成: {incomplete} 人 | 已完成: {completed} 人")
+        self.stats_label.setText(
+            f"未完成: {incomplete} 人 | 已完成: {completed} 人"
+        )
 
         # 更新人员列表
         self.person_list.clear()
@@ -361,7 +403,9 @@ class KeypointDockContent(QtWidgets.QWidget):
             return
 
         existing = self._get_keypoint_status(self.current_group_id)
-        current_active = self.fill_mode.current_label if self.fill_mode.is_active else None
+        current_active = (
+            self.fill_mode.current_label if self.fill_mode.is_active else None
+        )
 
         # 已完成
         completed_kps = [kp for kp in KEYPOINT_ORDER if kp in existing]
@@ -477,7 +521,9 @@ class KeypointDockContent(QtWidgets.QWidget):
             if self.fill_mode.jump_to_label(label):
                 logger.debug(f"Jumped to label via click: {label}")
 
-    def _on_fill_mode_activated(self, group_id: int, missing_count: int) -> None:
+    def _on_fill_mode_activated(
+        self, group_id: int, missing_count: int
+    ) -> None:
         self.current_group_id = group_id
         self._update_current_person_info()
 
@@ -486,7 +532,9 @@ class KeypointDockContent(QtWidgets.QWidget):
         self._update_current_person_info()
         # 恢复选择模式
         if hasattr(self.label_widget, "toggle_draw_mode"):
-            self.label_widget.toggle_draw_mode(edit=True, create_mode="rectangle")
+            self.label_widget.toggle_draw_mode(
+                edit=True, create_mode="rectangle"
+            )
 
     def _on_label_changed(self, label: str, index: int, total: int) -> None:
         self._update_keypoint_list()
@@ -501,7 +549,9 @@ class KeypointDockContent(QtWidgets.QWidget):
     def _load_settings(self) -> None:
         """Load auto-activation setting."""
         if hasattr(self.label_widget, "_config"):
-            enabled = self.label_widget._config.get("auto_activate_keypoint_fill", False)
+            enabled = self.label_widget._config.get(
+                "auto_activate_keypoint_fill", False
+            )
             self.auto_activate_cb.setChecked(enabled)
 
     @property
@@ -527,7 +577,9 @@ class KeypointToolWindow(QtWidgets.QWidget):
         self.setWindowTitle(self.tr("Keypoint Fill Tool"))
         self.resize(400, 600)
 
-        self.content_widget = KeypointDockContent(fill_mode, label_widget, self)
+        self.content_widget = KeypointDockContent(
+            fill_mode, label_widget, self
+        )
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

@@ -78,8 +78,7 @@ class DigitShortcutPageManager(QtCore.QObject):
         self._total_pages: int = self._calculate_total_pages()
 
         logger.debug(
-            "DigitShortcutPageManager initialized: "
-            "pages=%d, shortcuts=%d",
+            "DigitShortcutPageManager initialized: " "pages=%d, shortcuts=%d",
             self._total_pages,
             len(self._shortcuts),
         )
@@ -167,9 +166,7 @@ class DigitShortcutPageManager(QtCore.QObject):
             Page 1, digit 5 -> index 15
         """
         if not 0 <= digit_num <= 9:
-            logger.warning(
-                "Invalid digit_num: %d, expected 0-9", digit_num
-            )
+            logger.warning("Invalid digit_num: %d, expected 0-9", digit_num)
             return digit_num
 
         return self._current_page * self.PAGE_SIZE + digit_num
@@ -193,9 +190,7 @@ class DigitShortcutPageManager(QtCore.QObject):
             return (self._current_page, self._total_pages)
 
         old_page = self._current_page
-        self._current_page = (
-            self._current_page + 1
-        ) % self._total_pages
+        self._current_page = (self._current_page + 1) % self._total_pages
 
         logger.debug(
             "Page switched: %d -> %d (total: %d)",
@@ -259,9 +254,7 @@ class DigitShortcutPageManager(QtCore.QObject):
             mapping=mapping_text,
         )
 
-        hint_message = self._tr("按 {key} 切换页面").format(
-            key=switch_key
-        )
+        hint_message = self._tr("按 {key} 切换页面").format(key=switch_key)
 
         return f"{status_message} - {hint_message}"
 

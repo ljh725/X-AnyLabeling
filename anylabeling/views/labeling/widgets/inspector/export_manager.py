@@ -35,11 +35,14 @@ _IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}
 @dataclass
 class ExportResult:
     """Summary of an export / split operation."""
+
     total_files: int = 0
     total_issues: int = 0
-    copied_files: int = 0          # unique JSON files copied
-    copied_images: int = 0         # associated image files copied
-    errors: List[Tuple[str, str]] = field(default_factory=list)  # (path, error)
+    copied_files: int = 0  # unique JSON files copied
+    copied_images: int = 0  # associated image files copied
+    errors: List[Tuple[str, str]] = field(
+        default_factory=list
+    )  # (path, error)
     rules_exported: List[str] = field(default_factory=list)
 
 
@@ -113,9 +116,7 @@ class ExportManager:
                 except OSError as exc:
                     msg = str(exc)
                     result.errors.append((fp, msg))
-                    logger.warning(
-                        "Export copy failed for %s: %s", fp, msg
-                    )
+                    logger.warning("Export copy failed for %s: %s", fp, msg)
 
             if progress_callback:
                 progress_callback(ri, len(result.rules_exported), rule_name)
@@ -170,6 +171,7 @@ def _find_image_for_json(json_path: str) -> Optional[str]:
     # 1. Try imagePath from JSON
     try:
         import json as _json
+
         with open(json_path, "r", encoding="utf-8") as fh:
             data = _json.load(fh)
         image_path = data.get("imagePath", "")

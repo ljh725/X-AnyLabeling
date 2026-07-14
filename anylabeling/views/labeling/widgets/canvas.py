@@ -88,6 +88,7 @@ class Canvas(
     split_position_changed = QtCore.pyqtSignal(float)
     edit_label_requested = QtCore.pyqtSignal()
     pose_occlusion_count_changed = QtCore.pyqtSignal(int)
+    keyboard_edge_selected = QtCore.pyqtSignal(str)
 
     CREATE, EDIT = 0, 1
 
@@ -281,6 +282,29 @@ class Canvas(
         self.rect_edge_dragging = False
         self.rect_edge_drag_start_points = None
 
+        # Keyboard-selected rectangle edge for single-edge nudge (Feature 3).
+        # None means whole-shape move applies; otherwise Up/Down/Left/Right
+        # nudge the named edge via rect_edge_alignment.apply_edge_coord.
+        # Independent from the mouse edge-editing master switch. N1: any
+        # mouse hover onto a rectangle edge clears this (hover takes over
+        # the active-edge).
+        self.rect_edge_keyboard_edge = None
+        self.rect_edge_keyboard_shape = None
+
+        # Precision drag mode (Feature 3). When active, mouse drag deltas
+        # are scaled by 1/precision_factor using a virtual cursor that is
+        # kept SEPARATE from self.prev_point (move_by_keyboard and press
+        # resets depend on prev_point being the real cursor — D4).
+        self.precision_mode_locked = False
+        self._virtual_prev_point = None
+        self._precision_raw_prev_point = None
+
+        # Undo merge window (N2/D5): timestamp-based replace-in-place.
+        # When store_shapes is called with merge_window > 0 and the last
+        # snapshot was within the window, the last entry is replaced
+        # instead of appending. Avoids QTimer and delayed persistence.
+        self._last_snapshot_ts = 0.0
+
         # Stable refine preview (phase 1: DragLocked only). See
         # docs/稳定精修预览功能实现任务文档.md. Purely transient
         # in-memory state; nothing is persisted to JSON. The preview
@@ -386,8 +410,20 @@ class Canvas(
             raise ValueError(f"Unsupported create_mode: {value}")
         self._create_mode = value
 
-    def store_shapes(self):
-        """Store shapes for restoring later (Undo feature)"""
+    def store_shapes(self, merge_window=0.0):
+        """Store shapes for restoring later (Undo feature).
+
+        Args:
+            merge_window: When > 0 (seconds), enable timestamp-based
+                replace-in-place merging (N2/D5). If the last snapshot
+                was taken within this window, the last entry is replaced
+                instead of appending. Used by keyboard nudge to avoid
+                rapid key repeats flooding the bounded undo stack.
+                Default 0.0 (always append) preserves legacy behavior
+                for all existing callers.
+        """
+        import time
+
         if getattr(self, "_pending_initial_backup", False) and self.shapes:
             initial_backup = []
             for shape in self.shapes:
@@ -399,7 +435,18 @@ class Canvas(
             shapes_backup.append(shape.copy())
         if len(self.shapes_backups) > self.num_backups:
             self.shapes_backups = self.shapes_backups[-self.num_backups - 1 :]
-        self.shapes_backups.append(shapes_backup)
+        now = time.monotonic()
+        if (
+            merge_window > 0.0
+            and self.shapes_backups
+            and (now - self._last_snapshot_ts) < merge_window
+        ):
+            # Replace the last snapshot instead of appending: collapses
+            # a burst of keyboard nudges into one undo step.
+            self.shapes_backups[-1] = shapes_backup
+        else:
+            self.shapes_backups.append(shapes_backup)
+        self._last_snapshot_ts = now
 
     def store_moving_shape(self):
         """Store a moving shape"""
@@ -701,6 +748,7 @@ class Canvas(
         if not value:  # Create
             self.un_highlight()
             self.deselect_shape()
+            self._clear_keyboard_edge()
             self.is_move_editing = False
             # Leaving edit mode must drop any in-progress preview so it
             # never lingers into a draw/create context.
@@ -889,7 +937,8 @@ class Canvas(
         if QtCore.Qt.MouseButton.RightButton & ev.buttons():
             if self.selected_shapes_copy and self.prev_point:
                 self.override_cursor(CURSOR_MOVE)
-                self.bounded_move_shapes(self.selected_shapes_copy, pos)
+                eff = self._effective_drag_pos(pos, ev)
+                self.bounded_move_shapes(self.selected_shapes_copy, eff)
                 self.repaint()
             elif self.selected_shapes:
                 self.selected_shapes_copy = [
@@ -907,7 +956,8 @@ class Canvas(
             and self.rect_edge_dragging
             and self.rect_edge_active_edge is not None
         ):
-            self._rect_edge_drag_update(pos)
+            eff = self._effective_drag_pos(pos, ev)
+            self._rect_edge_drag_update(eff)
             return
 
         # Polygon/Vertex moving.
@@ -916,7 +966,8 @@ class Canvas(
                 self.h_cuboid_face = None
                 self.is_move_editing = False
                 try:
-                    self.bounded_move_vertex(pos)
+                    eff = self._effective_drag_pos(pos, ev)
+                    self.bounded_move_vertex(eff)
                     self.repaint()
                     self.moving_shape = True
                 except IndexError:
@@ -958,7 +1009,8 @@ class Canvas(
             elif self.selected_shapes and self.prev_point:
                 self.h_cuboid_face = None
                 self.override_cursor(CURSOR_MOVE)
-                self.bounded_move_shapes(self.selected_shapes, pos)
+                eff = self._effective_drag_pos(pos, ev)
+                self.bounded_move_shapes(self.selected_shapes, eff)
                 self.repaint()
                 self.moving_shape = True
                 if self.selected_shapes[-1].shape_type == "rectangle":
@@ -1072,6 +1124,11 @@ class Canvas(
                 # Still fall through to the normal hover loop below so that
                 # vertex hover keeps working when no edge is hovered.
                 if candidate is not None:
+                    # N1: mouse hover onto any rectangle edge hands the
+                    # active-edge control back to the mouse — exit the
+                    # keyboard-edge mode to avoid two active edges at once.
+                    if self._clear_keyboard_edge():
+                        self.update()
                     # Edge hovered: clear any stale shape/vertex/edge/cuboid
                     # hover state left over from a previous frame so the old
                     # highlight does not bleed through, then suppress the
@@ -1362,6 +1419,9 @@ class Canvas(
                 return
 
         pos = self.transform_pos(ev.position())
+        # Reset the precision-mode virtual cursor at every press so the
+        # first drag delta is computed from the real press position.
+        self._reset_virtual_cursor()
 
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             # ----------------------------------------------------------
@@ -1377,6 +1437,7 @@ class Canvas(
                 and self.rect_edge_hover_edge is not None
             ):
                 hover = self.rect_edge_hover_edge
+                self.prev_point = pos
                 self.rect_edge_active_edge = hover
                 self.rect_edge_dragging = True
                 self.rect_edge_drag_start_points = list(hover.shape.points)
@@ -1745,6 +1806,14 @@ class Canvas(
         interactive_shapes = [
             s for s in shapes if self.is_shape_interactive(s)
         ]
+        if (
+            self.rect_edge_keyboard_shape is not None
+            and (
+                len(interactive_shapes) != 1
+                or interactive_shapes[0] is not self.rect_edge_keyboard_shape
+            )
+        ):
+            self._clear_keyboard_edge()
         self.set_hiding()
         self.selection_changed.emit(interactive_shapes)
         self.update()
@@ -2388,6 +2457,7 @@ class Canvas(
     def deselect_shape(self):
         """Deselect all shapes"""
         if self.selected_shapes:
+            self._clear_keyboard_edge()
             self.set_hiding(False)
             self.selection_changed.emit([])
             self.h_shape_is_selected = False
@@ -2398,6 +2468,7 @@ class Canvas(
         """Remove selected shapes"""
         deleted_shapes = []
         if self.selected_shapes:
+            self._clear_keyboard_edge()
             for shape in self.selected_shapes:
                 self.shapes.remove(shape)
                 deleted_shapes.append(shape)
@@ -2414,6 +2485,7 @@ class Canvas(
         was_selected = shape in self.selected_shapes
         if was_selected:
             self.selected_shapes.remove(shape)
+            self._clear_keyboard_edge()
         if shape in self.shapes:
             self.shapes.remove(shape)
         self.store_shapes()
@@ -3225,7 +3297,7 @@ class Canvas(
         # shape pass so the status colour covers the underlying rectangle
         # edge. Shape.scale is already set and the painter is in pixmap
         # space, matching the convention used by the cross-line below.
-        if self.rect_edge_align_enabled:
+        if self.rect_edge_align_enabled or self.rect_edge_keyboard_edge:
             self._draw_rect_edge_alignment_overlay(p)
 
         # Stable refine preview overlay (phase 2: target + drag-locked).
@@ -3547,6 +3619,79 @@ class Canvas(
     def transform_pos(self, point):
         """Convert from widget-logical coordinates to painter-logical ones."""
         return point / self.scale - self.offset_to_center()
+
+    # ------------------------------------------------------------------
+    # Precision drag mode (Feature 3, task 5.1-5.6)
+    # ------------------------------------------------------------------
+    @property
+    def precision_factor(self):
+        """Slowdown factor for precision drag (from config, default 4)."""
+        mode = getattr(self, "_precision_mode_cfg", "fixed")
+        if mode == "zoom":
+            scale_factor = max(
+                1.0, float(getattr(self, "scale", 1.0) or 1.0)
+            )
+            max_factor = max(
+                1.0, float(getattr(self, "_precision_max_factor_cfg", 2.0))
+            )
+            return min(scale_factor, max_factor)
+        cfg = getattr(self, "_precision_factor_cfg", None)
+        if cfg is None:
+            # Lazy-read once; canvas has no direct config handle, so the
+            # label_widget pushes the value via set_precision_factor.
+            return 4
+        return cfg
+
+    def set_precision_mode(self, value):
+        """Set precision slowdown mode: fixed or zoom."""
+        self._precision_mode_cfg = (
+            value if value in ("fixed", "zoom") else "fixed"
+        )
+
+    def set_precision_max_factor(self, value):
+        """Set the max slowdown factor for zoom precision mode."""
+        self._precision_max_factor_cfg = max(1.0, float(value))
+
+    def set_precision_factor(self, value):
+        """Allow label_widget to push the config value at zoom changes."""
+        self._precision_factor_cfg = max(1, int(value))
+
+    def _precision_active(self, ev=None):
+        """Return True if precision drag is active (D6: Ctrl held or locked)."""
+        if self.precision_mode_locked:
+            return True
+        if ev is not None:
+            return bool(
+                ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
+            )
+        return False
+
+    def _reset_virtual_cursor(self):
+        """Reset the virtual cursor (call on mouse press / mode exit)."""
+        self._virtual_prev_point = None
+        self._precision_raw_prev_point = None
+
+    def _effective_drag_pos(self, pos, ev):
+        """Return the image-coord pos to feed drag handlers.
+
+        In precision mode, scales the delta by 1/precision_factor using
+        a virtual cursor that is KEPT SEPARATE from self.prev_point (D4).
+        Hit-test, epsilon, and transform_pos are unaffected: they still
+        use the raw ``pos``.
+        """
+        if not self._precision_active(ev):
+            self._reset_virtual_cursor()
+            return pos
+        if self._virtual_prev_point is None:
+            self._virtual_prev_point = QtCore.QPointF(self.prev_point)
+            self._precision_raw_prev_point = QtCore.QPointF(self.prev_point)
+        factor = self.precision_factor
+        delta = pos - self._precision_raw_prev_point
+        scaled = QtCore.QPointF(delta.x() / factor, delta.y() / factor)
+        eff = self._virtual_prev_point + scaled
+        self._virtual_prev_point = eff
+        self._precision_raw_prev_point = QtCore.QPointF(pos)
+        return eff
 
     def offset_to_center(self):
         """Calculate offset to the center"""
@@ -4529,6 +4674,23 @@ class Canvas(
                 space by ``paintEvent``).
         """
         active = self.rect_edge_active_edge
+        keyboard_active = None
+        if (
+            self.rect_edge_keyboard_shape is not None
+            and self.rect_edge_keyboard_edge is not None
+        ):
+            import anylabeling.views.labeling.rect_edge_alignment as rea
+
+            geom = rea.geometry_from_shape(self.rect_edge_keyboard_shape)
+            if geom is not None:
+                keyboard_active = rea.edge_from_geometry(
+                    self.rect_edge_keyboard_shape,
+                    geom,
+                    self.rect_edge_keyboard_edge,
+                )
+
+        if keyboard_active is not None:
+            active = keyboard_active
         if active is not None:
             self._draw_edge(
                 painter, active, QtGui.QColor(255, 255, 255), width=2.0
@@ -4774,6 +4936,201 @@ class Canvas(
             self.repaint()
             self.moving_shape = True
 
+    # ------------------------------------------------------------------
+    # Keyboard edge selection (Feature 3, task 5.9-5.13)
+    # ------------------------------------------------------------------
+    _KEYBOARD_EDGE_CYCLE = ("left", "top", "right", "bottom")
+
+    def _keyboard_edge_active(self):
+        """Return True if a keyboard-selected edge is currently active."""
+        return (
+            self.rect_edge_keyboard_edge is not None
+            and self.rect_edge_keyboard_shape is not None
+        )
+
+    def _clear_keyboard_edge(self):
+        """Clear the keyboard-selected edge. Return True if it was active."""
+        if self.rect_edge_keyboard_edge is not None:
+            self.rect_edge_keyboard_edge = None
+            self.rect_edge_keyboard_shape = None
+            return True
+        return False
+
+    def _cycle_keyboard_edge(self):
+        """Advance/clear the keyboard-selected rectangle edge (task 5.9-5.11).
+
+        Requires exactly one selected rectangle. Cycles left -> top ->
+        right -> bottom -> left.
+        """
+        if (
+            len(self.selected_shapes) != 1
+            or getattr(self.selected_shapes[0], "shape_type", None)
+            != "rectangle"
+        ):
+            self._clear_keyboard_edge()
+            self.keyboard_edge_selected.emit("")
+            return
+
+        shape = self.selected_shapes[0]
+        current = self.rect_edge_keyboard_edge
+        if self.rect_edge_keyboard_shape is not shape or current is None:
+            self.rect_edge_keyboard_shape = shape
+            self.rect_edge_keyboard_edge = self._KEYBOARD_EDGE_CYCLE[0]
+        else:
+            idx = self._KEYBOARD_EDGE_CYCLE.index(current)
+            nxt = (idx + 1) % len(self._KEYBOARD_EDGE_CYCLE)
+            self.rect_edge_keyboard_edge = self._KEYBOARD_EDGE_CYCLE[nxt]
+        self.keyboard_edge_selected.emit(self.rect_edge_keyboard_edge)
+        self.update()
+
+    def _nudge_keyboard_edge(self, key, step, modifiers):
+        """Nudge the keyboard-selected edge by ±step image pixels.
+
+        For left/top edges, Up/Left move inward (negative), Down/Right
+        outward; for right/bottom the opposite. Uses
+        rect_edge_alignment.apply_edge_coord which clamps to min_size
+        (task 5.13/5.14, anti-flip via 5.16).
+        """
+        import anylabeling.views.labeling.rect_edge_alignment as rea
+
+        shape = self.rect_edge_keyboard_shape
+        edge = self.rect_edge_keyboard_edge
+        if shape is None or edge is None:
+            return
+        geom = rea.geometry_from_shape(shape)
+        if geom is None:
+            return
+        if edge in ("left", "right"):
+            coord = geom.x_min if edge == "left" else geom.x_max
+            if key == QtCore.Qt.Key.Key_Left:
+                coord -= step
+            elif key == QtCore.Qt.Key.Key_Right:
+                coord += step
+            else:
+                # Up/Down do not apply to vertical edges.
+                return
+        else:  # top / bottom
+            coord = geom.y_min if edge == "top" else geom.y_max
+            if key == QtCore.Qt.Key.Key_Up:
+                coord -= step
+            elif key == QtCore.Qt.Key.Key_Down:
+                coord += step
+            else:
+                return
+        rea.apply_edge_coord(shape, edge, coord, min_size=1.0)
+        shape._invalidate_cache()
+        # Commit immediately with a 500ms merge window so rapid key
+        # repeats collapse into one undo step (task 5.15, N2/D5).
+        self.store_shapes(merge_window=0.5)
+        self.shape_moved.emit()
+        self.update()
+
+    # ------------------------------------------------------------------
+    # Local edge snapping (Feature 4, task 6.1-6.14)
+    # ------------------------------------------------------------------
+    def _ensure_edge_snap_cache(self):
+        """Lazily build/refresh the edge-snap gradient cache from the
+        current pixmap (task 6.1). Keyed on pixmap.cacheKey() so image
+        switches invalidate it."""
+        from anylabeling.views.labeling.edge_snap import EdgeSnapCache
+
+        if not hasattr(self, "_edge_snap_cache"):
+            self._edge_snap_cache = EdgeSnapCache()
+        if self.pixmap is None or self.pixmap.isNull():
+            return None
+        key = self.pixmap.cacheKey()
+        # Convert pixmap to a known 4-channel QImage format before exposing
+        # its memory to numpy; QPixmap.toImage() may otherwise return a
+        # format with a different bytes-per-pixel or padded scanlines.
+        qimg = self.pixmap.toImage().convertToFormat(
+            QtGui.QImage.Format.Format_RGBA8888
+        )
+        w, h = qimg.width(), qimg.height()
+        if w <= 0 or h <= 0:
+            return None
+        ptr = qimg.bits()
+        bytes_per_line = qimg.bytesPerLine()
+        ptr.setsize(h * bytes_per_line)
+        import numpy as np
+
+        raw = np.frombuffer(ptr, dtype=np.uint8).reshape(h, bytes_per_line)
+        arr = raw[:, : w * 4].reshape(h, w, 4)
+        gray = arr[:, :, :3].mean(axis=2).astype(np.uint8)
+        self._edge_snap_cache.ensure(gray, key)
+        return self._edge_snap_cache
+
+    def snap_active_edge(self, search_range=4):
+        """Snap the keyboard-selected edge to the strongest nearby
+        image edge (task 6.11). Keypress-triggered (not realtime).
+
+        Validates before applying (Q11): if the candidate would trigger
+        a clamp in apply_edge_coord (anti-flip/min-size), the snap is
+        treated as a failure and the edge stays put.
+        """
+        if not self._keyboard_edge_active():
+            return {"status": "inactive"}
+        import anylabeling.views.labeling.rect_edge_alignment as rea
+        from anylabeling.views.labeling.edge_snap import (
+            best_snap_candidate,
+        )
+
+        cache = self._ensure_edge_snap_cache()
+        shape = self.rect_edge_keyboard_shape
+        edge = self.rect_edge_keyboard_edge
+        if shape is None or edge is None or cache is None:
+            return {"status": "failed", "reason": "no_cache"}
+        geom = rea.geometry_from_shape(shape)
+        if geom is None:
+            return {"status": "failed", "reason": "invalid_geometry"}
+
+        search_range = max(1, int(search_range))
+        if edge in ("left", "right"):
+            coord = geom.x_min if edge == "left" else geom.x_max
+            seg_lo, seg_hi = geom.y_min, geom.y_max
+        else:
+            coord = geom.y_min if edge == "top" else geom.y_max
+            seg_lo, seg_hi = geom.x_min, geom.x_max
+
+        result = best_snap_candidate(
+            cache,
+            edge_name=edge,
+            current_coord=coord,
+            seg_lo=seg_lo,
+            seg_hi=seg_hi,
+            search_range=search_range,
+        )
+        if result is None:
+            return {"status": "failed", "reason": "unreliable_edge"}
+        cand, _score = result
+
+        # Q11 validate-before-apply: if the candidate would be clamped
+        # by geometry_with_edge_coord, treat as failure (keep current).
+        test_geom = rea.geometry_with_edge_coord(
+            geom, edge, cand, min_size=1.0
+        )
+        clamped_coord = {
+            "left": test_geom.x_min,
+            "right": test_geom.x_max,
+            "top": test_geom.y_min,
+            "bottom": test_geom.y_max,
+        }[edge]
+        if clamped_coord != cand:
+            # Would have triggered clamp -> fail, keep current.
+            return {"status": "failed", "reason": "clamped"}
+
+        rea.apply_edge_coord(shape, edge, cand, min_size=1.0)
+        shape._invalidate_cache()
+        self.store_shapes()
+        self.shape_moved.emit()
+        self.update()
+        return {
+            "status": "success",
+            "edge": edge,
+            "old_coord": coord,
+            "new_coord": cand,
+            "delta": cand - coord,
+        }
+
     def rotate_by_keyboard(self, theta):
         """Rotate selected shapes by an theta (using keyboard)"""
         if self.selected_shapes:
@@ -4787,6 +5144,18 @@ class Canvas(
                 self.rotating_shape = True
 
     # QT Overload
+    def event(self, ev):
+        """Handle Tab before Qt consumes it for focus traversal."""
+        if (
+            ev.type() == QtCore.QEvent.Type.KeyPress
+            and ev.key() == QtCore.Qt.Key.Key_Tab
+            and self.editing()
+        ):
+            if self._editing_special_key(ev.key()):
+                ev.accept()
+                return True
+        return super(Canvas, self).event(ev)
+
     def keyPressEvent(self, ev):
         """Key press event"""
         key = ev.key()
@@ -4829,15 +5198,11 @@ class Canvas(
             elif modifiers == QtCore.Qt.KeyboardModifier.AltModifier:
                 self.snapping = False
         elif self.editing():
-            if key == QtCore.Qt.Key.Key_Up:
-                self.move_by_keyboard(QtCore.QPointF(0.0, -MOVE_SPEED))
-            elif key == QtCore.Qt.Key.Key_Down:
-                self.move_by_keyboard(QtCore.QPointF(0.0, MOVE_SPEED))
-            elif key == QtCore.Qt.Key.Key_Left:
-                self.move_by_keyboard(QtCore.QPointF(-MOVE_SPEED, 0.0))
-            elif key == QtCore.Qt.Key.Key_Right:
-                self.move_by_keyboard(QtCore.QPointF(MOVE_SPEED, 0.0))
-            elif key == QtCore.Qt.Key.Key_Z:
+            if self._editing_special_key(key):
+                return
+            if self._editing_arrow_dispatch(key, modifiers):
+                return
+            if key == QtCore.Qt.Key.Key_Z:
                 self.rotate_by_keyboard(self.large_rotation_increment)
             elif key == QtCore.Qt.Key.Key_X:
                 self.rotate_by_keyboard(self.small_rotation_increment)
@@ -4851,6 +5216,53 @@ class Canvas(
         else:
             super(Canvas, self).keyPressEvent(ev)
             return
+
+    def _editing_special_key(self, key):
+        """Handle Tab/Esc in editing mode (Feature 3 keyboard edge).
+
+        Returns True when the key was consumed.
+        """
+        if key == QtCore.Qt.Key.Key_Tab:
+            self._cycle_keyboard_edge()
+            return True
+        if key == QtCore.Qt.Key.Key_Escape:
+            if self._clear_keyboard_edge():
+                self.update()
+                return True
+        return False
+
+    def _editing_arrow_dispatch(self, key, modifiers):
+        """Dispatch arrow keys to whole-shape or single-edge nudge.
+
+        Returns True when the key was an arrow and was consumed.
+        Default step is 1px; Shift scales to MOVE_SPEED (5px) (task 5.7/
+        5.8). When a keyboard edge is active, arrows nudge that edge
+        instead (task 5.13/5.14).
+        """
+        if key not in (
+            QtCore.Qt.Key.Key_Up,
+            QtCore.Qt.Key.Key_Down,
+            QtCore.Qt.Key.Key_Left,
+            QtCore.Qt.Key.Key_Right,
+        ):
+            return False
+        step = (
+            MOVE_SPEED
+            if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier
+            else 1.0
+        )
+        if self._keyboard_edge_active():
+            self._nudge_keyboard_edge(key, step, modifiers)
+            return True
+        if key == QtCore.Qt.Key.Key_Up:
+            self.move_by_keyboard(QtCore.QPointF(0.0, -step))
+        elif key == QtCore.Qt.Key.Key_Down:
+            self.move_by_keyboard(QtCore.QPointF(0.0, step))
+        elif key == QtCore.Qt.Key.Key_Left:
+            self.move_by_keyboard(QtCore.QPointF(-step, 0.0))
+        elif key == QtCore.Qt.Key.Key_Right:
+            self.move_by_keyboard(QtCore.QPointF(step, 0.0))
+        return True
 
     # QT Overload
     def keyReleaseEvent(self, ev):

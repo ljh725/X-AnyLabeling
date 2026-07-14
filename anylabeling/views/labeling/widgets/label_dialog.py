@@ -256,9 +256,7 @@ class DigitShortcutDialog(QtWidgets.QDialog):
         else:
             # Fallback to legacy attribute access
             parent_pages = (
-                getattr(self.parent, "digit_pages", 1)
-                if self.parent
-                else 1
+                getattr(self.parent, "digit_pages", 1) if self.parent else 1
             )
             try:
                 parent_pages = int(parent_pages)
@@ -1029,9 +1027,7 @@ class LabelInfoScanThread(QtCore.QThread):
         label_dir, filename = os.path.split(image_file)
         if self.output_dir:
             label_dir = self.output_dir
-        return os.path.join(
-            label_dir, os.path.splitext(filename)[0] + ".json"
-        )
+        return os.path.join(label_dir, os.path.splitext(filename)[0] + ".json")
 
     def _scan_image_file(self, image_file):
         """Read one image's JSON file and return labels found in it."""
@@ -1078,9 +1074,7 @@ class LabelInfoScanThread(QtCore.QThread):
             try:
                 classes.update(self._scan_image_file(image_file))
             except Exception as e:
-                self.error.emit(
-                    f"Error occurred while scanning labels: {e}"
-                )
+                self.error.emit(f"Error occurred while scanning labels: {e}")
 
             if index == total or index % progress_step == 0:
                 self.progress.emit(index, total)
@@ -1093,9 +1087,7 @@ class LabelInfoScanThread(QtCore.QThread):
         completed = 0
         image_iter = iter(self.image_file_list)
         pending = set()
-        executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=workers
-        )
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
 
         def submit_next():
             try:

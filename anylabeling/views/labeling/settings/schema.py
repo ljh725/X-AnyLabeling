@@ -116,6 +116,8 @@ def _settings_translation_markers() -> None:
 SETTINGS_GENERAL_KEYS = (
     "auto_highlight_shape",
     "auto_switch_to_edit_mode",
+    "auto_person_instance",
+    "digit_shortcut_mode",
     "exif_scan_enabled",
     "file_list_checkbox_editable",
     "system_clipboard",
@@ -291,6 +293,14 @@ def _shortcut_label(short_key: str) -> str:
             SETTINGS_TRANSLATION_CONTEXT,
             "Switch Digit Shortcut Page",
         ),
+        "toggle_precision_mode_lock": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Toggle Precision Refinement",
+        ),
+        "trigger_edge_snap": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Snap Current Rectangle Edge",
+        ),
         "edit_group_id": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Open Group ID Manager"
         ),
@@ -387,6 +397,36 @@ def _non_shortcut_fields() -> list[SettingField]:
             description=QT_TRANSLATE_NOOP(
                 SETTINGS_TRANSLATION_CONTEXT,
                 "Automatically switch selected objects into edit mode.",
+            ),
+        ),
+        SettingField(
+            "auto_person_instance",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Auto Create Person Instance",
+            ),
+            "bool",
+            "General",
+            "Behavior",
+            "Manual Annotation",
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Assign a fresh group_id when manually drawing a person rectangle.",
+            ),
+        ),
+        SettingField(
+            "digit_shortcut_mode",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Digit Shortcut Mode"
+            ),
+            "enum",
+            "General",
+            "Behavior",
+            "Manual Annotation",
+            options=("rename", "bind_draw"),
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Choose whether number keys relabel selected shapes or bind new person/head/face rectangles.",
             ),
         ),
         SettingField(
@@ -758,6 +798,70 @@ def _non_shortcut_fields() -> list[SettingField]:
             ),
         ),
         SettingField(
+            "canvas_precision_mode",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Precision Drag Mode"
+            ),
+            "enum",
+            "Canvas",
+            "Interaction",
+            "Refinement",
+            options=("fixed", "zoom"),
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Choose fixed slowdown or zoom-based dynamic slowdown for precision mouse drags.",
+            ),
+        ),
+        SettingField(
+            "canvas_precision_max_factor",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Precision Drag Max Factor"
+            ),
+            "float",
+            "Canvas",
+            "Interaction",
+            "Refinement",
+            minimum=1.0,
+            maximum=20.0,
+            decimals=1,
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Limit zoom-based precision slowdown to avoid overly stiff mouse drags.",
+            ),
+        ),
+        SettingField(
+            "canvas_precision_factor",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Precision Drag Factor"
+            ),
+            "int",
+            "Canvas",
+            "Interaction",
+            "Refinement",
+            minimum=1,
+            maximum=20,
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Slow down mouse drags by this factor while precision refinement is active.",
+            ),
+        ),
+        SettingField(
+            "canvas_edge_snap_range",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Edge Snap Range"
+            ),
+            "int",
+            "Canvas",
+            "Interaction",
+            "Refinement",
+            minimum=1,
+            maximum=20,
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Search this many image pixels around the selected rectangle edge when snapping.",
+            ),
+        ),
+        SettingField(
             "canvas.crosshair.show",
             QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Show Crosshair"),
             "bool",
@@ -1061,6 +1165,8 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "toggle_visibility_shapes",
             "toggle_rect_edge_align",
             "toggle_stable_preview",
+            "toggle_precision_mode_lock",
+            "trigger_edge_snap",
             "zoom_in",
             "zoom_out",
             "zoom_to_original",

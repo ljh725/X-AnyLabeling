@@ -130,7 +130,9 @@ class _LabelCycle(QtCore.QObject):
         if show_status and self._status:
             self._status(
                 self._tr("Next label: {label} ({idx}/{total})").format(
-                    label=new_label, idx=self._index + 1, total=len(self._labels)
+                    label=new_label,
+                    idx=self._index + 1,
+                    total=len(self._labels),
                 ),
                 1500,
             )
@@ -147,23 +149,27 @@ class _LabelCycle(QtCore.QObject):
         if show_status and self._status:
             self._status(
                 self._tr("Previous label: {label} ({idx}/{total})").format(
-                    label=new_label, idx=self._index + 1, total=len(self._labels)
+                    label=new_label,
+                    idx=self._index + 1,
+                    total=len(self._labels),
                 ),
                 1500,
             )
         self.label_changed.emit(new_label, self._index, len(self._labels))
         return new_label
 
-    def jump(self, target_index: int, show_status: bool = True) -> Optional[str]:
+    def jump(
+        self, target_index: int, show_status: bool = True
+    ) -> Optional[str]:
         if not self.is_active:
             return None
         zero_based = target_index - 1
         if not 0 <= zero_based < len(self._labels):
             if self._status:
                 self._status(
-                    self._tr("Invalid index: {idx}, valid range: 1-{max}").format(
-                        idx=target_index, max=len(self._labels)
-                    ),
+                    self._tr(
+                        "Invalid index: {idx}, valid range: 1-{max}"
+                    ).format(idx=target_index, max=len(self._labels)),
                     2000,
                 )
             return None
@@ -174,7 +180,9 @@ class _LabelCycle(QtCore.QObject):
         if show_status and self._status:
             self._status(
                 self._tr("Jumped to label: {label} ({idx}/{total})").format(
-                    label=new_label, idx=self._index + 1, total=len(self._labels)
+                    label=new_label,
+                    idx=self._index + 1,
+                    total=len(self._labels),
                 ),
                 1500,
             )
@@ -199,17 +207,32 @@ class KeypointFillMode(QtCore.QObject):
 
     # COCO 17 关键点标准顺序（简写格式）
     KEYPOINT_ORDER: List[str] = [
-        "nose", "l_eye", "r_eye", "l_ear", "r_ear",
-        "l_sho", "r_sho", "l_elb", "r_elb", "l_wri",
-        "r_wri", "l_hip", "r_hip", "l_knee", "r_knee",
-        "l_ank", "r_ank",
+        "nose",
+        "l_eye",
+        "r_eye",
+        "l_ear",
+        "r_ear",
+        "l_sho",
+        "r_sho",
+        "l_elb",
+        "r_elb",
+        "l_wri",
+        "r_wri",
+        "l_hip",
+        "r_hip",
+        "l_knee",
+        "r_knee",
+        "l_ank",
+        "r_ank",
     ]
 
     PERSON_LABEL: str = "person"
 
     mode_activated = QtCore.pyqtSignal(int, int)  # (group_id, missing_count)
     mode_deactivated = QtCore.pyqtSignal(int)  # (last_group_id)
-    current_label_changed = QtCore.pyqtSignal(str, int, int)  # (label, index, total)
+    current_label_changed = QtCore.pyqtSignal(
+        str, int, int
+    )  # (label, index, total)
 
     def __init__(
         self,
@@ -279,7 +302,9 @@ class KeypointFillMode(QtCore.QObject):
         """
         if group_id is None:
             if self._status:
-                self._status(self._tr("Cannot activate: group_id is None"), 2000)
+                self._status(
+                    self._tr("Cannot activate: group_id is None"), 2000
+                )
             return False
 
         existing_labels = self._get_existing_labels(group_id)
@@ -323,8 +348,12 @@ class KeypointFillMode(QtCore.QObject):
         self._target_group_id = None
         self._missing_labels = []
 
-        logger.info(f"KeypointFillMode deactivated (old_group_id={old_group_id})")
-        self.mode_deactivated.emit(old_group_id if old_group_id is not None else -1)
+        logger.info(
+            f"KeypointFillMode deactivated (old_group_id={old_group_id})"
+        )
+        self.mode_deactivated.emit(
+            old_group_id if old_group_id is not None else -1
+        )
 
         if self._status:
             self._status(self._tr("Keypoint fill mode exited"), 2000)
@@ -391,7 +420,9 @@ class KeypointFillMode(QtCore.QObject):
             return
 
         existing_labels = self._get_existing_labels(self._target_group_id)
-        new_missing = [kp for kp in self.KEYPOINT_ORDER if kp not in existing_labels]
+        new_missing = [
+            kp for kp in self.KEYPOINT_ORDER if kp not in existing_labels
+        ]
 
         if not new_missing:
             if self._status:
@@ -419,7 +450,9 @@ class KeypointFillMode(QtCore.QObject):
         total = self._cycle.total_count
         return self._tr(
             "[Fill Mode] Group {gid} | {label} ({index}/{total}) | ] skip, [ back"
-        ).format(gid=self._target_group_id, label=current, index=index, total=total)
+        ).format(
+            gid=self._target_group_id, label=current, index=index, total=total
+        )
 
     # ---------- Private Helpers ----------
 

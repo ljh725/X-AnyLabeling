@@ -51,6 +51,7 @@ class DatasetIndexResult:
         """返回本次实际变更的文件数量。"""
         return self.inserted + self.updated + self.removed
 
+
 # ---------------------------------------------------------------------------
 # 公共 API
 # ---------------------------------------------------------------------------
@@ -100,7 +101,9 @@ class DatasetFilterIndex:
             self._ensure_schema()
             return True
         except sqlite3.Error as exc:
-            logger.warning(f"Failed to open SQLite cache {self.db_path}: {exc}")
+            logger.warning(
+                f"Failed to open SQLite cache {self.db_path}: {exc}"
+            )
             self._conn = None
             return False
 
@@ -382,8 +385,7 @@ class DatasetFilterIndex:
             )
             self._drop_schema()
 
-        self._conn.executescript(
-            """
+        self._conn.executescript("""
             CREATE TABLE IF NOT EXISTS dataset_meta (
                 key TEXT PRIMARY KEY,
                 value TEXT
@@ -424,8 +426,7 @@ class DatasetFilterIndex:
                 ON shapes(file_id, shape_index);
             CREATE INDEX IF NOT EXISTS idx_files_sort_order
                 ON files(sort_order);
-            """
-        )
+            """)
         self._conn.execute(
             "INSERT OR REPLACE INTO dataset_meta (key, value) VALUES (?, ?)",
             ("schema_version", SCHEMA_VERSION),
@@ -440,12 +441,10 @@ class DatasetFilterIndex:
         """
         assert self._conn is not None
         try:
-            cursor = self._conn.execute(
-                """
+            cursor = self._conn.execute("""
                 SELECT name FROM sqlite_master
                 WHERE type = 'table' AND name = 'dataset_meta'
-                """
-            )
+                """)
             if cursor.fetchone() is None:
                 return None
             cursor = self._conn.execute(
@@ -486,13 +485,11 @@ class DatasetFilterIndex:
         可以从 JSON 重新构建，不会影响真实标注。
         """
         assert self._conn is not None
-        self._conn.executescript(
-            """
+        self._conn.executescript("""
             DROP TABLE IF EXISTS shapes;
             DROP TABLE IF EXISTS files;
             DROP TABLE IF EXISTS dataset_meta;
-            """
-        )
+            """)
         self._conn.commit()
 
     # ------------------------------------------------------------------
@@ -868,9 +865,7 @@ class DatasetFilterIndex:
         Args:
             file_id: 数据库中的文件记录 ID。
         """
-        self._conn.execute(
-            "DELETE FROM shapes WHERE file_id = ?", (file_id,)
-        )
+        self._conn.execute("DELETE FROM shapes WHERE file_id = ?", (file_id,))
 
     def _clear_all(self) -> None:
         """清空所有表（ rebuild 时调用）。
@@ -982,7 +977,9 @@ class DatasetFilterIndex:
             with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except (json.JSONDecodeError, OSError, AttributeError) as exc:
-            logger.warning(f"Failed to read JSON index fields {json_path}: {exc}")
+            logger.warning(
+                f"Failed to read JSON index fields {json_path}: {exc}"
+            )
             return [], str(exc)
 
         results = []

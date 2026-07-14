@@ -44,6 +44,7 @@ _COL_COUNT = len(_COLUMNS)
 # EditableTableModel
 # ---------------------------------------------------------------------------
 
+
 class EditableTableModel(QtCore.QAbstractTableModel):
     """Table model backed by FlattenedRecord list.
 
@@ -57,13 +58,11 @@ class EditableTableModel(QtCore.QAbstractTableModel):
     def __init__(self, parent: Optional[QtCore.QObject] = None):
         super().__init__(parent)
         self._records: List[FlattenedRecord] = []
-        self._edit_callback: Optional[
-            Callable[[str, int, str, Any], None]
-        ] = None
+        self._edit_callback: Optional[Callable[[str, int, str, Any], None]] = (
+            None
+        )
 
-    def set_records(
-        self, records: List[FlattenedRecord]
-    ) -> None:
+    def set_records(self, records: List[FlattenedRecord]) -> None:
         """Replace all records (triggers model reset)."""
         self.beginResetModel()
         self._records = list(records)
@@ -145,7 +144,9 @@ class EditableTableModel(QtCore.QAbstractTableModel):
         except Exception:
             logger.error(
                 "Edit failed: file=%s idx=%d field=%s",
-                rec.file_path, rec.shape_index, field,
+                rec.file_path,
+                rec.shape_index,
+                field,
                 exc_info=True,
             )
             return False
@@ -179,11 +180,14 @@ class EditableTableModel(QtCore.QAbstractTableModel):
 # EditableTableWidget
 # ---------------------------------------------------------------------------
 
+
 class EditableTableWidget(QtWidgets.QWidget):
     """QTableView-based shape data table with click-to-navigate."""
 
-    shape_clicked = QtCore.pyqtSignal(str, int)        # file_path, shape_index
-    shape_double_clicked = QtCore.pyqtSignal(str, int)  # file_path, shape_index
+    shape_clicked = QtCore.pyqtSignal(str, int)  # file_path, shape_index
+    shape_double_clicked = QtCore.pyqtSignal(
+        str, int
+    )  # file_path, shape_index
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
         super().__init__(parent)

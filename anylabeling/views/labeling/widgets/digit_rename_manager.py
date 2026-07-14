@@ -11,7 +11,6 @@ from ..utils.style import (
 )
 from .popup import Popup
 
-
 LABEL_OPACITY = 128
 
 
@@ -52,9 +51,7 @@ class DigitRenameManager:
 
     def _load_rename_shortcuts(self) -> Dict[int, Dict[str, str]]:
         """Load and normalize digit relabel shortcuts from config."""
-        raw_shortcuts = self._label_widget._config.get(
-            "rename_shortcuts", {}
-        )
+        raw_shortcuts = self._label_widget._config.get("rename_shortcuts", {})
         normalized = {}
 
         if not isinstance(raw_shortcuts, dict):
@@ -112,9 +109,7 @@ class DigitRenameManager:
         self._apply_rename(rename_label)
         return True
 
-    def _extract_label(
-        self, mapping: Optional[Dict[str, str]]
-    ) -> str:
+    def _extract_label(self, mapping: Optional[Dict[str, str]]) -> str:
         """Extract a normalized label string from a mapping entry."""
         if not mapping:
             return ""
@@ -128,9 +123,7 @@ class DigitRenameManager:
         )
 
         if not shapes:
-            label_widget.status(
-                label_widget.tr("未选中任何标注对象"), 2000
-            )
+            label_widget.status(label_widget.tr("未选中任何标注对象"), 2000)
             return
 
         if not label_widget.validate_label(rename_label):
@@ -192,9 +185,7 @@ class DigitRenameManager:
                 pass
 
         label_widget.status(
-            label_widget.tr(
-                "已将 {count} 个对象重命名为 '{label}'"
-            ).format(
+            label_widget.tr("已将 {count} 个对象重命名为 '{label}'").format(
                 count=updated_count,
                 label=rename_label,
             ),
@@ -302,9 +293,7 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
             self._table.setRowHeight(row, self._ROW_HEIGHT)
 
             digit_item = QtWidgets.QTableWidgetItem(str(row))
-            digit_item.setTextAlignment(
-                QtCore.Qt.AlignmentFlag.AlignCenter
-            )
+            digit_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             digit_item.setFlags(
                 digit_item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable
             )
