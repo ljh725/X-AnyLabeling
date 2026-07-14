@@ -744,6 +744,12 @@ class Canvas(
 
     def set_editing(self, value=True):
         """Set editing mode. Editing is set to False, user is drawing"""
+        if not value:  # Create
+            # Edge editing stays enabled as a user preference, but its
+            # transient interaction cannot cross into create mode. Restore
+            # any live geometry before dropping the active edge reference.
+            if not self.cancel_rect_edge_drag():
+                self.clear_rect_edge_alignment()
         self.mode = self.EDIT if value else self.CREATE
         if not value:  # Create
             self.un_highlight()
@@ -958,6 +964,10 @@ class Canvas(
         ):
             eff = self._effective_drag_pos(pos, ev)
             self._rect_edge_drag_update(eff)
+            # While actively dragging an edge, show the closed-hand
+            # (grab) cursor to reflect the held interaction; this branch
+            # returns early and otherwise skips the default hover loop.
+            self.override_cursor(CURSOR_MOVE)
             return
 
         # Polygon/Vertex moving.
@@ -1136,6 +1146,11 @@ class Canvas(
                     # fill and clobber the edge highlight).
                     self.un_highlight()
                     self.show_shape.emit(-1, -1, pos)
+                    # This branch returns early, so the default hover loop
+                    # below (which normally sets the cursor) never runs;
+                    # set the pointing-hand cursor explicitly to signal
+                    # that the edge is selectable/grabbable.
+                    self.override_cursor(CURSOR_POINT)
                     return
 
         self.show_shape.emit(-1, -1, pos)
@@ -1426,17 +1441,14 @@ class Canvas(
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             # ----------------------------------------------------------
             # Rectangle edge editing.
-            # Handle early, but only while the mode is on, in editing mode,
-            # and a hovered edge exists. Loading/draw paths are unaffected
-            # because this block returns before reaching them only when the
-            # above preconditions hold.
+            # Revalidate the edge at press time so a stale hover reference
+            # cannot edit a rectangle that is no longer selected. Loading
+            # and draw paths are unaffected because the hit test also checks
+            # the capability and current canvas mode.
             # ----------------------------------------------------------
-            if (
-                self.rect_edge_align_enabled
-                and self.editing()
-                and self.rect_edge_hover_edge is not None
-            ):
-                hover = self.rect_edge_hover_edge
+            hover = self._rect_edge_hit_candidate(pos)
+            self.rect_edge_hover_edge = hover
+            if hover is not None:
                 self.prev_point = pos
                 self.rect_edge_active_edge = hover
                 self.rect_edge_dragging = True
@@ -1445,6 +1457,9 @@ class Canvas(
                     self._stable_preview_begin_drag_locked(
                         pos, hover.edge_name
                     )
+                # Pressing on a hovered edge starts a drag: switch to the
+                # closed-hand cursor immediately so feedback is instant.
+                self.override_cursor(CURSOR_MOVE)
                 self.update()
                 return
             if self.drawing():
@@ -4085,13 +4100,16 @@ class Canvas(
     def set_rect_edge_align_enabled(self, enabled):
         """Enable or disable the rectangle edge editing mode.
 
-        When disabling, all transient edge state is cleared. Enabling does
-        not pick any edge and never creates a shape.
+        When disabling, an active drag is cancelled and all transient edge
+        state is cleared. Enabling does not pick any edge or create a shape.
 
         Args:
             enabled: Whether the mode should be active.
         """
-        self.rect_edge_align_enabled = bool(enabled)
+        enabled = bool(enabled)
+        if not enabled and self.rect_edge_dragging:
+            self.cancel_rect_edge_drag()
+        self.rect_edge_align_enabled = enabled
         if not self.rect_edge_align_enabled:
             self.clear_rect_edge_alignment()
             # Turning rect-edge editing off is a full teardown: wipe the
@@ -4609,15 +4627,11 @@ class Canvas(
         return False
 
     def _rect_edge_hit_candidate(self, point):
-        """Return the best rectangle edge candidate under ``point``.
+        """Return an edge candidate on the single selected rectangle.
 
         Only runs while the mode is enabled and the canvas is in editing
-        mode. Vertex hits take priority over edge hits: if a shape has a
-        vertex within epsilon, that shape is skipped (no edge candidate).
-
-        Candidates are ranked like ``_shape_hit_candidates``:
-        ``(1, edge_distance, area, -stack_index)`` — closer, smaller and
-        more-recently-created shapes win.
+        mode. An unselected rectangle keeps the normal whole-shape selection
+        semantics. Vertex hits take priority over edge hits.
 
         Args:
             point: Mouse position in image coordinates.
@@ -4627,31 +4641,23 @@ class Canvas(
         """
         if not self.rect_edge_align_enabled or not self.editing():
             return None
+        if len(self.selected_shapes) != 1:
+            return None
 
         epsilon = self.epsilon / self.scale
-
-        candidates = []
-        for stack_index, shape in enumerate(self.shapes):
-            if not self.is_shape_interactive(shape):
-                continue
-            if shape.shape_type != "rectangle":
-                continue
-            # Vertex priority: if a vertex is in range, defer to the normal
-            # vertex interaction instead of offering an edge candidate.
-            if shape.nearest_vertex(point, epsilon) is not None:
-                continue
-            result = rea.nearest_edge(shape, point, epsilon)
-            if result is None:
-                continue
-            edge, distance = result
-            rect = shape.bounding_rect()
-            area = abs(rect.width() * rect.height())
-            candidates.append(((1, distance, area, -stack_index), edge))
-
-        if not candidates:
+        shape = self.selected_shapes[0]
+        if (
+            shape not in self.shapes
+            or not self.is_shape_interactive(shape)
+            or shape.shape_type != "rectangle"
+        ):
             return None
-        candidates.sort(key=lambda item: item[0])
-        return candidates[0][1]
+        # Vertex priority: defer to the normal vertex interaction instead of
+        # offering an edge control handle at a rectangle corner.
+        if shape.nearest_vertex(point, epsilon) is not None:
+            return None
+        result = rea.nearest_edge(shape, point, epsilon)
+        return result[0] if result is not None else None
 
     def _draw_rect_edge_alignment_overlay(self, painter):
         """Draw the rectangle edge editing status overlay.

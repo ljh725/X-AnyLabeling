@@ -4097,23 +4097,9 @@ class LabelingWidget(LabelDialog):
             if edit or create_mode != "point":
                 self.exit_keypoint_fill_mode()
 
-        # Rectangle edge editing is an edit-mode tool and is mutually
-        # exclusive with create modes. Only drop it when actually entering a
-        # create mode (edit=False). Returning to edit mode (e.g. via
-        # set_edit_mode() from toggle_rect_edge_align itself) must NOT clear
-        # the action, otherwise the menu and canvas state desync.
-        rect_edge_action = getattr(
-            self.actions, "toggle_rect_edge_align", None
-        )
-        if (
-            not edit
-            and rect_edge_action is not None
-            and rect_edge_action.isChecked()
-        ):
-            rect_edge_action.blockSignals(True)
-            rect_edge_action.setChecked(False)
-            rect_edge_action.blockSignals(False)
-            self.canvas.set_rect_edge_align_enabled(False)
+        # Rectangle edge editing is a persistent capability of edit mode.
+        # Canvas.set_editing() makes it dormant in create mode without
+        # changing the user's toggle state.
 
         # Stable refine preview is a passive observer of rect-edge drags;
         # it carries no editing semantics and need not be force-disabled
@@ -7184,11 +7170,11 @@ class LabelingWidget(LabelDialog):
         self.canvas.update()
 
     def toggle_rect_edge_align(self, enabled: bool) -> None:
-        """Toggle the rectangle edge editing mode.
+        """Toggle rectangle edge editing for selected rectangles.
 
-        Edge editing is an editing tool and is mutually exclusive with the
-        create/draw modes: enabling it forces a return to edit mode so the
-        two interactions never overlap.
+        The setting persists across edit/create mode switches. Create mode
+        owns the canvas interaction while active, so edge editing remains
+        enabled but dormant until the canvas returns to edit mode.
 
         A status-bar notification (same spot as the live mouse coordinate /
         H-W readout) confirms the on/off state.
@@ -7196,9 +7182,6 @@ class LabelingWidget(LabelDialog):
         Args:
             enabled: Whether the rectangle edge editing mode is on.
         """
-        if enabled and self.canvas.drawing():
-            # Exit any active create mode so edge picking has the canvas.
-            self.set_edit_mode()
         self.canvas.set_rect_edge_align_enabled(enabled)
         if enabled:
             self.status(self.tr("矩形边编辑模式已开启"))
