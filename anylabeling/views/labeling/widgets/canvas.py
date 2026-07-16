@@ -41,6 +41,7 @@ CURSOR_SIZE_FDIAG = QtCore.Qt.CursorShape.SizeFDiagCursor
 AUTO_DECODE_DELAY_MS = 100
 MAX_AUTO_DECODE_MARKS = 42
 AUTO_DECODE_MOVE_THRESHOLD = 5.0
+RECT_EDGE_DRAG_THRESHOLD_PX = 4.0
 MOVE_SPEED = 5.0
 LARGE_ROTATION_INCREMENT = math.radians(1.0)
 SMALL_ROTATION_INCREMENT = math.radians(0.1)
@@ -281,6 +282,13 @@ class Canvas(
         self.rect_edge_active_edge = None
         self.rect_edge_dragging = False
         self.rect_edge_drag_start_points = None
+        # A preselected edge is confirmed on press but does not become an
+        # edit target until the pointer crosses a screen-space drag threshold.
+        # This keeps a plain click equivalent to whole-shape selection.
+        self.rect_edge_pending_edge = None
+        self.rect_edge_pending_press_pos = None
+        self.rect_edge_pending_image_pos = None
+        self.rect_edge_pending_can_drag = False
 
         # Keyboard-selected rectangle edge for single-edge nudge (Feature 3).
         # None means whole-shape move applies; otherwise Up/Down/Left/Right
@@ -953,6 +961,37 @@ class Canvas(
                 self.repaint()
             return
 
+        # A press on an unselected rectangle edge is initially only a
+        # pending selection. With no prior selection, crossing the
+        # screen-space threshold upgrades it to a formal single selection
+        # and begins the edge drag. Existing other/multi selections require
+        # a confirming click first and therefore never drag from this press.
+        if (
+            QtCore.Qt.MouseButton.LeftButton & ev.buttons()
+            and self.rect_edge_pending_edge is not None
+        ):
+            pending = self.rect_edge_pending_edge
+            if not self._rect_edge_pending_is_valid():
+                self._clear_rect_edge_pending()
+                self.rect_edge_hover_edge = None
+                self.update()
+                return
+            if (
+                not self.rect_edge_pending_can_drag
+                or not self._rect_edge_pending_threshold_crossed(ev.position())
+            ):
+                self.override_cursor(CURSOR_POINT)
+                return
+
+            press_pos = QtCore.QPointF(self.rect_edge_pending_image_pos)
+            self.selection_changed.emit([pending.shape])
+            self._clear_keyboard_edge()
+            self._start_rect_edge_drag(pending, press_pos)
+            eff = self._effective_drag_pos(pos, ev)
+            self._rect_edge_drag_update(eff)
+            self.override_cursor(CURSOR_MOVE)
+            return
+
         # Rectangle edge drag has the highest priority while the left
         # button is held: consume the move here so it never reaches the
         # normal left-button pan/scroll block below (which would emit
@@ -1441,25 +1480,29 @@ class Canvas(
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             # ----------------------------------------------------------
             # Rectangle edge editing.
-            # Revalidate the edge at press time so a stale hover reference
-            # cannot edit a rectangle that is no longer selected. Loading
-            # and draw paths are unaffected because the hit test also checks
-            # the capability and current canvas mode.
+            # Revalidate at press time so a stale hover reference cannot
+            # target a removed/hidden shape. A formally selected rectangle
+            # starts dragging immediately. An unselected edge enters a
+            # pending state so click means selection and a clear drag means
+            # geometry editing.
             # ----------------------------------------------------------
-            hover = self._rect_edge_hit_candidate(pos)
+            hover = self._rect_edge_press_candidate(pos)
             self.rect_edge_hover_edge = hover
             if hover is not None:
                 self.prev_point = pos
-                self.rect_edge_active_edge = hover
-                self.rect_edge_dragging = True
-                self.rect_edge_drag_start_points = list(hover.shape.points)
-                if self.stable_preview_enabled:
-                    self._stable_preview_begin_drag_locked(
-                        pos, hover.edge_name
+                self.prev_pan_point = ev.position()
+                if self._rect_edge_is_formal_target(hover):
+                    self._start_rect_edge_drag(hover, pos)
+                else:
+                    self.rect_edge_pending_edge = hover
+                    self.rect_edge_pending_press_pos = QtCore.QPointF(
+                        ev.position()
                     )
-                # Pressing on a hovered edge starts a drag: switch to the
-                # closed-hand cursor immediately so feedback is instant.
-                self.override_cursor(CURSOR_MOVE)
+                    self.rect_edge_pending_image_pos = QtCore.QPointF(pos)
+                    self.rect_edge_pending_can_drag = not bool(
+                        self.selected_shapes
+                    )
+                    self.override_cursor(CURSOR_POINT)
                 self.update()
                 return
             if self.drawing():
@@ -1724,6 +1767,30 @@ class Canvas(
                 # Phase 2: a rect-edge release falls back to TargetPreview
                 # if a single rectangle is still selected.
                 self._stable_preview_enter_target_if_valid()
+                self.update()
+                return
+            if self.rect_edge_pending_edge is not None:
+                pending = self.rect_edge_pending_edge
+                valid = self._rect_edge_pending_is_valid()
+                release_pos = self.transform_pos(ev.position())
+                confirmed = (
+                    self._rect_edge_specific_hit(pending, release_pos)
+                    if valid
+                    else None
+                )
+                self._clear_rect_edge_pending()
+                if valid:
+                    self.selection_changed.emit([pending.shape])
+                if confirmed is not None:
+                    self.rect_edge_hover_edge = confirmed[0]
+                else:
+                    self.rect_edge_hover_edge = (
+                        self._rect_edge_hit_candidate(release_pos)
+                    )
+                if self.rect_edge_hover_edge is not None:
+                    self.override_cursor(CURSOR_POINT)
+                else:
+                    self.override_cursor(CURSOR_DEFAULT)
                 self.update()
                 return
             if self.editing():
@@ -4158,6 +4225,24 @@ class Canvas(
             )
         self.update()
 
+    def _start_rect_edge_drag(
+        self, edge: rea.RectEdgeRef, press_pos: QtCore.QPointF
+    ) -> None:
+        """Promote an edge reference to the active drag target.
+
+        Args:
+            edge: Rectangle edge reference to edit.
+            press_pos: Original press position in image coordinates.
+        """
+        self._clear_rect_edge_pending()
+        self.prev_point = QtCore.QPointF(press_pos)
+        self.rect_edge_active_edge = edge
+        self.rect_edge_dragging = True
+        self.rect_edge_drag_start_points = list(edge.shape.points)
+        if self.stable_preview_enabled:
+            self._stable_preview_begin_drag_locked(press_pos, edge.edge_name)
+        self.override_cursor(CURSOR_MOVE)
+
     # ------------------------------------------------------------------
     # Stable refine preview (phase 1: DragLocked only).
     # ------------------------------------------------------------------
@@ -4610,6 +4695,7 @@ class Canvas(
         self.rect_edge_active_edge = None
         self.rect_edge_dragging = False
         self.rect_edge_drag_start_points = None
+        self._clear_rect_edge_pending()
         # Phase 2 split: only drop the drag-locked preview here, NOT the
         # target preview. This single call site covers mouse-release, Esc
         # cancel, cancel_rect_edge_drag, and load_shapes. Release/escape
@@ -4656,14 +4742,130 @@ class Canvas(
         if self.rect_edge_dragging:
             self.cancel_rect_edge_drag()
             return True
+        if self.rect_edge_pending_edge is not None:
+            self.clear_rect_edge_alignment()
+            self.update()
+            return True
         return False
 
-    def _rect_edge_hit_candidate(self, point):
-        """Return an edge candidate on the single selected rectangle.
+    def _clear_rect_edge_pending(self) -> None:
+        """Clear the press-before-drag rectangle-edge state."""
+        self.rect_edge_pending_edge = None
+        self.rect_edge_pending_press_pos = None
+        self.rect_edge_pending_image_pos = None
+        self.rect_edge_pending_can_drag = False
+
+    def _rect_edge_pending_is_valid(self) -> bool:
+        """Return whether the pending edge still targets an editable shape."""
+        pending = self.rect_edge_pending_edge
+        return bool(
+            self.rect_edge_align_enabled
+            and self.editing()
+            and pending is not None
+            and self.rect_edge_pending_press_pos is not None
+            and self.rect_edge_pending_image_pos is not None
+            and pending.shape in self.shapes
+            and self.is_shape_interactive(pending.shape)
+            and pending.shape.shape_type == "rectangle"
+        )
+
+    def _rect_edge_pending_threshold_crossed(
+        self, widget_pos: QtCore.QPointF
+    ) -> bool:
+        """Return whether a pending press moved far enough to mean drag."""
+        press_pos = self.rect_edge_pending_press_pos
+        if press_pos is None:
+            return False
+        return (
+            QtCore.QLineF(press_pos, widget_pos).length()
+            >= RECT_EDGE_DRAG_THRESHOLD_PX
+        )
+
+    def _rect_edge_is_formal_target(
+        self, edge: rea.RectEdgeRef | None
+    ) -> bool:
+        """Return whether ``edge`` belongs to the sole formal selection."""
+        return bool(
+            edge is not None
+            and len(self.selected_shapes) == 1
+            and self.selected_shapes[0] is edge.shape
+        )
+
+    def _rect_edge_on_shape(
+        self, shape: Shape, point: QtCore.QPointF, epsilon: float
+    ) -> tuple[rea.RectEdgeRef, float] | None:
+        """Return a nearby rectangle edge while preserving vertex priority."""
+        if (
+            shape not in self.shapes
+            or not self.is_shape_interactive(shape)
+            or shape.shape_type != "rectangle"
+            or shape.nearest_vertex(point, epsilon) is not None
+        ):
+            return None
+        result = rea.nearest_edge(shape, point, epsilon)
+        return result
+
+    def _rect_edge_vertex_has_priority(
+        self, point: QtCore.QPointF, epsilon: float
+    ) -> bool:
+        """Return whether any visible vertex owns the interaction point."""
+        return any(
+            self.is_shape_interactive(shape)
+            and shape.nearest_vertex(point, epsilon) is not None
+            for shape in self.shapes
+        )
+
+    def _rect_edge_specific_hit(
+        self, edge: rea.RectEdgeRef | None, point: QtCore.QPointF
+    ) -> tuple[rea.RectEdgeRef, float] | None:
+        """Refresh and hit-test one exact edge without global reranking."""
+        if (
+            not self.rect_edge_align_enabled
+            or not self.editing()
+            or edge is None
+            or edge.shape not in self.shapes
+            or not self.is_shape_interactive(edge.shape)
+            or edge.shape.shape_type != "rectangle"
+        ):
+            return None
+
+        epsilon = self.epsilon / self.scale
+        if self._rect_edge_vertex_has_priority(point, epsilon):
+            return None
+
+        geometry = rea.geometry_from_shape(edge.shape)
+        if geometry is None or not geometry.is_valid():
+            return None
+        refreshed = rea.edge_from_geometry(
+            edge.shape, geometry, edge.edge_name
+        )
+        distance = utils.distance_to_line(
+            point, [refreshed.p1, refreshed.p2]
+        )
+        if distance > epsilon:
+            return None
+        return refreshed, distance
+
+    def _rect_edge_press_candidate(
+        self, point: QtCore.QPointF
+    ) -> rea.RectEdgeRef | None:
+        """Confirm the visible preselected edge before global hit testing."""
+        preferred = self._rect_edge_specific_hit(
+            self.rect_edge_hover_edge, point
+        )
+        if preferred is not None:
+            return preferred[0]
+        return self._rect_edge_hit_candidate(point)
+
+    def _rect_edge_hit_candidate(
+        self, point: QtCore.QPointF
+    ) -> rea.RectEdgeRef | None:
+        """Return the selected or preselected rectangle edge under a point.
 
         Only runs while the mode is enabled and the canvas is in editing
-        mode. An unselected rectangle keeps the normal whole-shape selection
-        semantics. Vertex hits take priority over edge hits.
+        mode. The sole formally selected rectangle has priority. Otherwise,
+        visible rectangle edges are ranked by distance, area and stack order
+        for non-mutating preselection. Vertex hits take priority per shape.
 
         Args:
             point: Mouse position in image coordinates.
@@ -4673,23 +4875,34 @@ class Canvas(
         """
         if not self.rect_edge_align_enabled or not self.editing():
             return None
-        if len(self.selected_shapes) != 1:
-            return None
 
         epsilon = self.epsilon / self.scale
-        shape = self.selected_shapes[0]
-        if (
-            shape not in self.shapes
-            or not self.is_shape_interactive(shape)
-            or shape.shape_type != "rectangle"
-        ):
+        # Any visible shape vertex is a stronger edit handle than every
+        # rectangle edge, including an overlapping edge on another shape.
+        if self._rect_edge_vertex_has_priority(point, epsilon):
             return None
-        # Vertex priority: defer to the normal vertex interaction instead of
-        # offering an edge control handle at a rectangle corner.
-        if shape.nearest_vertex(point, epsilon) is not None:
+
+        if len(self.selected_shapes) == 1:
+            selected_result = self._rect_edge_on_shape(
+                self.selected_shapes[0], point, epsilon
+            )
+            if selected_result is not None:
+                return selected_result[0]
+
+        candidates = []
+        for stack_index, shape in enumerate(self.shapes):
+            result = self._rect_edge_on_shape(shape, point, epsilon)
+            if result is None:
+                continue
+            edge, distance = result
+            rect = shape.bounding_rect()
+            area = abs(rect.width() * rect.height())
+            candidates.append(((distance, area, -stack_index), edge))
+
+        if not candidates:
             return None
-        result = rea.nearest_edge(shape, point, epsilon)
-        return result[0] if result is not None else None
+        candidates.sort(key=lambda item: item[0])
+        return candidates[0][1]
 
     def _draw_rect_edge_alignment_overlay(self, painter):
         """Draw the rectangle edge editing status overlay.

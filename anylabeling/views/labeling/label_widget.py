@@ -6733,7 +6733,10 @@ class LabelingWidget(LabelDialog):
             ):
                 self.canvas._brush_drawing = True
 
-            shape.selected = True
+            # Showing the freshly created object's attributes is not a
+            # selection operation. Formal selection is maintained only by
+            # shape_selection_changed(), which keeps ``shape.selected`` and
+            # ``canvas.selected_shapes`` synchronized.
             self.show_attributes_panel()
             for i, canvas_shape in enumerate(self.canvas.shapes):
                 if canvas_shape is shape:
@@ -7172,9 +7175,9 @@ class LabelingWidget(LabelDialog):
     def toggle_rect_edge_align(self, enabled: bool) -> None:
         """Toggle rectangle edge editing for selected rectangles.
 
-        The setting persists across edit/create mode switches. Create mode
-        owns the canvas interaction while active, so edge editing remains
-        enabled but dormant until the canvas returns to edit mode.
+        Enabling the capability returns the canvas to edit mode immediately.
+        The setting then persists across later edit/create mode switches:
+        create mode makes it dormant but never clears the user's toggle.
 
         A status-bar notification (same spot as the live mouse coordinate /
         H-W readout) confirms the on/off state.
@@ -7182,6 +7185,8 @@ class LabelingWidget(LabelDialog):
         Args:
             enabled: Whether the rectangle edge editing mode is on.
         """
+        if enabled and self.canvas.drawing():
+            self.set_edit_mode()
         self.canvas.set_rect_edge_align_enabled(enabled)
         if enabled:
             self.status(self.tr("矩形边编辑模式已开启"))

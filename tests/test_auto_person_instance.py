@@ -338,6 +338,40 @@ def test_7_3b_auto_person_instance_does_not_fire_for_non_person(canvas):
     ), "non-person label must not trigger auto instance"
 
 
+def test_consecutive_new_shapes_do_not_gain_visual_only_selection(canvas):
+    """Creating shapes must not set ``selected`` outside selection state."""
+    from anylabeling.views.labeling.label_widget import LabelingWidget
+
+    first = _new_rect()
+    canvas.shapes = [first]
+    canvas.selected_shapes = []
+    canvas.set_last_label = lambda text, flags, group_id: canvas.shapes[-1]
+
+    widget = _make_widget(
+        canvas,
+        _base_config(auto_use_last_label=True),
+        last_label="person",
+    )
+    widget.label_list = types.SimpleNamespace(clearSelection=lambda: None)
+    widget.add_label = lambda shape: None
+    shown = []
+    updated = []
+    widget.show_attributes_panel = lambda: shown.append(True)
+    widget.update_attributes = updated.append
+
+    LabelingWidget.new_shape(widget)
+
+    second = _new_rect()
+    canvas.shapes.append(second)
+    LabelingWidget.new_shape(widget)
+
+    assert canvas.selected_shapes == []
+    assert first.selected is False
+    assert second.selected is False
+    assert shown == [True, True]
+    assert updated == [0, 1]
+
+
 def test_7_16_auto_labeling_path_does_not_use_auto_person_instance():
     """7.16 / Non-Goal: the auto-labeling landing path
     (finish_auto_labeling_object) must NOT read auto_person_instance.
