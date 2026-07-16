@@ -2787,6 +2787,10 @@ class Canvas(
                 ):
                     continue
 
+                # 与主绘制通道一致：边操作下被操作矩形的轮廓/填充色
+                # 回退到标签色，使 overlay 白色高亮可区分。mask 通道不
+                # 经过 shape.paint，故用局部变量而非实例标志。
+                edge_editing = self._is_shape_under_edge_edit(shape)
                 mask_path = QtGui.QPainterPath()
                 if shape.shape_type == "polygon":
                     mask_path.moveTo(shape.points[0])
@@ -2827,7 +2831,7 @@ class Canvas(
 
                 fill_color = (
                     shape.select_line_color
-                    if shape.selected
+                    if shape.selected and not edge_editing
                     else shape.line_color
                 )
                 fill_color_alpha = QtGui.QColor(
@@ -2842,7 +2846,7 @@ class Canvas(
 
                 outline_color = (
                     shape.select_line_color
-                    if shape.selected
+                    if shape.selected and not edge_editing
                     else shape.line_color
                 )
                 pen = QtGui.QPen(outline_color)
@@ -2870,7 +2874,12 @@ class Canvas(
                     and (shape.selected or shape == self.h_hape)
                     and not (self.selected_vertex() and self.moving_shape)
                 )
+                # 边操作模式下被操作的矩形轮廓回退到标签色，使 overlay
+                # 的白色高亮能从整框白色中区分出来。paint 后立即复位，
+                # 避免该标志泄漏到其它绘制路径或持久化逻辑。
+                shape.edge_editing = self._is_shape_under_edge_edit(shape)
                 shape.paint(p)
+                shape.edge_editing = False
 
             if (
                 shape.shape_type == "rotation"
@@ -4571,6 +4580,29 @@ class Canvas(
         left = max(0.0, min(rect.left(), iw - width))
         top = max(0.0, min(rect.top(), ih - height))
         return QtCore.QRectF(left, top, width, height)
+
+    def _is_shape_under_edge_edit(self, shape):
+        """矩形是否当前正被矩形边操作（hover 或拖拽）影响。
+
+        用于让被操作矩形的轮廓色回退到 line_color，使边操作 overlay
+        的白色高亮能从整框白色中区分出来。键盘选中的边不触发——键盘
+        微调时整框保持选中高亮态。
+
+        Args:
+            shape: 待查询的 :class:`Shape`。
+
+        Returns:
+            bool: 该 shape 正被鼠标 hover 或拖拽某条边。
+        """
+        if not self.rect_edge_align_enabled:
+            return False
+        active = self.rect_edge_active_edge
+        hover = self.rect_edge_hover_edge
+        if active is not None and active.shape is shape:
+            return True
+        if hover is not None and hover.shape is shape:
+            return True
+        return False
 
     def clear_rect_edge_alignment(self):
         """Clear transient edge-editing interaction state."""

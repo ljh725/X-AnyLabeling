@@ -83,6 +83,11 @@ class Shape:
         self.fill = False
         self.hovered = False
         self.selected = False
+        # 运行时标志：该矩形当前正被矩形边操作（hover/拖拽）影响。
+        # paint() 据此把轮廓色回退到 line_color，避免整框白色覆盖掉
+        # 被操作边的白色 overlay 高亮。仅由 canvas 主绘制循环在
+        # paint 前后成对 set/reset，不参与持久化。
+        self.edge_editing = False
         self.shape_type = shape_type
         self.flags = flags
         self.other_data = {}
@@ -420,8 +425,13 @@ class Shape:
     def paint(self, painter: QtGui.QPainter):  # noqa: max-complexity: 18
         """Paint shape using QPainter"""
         if self.points:
+            # 边操作模式下被操作的矩形 selected 仍为 True，但应回退到
+            # 标签色（line_color），由 canvas 在被操作那条边上叠白色
+            # overlay 来标识目标，避免"白框 + 白边"无法区分。
             color = (
-                self.select_line_color if self.selected else self.line_color
+                self.select_line_color
+                if self.selected and not self.edge_editing
+                else self.line_color
             )
             pen = QtGui.QPen(color)
             # Try using integer sizes for smoother drawing(?)
