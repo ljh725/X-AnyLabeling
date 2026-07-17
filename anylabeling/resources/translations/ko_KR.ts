@@ -1748,6 +1748,42 @@ Original images backed up to:
   <context>
     <name>LabelingWidget</name>
     <message>
+      <source>Using cached dataset index; sync pending</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <source>Synchronizing dataset index...</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <source>Dataset index install failed: {message}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <source>Dataset index ready: inserted={inserted}, updated={updated}, removed={removed}, failed={failed}, elapsed={elapsed:.1f}s</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <source>Dataset index could not be opened</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <source>Label saved; dataset index sync pending</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <source>Checking label files in background...</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <source>Checking label files: {current}/{total}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <source>Label file check complete</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="231" />
       <source>Flags</source>
       <translation>플래그</translation>

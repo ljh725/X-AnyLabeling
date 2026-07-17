@@ -4,7 +4,11 @@ from typing import List, Optional
 
 from PyQt6 import QtCore
 
-from .dataset_filter_index import DatasetFilterIndex
+from .dataset_filter_index import (
+    DatasetFilterIndex,
+    make_staging_db_path,
+    remove_database_files,
+)
 
 
 class DatasetIndexWorker(QtCore.QThread):
@@ -25,6 +29,7 @@ class DatasetIndexWorker(QtCore.QThread):
         db_path: str,
         image_files: List[str],
         output_dir: Optional[str] = None,
+        dataset_root: Optional[str] = None,
         parent=None,
     ):
         """Initialize the dataset index worker.
@@ -34,6 +39,7 @@ class DatasetIndexWorker(QtCore.QThread):
             db_path: SQLite cache database path.
             image_files: Image files in current dataset order.
             output_dir: Optional annotation output directory.
+            dataset_root: Root directory used to identify this cache snapshot.
             parent: Optional Qt parent.
         """
         super().__init__(parent)
@@ -41,6 +47,7 @@ class DatasetIndexWorker(QtCore.QThread):
         self.db_path = db_path
         self.image_files = list(image_files)
         self.output_dir = output_dir
+        self.dataset_root = dataset_root
         self._cancel_requested = False
 
     def cancel(self) -> None:
@@ -57,7 +64,12 @@ class DatasetIndexWorker(QtCore.QThread):
 
     def run(self) -> None:
         """Run the selected index operation in this worker thread."""
-        index = DatasetFilterIndex(self.db_path)
+        staged_db_path = None
+        if self.mode == "rebuild":
+            staged_db_path = make_staging_db_path(self.db_path)
+            index = DatasetFilterIndex(staged_db_path, journal_mode="delete")
+        else:
+            index = DatasetFilterIndex(self.db_path)
         try:
             if self.mode == "rebuild":
                 result = index.rebuild(
@@ -65,6 +77,7 @@ class DatasetIndexWorker(QtCore.QThread):
                     self.output_dir,
                     progress_callback=self._emit_progress,
                     cancel_check=self._is_cancelled,
+                    dataset_root=self.dataset_root,
                 )
             else:
                 result = index.load_or_build(
@@ -72,12 +85,21 @@ class DatasetIndexWorker(QtCore.QThread):
                     self.output_dir,
                     progress_callback=self._emit_progress,
                     cancel_check=self._is_cancelled,
+                    dataset_root=self.dataset_root,
                 )
+            if result.fatal_error:
+                raise RuntimeError("Dataset index update failed")
+            if not result.cancelled and not index.integrity_check():
+                raise RuntimeError("Dataset index integrity check failed")
             index.close()
             if result.cancelled:
+                remove_database_files(staged_db_path)
                 self.cancelled.emit(result)
             else:
+                result.target_db_path = self.db_path
+                result.staged_db_path = staged_db_path
                 self.finished.emit(result)
         except Exception as exc:  # noqa: BLE001
             index.close()
+            remove_database_files(staged_db_path)
             self.failed.emit(str(exc))

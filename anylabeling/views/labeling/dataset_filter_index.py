@@ -11,6 +11,8 @@ import os
 import os.path as osp
 import sqlite3
 import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
@@ -26,6 +28,22 @@ INDEX_STATUS_OK = "ok"
 INDEX_STATUS_MISSING = "missing"
 INDEX_STATUS_ERROR = "error"
 SQLITE_BUSY_TIMEOUT_MS = 30000
+INDEX_READ_WORKERS = 4
+INDEX_READ_BATCH_SIZE = 64
+
+DATASET_INDEX_MISSING = "missing"
+DATASET_INDEX_CACHED = "cached_unverified"
+DATASET_INDEX_SYNCING = "syncing"
+DATASET_INDEX_READY = "ready"
+DATASET_INDEX_STALE = "stale"
+DATASET_INDEX_FAILED = "failed"
+
+META_BUILD_STATE = "build_state"
+META_DATASET_ROOT = "dataset_root"
+META_OUTPUT_DIR = "output_dir"
+META_COMPLETED_AT = "completed_at"
+META_FILE_COUNT = "file_count"
+META_SHAPE_COUNT = "shape_count"
 
 ProgressCallback = Callable[[int, int, str], None]
 CancelCheck = Callable[[], bool]
@@ -43,13 +61,34 @@ class DatasetIndexResult:
     updated: int = 0
     removed: int = 0
     failed: int = 0
+    missing: int = 0
+    shape_count: int = 0
     cancelled: bool = False
+    fatal_error: bool = False
+    elapsed_seconds: float = 0.0
+    target_db_path: Optional[str] = None
+    staged_db_path: Optional[str] = None
     error_messages: List[str] = field(default_factory=list)
 
     @property
     def changed(self) -> int:
         """返回本次实际变更的文件数量。"""
         return self.inserted + self.updated + self.removed
+
+
+@dataclass
+class PreparedIndexFile:
+    """Filesystem and lightweight JSON data prepared for SQLite insertion."""
+
+    image_path: str
+    json_path: str
+    sort_order: int
+    json_mtime: float = 0.0
+    json_mtime_ns: int = 0
+    json_size: int = 0
+    shapes: List[tuple] = field(default_factory=list)
+    status: str = INDEX_STATUS_MISSING
+    error_message: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -64,13 +103,20 @@ class DatasetFilterIndex:
     SQLite 数据库是一个可随时删除并重建的临时缓存。
     """
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        journal_mode: str = "wal",
+    ):
         """初始化索引实例。
 
         Args:
             db_path: SQLite 数据库文件路径。若为 None，则后续所有操作跳过。
+            journal_mode: SQLite 日志模式。正式缓存使用 ``wal``，临时重建
+                数据库使用 ``delete``，确保所有数据都落入单个主文件后再替换。
         """
         self.db_path = db_path
+        self.journal_mode = journal_mode.lower()
         self._conn: Optional[sqlite3.Connection] = None
 
     # ------------------------------------------------------------------
@@ -86,6 +132,8 @@ class DatasetFilterIndex:
         Returns:
             成功打开返回 True，失败返回 False。
         """
+        if self._conn is not None:
+            return True
         if self.db_path is None:
             return False
         try:
@@ -96,7 +144,14 @@ class DatasetFilterIndex:
                 f"PRAGMA busy_timeout = {SQLITE_BUSY_TIMEOUT_MS}"
             )
             if self.db_path != ":memory:":
-                self._conn.execute("PRAGMA journal_mode = WAL")
+                if self.journal_mode not in {"wal", "delete"}:
+                    raise ValueError(
+                        f"Unsupported journal mode: {self.journal_mode}"
+                    )
+                self._conn.execute(
+                    f"PRAGMA journal_mode = {self.journal_mode.upper()}"
+                )
+                self._conn.execute("PRAGMA synchronous = NORMAL")
             self._conn.execute("PRAGMA foreign_keys = ON")
             self._ensure_schema()
             return True
@@ -127,6 +182,86 @@ class DatasetFilterIndex:
         """
         return self._conn is not None
 
+    def metadata(self) -> Dict[str, str]:
+        """Return all persisted dataset index metadata."""
+        if self._conn is None:
+            return {}
+        try:
+            cursor = self._conn.execute("SELECT key, value FROM dataset_meta")
+            return {str(key): str(value) for key, value in cursor.fetchall()}
+        except sqlite3.Error:
+            return {}
+
+    def snapshot_state(self) -> str:
+        """Return the persisted snapshot state, including legacy caches."""
+        metadata = self.metadata()
+        state = metadata.get(META_BUILD_STATE)
+        if state:
+            return state
+        if self._conn is None:
+            return DATASET_INDEX_MISSING
+        try:
+            row = self._conn.execute("SELECT COUNT(*) FROM files").fetchone()
+            return (
+                DATASET_INDEX_READY
+                if row and row[0]
+                else DATASET_INDEX_MISSING
+            )
+        except sqlite3.Error:
+            return DATASET_INDEX_FAILED
+
+    def is_compatible(
+        self,
+        dataset_root: str,
+        output_dir: Optional[str] = None,
+    ) -> bool:
+        """Check whether persisted metadata belongs to the requested dataset.
+
+        Caches created before identity metadata was introduced are accepted as
+        legacy caches because their filename is already derived from the dataset
+        root. They are reported to the UI as unverified until Refresh completes.
+        """
+        metadata = self.metadata()
+        stored_root = metadata.get(META_DATASET_ROOT)
+        if stored_root and stored_root != _normalize_path(dataset_root):
+            return False
+        stored_output_dir = metadata.get(META_OUTPUT_DIR)
+        if stored_output_dir is not None:
+            requested = _normalize_optional_path(output_dir)
+            if stored_output_dir != requested:
+                return False
+        return True
+
+    def file_statuses(
+        self, image_paths: Optional[List[str]] = None
+    ) -> Dict[str, Tuple[str, str]]:
+        """Return cached ``image_path -> (status, json_path)`` records."""
+        if self._conn is None:
+            return {}
+        requested = set(image_paths) if image_paths is not None else None
+        try:
+            cursor = self._conn.execute(
+                "SELECT image_path, index_status, json_path FROM files"
+            )
+            results: Dict[str, Tuple[str, str]] = {}
+            for image_path, status, json_path in cursor.fetchall():
+                if requested is None or image_path in requested:
+                    results[image_path] = (status, json_path or "")
+            return results
+        except sqlite3.Error as exc:
+            logger.warning(f"Failed to list dataset index statuses: {exc}")
+            return {}
+
+    def integrity_check(self) -> bool:
+        """Return whether SQLite reports the current cache as valid."""
+        if self._conn is None:
+            return False
+        try:
+            row = self._conn.execute("PRAGMA integrity_check").fetchone()
+            return bool(row and str(row[0]).lower() == "ok")
+        except sqlite3.Error:
+            return False
+
     # ------------------------------------------------------------------
     # 高层操作（供外部调用）
     # ------------------------------------------------------------------
@@ -137,6 +272,7 @@ class DatasetFilterIndex:
         output_dir: Optional[str] = None,
         progress_callback: Optional[ProgressCallback] = None,
         cancel_check: Optional[CancelCheck] = None,
+        dataset_root: Optional[str] = None,
     ) -> DatasetIndexResult:
         """确保缓存与当前图片列表保持同步（增量更新）。
 
@@ -155,12 +291,22 @@ class DatasetFilterIndex:
         Returns:
             本次增量刷新结果。
         """
+        started_at = time.perf_counter()
         if not self.open():
             logger.info("DatasetFilterIndex: skipping (no db_path)")
             return DatasetIndexResult(total=len(image_files))
-        return self._incremental_update(
+        result = self._incremental_update(
             image_files, output_dir, progress_callback, cancel_check
         )
+        if not result.cancelled and not result.fatal_error:
+            self._write_snapshot_metadata(
+                image_files, output_dir, dataset_root, DATASET_INDEX_READY
+            )
+            self._populate_result_summary(result)
+            self._conn.commit()
+        result.elapsed_seconds = time.perf_counter() - started_at
+        result.target_db_path = self.db_path
+        return result
 
     def refresh(
         self,
@@ -168,6 +314,7 @@ class DatasetFilterIndex:
         output_dir: Optional[str] = None,
         progress_callback: Optional[ProgressCallback] = None,
         cancel_check: Optional[CancelCheck] = None,
+        dataset_root: Optional[str] = None,
     ) -> DatasetIndexResult:
         """刷新索引（与 load_or_build 等价，语义上表示显式刷新）。
 
@@ -181,7 +328,11 @@ class DatasetFilterIndex:
             本次刷新结果。
         """
         return self.load_or_build(
-            image_files, output_dir, progress_callback, cancel_check
+            image_files,
+            output_dir,
+            progress_callback,
+            cancel_check,
+            dataset_root,
         )
 
     def rebuild(
@@ -190,6 +341,7 @@ class DatasetFilterIndex:
         output_dir: Optional[str] = None,
         progress_callback: Optional[ProgressCallback] = None,
         cancel_check: Optional[CancelCheck] = None,
+        dataset_root: Optional[str] = None,
     ) -> DatasetIndexResult:
         """清空现有缓存并从头重建。
 
@@ -207,12 +359,22 @@ class DatasetFilterIndex:
         Returns:
             本次重建结果。
         """
+        started_at = time.perf_counter()
         if not self.open():
             return DatasetIndexResult(total=len(image_files))
         self._clear_all()
-        return self._insert_files(
+        result = self._insert_files(
             image_files, output_dir, progress_callback, cancel_check
         )
+        if not result.cancelled and not result.fatal_error:
+            self._write_snapshot_metadata(
+                image_files, output_dir, dataset_root, DATASET_INDEX_READY
+            )
+            self._populate_result_summary(result)
+            self._conn.commit()
+        result.elapsed_seconds = time.perf_counter() - started_at
+        result.target_db_path = self.db_path
+        return result
 
     def refresh_file(
         self,
@@ -240,6 +402,43 @@ class DatasetFilterIndex:
         else:
             self._insert_single(image_path, json_path)
         self._conn.commit()
+
+    def _write_snapshot_metadata(
+        self,
+        image_files: List[str],
+        output_dir: Optional[str],
+        dataset_root: Optional[str],
+        state: str,
+    ) -> None:
+        """Persist identity and completion metadata for a cache snapshot."""
+        assert self._conn is not None
+        values = {
+            META_BUILD_STATE: state,
+            META_OUTPUT_DIR: _normalize_optional_path(output_dir),
+            META_COMPLETED_AT: str(time.time()),
+            META_FILE_COUNT: str(len(image_files)),
+        }
+        if dataset_root:
+            values[META_DATASET_ROOT] = _normalize_path(dataset_root)
+        self._conn.executemany(
+            "INSERT OR REPLACE INTO dataset_meta (key, value) VALUES (?, ?)",
+            values.items(),
+        )
+
+    def _populate_result_summary(self, result: DatasetIndexResult) -> None:
+        """Populate result counters from the completed cache snapshot."""
+        assert self._conn is not None
+        result.shape_count = self._conn.execute(
+            "SELECT COUNT(*) FROM shapes"
+        ).fetchone()[0]
+        result.missing = self._conn.execute(
+            "SELECT COUNT(*) FROM files WHERE index_status = ?",
+            (INDEX_STATUS_MISSING,),
+        ).fetchone()[0]
+        self._conn.execute(
+            "INSERT OR REPLACE INTO dataset_meta (key, value) VALUES (?, ?)",
+            (META_SHAPE_COUNT, str(result.shape_count)),
+        )
 
     # ------------------------------------------------------------------
     # 查询
@@ -397,6 +596,7 @@ class DatasetFilterIndex:
                 json_path TEXT,
                 sort_order INTEGER DEFAULT 0,
                 json_mtime REAL,
+                json_mtime_ns INTEGER DEFAULT 0,
                 json_size INTEGER,
                 shape_count INTEGER DEFAULT 0,
                 indexed_at REAL DEFAULT 0,
@@ -427,6 +627,14 @@ class DatasetFilterIndex:
             CREATE INDEX IF NOT EXISTS idx_files_sort_order
                 ON files(sort_order);
             """)
+        file_columns = {
+            row[1] for row in self._conn.execute("PRAGMA table_info(files)")
+        }
+        if "json_mtime_ns" not in file_columns:
+            self._conn.execute(
+                "ALTER TABLE files ADD COLUMN "
+                "json_mtime_ns INTEGER DEFAULT 0"
+            )
         self._conn.execute(
             "INSERT OR REPLACE INTO dataset_meta (key, value) VALUES (?, ?)",
             ("schema_version", SCHEMA_VERSION),
@@ -534,17 +742,24 @@ class DatasetFilterIndex:
         current_json_paths = set(current.values())
 
         # 加载缓存中的文件记录
-        cached: dict[str, tuple[int, float, int]] = {}
+        cached: dict[str, tuple[int, float, int, int]] = {}
         try:
             cursor = self._conn.execute(
-                "SELECT id, json_path, json_mtime, json_size FROM files"
+                "SELECT id, json_path, json_mtime, json_mtime_ns, "
+                "json_size FROM files"
             )
             for row in cursor:
-                file_id, jpath, mtime, size = row
-                cached[jpath] = (file_id, mtime or 0.0, size or 0)
+                file_id, jpath, mtime, mtime_ns, size = row
+                cached[jpath] = (
+                    file_id,
+                    mtime or 0.0,
+                    mtime_ns or 0,
+                    size or 0,
+                )
         except sqlite3.Error as exc:
             logger.warning(f"Failed to read cached files: {exc}")
             result.failed += 1
+            result.fatal_error = True
             result.error_messages.append(str(exc))
             return result
 
@@ -553,15 +768,26 @@ class DatasetFilterIndex:
         to_update: List[str] = []
         to_insert: List[str] = []
 
-        for jpath, (file_id, cached_mtime, cached_size) in cached.items():
+        for jpath, (
+            file_id,
+            cached_mtime,
+            cached_mtime_ns,
+            cached_size,
+        ) in cached.items():
             if jpath not in current_json_paths:
                 to_remove.add(file_id)
                 continue
-            if not osp.exists(jpath):
+            try:
+                st = os.stat(jpath)
+            except OSError:
                 to_remove.add(file_id)
                 continue
-            st = os.stat(jpath)
-            if st.st_mtime != cached_mtime or st.st_size != cached_size:
+            mtime_changed = (
+                st.st_mtime_ns != cached_mtime_ns
+                if cached_mtime_ns
+                else st.st_mtime != cached_mtime
+            )
+            if mtime_changed or st.st_size != cached_size:
                 to_update.append(jpath)
 
         for img, jpath in current.items():
@@ -585,7 +811,7 @@ class DatasetFilterIndex:
         for jpath in to_update:
             if cancel_check and cancel_check():
                 result.cancelled = True
-                self._conn.commit()
+                self._conn.rollback()
                 return result
             file_id = self._file_id_for_json(jpath)
             if file_id is not None:
@@ -605,7 +831,7 @@ class DatasetFilterIndex:
         for img in to_insert:
             if cancel_check and cancel_check():
                 result.cancelled = True
-                self._conn.commit()
+                self._conn.rollback()
                 return result
             jpath = current[img]
             _img, sort_order = current_by_json[jpath]
@@ -652,19 +878,39 @@ class DatasetFilterIndex:
         """
         result = DatasetIndexResult(total=len(image_files))
         total = len(image_files)
-        for sort_order, img in enumerate(image_files):
-            if cancel_check and cancel_check():
-                result.cancelled = True
-                self._conn.commit()
-                return result
-            jpath = self._json_path_for_image(img, output_dir)
-            status = self._insert_single(img, jpath, sort_order=sort_order)
-            result.inserted += 1
-            if status == INDEX_STATUS_ERROR:
-                result.failed += 1
-                result.error_messages.append(jpath)
-            if progress_callback:
-                progress_callback(sort_order + 1, total, osp.basename(jpath))
+        entries = [
+            (img, self._json_path_for_image(img, output_dir), sort_order)
+            for sort_order, img in enumerate(image_files)
+        ]
+        worker_count = min(INDEX_READ_WORKERS, max(total, 1))
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            for offset in range(0, total, INDEX_READ_BATCH_SIZE):
+                if cancel_check and cancel_check():
+                    result.cancelled = True
+                    self._conn.rollback()
+                    return result
+                batch = entries[offset : offset + INDEX_READ_BATCH_SIZE]
+                prepared_files = list(
+                    executor.map(
+                        lambda args: self._prepare_index_file(*args), batch
+                    )
+                )
+                for prepared in prepared_files:
+                    if cancel_check and cancel_check():
+                        result.cancelled = True
+                        self._conn.rollback()
+                        return result
+                    status = self._insert_prepared_file(prepared)
+                    result.inserted += 1
+                    if status == INDEX_STATUS_ERROR:
+                        result.failed += 1
+                        result.error_messages.append(prepared.json_path)
+                    if progress_callback:
+                        progress_callback(
+                            prepared.sort_order + 1,
+                            total,
+                            osp.basename(prepared.json_path),
+                        )
         self._conn.commit()
         return result
 
@@ -684,63 +930,99 @@ class DatasetFilterIndex:
         Returns:
             本文件索引状态。
         """
-        if not osp.exists(json_path):
+        prepared = self._prepare_index_file(image_path, json_path, sort_order)
+        return self._insert_prepared_file(prepared)
+
+    @classmethod
+    def _prepare_index_file(
+        cls, image_path: str, json_path: str, sort_order: int
+    ) -> PreparedIndexFile:
+        """Read one JSON file without touching the SQLite connection."""
+        try:
+            stat_result = os.stat(json_path)
+        except OSError:
+            return PreparedIndexFile(
+                image_path=image_path,
+                json_path=json_path,
+                sort_order=sort_order,
+                status=INDEX_STATUS_MISSING,
+                error_message="JSON file does not exist",
+            )
+        shapes, error_message = cls._read_shapes(json_path)
+        status = INDEX_STATUS_ERROR if error_message else INDEX_STATUS_OK
+        return PreparedIndexFile(
+            image_path=image_path,
+            json_path=json_path,
+            sort_order=sort_order,
+            json_mtime=stat_result.st_mtime,
+            json_mtime_ns=stat_result.st_mtime_ns,
+            json_size=stat_result.st_size,
+            shapes=shapes,
+            status=status,
+            error_message=error_message,
+        )
+
+    def _insert_prepared_file(self, prepared: PreparedIndexFile) -> str:
+        """Insert one already-read file record and all of its shapes."""
+        if prepared.status == INDEX_STATUS_MISSING:
             self._conn.execute(
                 """
                 INSERT INTO files
-                (image_path, json_path, sort_order, json_mtime, json_size,
-                 shape_count, indexed_at, index_status, error_message)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (image_path, json_path, sort_order, json_mtime,
+                 json_mtime_ns, json_size, shape_count, indexed_at,
+                 index_status, error_message)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    image_path,
-                    json_path,
-                    sort_order,
+                    prepared.image_path,
+                    prepared.json_path,
+                    prepared.sort_order,
                     0.0,
+                    0,
                     0,
                     0,
                     time.time(),
                     INDEX_STATUS_MISSING,
-                    "JSON file does not exist",
+                    prepared.error_message,
                 ),
             )
             return INDEX_STATUS_MISSING
 
-        st = os.stat(json_path)
-        shapes, error_message = self._read_shapes(json_path)
-        status = INDEX_STATUS_ERROR if error_message else INDEX_STATUS_OK
-
         cursor = self._conn.execute(
             """
             INSERT INTO files
-            (image_path, json_path, sort_order, json_mtime, json_size,
-             shape_count, indexed_at, index_status, error_message)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (image_path, json_path, sort_order, json_mtime,
+             json_mtime_ns, json_size, shape_count, indexed_at,
+             index_status, error_message)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                image_path,
-                json_path,
-                sort_order,
-                st.st_mtime,
-                st.st_size,
-                len(shapes),
+                prepared.image_path,
+                prepared.json_path,
+                prepared.sort_order,
+                prepared.json_mtime,
+                prepared.json_mtime_ns,
+                prepared.json_size,
+                len(prepared.shapes),
                 time.time(),
-                status,
-                error_message,
+                prepared.status,
+                prepared.error_message,
             ),
         )
         file_id = cursor.lastrowid
 
-        for idx, (label, gid, stype) in enumerate(shapes):
-            self._conn.execute(
-                """
-                INSERT INTO shapes
-                (file_id, shape_index, label, group_id, shape_type)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (file_id, idx, label, gid, stype),
-            )
-        return status
+        self._conn.executemany(
+            """
+            INSERT INTO shapes
+            (file_id, shape_index, label, group_id, shape_type)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                (file_id, idx, label, gid, stype)
+                for idx, (label, gid, stype) in enumerate(prepared.shapes)
+            ),
+        )
+        return prepared.status
 
     def _update_file(
         self, file_id: int, json_path: str, sort_order: Optional[int] = None
@@ -764,19 +1046,22 @@ class DatasetFilterIndex:
             sort_order_sql = "sort_order = ?,"
             params_prefix = (sort_order,)
 
-        if not osp.exists(json_path):
+        try:
+            stat_result = os.stat(json_path)
+        except OSError:
             self._conn.execute(
                 f"""
                 UPDATE files
-                SET json_path = ?, {sort_order_sql} json_mtime = ?, json_size = ?,
-                    shape_count = ?, indexed_at = ?, index_status = ?,
-                    error_message = ?
+                SET json_path = ?, {sort_order_sql} json_mtime = ?,
+                    json_mtime_ns = ?, json_size = ?, shape_count = ?,
+                    indexed_at = ?, index_status = ?, error_message = ?
                 WHERE id = ?
                 """,
                 (json_path,)
                 + params_prefix
                 + (
                     0.0,
+                    0,
                     0,
                     0,
                     time.time(),
@@ -787,23 +1072,23 @@ class DatasetFilterIndex:
             )
             return INDEX_STATUS_MISSING
 
-        st = os.stat(json_path)
         shapes, error_message = self._read_shapes(json_path)
         status = INDEX_STATUS_ERROR if error_message else INDEX_STATUS_OK
 
         self._conn.execute(
             f"""
             UPDATE files
-            SET json_path = ?, {sort_order_sql} json_mtime = ?, json_size = ?,
-                shape_count = ?, indexed_at = ?,
+            SET json_path = ?, {sort_order_sql} json_mtime = ?,
+                json_mtime_ns = ?, json_size = ?, shape_count = ?, indexed_at = ?,
                 index_status = ?, error_message = ?
             WHERE id = ?
             """,
             (json_path,)
             + params_prefix
             + (
-                st.st_mtime,
-                st.st_size,
+                stat_result.st_mtime,
+                stat_result.st_mtime_ns,
+                stat_result.st_size,
                 len(shapes),
                 time.time(),
                 status,
@@ -812,15 +1097,17 @@ class DatasetFilterIndex:
             ),
         )
 
-        for idx, (label, gid, stype) in enumerate(shapes):
-            self._conn.execute(
-                """
-                INSERT INTO shapes
-                (file_id, shape_index, label, group_id, shape_type)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (file_id, idx, label, gid, stype),
-            )
+        self._conn.executemany(
+            """
+            INSERT INTO shapes
+            (file_id, shape_index, label, group_id, shape_type)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                (file_id, idx, label, gid, stype)
+                for idx, (label, gid, stype) in enumerate(shapes)
+            ),
+        )
         return status
 
     def _remove_by_file_id(self, file_id: int) -> None:
@@ -1013,3 +1300,42 @@ def make_db_path(dataset_root: str) -> str:
     digest = hashlib.sha256(dataset_root.encode("utf-8")).hexdigest()[:16]
     os.makedirs(CACHE_DIR, exist_ok=True)
     return osp.join(CACHE_DIR, f"{digest}.db")
+
+
+def make_staging_db_path(db_path: str) -> str:
+    """Return a unique same-directory path for an atomic cache rebuild."""
+    return f"{db_path}.rebuild-{uuid.uuid4().hex}.tmp"
+
+
+def remove_database_files(db_path: Optional[str]) -> None:
+    """Remove a derived SQLite database and its transient sidecar files."""
+    if not db_path:
+        return
+    for suffix in ("", "-wal", "-shm"):
+        path = f"{db_path}{suffix}"
+        try:
+            if osp.exists(path):
+                os.remove(path)
+        except OSError as exc:
+            logger.warning(f"Failed to remove temporary index {path}: {exc}")
+
+
+def install_staged_database(staged_path: str, target_path: str) -> None:
+    """Atomically replace a closed target cache with a completed staging DB."""
+    if not osp.isfile(staged_path):
+        raise FileNotFoundError(staged_path)
+    for suffix in ("-wal", "-shm"):
+        sidecar = f"{target_path}{suffix}"
+        if osp.exists(sidecar):
+            os.remove(sidecar)
+    os.replace(staged_path, target_path)
+
+
+def _normalize_path(path: str) -> str:
+    """Return a stable absolute identity path."""
+    return osp.normcase(osp.abspath(osp.normpath(path)))
+
+
+def _normalize_optional_path(path: Optional[str]) -> str:
+    """Normalize an optional path for metadata comparison."""
+    return _normalize_path(path) if path else ""

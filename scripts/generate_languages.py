@@ -13,6 +13,7 @@ def compile_resources(output: str, qrc: str) -> None:
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
         content = content.replace("from PySide6", "from PyQt6")
+        content = content.replace("from PySide2", "from PyQt6")
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
 

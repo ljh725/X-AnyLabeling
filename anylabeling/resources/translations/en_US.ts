@@ -1739,6 +1739,42 @@ Original images backed up to:
   <context>
     <name>LabelingWidget</name>
     <message>
+      <source>Using cached dataset index; sync pending</source>
+      <translation>Using cached dataset index; sync pending</translation>
+    </message>
+    <message>
+      <source>Synchronizing dataset index...</source>
+      <translation>Synchronizing dataset index...</translation>
+    </message>
+    <message>
+      <source>Dataset index install failed: {message}</source>
+      <translation>Dataset index install failed: {message}</translation>
+    </message>
+    <message>
+      <source>Dataset index ready: inserted={inserted}, updated={updated}, removed={removed}, failed={failed}, elapsed={elapsed:.1f}s</source>
+      <translation>Dataset index ready: inserted={inserted}, updated={updated}, removed={removed}, failed={failed}, elapsed={elapsed:.1f}s</translation>
+    </message>
+    <message>
+      <source>Dataset index could not be opened</source>
+      <translation>Dataset index could not be opened</translation>
+    </message>
+    <message>
+      <source>Label saved; dataset index sync pending</source>
+      <translation>Label saved; dataset index sync pending</translation>
+    </message>
+    <message>
+      <source>Checking label files in background...</source>
+      <translation>Checking label files in background...</translation>
+    </message>
+    <message>
+      <source>Checking label files: {current}/{total}</source>
+      <translation>Checking label files: {current}/{total}</translation>
+    </message>
+    <message>
+      <source>Label file check complete</source>
+      <translation>Label file check complete</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="231" />
       <source>Flags</source>
       <translation>Flags</translation>

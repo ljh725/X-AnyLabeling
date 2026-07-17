@@ -1747,6 +1747,42 @@ Original images backed up to:
   <context>
     <name>LabelingWidget</name>
     <message>
+      <source>Using cached dataset index; sync pending</source>
+      <translation>正在使用缓存的数据集索引；等待同步</translation>
+    </message>
+    <message>
+      <source>Synchronizing dataset index...</source>
+      <translation>正在同步数据集索引...</translation>
+    </message>
+    <message>
+      <source>Dataset index install failed: {message}</source>
+      <translation>数据集索引安装失败：{message}</translation>
+    </message>
+    <message>
+      <source>Dataset index ready: inserted={inserted}, updated={updated}, removed={removed}, failed={failed}, elapsed={elapsed:.1f}s</source>
+      <translation>数据集索引已就绪：新增={inserted}，更新={updated}，移除={removed}，失败={failed}，耗时={elapsed:.1f}秒</translation>
+    </message>
+    <message>
+      <source>Dataset index could not be opened</source>
+      <translation>无法打开数据集索引</translation>
+    </message>
+    <message>
+      <source>Label saved; dataset index sync pending</source>
+      <translation>标签已保存；数据集索引等待同步</translation>
+    </message>
+    <message>
+      <source>Checking label files in background...</source>
+      <translation>正在后台检查标签文件...</translation>
+    </message>
+    <message>
+      <source>Checking label files: {current}/{total}</source>
+      <translation>正在检查标签文件：{current}/{total}</translation>
+    </message>
+    <message>
+      <source>Label file check complete</source>
+      <translation>标签文件检查完成</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="231" />
       <source>Flags</source>
       <translation>标志</translation>
