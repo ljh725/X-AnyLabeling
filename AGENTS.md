@@ -26,6 +26,7 @@ $ErrorActionPreference = 'Stop'
 $py = "$env:USERPROFILE\.conda\envs\x-anylabeling-cu12\python.exe"
 
 & $py -m pytest                              # Run tests (add --slow for slow tests)
+$env:BLACK_CACHE_DIR = Join-Path $env:TEMP "xanylabeling-black-cache"
 & $py -m black -l 79 anylabeling             # Format code
 & $py -m flake8 anylabeling/                 # Lint (max complexity 18)
 pre-commit run --all-files                   # Pre-commit gate
@@ -53,6 +54,9 @@ Practical rules:
 - Use `Get-Content -Encoding UTF8` / `Set-Content -Encoding UTF8` when reading or writing text with Chinese.
 - Do not rely on `conda run` in Codex shell sessions; it has repeatedly hung here.
 - Do not rely on interactive `conda activate` inside one-off tool commands; activation does not reliably persist.
+- Set `BLACK_CACHE_DIR` to a writable temporary directory before running Black
+  in a sandbox; its default cache under `LOCALAPPDATA` may be read-only and make
+  `tempfile` retry without visible output.
 - For tests and Python utilities, call the env interpreter directly:
 
 ```powershell

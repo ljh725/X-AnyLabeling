@@ -214,6 +214,44 @@ canvas_edge_snap_range: 4
 
 这些 key 必须登记到设置 schema allow-list，并写入默认配置。
 
+### Decision 14: 直接矩形边拖动按事务边界收口
+
+直接矩形边拖动必须与普通矩形顶点编辑保持相同的图像边界语义：
+left/top 不得小于图像原点，right/bottom 不得超过图像尺寸，同时继续遵守
+最小宽高和反翻转约束。
+
+一次鼠标手势是一个编辑事务：左键释放提交一次 undo；Esc、窗口失焦、
+窗口停用或鼠标抓取丢失时回滚到按下前的 points。活动拖动只在左键仍按下
+时消费 mouse move，避免中断后无按键移动继续修改几何。
+
+鼠标移动热路径不做无条件同步 `repaint()`。矩形边命中将全局顶点优先和
+边候选计算合并到一次 shape 遍历，并直接维护最佳候选，不构造完整排序列表。
+
+**Rationale**: 直接边拖动不能绕过已有矩形边界约束；事务化结束可以保证
+实时预览变更最终必然提交或回滚；减少同步重绘和重复全量扫描可降低大量
+标注对象下的交互延迟。
+
+### Decision 15: 边交互、稳定预览和对象选择使用单一状态所有者
+
+矩形边鼠标交互抽取为独立状态控制器，显式表达
+`idle -> hover -> pending -> dragging -> idle`。pending 三元组、active edge、
+拖动起始 points 和键盘选边由控制器统一维护，Canvas 只负责 Qt 事件、坐标
+转换、几何应用、undo 和绘制。
+
+稳定预览使用独立状态对象和枚举模式 `none/target/drag_locked`，不再通过
+Canvas 上多组无约束字段表达。预览仍然是观察型功能，不参与鼠标命中仲裁。
+
+对象选择的唯一所有者是 Canvas：Canvas 在发出 `selection_changed` 前更新
+`selected_shapes` 和每个 `Shape.selected`。LabelingWidget 只观察信号并同步
+列表、属性面板和 actions，不再反向写回 Canvas。
+
+边编辑视觉通过 `Shape.paint(..., force_unselected=True)` 的渲染参数表达，
+移除 Shape 数据对象上的瞬时 `edge_editing` 字段。
+
+**Rationale**: 单一所有者消除依赖同步 signal 回写的隐式环路；显式状态转换
+防止 pending/dragging 字段组合不完整；渲染参数避免 Canvas 瞬时 UI 状态泄漏
+进 Shape 数据模型。
+
 ## Proposed Behavior
 
 ### 新建 person 自动创建人物实例

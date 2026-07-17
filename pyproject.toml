@@ -172,20 +172,11 @@ norecursedirs = [".git", "dist", "build"]
 
 [tool.black]
 line-length = 79
-exclude = '''
-/( \\
-    \\.git
-  | \\.hg
-  | \\.mypy_cache
-  | \\.tox
-  | \\.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-  | tests/
-  | anylabeling/resources/resources\\.py
-)/
+extend-exclude = '''
+(
+    ^/tests/
+  | ^/anylabeling/resources/resources\.py$
+)
 '''
 
 [tool.flake8]

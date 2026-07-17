@@ -24,13 +24,7 @@ repos:
     rev: 23.3.0
     hooks:
     -   id: black
-        exclude: tests/|anylabeling/resources/resources.py
--   repo: https://github.com/psf/black
-    rev: 23.3.0
-    hooks:
-    -   id: black
-        exclude: tests/|anylabeling/resources/resources.py
-        args: [--check]
+        exclude: ^(tests/|anylabeling/resources/resources\.py$)
 -   repo: https://github.com/PyCQA/flake8
     rev: 6.0.0
     hooks:

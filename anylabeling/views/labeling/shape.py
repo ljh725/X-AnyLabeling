@@ -83,11 +83,6 @@ class Shape:
         self.fill = False
         self.hovered = False
         self.selected = False
-        # 运行时标志：该矩形当前正被矩形边操作（hover/拖拽）影响。
-        # paint() 据此把轮廓色回退到 line_color，避免整框白色覆盖掉
-        # 被操作边的白色 overlay 高亮。仅由 canvas 主绘制循环在
-        # paint 前后成对 set/reset，不参与持久化。
-        self.edge_editing = False
         self.shape_type = shape_type
         self.flags = flags
         self.other_data = {}
@@ -422,17 +417,13 @@ class Shape:
         x2, y2 = pt2.x(), pt2.y()
         return QtCore.QRectF(x1, y1, x2 - x1, y2 - y1)
 
-    def paint(self, painter: QtGui.QPainter):  # noqa: max-complexity: 18
-        """Paint shape using QPainter"""
+    def paint(  # noqa: C901
+        self, painter: QtGui.QPainter, force_unselected: bool = False
+    ):
+        """Paint shape using QPainter without mutating model state."""
         if self.points:
-            # 边操作模式下被操作的矩形 selected 仍为 True，但应回退到
-            # 标签色（line_color），由 canvas 在被操作那条边上叠白色
-            # overlay 来标识目标，避免"白框 + 白边"无法区分。
-            color = (
-                self.select_line_color
-                if self.selected and not self.edge_editing
-                else self.line_color
-            )
+            selected = self.selected and not force_unselected
+            color = self.select_line_color if selected else self.line_color
             pen = QtGui.QPen(color)
             # Try using integer sizes for smoother drawing(?)
             pen.setWidth(max(1, int(round(self.line_width / self.scale))))
@@ -442,7 +433,7 @@ class Shape:
 
             can_reuse_line_path = (
                 self.shape_type == "polygon"
-                and not self.selected
+                and not selected
                 and not self.hovered
             )
             line_path = (
@@ -468,7 +459,7 @@ class Shape:
                     line_path.moveTo(self.points[0])
                     for i, p in enumerate(self.points):
                         line_path.lineTo(p)
-                        if self.selected:
+                        if selected:
                             self.draw_vertex(vrtx_path, i)
                     if self.is_closed() or self.label is not None:
                         line_path.lineTo(self.points[0])
@@ -488,7 +479,7 @@ class Shape:
                     line_path.moveTo(self.points[0])
                     for i, p in enumerate(self.points):
                         line_path.lineTo(p)
-                        if self.selected:
+                        if selected:
                             self.draw_vertex(vrtx_path, i)
                     if self.is_closed() or self.label is not None:
                         line_path.lineTo(self.points[0])
@@ -503,7 +494,7 @@ class Shape:
                     line_path.moveTo(self.points[0])
                     for i, p in enumerate(self.points):
                         line_path.lineTo(p)
-                        if not self.selected:
+                        if not selected:
                             if i == 0:
                                 self.draw_vertex(vrtx_path, i)
                         else:
@@ -548,7 +539,7 @@ class Shape:
                 painter.setPen(orient_pen)
                 painter.drawLine(self.points[0], self.points[1])
                 painter.setPen(pen)
-                if self.selected or self.hovered:
+                if selected or self.hovered:
                     for i in self.get_cuboid_visible_control_indices():
                         self.draw_vertex(vrtx_path, i)
             elif self.shape_type == "circle":
@@ -563,7 +554,7 @@ class Shape:
                 elif len(self.points) == 2:
                     rectangle = self.get_circle_rect_from_line(self.points)
                     line_path.addEllipse(rectangle)
-                if self.selected:
+                if selected:
                     for i in range(len(self.points)):
                         self.draw_vertex(vrtx_path, i)
             elif self.shape_type == "linestrip":
@@ -596,7 +587,7 @@ class Shape:
 
                 for i, p in enumerate(self.points):
                     line_path.lineTo(p)
-                    if self.selected:
+                    if selected:
                         self.draw_vertex(vrtx_path, i)
                 if self.is_closed():
                     line_path.lineTo(self.points[0])
@@ -609,14 +600,12 @@ class Shape:
             if (
                 self.shape_type == "quadrilateral"
                 and len(self.points) >= 1
-                and self.selected
+                and selected
             ):
                 d = self.point_size / self.scale
                 p0 = self.points[0]
                 outline_color = (
-                    self.select_line_color
-                    if self.selected
-                    else self.line_color
+                    self.select_line_color if selected else self.line_color
                 )
                 pen = QtGui.QPen(outline_color)
                 pen.setWidth(max(1, int(round(self.line_width / self.scale))))
@@ -626,17 +615,13 @@ class Shape:
                     QtCore.QPointF(p0.x(), p0.y()), d / 2.0, d / 2.0
                 )
             if self.fill:
-                color = (
-                    self.select_fill_color
-                    if self.selected
-                    else self.fill_color
-                )
+                color = self.select_fill_color if selected else self.fill_color
                 painter.fillPath(line_path, color)
 
             if (
                 self.shape_type == "quadrilateral"
                 and len(self.points) == 4
-                and self.selected
+                and selected
                 and (self.is_closed() or self.label is not None)
             ):
                 self._draw_quadrilateral_order(painter)

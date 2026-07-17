@@ -6285,14 +6285,11 @@ class LabelingWidget(LabelDialog):
 
     # React to canvas signals.
     def shape_selection_changed(self, selected_shapes):
+        """Mirror Canvas-owned selection into labels and action state."""
         self._no_selection_slot = True
-        for shape in self.canvas.selected_shapes:
-            shape.selected = False
         self.label_list.clearSelection()
-        self.canvas.selected_shapes = selected_shapes
         allow_merge_shape_type = {"rectangle": 0, "polygon": 0}
-        for shape in self.canvas.selected_shapes:
-            shape.selected = True
+        for shape in selected_shapes:
             if shape.shape_type in ["rectangle", "polygon"]:
                 allow_merge_shape_type[shape.shape_type] += 1
             item = self.label_list.find_item_by_shape(shape)
@@ -6319,7 +6316,7 @@ class LabelingWidget(LabelDialog):
         )
         self.set_text_editing(True)
 
-        selected_count = len(self.canvas.selected_shapes)
+        selected_count = len(selected_shapes)
         is_drawing_mode = (
             hasattr(self.canvas, "current") and self.canvas.current is not None
         )
@@ -7428,7 +7425,7 @@ class LabelingWidget(LabelDialog):
         self.canvas.update()
 
     def toggle_rect_edge_align(self, enabled: bool) -> None:
-        """Toggle rectangle edge editing for selected rectangles.
+        """Toggle direct rectangle-edge editing on the canvas.
 
         Enabling the capability returns the canvas to edit mode immediately.
         The setting then persists across later edit/create mode switches:
