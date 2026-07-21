@@ -117,9 +117,7 @@ class SettingsRuntimeApplier:
             "shortcuts.toggle_visibility_shapes": self._widget.actions.visibility_shapes_mode,
             "shortcuts.toggle_compare_view": self._widget.actions.toggle_compare_view,
             "shortcuts.toggle_rect_edge_align": self._widget.actions.toggle_rect_edge_align,
-            "shortcuts.toggle_stable_preview": self._widget.actions.toggle_stable_preview,
             "shortcuts.toggle_precision_mode_lock": self._widget.actions.toggle_precision_mode_lock,
-            "shortcuts.trigger_edge_snap": self._widget.actions.trigger_edge_snap,
             "shortcuts.auto_label": self._widget.actions.toggle_auto_labeling_widget,
             "shortcuts.auto_run": self._widget.actions.run_all_images,
             "shortcuts.loop_thru_labels": self._widget.actions.loop_thru_labels,
@@ -279,7 +277,6 @@ class SettingsRuntimeApplier:
             "system_clipboard",
             "auto_person_instance",
             "digit_shortcut_mode",
-            "canvas_edge_snap_range",
         }:
             self.apply_behavior_flags(key)
             return

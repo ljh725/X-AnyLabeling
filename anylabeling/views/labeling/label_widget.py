@@ -586,9 +586,6 @@ class LabelingWidget(LabelDialog):
         )
         self.canvas.drawing_polygon.connect(self.toggle_drawing_sensitive)
         self.canvas.edit_label_requested.connect(self.edit_label)
-        self.canvas.keyboard_edge_selected.connect(
-            self._show_keyboard_edge_selected
-        )
         # [Feature] support for automatically switching to editing mode
         # when the cursor moves over an object
         self.canvas.h_shape_is_hovered = self._config.get(
@@ -1531,16 +1528,6 @@ class LabelingWidget(LabelDialog):
             enabled=True,
         )
 
-        toggle_stable_preview = action(
-            self.tr("稳定精修预览"),
-            self.toggle_stable_preview,
-            shortcut=shortcuts.get("toggle_stable_preview"),
-            tip=self.tr("选中矩形或拖动矩形边时显示稳定的局部放大预览"),
-            icon=None,
-            checkable=True,
-            checked=False,  # Not persisted; always off at startup.
-            enabled=True,
-        )
         toggle_precision_mode_lock = action(
             self.tr("精修模式锁定"),
             self.toggle_precision_mode_lock,
@@ -1551,15 +1538,6 @@ class LabelingWidget(LabelDialog):
             checked=False,
             enabled=True,
         )
-        trigger_edge_snap = action(
-            self.tr("局部边缘吸附"),
-            self.trigger_edge_snap,
-            shortcut=shortcuts.get("trigger_edge_snap"),
-            tip=self.tr("将当前键盘选中的矩形边吸附到附近可靠图像边缘"),
-            icon=None,
-            enabled=True,
-        )
-
         # Languages
         select_lang_en = action(
             "English",
@@ -2168,9 +2146,7 @@ class LabelingWidget(LabelDialog):
             show_linking=show_linking,
             label_on_selection=label_on_selection,
             toggle_rect_edge_align=toggle_rect_edge_align,
-            toggle_stable_preview=toggle_stable_preview,
             toggle_precision_mode_lock=toggle_precision_mode_lock,
-            trigger_edge_snap=trigger_edge_snap,
             show_navigator=show_navigator,
             toggle_inspector=toggle_inspector,
             toggle_global_filter_keep=toggle_global_filter_keep,
@@ -2315,7 +2291,6 @@ class LabelingWidget(LabelDialog):
         self.addAction(self.actions.switch_to_next_person)
         self.addAction(self.actions.toggle_annotation_checked)
         self.addAction(self.actions.toggle_precision_mode_lock)
-        self.addAction(self.actions.trigger_edge_snap)
 
         self.canvas.vertex_selected.connect(
             self.actions.remove_point.setEnabled
@@ -2524,9 +2499,7 @@ class LabelingWidget(LabelDialog):
                 label_on_selection,
                 pose_view,
                 toggle_rect_edge_align,
-                toggle_stable_preview,
                 toggle_precision_mode_lock,
-                trigger_edge_snap,
                 show_groups,
                 hide_selected_polygons,
                 show_hidden_polygons,
@@ -7445,18 +7418,6 @@ class LabelingWidget(LabelDialog):
         else:
             self.status(self.tr("矩形边编辑模式已关闭"))
 
-    def toggle_stable_preview(self, enabled: bool) -> None:
-        """Toggle the stable refine preview master switch.
-
-        The preview is purely observational: it can show a selected
-        rectangle target preview and a drag-locked rect-edge preview, but
-        never participates in mouse-event arbitration.
-
-        Args:
-            enabled: Whether the stable refine preview is on.
-        """
-        self.canvas.set_stable_preview_enabled(enabled)
-
     def toggle_precision_mode_lock(self, enabled: bool) -> None:
         """Toggle the precision-drag lock (Feature 3, task 5.5/D6).
 
@@ -7483,54 +7444,6 @@ class LabelingWidget(LabelDialog):
             )
         else:
             self.status(self.tr("精修模式锁定已解除"), 2000)
-
-    def trigger_edge_snap(self) -> None:
-        """Trigger local edge snapping on the keyboard-selected edge
-        (Feature 4, task 6.11). Bound to a keypress (not realtime).
-
-        Decision 12: refuses while a bind_draw is pending.
-        """
-        if self.digit_bind_draw_manager.pending is not None:
-            self.status(self.tr("绑定绘制进行中，请先完成或取消"), 2000)
-            return
-        result = self.canvas.snap_active_edge(
-            search_range=self._config.get("canvas_edge_snap_range", 4)
-        )
-        if not result or result.get("status") == "inactive":
-            self.status(self.tr("请先选中矩形并按 Tab 选择一条边"), 2000)
-            return
-        if result.get("status") != "success":
-            self.status(self.tr("未找到可靠边缘，保持当前位置"), 2000)
-            return
-        self.status(
-            self.tr(
-                "已吸附 {edge} 边：{old:.1f} -> {new:.1f}（{delta:+.1f}px）"
-            ).format(
-                edge=result["edge"],
-                old=result["old_coord"],
-                new=result["new_coord"],
-                delta=result["delta"],
-            ),
-            2500,
-        )
-
-    def _show_keyboard_edge_selected(self, edge: str) -> None:
-        """Show a status hint for the keyboard-selected rectangle edge."""
-        if not edge:
-            self.status(self.tr("请先选中一个矩形框后再按 Tab 选择边"), 2000)
-            return
-        edge_names = {
-            "left": self.tr("左"),
-            "top": self.tr("上"),
-            "right": self.tr("右"),
-            "bottom": self.tr("下"),
-        }
-        self.status(
-            self.tr(
-                "已选择矩形{edge}边；方向键微调，Ctrl+Alt+E 局部吸附，Esc 退出"
-            ).format(edge=edge_names.get(edge, edge)),
-            3000,
-        )
 
     def _sync_pose_config(self) -> None:
         """Copy PoseDisplayConfig fields into self._config['pose_view']."""

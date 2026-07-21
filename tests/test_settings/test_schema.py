@@ -18,18 +18,20 @@ except Exception:
     SCHEMA_AVAILABLE = False
 
 
-@unittest.skipUnless(SCHEMA_AVAILABLE, "Settings schema dependencies are unavailable")
+@unittest.skipUnless(
+    SCHEMA_AVAILABLE, "Settings schema dependencies are unavailable"
+)
 class TestSettingsSchema(unittest.TestCase):
 
     def test_field_count(self):
-        self.assertEqual(len(SETTING_FIELDS), 137)
+        self.assertEqual(len(SETTING_FIELDS), 134)
 
     def test_shortcut_and_non_shortcut_count(self):
         shortcut_fields = [
             field for field in SETTING_FIELDS if field.primary == "Shortcuts"
         ]
-        self.assertEqual(len(shortcut_fields), 85)
-        self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 52)
+        self.assertEqual(len(shortcut_fields), 83)
+        self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 51)
 
     def test_defaults_cover_all_keys(self):
         defaults = defaults_map()
@@ -52,7 +54,6 @@ class TestSettingsSchema(unittest.TestCase):
             "canvas_precision_mode",
             "canvas_precision_max_factor",
             "canvas_precision_factor",
-            "canvas_edge_snap_range",
             "model_hub",
             "logger_level",
             "shortcuts.open",
@@ -63,7 +64,6 @@ class TestSettingsSchema(unittest.TestCase):
             "shortcuts.auto_labeling_add_point",
             "shortcuts.auto_labeling_finish_object",
             "shortcuts.toggle_precision_mode_lock",
-            "shortcuts.trigger_edge_snap",
         }
         for key in expected_keys:
             self.assertIn(key, SETTINGS_KEYS)
@@ -92,7 +92,8 @@ class TestSettingsSchema(unittest.TestCase):
         shortcut_fields = fields_for_primary("Shortcuts")
         canvas_fields = fields_for_primary("Canvas")
         self.assertEqual(
-            [field.key for field in general_fields], list(SETTINGS_GENERAL_KEYS)
+            [field.key for field in general_fields],
+            list(SETTINGS_GENERAL_KEYS),
         )
         self.assertEqual(
             [field.key for field in shape_fields], list(SETTINGS_SHAPE_KEYS)
@@ -103,11 +104,11 @@ class TestSettingsSchema(unittest.TestCase):
         self.assertIn("shape.line_width", shape_keys)
         self.assertEqual(
             len(shortcut_fields),
-            85,
+            83,
         )
         for key in SETTINGS_SHORTCUT_KEYS_CORE:
             self.assertIn(key, [field.key for field in shortcut_fields])
-        self.assertEqual(len(canvas_fields), 24)
+        self.assertEqual(len(canvas_fields), 23)
         canvas_keys = {field.key for field in canvas_fields}
         self.assertIn("canvas.crosshair.show", canvas_keys)
         self.assertIn("canvas.crosshair.width", canvas_keys)
@@ -116,7 +117,6 @@ class TestSettingsSchema(unittest.TestCase):
         self.assertIn("canvas.brush.point_distance", canvas_keys)
         self.assertIn("canvas_precision_max_factor", canvas_keys)
         self.assertIn("canvas_precision_factor", canvas_keys)
-        self.assertIn("canvas_edge_snap_range", canvas_keys)
 
     def test_visible_non_shortcut_fields_have_descriptions(self):
         fields = (

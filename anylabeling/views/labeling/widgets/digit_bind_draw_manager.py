@@ -103,12 +103,6 @@ class DigitBindDrawManager:
             self._hint_pending_active()
             return True
 
-        # Decision 12: refuse if a keyboard-edge selection is active
-        # (conflicting selection semantics).
-        if getattr(lw.canvas, "rect_edge_keyboard_edge", None) is not None:
-            self._status("键盘选边进行中，请先 Esc 退出后再绑定绘制")
-            return True
-
         # Resolve target from the existing digit shortcuts mapping.
         target_label, target_shape_type = self._resolve_target(digit_num)
         if target_label is None:

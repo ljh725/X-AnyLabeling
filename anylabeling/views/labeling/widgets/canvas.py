@@ -21,7 +21,6 @@ from .. import rect_edge_alignment as rea
 from ..logger import logger
 from ..rect_edge_interaction import RectEdgeInteractionController
 from ..shape import Shape
-from ..stable_preview_state import StablePreviewMode, StablePreviewState
 
 PERF_LOG_ENABLED = os.getenv("XANYLABELING_PERF_LOG") == "1"
 
@@ -105,7 +104,6 @@ class Canvas(
     split_position_changed = QtCore.pyqtSignal(float)
     edit_label_requested = QtCore.pyqtSignal()
     pose_occlusion_count_changed = QtCore.pyqtSignal(int)
-    keyboard_edge_selected = QtCore.pyqtSignal(str)
 
     CREATE, EDIT = 0, 1
 
@@ -127,37 +125,6 @@ class Canvas(
     )
     rect_edge_pending_image_pos = _state_property(
         "rect_edge_state", "pending_image_pos"
-    )
-    rect_edge_keyboard_edge = _state_property(
-        "rect_edge_state", "keyboard_edge"
-    )
-    rect_edge_keyboard_shape = _state_property(
-        "rect_edge_state", "keyboard_shape"
-    )
-    stable_preview_shape = _state_property("stable_preview_state", "shape")
-    stable_preview_locked_rect = _state_property(
-        "stable_preview_state", "locked_rect"
-    )
-    stable_preview_active_edge_name = _state_property(
-        "stable_preview_state", "active_edge_name"
-    )
-    stable_preview_target_rect = _state_property(
-        "stable_preview_state", "target_rect"
-    )
-    stable_preview_window_rect = _state_property(
-        "stable_preview_state", "window_rect"
-    )
-    stable_preview_window_dragging = _state_property(
-        "stable_preview_state", "window_dragging"
-    )
-    stable_preview_window_resizing = _state_property(
-        "stable_preview_state", "window_resizing"
-    )
-    stable_preview_window_press_pos = _state_property(
-        "stable_preview_state", "window_press_pos"
-    )
-    stable_preview_window_press_rect = _state_property(
-        "stable_preview_state", "window_press_rect"
     )
 
     def __init__(self, *args, **kwargs):
@@ -345,13 +312,6 @@ class Canvas(
         # is promoted to an edit target after a screen-space drag threshold.
         # Mouse edge editing is independent from formal object selection.
 
-        # Keyboard-selected rectangle edge for single-edge nudge (Feature 3).
-        # None means whole-shape move applies; otherwise Up/Down/Left/Right
-        # nudge the named edge via rect_edge_alignment.apply_edge_coord.
-        # Independent from the mouse edge-editing master switch. N1: any
-        # mouse hover onto a rectangle edge clears this (hover takes over
-        # the active-edge).
-
         # Precision drag mode (Feature 3). When active, mouse drag deltas
         # are scaled by 1/precision_factor using a virtual cursor that is
         # kept SEPARATE from self.prev_point (move_by_keyboard and press
@@ -359,46 +319,6 @@ class Canvas(
         self.precision_mode_locked = False
         self._virtual_prev_point = None
         self._precision_raw_prev_point = None
-
-        # Undo merge window (N2/D5): timestamp-based replace-in-place.
-        # When store_shapes is called with merge_window > 0 and the last
-        # snapshot was within the window, the last entry is replaced
-        # instead of appending. Avoids QTimer and delayed persistence.
-        self._last_snapshot_ts = 0.0
-
-        # Stable refine preview (phase 1: DragLocked only). See
-        # docs/稳定精修预览功能实现任务文档.md. Purely transient
-        # in-memory state; nothing is persisted to JSON. The preview
-        # only reacts to an already-committed ``rect_edge_drag`` — it
-        # never participates in mouse-event arbitration.
-        self.stable_preview_enabled = False
-        self.stable_preview_scale = 4.0
-        self.stable_preview_size = QtCore.QSize(360, 270)
-        self.stable_preview_min_size = QtCore.QSize(240, 180)
-        self.stable_preview_anchor = "bottom_right"
-        self.stable_preview_margin = 12
-        self.stable_preview_state = StablePreviewState()
-
-        # Phase 2: TargetPreview state. See
-        # docs/稳定精修预览阶段二任务文档.md. ``stable_preview_shape``
-        # is reused by both target and drag-locked modes (they always
-        # refer to the same rectangle during a target->drag->target
-        # cycle), so no separate target_shape field is kept.
-        self.stable_preview_target_enabled = True
-        self.stable_preview_drag_locked_enabled = True
-        # The state model owns the mutually exclusive preview mode and its
-        # image-coordinate crop payloads.
-        self.stable_preview_target_padding_ratio = 0.4
-        self.stable_preview_safe_ratio = 0.7
-        # Phase 3: canvas-local preview window geometry. Moving the
-        # window changes only this widget-coordinate rect; it never
-        # changes the image-coordinate source rect.
-        self.stable_preview_resize_handle_px = 16
-
-        # TargetPreview observes Canvas-owned selection commits.
-        self.selection_changed.connect(
-            self._stable_preview_on_selection_changed
-        )
 
     @property
     def rect_edge_dragging(self) -> bool:
@@ -411,16 +331,6 @@ class Canvas(
         if not value:
             self.rect_edge_state.active_edge = None
             self.rect_edge_state.drag_start_points = None
-
-    @property
-    def stable_preview_mode(self) -> str:
-        """Return the stable-preview mode using the legacy string API."""
-        return self.stable_preview_state.mode.value
-
-    @stable_preview_mode.setter
-    def stable_preview_mode(self, value: str) -> None:
-        """Set the stable-preview mode through its explicit enum."""
-        self.stable_preview_state.mode = StablePreviewMode(value)
 
     def set_loading(self, is_loading: bool, loading_text: str = None):
         """Set loading state"""
@@ -476,20 +386,8 @@ class Canvas(
             raise ValueError(f"Unsupported create_mode: {value}")
         self._create_mode = value
 
-    def store_shapes(self, merge_window=0.0):
-        """Store shapes for restoring later (Undo feature).
-
-        Args:
-            merge_window: When > 0 (seconds), enable timestamp-based
-                replace-in-place merging (N2/D5). If the last snapshot
-                was taken within this window, the last entry is replaced
-                instead of appending. Used by keyboard nudge to avoid
-                rapid key repeats flooding the bounded undo stack.
-                Default 0.0 (always append) preserves legacy behavior
-                for all existing callers.
-        """
-        import time
-
+    def store_shapes(self):
+        """Store shapes for restoring later (Undo feature)."""
         if getattr(self, "_pending_initial_backup", False) and self.shapes:
             initial_backup = []
             for shape in self.shapes:
@@ -501,18 +399,7 @@ class Canvas(
             shapes_backup.append(shape.copy())
         if len(self.shapes_backups) > self.num_backups:
             self.shapes_backups = self.shapes_backups[-self.num_backups - 1 :]
-        now = time.monotonic()
-        if (
-            merge_window > 0.0
-            and self.shapes_backups
-            and (now - self._last_snapshot_ts) < merge_window
-        ):
-            # Replace the last snapshot instead of appending: collapses
-            # a burst of keyboard nudges into one undo step.
-            self.shapes_backups[-1] = shapes_backup
-        else:
-            self.shapes_backups.append(shapes_backup)
-        self._last_snapshot_ts = now
+        self.shapes_backups.append(shapes_backup)
 
     def store_moving_shape(self):
         """Store a moving shape"""
@@ -816,11 +703,7 @@ class Canvas(
         if not value:  # Create
             self.un_highlight()
             self.deselect_shape()
-            self._clear_keyboard_edge()
             self.is_move_editing = False
-            # Leaving edit mode must drop any in-progress preview so it
-            # never lingers into a draw/create context.
-            self._stable_preview_clear_all()
             self.shape_hover_changed.emit()
 
     def un_highlight(self):
@@ -870,9 +753,6 @@ class Canvas(
         """Update line with last point and current coordinates"""
         if self.is_loading:
             return
-        if self._stable_preview_window_interaction_active():
-            self._stable_preview_update_window_interaction(ev.position())
-            return
         try:
             pos = self.transform_pos(ev.position())
         except AttributeError:
@@ -880,16 +760,6 @@ class Canvas(
 
         prev_hover_shape = self.h_hape
         self.prev_move_point = pos
-
-        preview_hover = (
-            ev.buttons() == QtCore.Qt.MouseButton.NoButton
-            and self._stable_preview_update_window_hover(ev.position())
-        )
-        if preview_hover:
-            self.un_highlight()
-            self.show_shape.emit(-1, -1, pos)
-            self.update()
-            return
 
         # Handle auto decode mode
         if (
@@ -1221,15 +1091,12 @@ class Canvas(
                         or candidate.edge_name != prev_hover.edge_name
                     )
                 )
-                keyboard_cleared = self.rect_edge_state.set_hover(candidate)
-                if hover_changed or keyboard_cleared:
+                self.rect_edge_state.set_hover(candidate)
+                if hover_changed:
                     self.update()
                 # Still fall through to the normal hover loop below so that
                 # vertex hover keeps working when no edge is hovered.
                 if candidate is not None:
-                    # N1: mouse hover onto any rectangle edge hands the
-                    # active-edge control back to the mouse — exit the
-                    # keyboard-edge mode to avoid two active edges at once.
                     # Edge hovered: clear any stale shape/vertex/edge/cuboid
                     # hover state left over from a previous frame so the old
                     # highlight does not bleed through, then suppress the
@@ -1520,10 +1387,6 @@ class Canvas(
             return
         self._pending_edge_point = None
 
-        if ev.button() == QtCore.Qt.MouseButton.LeftButton:
-            if self._stable_preview_begin_window_interaction(ev.position()):
-                return
-
         pos = self.transform_pos(ev.position())
         # Reset the precision-mode virtual cursor at every press so the
         # first drag delta is computed from the real press position.
@@ -1764,13 +1627,6 @@ class Canvas(
         if self.is_loading:
             return
 
-        if (
-            ev.button() == QtCore.Qt.MouseButton.LeftButton
-            and self._stable_preview_window_interaction_active()
-        ):
-            self._stable_preview_end_window_interaction()
-            return
-
         if ev.button() == QtCore.Qt.MouseButton.RightButton:
             menu = self.menus[len(self.selected_shapes_copy) > 0]
             self.restore_cursor()
@@ -1809,10 +1665,6 @@ class Canvas(
                     self.store_shapes()
                     self.shape_moved.emit()
                 self.clear_rect_edge_alignment()
-                # Mouse edge editing is independent from formal selection, so
-                # release ends the drag preview instead of entering the
-                # selection-driven TargetPreview state.
-                self._stable_preview_clear_all()
                 hover = (
                     confirmed[0]
                     if confirmed is not None
@@ -1844,7 +1696,6 @@ class Canvas(
                     self.override_cursor(CURSOR_POINT)
                 else:
                     self.override_cursor(CURSOR_DEFAULT)
-                self._stable_preview_clear_all()
                 self.update()
                 return
             if self.editing():
@@ -1968,11 +1819,6 @@ class Canvas(
             shape.selected = True
         self.set_hiding(bool(selected))
 
-        keyboard_shape = self.rect_edge_keyboard_shape
-        if keyboard_shape is not None and (
-            len(selected) != 1 or selected[0] is not keyboard_shape
-        ):
-            self._clear_keyboard_edge()
         self.selection_changed.emit(list(self.selected_shapes))
 
     def select_shape_point(self, point, multiple_selection_mode):
@@ -2614,7 +2460,6 @@ class Canvas(
     def deselect_shape(self):
         """Deselect all shapes"""
         if self.selected_shapes:
-            self._clear_keyboard_edge()
             self.set_hiding(False)
             self._set_selected_shapes([])
             self.h_shape_is_selected = False
@@ -2625,7 +2470,6 @@ class Canvas(
         """Remove selected shapes"""
         deleted_shapes = []
         if self.selected_shapes:
-            self._clear_keyboard_edge()
             for shape in self.selected_shapes:
                 self.shapes.remove(shape)
                 deleted_shapes.append(shape)
@@ -3455,22 +3299,8 @@ class Canvas(
         # shape pass so the status colour covers the underlying rectangle
         # edge. Shape.scale is already set and the painter is in pixmap
         # space, matching the convention used by the cross-line below.
-        if self.rect_edge_align_enabled or self.rect_edge_keyboard_edge:
+        if self.rect_edge_align_enabled:
             self._draw_rect_edge_alignment_overlay(p)
-
-        # Stable refine preview overlay (phase 2: target + drag-locked).
-        # Drawn as an independent top-most layer in widget (screen)
-        # coordinates — it must NOT inherit the painter's pixmap-space
-        # scale/translate, so the window stays pinned to the bottom-right
-        # regardless of the main canvas zoom/pan. The mode selects the
-        # crop rect inside the draw call.
-        if (
-            self.stable_preview_enabled
-            and self.stable_preview_mode != "none"
-            and self.pixmap is not None
-            and not self.pixmap.isNull()
-        ):
-            self._draw_stable_preview_overlay(p)
 
         # Draw mouse coordinates
         if self.cross_line_show:
@@ -4253,9 +4083,6 @@ class Canvas(
         self.rect_edge_align_enabled = enabled
         if not self.rect_edge_align_enabled:
             self.clear_rect_edge_alignment()
-            # Turning rect-edge editing off is a full teardown: wipe the
-            # stable preview entirely (drag-locked + target).
-            self._stable_preview_clear_all()
         self.update()
 
     def _rect_edge_drag_update(self, pos):
@@ -4323,427 +4150,7 @@ class Canvas(
         """
         self.prev_point = QtCore.QPointF(press_pos)
         self.rect_edge_state.start_drag(edge, edge.shape.points)
-        if self.stable_preview_enabled:
-            self._stable_preview_begin_drag_locked(press_pos, edge.edge_name)
         self.override_cursor(CURSOR_MOVE)
-
-    # ------------------------------------------------------------------
-    # Stable refine preview (phase 1: DragLocked only).
-    # ------------------------------------------------------------------
-
-    def set_stable_preview_enabled(self, enabled: bool) -> None:
-        """Toggle the stable refine preview master switch.
-
-        Enabling immediately syncs with the current selection so an
-        already-selected rectangle enters TargetPreview without requiring
-        a second click. Disabling clears every preview state so no stale
-        overlay survives the toggle.
-        """
-        self.stable_preview_enabled = enabled
-        if enabled:
-            self._stable_preview_enter_target_if_valid()
-        else:
-            self._stable_preview_clear_all()
-        self.update()
-
-    def _stable_preview_current_window_rect(self) -> QtCore.QRectF:
-        """Return the preview window rect in widget coordinates."""
-        if self.stable_preview_window_rect is None:
-            size = self.stable_preview_size
-            margin = self.stable_preview_margin
-            rect = QtCore.QRectF(
-                float(self.width() - margin - size.width()),
-                float(self.height() - margin - size.height()),
-                float(size.width()),
-                float(size.height()),
-            )
-            self.stable_preview_window_rect = (
-                self._stable_preview_clamp_window_rect(rect)
-            )
-        else:
-            self.stable_preview_window_rect = (
-                self._stable_preview_clamp_window_rect(
-                    self.stable_preview_window_rect
-                )
-            )
-        return QtCore.QRectF(self.stable_preview_window_rect)
-
-    def _stable_preview_clamp_window_rect(
-        self, rect: QtCore.QRectF
-    ) -> QtCore.QRectF:
-        """Clamp preview window geometry to the canvas."""
-        min_w = float(self.stable_preview_min_size.width())
-        min_h = float(self.stable_preview_min_size.height())
-        canvas_w = max(1.0, float(self.width()))
-        canvas_h = max(1.0, float(self.height()))
-        max_w = max(min_w, canvas_w)
-        max_h = max(min_h, canvas_h)
-        width = min(max(rect.width(), min_w), max_w)
-        height = min(max(rect.height(), min_h), max_h)
-        left = min(max(rect.left(), 0.0), max(0.0, canvas_w - width))
-        top = min(max(rect.top(), 0.0), max(0.0, canvas_h - height))
-        return QtCore.QRectF(left, top, width, height)
-
-    def _stable_preview_source_size(self, shape=None):
-        """Return source image size for the current window at fixed scale."""
-        window = self._stable_preview_current_window_rect()
-        source_w = window.width() / self.stable_preview_scale
-        source_h = window.height() / self.stable_preview_scale
-        aspect = window.width() / max(1.0, window.height())
-        if shape is None:
-            return source_w, source_h
-        geom = rea.geometry_from_shape(shape)
-        if geom is None:
-            return source_w, source_h
-        pad = self.stable_preview_target_padding_ratio
-        padded_w = geom.width * (1.0 + 2.0 * pad)
-        padded_h = geom.height * (1.0 + 2.0 * pad)
-        source_w = max(source_w, padded_w)
-        source_h = max(source_h, padded_h)
-        if source_w / max(1.0, source_h) > aspect:
-            source_h = source_w / aspect
-        else:
-            source_w = source_h * aspect
-        return source_w, source_h
-
-    def _stable_preview_resize_source_to_window(
-        self, source: QtCore.QRectF, shape=None
-    ) -> QtCore.QRectF:
-        """Resize a source rect for the window while keeping content stable."""
-        source_w, source_h = self._stable_preview_source_size(shape)
-        center = source.center()
-        rect = QtCore.QRectF(
-            center.x() - source_w / 2.0,
-            center.y() - source_h / 2.0,
-            source_w,
-            source_h,
-        )
-        rect = self._clamp_rectf_to_image(rect)
-        geom = rea.geometry_from_shape(shape) if shape is not None else None
-        if geom is None:
-            return rect
-        target = QtCore.QRectF(
-            geom.x_min,
-            geom.y_min,
-            geom.width,
-            geom.height,
-        )
-        if rect.contains(target):
-            return rect
-        return self._stable_preview_compute_target_rect(shape)
-
-    def _stable_preview_sync_source_to_window(self) -> None:
-        """Sync the active image source rect to the current window size."""
-        shape = self.stable_preview_shape
-        if self.stable_preview_mode == "target":
-            source = self.stable_preview_target_rect
-            if source is not None:
-                self.stable_preview_target_rect = (
-                    self._stable_preview_resize_source_to_window(source, shape)
-                )
-        elif self.stable_preview_mode == "drag_locked":
-            source = self.stable_preview_locked_rect
-            if source is not None:
-                self.stable_preview_locked_rect = (
-                    self._stable_preview_resize_source_to_window(source)
-                )
-
-    def _stable_preview_visible(self) -> bool:
-        """Return whether the preview overlay is currently visible."""
-        return (
-            self.stable_preview_enabled
-            and self.stable_preview_mode != "none"
-            and self.pixmap is not None
-            and not self.pixmap.isNull()
-        )
-
-    def _stable_preview_window_hit_test(self, pos) -> str:
-        """Hit-test the preview window in widget coordinates."""
-        if not self._stable_preview_visible():
-            return "none"
-        rect = self._stable_preview_current_window_rect()
-        if not rect.contains(pos):
-            return "none"
-        handle = float(self.stable_preview_resize_handle_px)
-        resize_rect = QtCore.QRectF(
-            rect.right() - handle,
-            rect.bottom() - handle,
-            handle,
-            handle,
-        )
-        if resize_rect.contains(pos):
-            return "resize"
-        return "move"
-
-    def _stable_preview_begin_window_interaction(self, pos) -> bool:
-        """Start moving or resizing the preview window if it was hit."""
-        hit = self._stable_preview_window_hit_test(pos)
-        if hit == "none":
-            return False
-        self.stable_preview_state.begin_window_interaction(
-            pos,
-            self._stable_preview_current_window_rect(),
-            dragging=hit == "move",
-            resizing=hit == "resize",
-        )
-        if hit == "resize":
-            self.override_cursor(CURSOR_SIZE_FDIAG)
-        else:
-            self.override_cursor(CURSOR_SIZE_ALL)
-        return True
-
-    def _stable_preview_window_interaction_active(self) -> bool:
-        """Return whether the preview window is being moved/resized."""
-        return (
-            self.stable_preview_window_dragging
-            or self.stable_preview_window_resizing
-        )
-
-    def _stable_preview_update_window_interaction(self, pos) -> None:
-        """Move or resize the preview window in widget coordinates."""
-        press_pos = self.stable_preview_window_press_pos
-        press_rect = self.stable_preview_window_press_rect
-        if press_pos is None or press_rect is None:
-            self._stable_preview_end_window_interaction()
-            return
-        delta = QtCore.QPointF(pos) - press_pos
-        if self.stable_preview_window_dragging:
-            rect = QtCore.QRectF(press_rect)
-            rect.translate(delta)
-            self.stable_preview_window_rect = (
-                self._stable_preview_clamp_window_rect(rect)
-            )
-        elif self.stable_preview_window_resizing:
-            rect = QtCore.QRectF(
-                press_rect.left(),
-                press_rect.top(),
-                press_rect.width() + delta.x(),
-                press_rect.height() + delta.y(),
-            )
-            self.stable_preview_window_rect = (
-                self._stable_preview_clamp_window_rect(rect)
-            )
-            self._stable_preview_sync_source_to_window()
-        self.update()
-
-    def _stable_preview_end_window_interaction(self) -> None:
-        """End preview window move/resize interaction."""
-        self.stable_preview_state.end_window_interaction()
-        self.update()
-
-    def _stable_preview_update_window_hover(self, pos) -> bool:
-        """Update cursor when hovering the preview window."""
-        hit = self._stable_preview_window_hit_test(pos)
-        if hit == "resize":
-            self.override_cursor(CURSOR_SIZE_FDIAG)
-            return True
-        if hit == "move":
-            self.override_cursor(CURSOR_SIZE_ALL)
-            return True
-        return False
-
-    def _stable_preview_begin_drag_locked(
-        self, press_pos, edge_name: str
-    ) -> None:
-        """Lock a local crop rect at the drag start position.
-
-        Called from the rect-edge mouse-press branch, **after** the drag
-        has already been committed (``rect_edge_dragging`` is True). The
-        crop rect is frozen for the whole drag — only the frame is
-        repainted afterwards. The existing TargetPreview crop rect is
-        left untouched so release can fall back to it.
-
-        Does nothing when the drag-locked sub-switch is off (the drag
-        then continues under whatever target preview was already shown).
-
-        Args:
-            press_pos: Image-coordinate press position (QPointF).
-            edge_name: The edge being dragged (left/right/top/bottom).
-        """
-        if not self.stable_preview_drag_locked_enabled:
-            return
-        if self.pixmap is None or self.pixmap.isNull():
-            return
-        active = self.rect_edge_active_edge
-        if active is None:
-            return
-        view_w, view_h = self._stable_preview_source_size()
-        rect = QtCore.QRectF(
-            press_pos.x() - view_w / 2.0,
-            press_pos.y() - view_h / 2.0,
-            view_w,
-            view_h,
-        )
-        self.stable_preview_state.begin_drag_locked(
-            active.shape,
-            edge_name,
-            self._clamp_rectf_to_image(rect),
-        )
-
-    def _stable_preview_clear_drag_locked(self) -> None:
-        """Clear only the drag-locked state, keeping TargetPreview.
-
-        Used by ``clear_rect_edge_alignment`` so that a rect-edge
-        release/escape can fall back to TargetPreview instead of wiping
-        everything (phase 2 split — never use a single catch-all clear).
-        """
-        self.stable_preview_state.clear_drag_locked()
-
-    def _stable_preview_clear_target(self) -> None:
-        """Clear only the target state, keeping drag-locked."""
-        self.stable_preview_state.clear_target()
-
-    def _stable_preview_clear_all(self) -> None:
-        """Clear everything: shape, drag-locked, target, mode.
-
-        Used by image-swap/reset paths (load_pixmap, load_shapes,
-        reset_state, set_editing(False)) where no preview may survive.
-        """
-        self.stable_preview_state.clear_all()
-
-    def _stable_preview_enter_target_if_valid(self) -> None:
-        """Re-enter TargetPreview after a drag if the selection allows it.
-
-        This is the ONLY place the safe-zone anti-drift check runs
-        (phase 2 design): it fires when a drag-locked preview ends and
-        the same rectangle is still selected, deciding whether to keep
-        the existing target_rect or recompute it. It is never hooked into
-        mouseMoveEvent.
-        """
-        if (
-            not self.stable_preview_enabled
-            or not self.stable_preview_target_enabled
-        ):
-            self._stable_preview_clear_all()
-            return
-        sel = self.selected_shapes
-        if len(sel) == 1 and sel[0].shape_type == "rectangle":
-            shape = sel[0]
-            self.stable_preview_shape = shape
-            self._stable_preview_update_target_rect_by_safezone()
-            target_rect = self.stable_preview_target_rect
-            if target_rect is None:
-                self._stable_preview_clear_all()
-                return
-            self.stable_preview_state.begin_target(shape, target_rect)
-        else:
-            self._stable_preview_clear_all()
-
-    def _stable_preview_compute_target_rect(self, shape):
-        """Compute a fresh TargetPreview crop rect (image coords).
-
-        Algorithm (task doc §7.1): bbox center centered crop whose size is
-        ``max(base view size, padded bbox size)``, clamped to the image.
-        """
-        if self.pixmap is None or self.pixmap.isNull():
-            return None
-        geom = rea.geometry_from_shape(shape)
-        if geom is None:
-            return None
-        # Source size keeps the preview window aspect ratio, so the image
-        # crop and overlay geometry share one affine mapping.
-        crop_w, crop_h = self._stable_preview_source_size(shape)
-        cx = (geom.x_min + geom.x_max) / 2.0
-        cy = (geom.y_min + geom.y_max) / 2.0
-        rect = QtCore.QRectF(
-            cx - crop_w / 2.0, cy - crop_h / 2.0, crop_w, crop_h
-        )
-        return self._clamp_rectf_to_image(rect)
-
-    def _stable_preview_update_target_rect_by_safezone(self) -> None:
-        """Keep or recompute the target rect by the safe-zone rule.
-
-        If the current bbox still falls inside the central safe region of
-        the existing target_rect, the rect is kept (background stable).
-        Otherwise it is recomputed. Edges already clamped to the image
-        border relax the safe boundary on that side (task doc §8.2),
-        using a tolerance of 1.0px instead of exact ``== 0``.
-        """
-        shape = self.stable_preview_shape
-        if shape is None:
-            self._stable_preview_clear_target()
-            return
-        geom = rea.geometry_from_shape(shape)
-        if geom is None:
-            self._stable_preview_clear_target()
-            return
-        cur = self.stable_preview_target_rect
-        if cur is None or self.pixmap is None or self.pixmap.isNull():
-            self.stable_preview_target_rect = (
-                self._stable_preview_compute_target_rect(shape)
-            )
-            return
-        # Safe region = central ratio of the current target rect.
-        sr = self.stable_preview_safe_ratio
-        inset_x = cur.width() * (1.0 - sr) / 2.0
-        inset_y = cur.height() * (1.0 - sr) / 2.0
-        safe_left = cur.left() + inset_x
-        safe_right = cur.right() - inset_x
-        safe_top = cur.top() + inset_y
-        safe_bottom = cur.bottom() - inset_y
-        # Edge relaxation: a side clamped to the image border has no room
-        # to keep centering, so relax that side's safe boundary outward.
-        tol = 1.0
-        iw = float(self.pixmap.width())
-        ih = float(self.pixmap.height())
-        if cur.left() < tol:
-            safe_left = cur.left()
-        if cur.top() < tol:
-            safe_top = cur.top()
-        if cur.right() > iw - tol:
-            safe_right = cur.right()
-        if cur.bottom() > ih - tol:
-            safe_bottom = cur.bottom()
-        inside = (
-            geom.x_min >= safe_left
-            and geom.x_max <= safe_right
-            and geom.y_min >= safe_top
-            and geom.y_max <= safe_bottom
-        )
-        if not inside:
-            self.stable_preview_target_rect = (
-                self._stable_preview_compute_target_rect(shape)
-            )
-
-    def _stable_preview_on_selection_changed(self, selected_shapes) -> None:
-        """Slot for ``selection_changed``: drive TargetPreview.
-
-        A drag-locked preview always takes priority, so selection changes
-        are ignored while dragging. Single-rectangle selection enters
-        TargetPreview; anything else clears it.
-        """
-        if self.stable_preview_mode == "drag_locked":
-            return
-        if (
-            not self.stable_preview_enabled
-            or not self.stable_preview_target_enabled
-        ):
-            self._stable_preview_clear_all()
-            return
-        if (
-            len(selected_shapes) == 1
-            and selected_shapes[0].shape_type == "rectangle"
-        ):
-            shape = selected_shapes[0]
-            target_rect = self._stable_preview_compute_target_rect(shape)
-            if target_rect is None:
-                self._stable_preview_clear_all()
-                return
-            self.stable_preview_state.begin_target(shape, target_rect)
-        else:
-            self._stable_preview_clear_all()
-
-    def _clamp_rectf_to_image(self, rect: QtCore.QRectF) -> QtCore.QRectF:
-        """Clamp a rect (image coords) to the current pixmap bounds."""
-        if self.pixmap is None or self.pixmap.isNull():
-            return rect
-        iw = float(self.pixmap.width())
-        ih = float(self.pixmap.height())
-        width = min(rect.width(), iw)
-        height = min(rect.height(), ih)
-        left = max(0.0, min(rect.left(), iw - width))
-        top = max(0.0, min(rect.top(), ih - height))
-        return QtCore.QRectF(left, top, width, height)
 
     def _is_shape_under_edge_edit(self, shape):
         """矩形是否当前正被矩形边操作（hover 或拖拽）影响。
@@ -4771,11 +4178,6 @@ class Canvas(
     def clear_rect_edge_alignment(self):
         """Clear transient edge-editing interaction state."""
         self.rect_edge_state.clear_mouse()
-        # Only drop the drag-locked preview here because this helper is also
-        # used by image-loading paths. Mouse release/cancel explicitly clear
-        # every preview state; image-swap paths do the same after their own
-        # state teardown.
-        self._stable_preview_clear_drag_locked()
 
     def cancel_rect_edge_drag(self):
         """Cancel an in-progress edge drag and restore the pre-drag points.
@@ -4794,11 +4196,6 @@ class Canvas(
             shape.points = list(start_points)
             shape._invalidate_cache()
 
-        self._stable_preview_clear_drag_locked()
-        # Direct mouse edge editing is independent from object selection;
-        # cancelling therefore ends its preview rather than reviving a
-        # selection-driven TargetPreview.
-        self._stable_preview_clear_all()
         self.override_cursor(CURSOR_DEFAULT)
         self.update()
         return True
@@ -4828,7 +4225,6 @@ class Canvas(
             return False
 
         self.clear_rect_edge_alignment()
-        self._stable_preview_clear_all()
         self.override_cursor(CURSOR_DEFAULT)
         self.update()
         return True
@@ -4997,23 +4393,6 @@ class Canvas(
                 space by ``paintEvent``).
         """
         active = self.rect_edge_active_edge
-        keyboard_active = None
-        if (
-            self.rect_edge_keyboard_shape is not None
-            and self.rect_edge_keyboard_edge is not None
-        ):
-            import anylabeling.views.labeling.rect_edge_alignment as rea
-
-            geom = rea.geometry_from_shape(self.rect_edge_keyboard_shape)
-            if geom is not None:
-                keyboard_active = rea.edge_from_geometry(
-                    self.rect_edge_keyboard_shape,
-                    geom,
-                    self.rect_edge_keyboard_edge,
-                )
-
-        if keyboard_active is not None:
-            active = keyboard_active
         if active is not None:
             self._draw_edge(
                 painter, active, QtGui.QColor(255, 255, 255), width=2.0
@@ -5051,205 +4430,6 @@ class Canvas(
         painter.setOpacity(1.0)
         painter.drawLine(edge.p1, edge.p2)
 
-    # ------------------------------------------------------------------
-    # Stable refine preview — overlay drawing (phase 1).
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _img_to_preview_xy(img_x, img_y, target, src):
-        """Map an image point to preview-window coordinates.
-
-        Args:
-            img_x, img_y: Point in image (pixel) coordinates.
-            target: The preview window rect in widget coordinates.
-            src: The actually drawn crop rect in image coordinates.
-
-        Returns:
-            ``(x, y)`` in widget coordinates.
-        """
-        scale_x = target.width() / max(1.0, src.width())
-        scale_y = target.height() / max(1.0, src.height())
-        return (
-            target.left() + (img_x - src.left()) * scale_x,
-            target.top() + (img_y - src.top()) * scale_y,
-        )
-
-    def _draw_stable_preview_overlay(self, painter):
-        """Draw the magnified preview (bottom-right pin).
-
-        The painter is currently in pixmap space (scaled + translated by
-        ``paintEvent``). This method saves/restores and resets the
-        transform so the whole overlay is laid out in **widget
-        coordinates** — the window stays pinned to the bottom-right and
-        is unaffected by the main canvas zoom/pan.
-
-        The crop rect is selected by ``stable_preview_mode``: the
-        drag-locked rect (frozen for the drag) or the target rect (kept
-        stable by the safe-zone rule). Either way the background does not
-        drift; only the frame (and, in drag-locked mode, the active-edge
-        highlight) is repainted from live shape points.
-        """
-        mode = self.stable_preview_mode
-        self._stable_preview_sync_source_to_window()
-        if mode == "drag_locked":
-            src = self.stable_preview_locked_rect
-        elif mode == "target":
-            src = self.stable_preview_target_rect
-        else:
-            return
-        shape = self.stable_preview_shape
-        if src is None or shape is None:
-            return
-        geom = rea.geometry_from_shape(shape)
-        if geom is None:
-            return
-
-        scale = self.stable_preview_scale
-        target = QtCore.QRectF(
-            self._stable_preview_current_window_rect().toAlignedRect()
-        )
-        src = QtCore.QRectF(src.toAlignedRect())
-
-        painter.save()
-        painter.resetTransform()
-        painter.setOpacity(1.0)
-
-        # --- Background frame ------------------------------------------
-        painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 200), 1.0))
-        painter.setBrush(QtGui.QColor(0, 0, 0, 180))
-        painter.drawRect(target)
-
-        # --- Cropped & magnified image (one shot, no cache) -----------
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QtGui.QBrush())
-        painter.drawPixmap(
-            target.toAlignedRect(),
-            self.pixmap,
-            src.toAlignedRect(),
-        )
-
-        # --- Context rectangles inside the preview crop ----------------
-        # Other visible rectangles provide alignment references while the
-        # current target remains visually dominant.
-        painter.save()
-        painter.setClipRect(target)
-        context_pen = QtGui.QPen(QtGui.QColor(80, 170, 255, 170), 1.2)
-        painter.setPen(context_pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        for other_shape in self.shapes:
-            if other_shape is shape:
-                continue
-            if other_shape.shape_type != "rectangle":
-                continue
-            if not self.is_shape_interactive(other_shape):
-                continue
-            other_geom = rea.geometry_from_shape(other_shape)
-            if other_geom is None or not other_geom.is_valid():
-                continue
-            other_rect = QtCore.QRectF(
-                other_geom.x_min,
-                other_geom.y_min,
-                other_geom.width,
-                other_geom.height,
-            )
-            if not other_rect.intersects(src):
-                continue
-            other_tl = self._img_to_preview_xy(
-                other_geom.x_min, other_geom.y_min, target, src
-            )
-            other_tr = self._img_to_preview_xy(
-                other_geom.x_max, other_geom.y_min, target, src
-            )
-            other_br = self._img_to_preview_xy(
-                other_geom.x_max, other_geom.y_max, target, src
-            )
-            other_bl = self._img_to_preview_xy(
-                other_geom.x_min, other_geom.y_max, target, src
-            )
-            painter.drawPolygon(
-                QtGui.QPolygonF(
-                    [
-                        QtCore.QPointF(*other_tl),
-                        QtCore.QPointF(*other_tr),
-                        QtCore.QPointF(*other_br),
-                        QtCore.QPointF(*other_bl),
-                    ]
-                )
-            )
-        painter.restore()
-
-        # --- Current rectangle frame (live geometry) ------------------
-        tl = self._img_to_preview_xy(geom.x_min, geom.y_min, target, src)
-        tr = self._img_to_preview_xy(geom.x_max, geom.y_min, target, src)
-        br = self._img_to_preview_xy(geom.x_max, geom.y_max, target, src)
-        bl = self._img_to_preview_xy(geom.x_min, geom.y_max, target, src)
-        poly = QtGui.QPolygonF(
-            [
-                QtCore.QPointF(*tl),
-                QtCore.QPointF(*tr),
-                QtCore.QPointF(*br),
-                QtCore.QPointF(*bl),
-            ]
-        )
-        painter.setPen(QtGui.QPen(QtGui.QColor(80, 220, 120), 1.5))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawPolygon(poly)
-
-        # --- Active edge highlight (drag-locked only) ------------------
-        # TargetPreview is for observing overall fit, so it deliberately
-        # shows no edge highlight; that stays on the main canvas overlay.
-        edge_name = self.stable_preview_active_edge_name
-        if mode == "drag_locked" and edge_name in (
-            "left",
-            "right",
-            "top",
-            "bottom",
-        ):
-            corners = {"tl": tl, "tr": tr, "br": br, "bl": bl}
-            pairs = {
-                "left": ("tl", "bl"),
-                "right": ("tr", "br"),
-                "top": ("tl", "tr"),
-                "bottom": ("bl", "br"),
-            }
-            a, b = pairs[edge_name]
-            painter.setPen(QtGui.QPen(QtGui.QColor(255, 235, 60), 2.5))
-            painter.drawLine(
-                QtCore.QPointF(*corners[a]),
-                QtCore.QPointF(*corners[b]),
-            )
-
-        # --- Magnification label ---------------------------------------
-        label = f"{int(round(scale))}x"
-        painter.setPen(QtGui.QColor(255, 255, 255))
-        painter.fillRect(
-            QtCore.QRectF(target.left() + 4, target.top() + 4, 78, 16),
-            QtGui.QColor(0, 0, 0, 160),
-        )
-        painter.drawText(
-            QtCore.QRectF(target.left() + 4, target.top() + 4, 78, 16),
-            Qt.AlignmentFlag.AlignCenter,
-            f"{label}  drag",
-        )
-
-        # --- Resize affordance -----------------------------------------
-        handle = float(self.stable_preview_resize_handle_px)
-        handle_rect = QtCore.QRectF(
-            target.right() - handle,
-            target.bottom() - handle,
-            handle,
-            handle,
-        )
-        painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 180), 1.0))
-        for i in range(3):
-            offset = 4.0 + i * 4.0
-            painter.drawLine(
-                QtCore.QPointF(handle_rect.right() - offset, target.bottom()),
-                QtCore.QPointF(target.right(), handle_rect.bottom() - offset),
-            )
-
-        painter.restore()
-
     def move_by_keyboard(self, offset):
         """Move selected shapes by an offset (using keyboard)"""
         if self.selected_shapes:
@@ -5258,200 +4438,6 @@ class Canvas(
             )
             self.repaint()
             self.moving_shape = True
-
-    # ------------------------------------------------------------------
-    # Keyboard edge selection (Feature 3, task 5.9-5.13)
-    # ------------------------------------------------------------------
-    _KEYBOARD_EDGE_CYCLE = ("left", "top", "right", "bottom")
-
-    def _keyboard_edge_active(self):
-        """Return True if a keyboard-selected edge is currently active."""
-        return (
-            self.rect_edge_keyboard_edge is not None
-            and self.rect_edge_keyboard_shape is not None
-        )
-
-    def _clear_keyboard_edge(self):
-        """Clear the keyboard-selected edge. Return True if it was active."""
-        return self.rect_edge_state.clear_keyboard()
-
-    def _cycle_keyboard_edge(self):
-        """Advance/clear the keyboard-selected rectangle edge (task 5.9-5.11).
-
-        Requires exactly one selected rectangle. Cycles left -> top ->
-        right -> bottom -> left.
-        """
-        if (
-            len(self.selected_shapes) != 1
-            or getattr(self.selected_shapes[0], "shape_type", None)
-            != "rectangle"
-        ):
-            self._clear_keyboard_edge()
-            self.keyboard_edge_selected.emit("")
-            return
-
-        shape = self.selected_shapes[0]
-        current = self.rect_edge_keyboard_edge
-        if self.rect_edge_keyboard_shape is not shape or current is None:
-            self.rect_edge_state.set_keyboard(
-                shape, self._KEYBOARD_EDGE_CYCLE[0]
-            )
-        else:
-            idx = self._KEYBOARD_EDGE_CYCLE.index(current)
-            nxt = (idx + 1) % len(self._KEYBOARD_EDGE_CYCLE)
-            self.rect_edge_state.set_keyboard(
-                shape, self._KEYBOARD_EDGE_CYCLE[nxt]
-            )
-        self.keyboard_edge_selected.emit(self.rect_edge_keyboard_edge)
-        self.update()
-
-    def _nudge_keyboard_edge(self, key, step, modifiers):
-        """Nudge the keyboard-selected edge by ±step image pixels.
-
-        For left/top edges, Up/Left move inward (negative), Down/Right
-        outward; for right/bottom the opposite. Uses
-        rect_edge_alignment.apply_edge_coord which clamps to min_size
-        (task 5.13/5.14, anti-flip via 5.16).
-        """
-        import anylabeling.views.labeling.rect_edge_alignment as rea
-
-        shape = self.rect_edge_keyboard_shape
-        edge = self.rect_edge_keyboard_edge
-        if shape is None or edge is None:
-            return
-        geom = rea.geometry_from_shape(shape)
-        if geom is None:
-            return
-        if edge in ("left", "right"):
-            coord = geom.x_min if edge == "left" else geom.x_max
-            if key == QtCore.Qt.Key.Key_Left:
-                coord -= step
-            elif key == QtCore.Qt.Key.Key_Right:
-                coord += step
-            else:
-                # Up/Down do not apply to vertical edges.
-                return
-        else:  # top / bottom
-            coord = geom.y_min if edge == "top" else geom.y_max
-            if key == QtCore.Qt.Key.Key_Up:
-                coord -= step
-            elif key == QtCore.Qt.Key.Key_Down:
-                coord += step
-            else:
-                return
-        rea.apply_edge_coord(shape, edge, coord, min_size=1.0)
-        shape._invalidate_cache()
-        # Commit immediately with a 500ms merge window so rapid key
-        # repeats collapse into one undo step (task 5.15, N2/D5).
-        self.store_shapes(merge_window=0.5)
-        self.shape_moved.emit()
-        self.update()
-
-    # ------------------------------------------------------------------
-    # Local edge snapping (Feature 4, task 6.1-6.14)
-    # ------------------------------------------------------------------
-    def _ensure_edge_snap_cache(self):
-        """Lazily build/refresh the edge-snap gradient cache from the
-        current pixmap (task 6.1). Keyed on pixmap.cacheKey() so image
-        switches invalidate it."""
-        from anylabeling.views.labeling.edge_snap import EdgeSnapCache
-
-        if not hasattr(self, "_edge_snap_cache"):
-            self._edge_snap_cache = EdgeSnapCache()
-        if self.pixmap is None or self.pixmap.isNull():
-            return None
-        key = self.pixmap.cacheKey()
-        # Convert pixmap to a known 4-channel QImage format before exposing
-        # its memory to numpy; QPixmap.toImage() may otherwise return a
-        # format with a different bytes-per-pixel or padded scanlines.
-        qimg = self.pixmap.toImage().convertToFormat(
-            QtGui.QImage.Format.Format_RGBA8888
-        )
-        w, h = qimg.width(), qimg.height()
-        if w <= 0 or h <= 0:
-            return None
-        ptr = qimg.bits()
-        bytes_per_line = qimg.bytesPerLine()
-        ptr.setsize(h * bytes_per_line)
-        import numpy as np
-
-        raw = np.frombuffer(ptr, dtype=np.uint8).reshape(h, bytes_per_line)
-        arr = raw[:, : w * 4].reshape(h, w, 4)
-        gray = arr[:, :, :3].mean(axis=2).astype(np.uint8)
-        self._edge_snap_cache.ensure(gray, key)
-        return self._edge_snap_cache
-
-    def snap_active_edge(self, search_range=4):
-        """Snap the keyboard-selected edge to the strongest nearby
-        image edge (task 6.11). Keypress-triggered (not realtime).
-
-        Validates before applying (Q11): if the candidate would trigger
-        a clamp in apply_edge_coord (anti-flip/min-size), the snap is
-        treated as a failure and the edge stays put.
-        """
-        if not self._keyboard_edge_active():
-            return {"status": "inactive"}
-        import anylabeling.views.labeling.rect_edge_alignment as rea
-        from anylabeling.views.labeling.edge_snap import (
-            best_snap_candidate,
-        )
-
-        cache = self._ensure_edge_snap_cache()
-        shape = self.rect_edge_keyboard_shape
-        edge = self.rect_edge_keyboard_edge
-        if shape is None or edge is None or cache is None:
-            return {"status": "failed", "reason": "no_cache"}
-        geom = rea.geometry_from_shape(shape)
-        if geom is None:
-            return {"status": "failed", "reason": "invalid_geometry"}
-
-        search_range = max(1, int(search_range))
-        if edge in ("left", "right"):
-            coord = geom.x_min if edge == "left" else geom.x_max
-            seg_lo, seg_hi = geom.y_min, geom.y_max
-        else:
-            coord = geom.y_min if edge == "top" else geom.y_max
-            seg_lo, seg_hi = geom.x_min, geom.x_max
-
-        result = best_snap_candidate(
-            cache,
-            edge_name=edge,
-            current_coord=coord,
-            seg_lo=seg_lo,
-            seg_hi=seg_hi,
-            search_range=search_range,
-        )
-        if result is None:
-            return {"status": "failed", "reason": "unreliable_edge"}
-        cand, _score = result
-
-        # Q11 validate-before-apply: if the candidate would be clamped
-        # by geometry_with_edge_coord, treat as failure (keep current).
-        test_geom = rea.geometry_with_edge_coord(
-            geom, edge, cand, min_size=1.0
-        )
-        clamped_coord = {
-            "left": test_geom.x_min,
-            "right": test_geom.x_max,
-            "top": test_geom.y_min,
-            "bottom": test_geom.y_max,
-        }[edge]
-        if clamped_coord != cand:
-            # Would have triggered clamp -> fail, keep current.
-            return {"status": "failed", "reason": "clamped"}
-
-        rea.apply_edge_coord(shape, edge, cand, min_size=1.0)
-        shape._invalidate_cache()
-        self.store_shapes()
-        self.shape_moved.emit()
-        self.update()
-        return {
-            "status": "success",
-            "edge": edge,
-            "old_coord": coord,
-            "new_coord": cand,
-            "delta": cand - coord,
-        }
 
     def rotate_by_keyboard(self, theta):
         """Rotate selected shapes by an theta (using keyboard)"""
@@ -5467,21 +4453,13 @@ class Canvas(
 
     # QT Overload
     def event(self, ev):
-        """Handle Tab before Qt consumes it for focus traversal."""
+        """Cancel active rectangle-edge edits on input interruption."""
         if ev.type() in (
             QtCore.QEvent.Type.UngrabMouse,
             QtCore.QEvent.Type.WindowDeactivate,
         ) and hasattr(self, "rect_edge_dragging"):
             if self._cancel_rect_edge_interaction():
                 self.restore_cursor()
-        if (
-            ev.type() == QtCore.QEvent.Type.KeyPress
-            and ev.key() == QtCore.Qt.Key.Key_Tab
-            and self.editing()
-        ):
-            if self._editing_special_key(ev.key()):
-                ev.accept()
-                return True
         return super(Canvas, self).event(ev)
 
     def keyPressEvent(self, ev):
@@ -5526,8 +4504,6 @@ class Canvas(
             elif modifiers == QtCore.Qt.KeyboardModifier.AltModifier:
                 self.snapping = False
         elif self.editing():
-            if self._editing_special_key(key):
-                return
             if self._editing_arrow_dispatch(key, modifiers):
                 return
             if key == QtCore.Qt.Key.Key_Z:
@@ -5545,27 +4521,11 @@ class Canvas(
             super(Canvas, self).keyPressEvent(ev)
             return
 
-    def _editing_special_key(self, key):
-        """Handle Tab/Esc in editing mode (Feature 3 keyboard edge).
-
-        Returns True when the key was consumed.
-        """
-        if key == QtCore.Qt.Key.Key_Tab:
-            self._cycle_keyboard_edge()
-            return True
-        if key == QtCore.Qt.Key.Key_Escape:
-            if self._clear_keyboard_edge():
-                self.update()
-                return True
-        return False
-
     def _editing_arrow_dispatch(self, key, modifiers):
-        """Dispatch arrow keys to whole-shape or single-edge nudge.
+        """Dispatch arrow keys to whole-shape movement.
 
         Returns True when the key was an arrow and was consumed.
-        Default step is 1px; Shift scales to MOVE_SPEED (5px) (task 5.7/
-        5.8). When a keyboard edge is active, arrows nudge that edge
-        instead (task 5.13/5.14).
+        Default step is 1px; Shift scales to MOVE_SPEED (5px).
         """
         if key not in (
             QtCore.Qt.Key.Key_Up,
@@ -5579,9 +4539,6 @@ class Canvas(
             if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier
             else 1.0
         )
-        if self._keyboard_edge_active():
-            self._nudge_keyboard_edge(key, step, modifiers)
-            return True
         if key == QtCore.Qt.Key.Key_Up:
             self.move_by_keyboard(QtCore.QPointF(0.0, -step))
         elif key == QtCore.Qt.Key.Key_Down:
@@ -5673,10 +4630,6 @@ class Canvas(
         self.pixmap = pixmap
         if clear_shapes:
             self.shapes = []
-        # Image swap: wipe the whole preview (drag-locked AND target) so
-        # a stale crop referencing the old pixmap is never rendered over
-        # the new image.
-        self._stable_preview_clear_all()
         self.update()
 
     def _has_pose_shapes(self):
@@ -5709,10 +4662,8 @@ class Canvas(
         self.h_edge = None
         self.h_cuboid_face = None
         # Drop any in-progress rectangle edge edit so transient state never
-        # leaks across images. clear_rect_edge_alignment only clears the
-        # drag-locked preview, so wipe the target preview too.
+        # leaks across images.
         self.clear_rect_edge_alignment()
-        self._stable_preview_clear_all()
         self.update()
         _t_total = time.perf_counter()
         total_time = _t_total - _t0
@@ -5758,12 +4709,8 @@ class Canvas(
         self.shapes_backups = []
         self.is_move_editing = False
         self.compare_pixmap = None
-        # Reset every transient interaction state. reset_state() is the
-        # hard-reset path and did not previously clear rect-edge state,
-        # so clear it explicitly here. clear_rect_edge_alignment only
-        # clears the drag-locked preview, so wipe the target preview too.
+        # Reset every transient rectangle-edge interaction state.
         self.clear_rect_edge_alignment()
-        self._stable_preview_clear_all()
         self.update()
 
     def set_cross_line(self, show, width, color, opacity):

@@ -208,9 +208,7 @@ shortcuts:
   toggle_visibility_shapes: Ctrl+H
   toggle_compare_view: Ctrl+Alt+C
   toggle_rect_edge_align: Ctrl+Shift+E
-  toggle_stable_preview: Ctrl+Alt+P
   toggle_precision_mode_lock: Ctrl+Alt+F
-  trigger_edge_snap: Ctrl+Alt+E
 
   auto_label: Ctrl+A
   auto_run: Ctrl+Shift+B
@@ -241,7 +239,6 @@ auto_person_instance: false  # auto-create new group_id when drawing person rect
 canvas_precision_mode: zoom  # fixed | zoom
 canvas_precision_max_factor: 2.0  # max slowdown factor for zoom precision mode
 canvas_precision_factor: 4  # mouse drag slowdown factor in precision mode
-canvas_edge_snap_range: 4  # search range in image pixels for local edge snap
 
 # Pose keypoint label display
 pose_view:

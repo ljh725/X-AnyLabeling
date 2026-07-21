@@ -297,10 +297,6 @@ def _shortcut_label(short_key: str) -> str:
             SETTINGS_TRANSLATION_CONTEXT,
             "Toggle Precision Refinement",
         ),
-        "trigger_edge_snap": QT_TRANSLATE_NOOP(
-            SETTINGS_TRANSLATION_CONTEXT,
-            "Snap Current Rectangle Edge",
-        ),
         "edit_group_id": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Open Group ID Manager"
         ),
@@ -846,22 +842,6 @@ def _non_shortcut_fields() -> list[SettingField]:
             ),
         ),
         SettingField(
-            "canvas_edge_snap_range",
-            QT_TRANSLATE_NOOP(
-                SETTINGS_TRANSLATION_CONTEXT, "Edge Snap Range"
-            ),
-            "int",
-            "Canvas",
-            "Interaction",
-            "Refinement",
-            minimum=1,
-            maximum=20,
-            description=QT_TRANSLATE_NOOP(
-                SETTINGS_TRANSLATION_CONTEXT,
-                "Search this many image pixels around the selected rectangle edge when snapping.",
-            ),
-        ),
-        SettingField(
             "canvas.crosshair.show",
             QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Show Crosshair"),
             "bool",
@@ -1164,9 +1144,7 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "toggle_keep_prev_mode",
             "toggle_visibility_shapes",
             "toggle_rect_edge_align",
-            "toggle_stable_preview",
             "toggle_precision_mode_lock",
-            "trigger_edge_snap",
             "zoom_in",
             "zoom_out",
             "zoom_to_original",

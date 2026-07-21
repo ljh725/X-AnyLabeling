@@ -6,7 +6,7 @@ from typing import Optional
 
 from PyQt6 import QtCore
 
-from .rect_edge_alignment import RECT_EDGE_NAMES, RectEdgeRef
+from .rect_edge_alignment import RectEdgeRef
 from .shape import Shape
 
 
@@ -29,8 +29,6 @@ class RectEdgeInteractionController:
     pending_image_pos: Optional[QtCore.QPointF] = None
     active_edge: Optional[RectEdgeRef] = None
     drag_start_points: Optional[list[QtCore.QPointF]] = None
-    keyboard_shape: Optional[Shape] = None
-    keyboard_edge: Optional[str] = None
 
     @property
     def phase(self) -> RectEdgePhase:
@@ -57,19 +55,9 @@ class RectEdgeInteractionController:
         """Return whether a complete pending payload exists."""
         return self.phase is RectEdgePhase.PENDING
 
-    def set_hover(self, edge: Optional[RectEdgeRef]) -> bool:
-        """Set mouse hover and let mouse control clear a keyboard edge.
-
-        Args:
-            edge: Hovered rectangle edge, or ``None``.
-
-        Returns:
-            True when an active keyboard edge was cleared.
-        """
+    def set_hover(self, edge: Optional[RectEdgeRef]) -> None:
+        """Set the currently hovered rectangle edge."""
         self.hover_edge = edge
-        if edge is None:
-            return False
-        return self.clear_keyboard()
 
     def begin_pending(
         self,
@@ -84,7 +72,6 @@ class RectEdgeInteractionController:
         self.pending_edge = edge
         self.pending_press_pos = QtCore.QPointF(press_pos)
         self.pending_image_pos = QtCore.QPointF(image_pos)
-        self.clear_keyboard()
 
     def start_drag(
         self, edge: RectEdgeRef, start_points: list[QtCore.QPointF]
@@ -130,23 +117,6 @@ class RectEdgeInteractionController:
         self.clear_mouse()
         return restore
 
-    def set_keyboard(self, shape: Shape, edge_name: str) -> None:
-        """Select one rectangle edge for keyboard refinement."""
-        if edge_name not in RECT_EDGE_NAMES:
-            raise ValueError(f"Unknown rectangle edge: {edge_name!r}")
-        self.keyboard_shape = shape
-        self.keyboard_edge = edge_name
-
-    def clear_keyboard(self) -> bool:
-        """Clear keyboard edge state and report whether it was active."""
-        had_keyboard = (
-            self.keyboard_shape is not None or self.keyboard_edge is not None
-        )
-        self.keyboard_shape = None
-        self.keyboard_edge = None
-        return had_keyboard
-
     def clear_all(self) -> None:
-        """Clear mouse and keyboard rectangle-edge state."""
+        """Clear all rectangle-edge interaction state."""
         self.clear_mouse()
-        self.clear_keyboard()
