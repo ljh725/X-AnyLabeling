@@ -24,7 +24,7 @@ ljh725/X-AnyLabeling  ← 本仓库（93 commits / ~1.5 万行扩展代码）
 | 新增代码 | **~18,500 行**（功能代码 + 测试） |
 | 测试用例 | **300+**（功能相关） |
 | 设计文档 | **116 篇**（`docs/` 目录） |
-| 功能模块 | **15 个** |
+| 功能模块 | **16 个** |
 
 ---
 
@@ -40,13 +40,14 @@ ljh725/X-AnyLabeling  ← 本仓库（93 commits / ~1.5 万行扩展代码）
 | 6 | **数据处理脚本集** | 40 个脚本（核心逾 3,000 行） | — | YOLO Pose 三步流水线 + ViTPose 预标注对比 + 质检 CLI，覆盖姿态数据生产全链路 | [→ 06](portfolio/06-data-toolkit.md) |
 | 7 | **新建 person 自动实例化** | ~60 行核心 + 设置/集成 | 9 | 手动画 person 自动生成 group_id，优先级链 `bind_draw > 本功能 > auto_use_last_gid`，静态测试钉死 Non-Goal | [→ 07](portfolio/07-auto-person-instance.md) |
 | 8 | **数字快捷绑定绘制** | 414 行管理器 + 集成 | 19 | 选中来源按数字键新建同实例框，懒回填保证 undo 原子，两阶段 TOCTOU 防重复 | [→ 08](portfolio/08-digit-bind-draw.md) |
-| 9 | **精修控制模式** | ~250 行 canvas + 设置 | 14 | 鼠标 zoom/fixed 降速 + Tab 选边 + 1px/5px 单边微调，虚拟游标隔离零污染基础交互 | [→ 09](portfolio/09-precision-mode.md) |
-| 10 | **局部边缘吸附（实验性）** | 212 行纯 Python + canvas 桥接 | 11 | Sobel 梯度 ±4px 搜索 + 双重阈值，纯算法可单测；诚实记录「方向偏差」并主动降级 | [→ 10](portfolio/10-local-edge-snap.md) |
+| 9 | **鼠标精修控制** | Canvas + 设置 | 6 | zoom/fixed 鼠标降速，虚拟游标隔离零污染基础交互 | [→ 09](portfolio/09-precision-mode.md) |
+| 10 | **局部边缘吸附（已退役）** | 历史记录 | — | 产品验证后确认不好用，运行时代码与入口已删除 | [→ 历史说明](portfolio/10-local-edge-snap.md) |
 | 11 | **筛选系统** | ~1,400 行 / 5 文件 | — | 切图保留筛选态 + JSON 筛选引擎 + SQLite 索引缓存（5000 图加速）+ 跨文件导航；State/Engine/UI 三层 | [→ 11](portfolio/11-filter-system.md) |
 | 12 | **缩放中心点修复** | ~70 行核心 + 2 篇分析文档 | — | 修 upstream 竖图缩放漂移 bug：width 检测失效 + y 轴误用比率；用 transform_pos 逆变换重写 | [→ 12](portfolio/12-zoom-center-fix.md) |
 | 13 | **数字快捷键分页** | 311 行分页管理器 | — | 扩展 upstream 10 键限制：F1 切页，10×N 槽位，单页完全向后兼容 | [→ 13](portfolio/13-digit-shortcut-pagination.md) |
 | 14 | **数字快捷键改名** | 400 行管理器 + 对话框 | — | 选中 shape 按数字键批量重命名（upstream 无此能力）；独立配置 + 完整副作用链 | [→ 14](portfolio/14-digit-rename.md) |
 | 15 | **视口状态保持** | 359 行控制器 | — | 切图保留缩放级别+视图中心；图像坐标持久化跨尺寸存活，复用模块 12 坐标模型 | [→ 15](portfolio/15-viewport-persistence.md) |
+| 16 | **数据集索引生命周期工程化** | 核心逻辑 ~1300 行 / 4 文件 | — | 6 态状态机 + staging 库原子重建 + 标签发现移除模态对话框并加缓存优先短路（原 worker 未重写）；JSON 唯一真相源，索引失败不拖垮保存 | [→ 16](portfolio/16-dataset-index-lifecycle.md) |
 
 ---
 
@@ -187,33 +188,22 @@ ljh725/X-AnyLabeling  ← 本仓库（93 commits / ~1.5 万行扩展代码）
 
 ### 9. 精修控制模式
 
-**痛点**：400% 放大下鼠标手抖导致 1-3 像素过冲/欠冲；键盘整体平移无法单独移动一条边。
+**痛点**：高倍率观察下，鼠标手抖容易造成边拖动过冲或欠冲。
 
-**方案**：鼠标精修降速（`zoom`/`fixed`）+ Ctrl 临时精修 + Tab 键盘选边 + 方向键 1px/Shift+5px 单边微调。精修主流程。
+**方案**：鼠标精修降速（`zoom`/`fixed`）+ Ctrl 临时精修 + 可锁定精修状态。
 
 **技术亮点**：
 - 🎯 **虚拟游标隔离**：独立累加器缩放 delta，**绝不改 `prev_point`**——hit-test/hover/transform 零污染，回归风险为零
 - 📈 **zoom 模式消僵硬**：`min(scale, max_factor)` + `max(1.0, ...)` 双向 clamp，400% 最多降到 1/2 而非 1/4
-- ⌨️ **Tab 单边操作**：选边后方向键只动那一条边（反翻转 clamp），`merge_window=0.5` 让连按合并成一次 undo
 - ⚡ **Ctrl 单事件级**：未锁定时每事件现查修饰键，按住降速、松开恢复，零状态切换
 
-📊 数据：~250 行 canvas + 设置 · 14 测试用例 · [详细文档](portfolio/09-precision-mode.md)
+📊 数据：Canvas + 设置 · 6 个测试用例 · [详细文档](portfolio/09-precision-mode.md)
 
 ---
 
-### 10. 局部边缘吸附（实验性）
+### 10. 局部边缘吸附（已退役）
 
-**痛点**（与反思）：设想「精修到附近 → 算法按图像边缘补 1-3 像素」，但实现后发现**图像强边缘 ≠ 标注规则正确边界**（人物边界模糊、衣服纹理干扰、规范要求留白）。
-
-**方案**：一次性命令（Ctrl+Alt+E），对 Tab 选中的边在 ±4 像素内用 Sobel 梯度 + 双重阈值（自适应 0.6 + 绝对下限 10）搜索吸附。**当前定位实验性，非主流程**。
-
-**技术亮点**：
-- 🧪 **纯 Python 评分模块**：`edge_snap.py`（212 行）零 PyQt，11 测试无 Qt 跑通
-- ⚖️ **双重阈值**：`k×local_max`（自适应）+ `abs_floor`（绝对下限）同时满足才吸附，跨对比度稳定
-- 🔒 **validate-before-apply**：候选会被 clamp 时视为失败而非部分应用，避免误导
-- 📝 **诚实降级**：主动识别「方向偏差」并叫停，如实记录为实验命令——工程价值在于把「该不该用这个方法」显式化
-
-📊 数据：212 行纯 Python + canvas 桥接 · 11 测试用例 · [详细文档](portfolio/10-local-edge-snap.md)
+产品验证确认该能力不好用，且“图像强边缘”并不等于“标注规则上的正确边界”。2026-07-20 已删除运行时代码、菜单入口、快捷键、配置和测试；原文档保留为历史决策记录。
 
 ---
 
@@ -295,6 +285,24 @@ ljh725/X-AnyLabeling  ← 本仓库（93 commits / ~1.5 万行扩展代码）
 - 🎚️ **三缩放模式全保留**：FIT_WINDOW / FIT_WIDTH / MANUAL_ZOOM 连同数值一起还原
 
 📊 数据：359 行控制器 · [详细文档](portfolio/15-viewport-persistence.md)
+
+---
+
+### 16. 数据集索引生命周期工程化
+
+**痛点**：模块 11 引入的 SQLite 派生索引解决了筛选加速，但初版有三条工程裂缝——upstream 的应用级模态 `QProgressDialog`（"Loading Labels"）在 3.8 万张图+远程存储下锁死界面；Rebuild 在原库上动刀导致重建期间筛选停服；标签保存路径与索引同步耦合，索引写失败会让用户误以为"保存失败"而重画丢数据。
+
+**方案**：三大支柱——6 态状态机（`missing / cached_unverified / syncing / ready / stale / failed`）+ 持久化身份校验管理缓存归属；staging 临时库 + `integrity_check` + `os.replace` 实现原子化重建；标签发现路径移除模态对话框、在原 `LabelCheckWorker` 链路前加缓存优先短路，保存语义解耦（JSON 原子写为准，索引同步失败只置 stale）。
+
+**技术亮点**：
+- 🔄 **6 态状态机 + 身份指纹**：缓存内 `dataset_meta` 持久化 `dataset_root / output_dir / build_state / completed_at / file_count / shape_count`，`is_compatible()` 拒绝跨数据集误用
+- 🔬 **staging 库原子重建**：临时库（`delete` journal）全量重建 → `integrity_check` → `os.replace`；旧库 WAL 重建期持续可读，取消走 rollback，零停服
+- ⚡ **标签发现路径短路**：移除模态 `QProgressDialog`，在原 `LabelCheckWorker` 链路前加缓存优先短路——`_apply_cached_dataset_statuses` 直接读 SQLite（零远程 IO）按 500 条/批异步派发；worker 本身未重写，降级为无缓存回退
+- 🛡️ **保存解耦契约**：`label_file.save` 原子写（`tempfile.mkstemp`+`fsync`+`os.replace`）；JSON 永远以原子落盘为准，索引同步失败只置 stale 等待重试
+- ♻️ **并发读取 + 单线程写**：4 worker ThreadPool 并行解析 JSON、64 条/批，主线程单线程批量 INSERT 避免写锁竞争
+- 🧱 **派生缓存哲学**：schema 版本不匹配自动重建，损坏即丢弃重来——因为 JSON 永远在
+
+📊 数据：核心逻辑 ~1300 行 / 4 文件 · [详细文档](portfolio/16-dataset-index-lifecycle.md)
 
 ---
 

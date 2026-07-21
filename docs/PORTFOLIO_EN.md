@@ -24,7 +24,7 @@ ljh725/X-AnyLabeling  ← this repo (93 commits / ~15k LOC of extensions)
 | New code | **~18,500 lines** (features + tests) |
 | Test cases | **300+** (feature-related) |
 | Design docs | **116** (in `docs/`) |
-| Feature modules | **15** |
+| Feature modules | **16** |
 
 ---
 
@@ -40,13 +40,14 @@ ljh725/X-AnyLabeling  ← this repo (93 commits / ~15k LOC of extensions)
 | 6 | **Data Toolkit** | 40 scripts (3,000+ core) | — | YOLO-Pose 3-step pipeline + ViTPose pre-label diff + QC CLI, full pose-data-production chain | [→ 06](portfolio/06-data-toolkit.md) |
 | 7 | **Auto Person Instance** | ~60 core + settings/integration | 9 | Auto-mint group_id on manual person-rectangle draw; priority chain `bind_draw > this > auto_use_last_gid`; static Non-Goal test | [→ 07](portfolio/07-auto-person-instance.md) |
 | 8 | **Digit Bind Draw** | 414-line manager + integration | 19 | Select source, press digit to draw same-instance box; lazy backfill for undo atomicity; two-stage TOCTOU duplicate guard | [→ 08](portfolio/08-digit-bind-draw.md) |
-| 9 | **Precision Refinement** | ~250 canvas + settings | 14 | zoom/fixed drag slowdown + Tab edge-select + 1px/5px single-edge nudge; virtual-cursor isolation zero-pollutes base interactions | [→ 09](portfolio/09-precision-mode.md) |
-| 10 | **Local Edge Snap (experimental)** | 212 pure Python + canvas bridge | 11 | Sobel-gradient ±4px search + dual threshold, pure-algorithm unit-testable; honestly records "directional bias" and self-deprio'd | [→ 10](portfolio/10-local-edge-snap.md) |
+| 9 | **Mouse Precision Control** | Canvas + settings | 6 | zoom/fixed mouse slowdown with virtual-cursor isolation | [→ 09](portfolio/09-precision-mode.md) |
+| 10 | **Local Edge Snap (retired)** | Historical record | — | Removed after product validation showed poor usability | [→ history](portfolio/10-local-edge-snap.md) |
 | 11 | **Filter System** | ~1,400 / 5 files | — | Filter persistence across image switches + JSON engine + SQLite index cache (5k-image speedup) + cross-file navigation; State/Engine/UI layering | [→ 11](portfolio/11-filter-system.md) |
 | 12 | **Zoom Center Fix** | ~70 core + 2 analysis docs | — | Fixes upstream portrait-image zoom drift (width-detection no-ops + y misuses width ratio); rewritten with transform_pos inverse | [→ 12](portfolio/12-zoom-center-fix.md) |
 | 13 | **Digit Shortcut Pagination** | 311-line page manager | — | Extends upstream's 10-key limit: F1 page-switch, 10×N slots, single-page is fully backward-compatible | [→ 13](portfolio/13-digit-shortcut-pagination.md) |
 | 14 | **Digit Shortcut Rename** | 400-line manager + dialog | — | Select shapes, press digit to batch-relabel (no upstream equivalent); independent config + full side-effect chain | [→ 14](portfolio/14-digit-rename.md) |
 | 15 | **Viewport Persistence** | 359-line controller | — | Keep zoom + view center across image switches; image-coordinate persistence survives size changes, reuses module 12's coordinate model | [→ 15](portfolio/15-viewport-persistence.md) |
+| 16 | **Dataset Index Lifecycle Hardening** | ~1,300 core / 4 files | — | 6-state state machine + staging-DB atomic rebuild + label-discovery modal dialog removed with a cache-first short-circuit (the existing worker is not rewritten); JSON stays the single source of truth, index failures never break a save | [→ 16](portfolio/16-dataset-index-lifecycle.md) |
 
 ---
 
@@ -187,33 +188,22 @@ ljh725/X-AnyLabeling  ← this repo (93 commits / ~15k LOC of extensions)
 
 ### 9. Precision Refinement
 
-**Problem**: At 400% zoom, hand tremor causes 1–3px overshoot/undershoot; keyboard whole-box move can't move a single edge.
+**Problem**: At high zoom, hand tremor can still cause edge-drag overshoot or undershoot.
 
-**Solution**: Mouse precision slowdown (`zoom`/`fixed`) + Ctrl temporary precision + Tab keyboard edge-select + arrow 1px / Shift+5px single-edge nudge. This is the refinement main workflow.
+**Solution**: Mouse precision slowdown (`zoom`/`fixed`) + temporary Ctrl precision + a lockable precision state.
 
 **Highlights**:
 - 🎯 **Virtual-cursor isolation**: a separate accumulator scales delta, **never mutates `prev_point`** — hit-test/hover/transform stay zero-pollution, regression risk is zero
 - 📈 **zoom mode kills stiffness**: `min(scale, max_factor)` + `max(1.0, ...)` dual clamp — at 400% it slows to 1/2 not 1/4
-- ⌨️ **Tab single-edge operation**: selecting an edge makes arrows move only that edge (anti-flip clamp); `merge_window=0.5` collapses rapid presses into one undo
 - ⚡ **Ctrl per-event**: unlocked mode checks the modifier per mouseMove — hold to slow, release to resume, zero state switching
 
-📊 Stats: ~250 canvas lines + settings · 14 test cases · [Details](portfolio/09-precision-mode.md)
+📊 Stats: Canvas + settings · 6 test cases · [Details](portfolio/09-precision-mode.md)
 
 ---
 
-### 10. Local Edge Snap (experimental)
+### 10. Local Edge Snap (retired)
 
-**Problem** (and reflection): Envisioned "refine to nearby → algorithm completes the last 1–3px via image edges", but after building it I found **image strong edge ≠ correct annotation boundary** (fuzzy person contours, clothing-texture interference, spec-required margin).
-
-**Solution**: A one-shot command (Ctrl+Alt+E) that, for the Tab-selected edge, searches ±4 px via Sobel gradient + dual threshold (adaptive 0.6 + absolute floor 10) and snaps if both pass. **Currently experimental, not the main workflow.**
-
-**Highlights**:
-- 🧪 **Pure-Python scorer**: `edge_snap.py` (212 lines) has zero PyQt; 11 tests run without Qt
-- ⚖️ **Dual threshold**: `k×local_max` (adaptive) + `abs_floor` (absolute) must *both* pass — stable across contrast levels
-- 🔒 **Validate-before-apply**: if the candidate would be clamped, it's treated as failure (not partial apply) — no misleading "snap"
-- 📝 **Honest self-deprioritization**: I flagged the "directional bias" and froze it as experimental — the engineering value is making "should this method even be used?" explicit
-
-📊 Stats: 212 pure-Python lines + canvas bridge · 11 test cases · [Details](portfolio/10-local-edge-snap.md)
+Product validation showed poor usability, and a strong image edge is not necessarily the correct annotation boundary. On 2026-07-20 the runtime code, menu action, shortcut, configuration, and tests were removed; the original document remains as a historical decision record.
 
 ---
 
@@ -295,6 +285,24 @@ ljh725/X-AnyLabeling  ← this repo (93 commits / ~15k LOC of extensions)
 - 🎚️ **All three zoom modes preserved**: FIT_WINDOW / FIT_WIDTH / MANUAL_ZOOM restored along with their values
 
 📊 Stats: 359-line controller · [Details](portfolio/15-viewport-persistence.md)
+
+---
+
+### 16. Dataset Index Lifecycle Hardening
+
+**Problem**: The SQLite derived index introduced in module 11 solved filter acceleration, but the initial version had three engineering cracks — upstream's application-modal `QProgressDialog` ("Loading Labels") froze the UI on 38k images + remote storage; Rebuild mutated the live database, so filters were unavailable during rebuild; and the save path was coupled to index sync, so an index write failure made users think "save failed" and re-annotate, losing data.
+
+**Solution**: Three pillars — a 6-state state machine (`missing / cached_unverified / syncing / ready / stale / failed`) with persistent identity checks managing cache ownership; atomic rebuild via a staging DB + `integrity_check` + `os.replace`; and the label-discovery path with its modal dialog removed and a cache-first short-circuit added before the existing `LabelCheckWorker` chain, with save semantics decoupled (atomic JSON write is authoritative; index-sync failure only marks stale).
+
+**Highlights**:
+- 🔄 **6-state machine + identity fingerprint**: the `dataset_meta` table persists `dataset_root / output_dir / build_state / completed_at / file_count / shape_count`; `is_compatible()` rejects cross-dataset misuse
+- 🔬 **Staging-DB atomic rebuild**: a temp DB (`delete` journal) is fully rebuilt → `integrity_check` → `os.replace`; the old WAL DB stays readable during rebuild, cancellation rolls back — zero downtime
+- ⚡ **Label-discovery path short-circuit**: removes the modal `QProgressDialog` and adds a cache-first short-circuit before the existing `LabelCheckWorker` chain — `_apply_cached_dataset_statuses` reads SQLite directly (zero remote IO), dispatching in 500-record batches; the worker itself is unchanged, demoted to a no-cache fallback
+- 🛡️ **Save-decoupling contract**: `label_file.save` writes atomically (`tempfile.mkstemp` + `fsync` + `os.replace`); JSON atomic-on-disk is always authoritative, an index-sync failure only flags stale for retry
+- ♻️ **Concurrent read + single-threaded write**: a 4-worker ThreadPool parses JSON in parallel (64/batch), the main thread bulk-INSERTs alone to avoid write-lock contention
+- 🧱 **Derived-cache philosophy**: schema-version mismatch auto-rebuilds — corruption means discard-and-rebuild, because JSON is always there
+
+📊 Stats: ~1,300 core lines / 4 files · [Details](portfolio/16-dataset-index-lifecycle.md)
 
 ---
 
