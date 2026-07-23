@@ -135,3 +135,13 @@
 - [x] 10.4 Canvas 在发出 `selection_changed` 前更新选择状态，LabelingWidget 改为只读观察者
 - [x] 10.5 使用 Shape paint 渲染参数替代并移除 `Shape.edge_editing`
 - [x] 10.6 运行矩形边相关测试、选择回归、全量测试、py_compile、Black 和目标 Flake8
+
+## 11. 人物实例绑定 P0/P1/P2 修复
+
+- [x] 11.1 创建实施前备份分支 `codex/backup-person-bind-p0p1p2-20260723`
+- [x] 11.2 将绑定消费改为无 pending、可提交、已拒绝三态，拒绝时丢弃临时目标框
+- [x] 11.3 将来源 group_id 回填延迟到所有校验通过后的最终提交点
+- [x] 11.4 在取消绘制、切图、撤销和模式切换时同时清理 pending 与数字目标标签
+- [x] 11.5 统一人物实例成员、矩形类型和 group_id 合法性规则，非法 ID 不崩溃
+- [x] 11.6 修正质检规则：同组允许 head 与 face 共存，仅禁止同组同标签重复
+- [x] 11.7 增加绑定拒绝、原子回填、非法 ID 和质检一致性回归测试

@@ -33,9 +33,6 @@
 
 - `manual-person-instance-binding`: 手动人物标注中的 `person` / `head` / `face` 实例绑定协议、数字快捷绑定绘制和操作提示。
 - `manual-rectangle-refinement`: 手动矩形框精修中的控制增益管理、键盘像素微调和局部边缘吸附。
-
-### Modified Capabilities
-
 - `labeling-digit-shortcuts`: 数字快捷键从单一绘制/重命名入口扩展为互斥的重命名模式与绑定绘制模式。
 
 ## Impact
