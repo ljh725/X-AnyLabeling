@@ -8,6 +8,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QWheelEvent
 
 from anylabeling.services.auto_labeling.types import AutoLabelingMode
+from anylabeling.views.labeling.person_instance import is_valid_group_id
 from anylabeling.views.labeling.utils.colormap import label_colormap
 from anylabeling.views.labeling.utils.theme import get_theme
 from anylabeling.views.labeling.widgets.pose_label import (
@@ -96,6 +97,7 @@ class Canvas(
     shape_moved = QtCore.pyqtSignal()
     shape_rotated = QtCore.pyqtSignal()
     drawing_polygon = QtCore.pyqtSignal(bool)
+    drawing_canceled = QtCore.pyqtSignal()
     vertex_selected = QtCore.pyqtSignal(bool)
     auto_labeling_marks_updated = QtCore.pyqtSignal(list)
     auto_decode_requested = QtCore.pyqtSignal(list)
@@ -3715,6 +3717,7 @@ class Canvas(
                 self.current = None
                 self.set_hiding(False)
                 self.drawing_polygon.emit(False)
+                self.drawing_canceled.emit()
                 self.update()
                 return
         elif self.current.shape_type == "rotation":
@@ -3722,6 +3725,7 @@ class Canvas(
                 self.current = None
                 self.set_hiding(False)
                 self.drawing_polygon.emit(False)
+                self.drawing_canceled.emit()
                 self.update()
                 return
         elif self.current.shape_type == "cuboid":
@@ -4487,6 +4491,7 @@ class Canvas(
                 self.current = None
                 self._brush_drawing = False
                 self.drawing_polygon.emit(False)
+                self.drawing_canceled.emit()
                 self.update()
             elif key == QtCore.Qt.Key.Key_Backspace and self.current:
                 if self.create_mode in ["polygon", "linestrip"]:
@@ -4498,6 +4503,7 @@ class Canvas(
                         self.current = None
                         self._brush_drawing = False
                         self.drawing_polygon.emit(False)
+                        self.drawing_canceled.emit()
                         self.update()
             elif key == QtCore.Qt.Key.Key_Return and self.can_close_shape():
                 self.finalise()
@@ -4612,6 +4618,18 @@ class Canvas(
             self.current = None
         self.drawing_polygon.emit(True)
 
+    def discard_last_shape(self) -> None:
+        """Discard the provisional shape created by a rejected commit."""
+        if self.shapes:
+            self.shapes.pop()
+        if self.shapes_backups:
+            self.shapes_backups.pop()
+        self.current = None
+        self._brush_drawing = False
+        self.set_hiding(False)
+        self.drawing_polygon.emit(False)
+        self.update()
+
     def undo_last_point(self):
         """Undo last point"""
         if not self.current or self.current.is_closed():
@@ -4623,6 +4641,7 @@ class Canvas(
             self.current = None
             self._brush_drawing = False
             self.drawing_polygon.emit(False)
+            self.drawing_canceled.emit()
         self.update()
 
     def load_pixmap(self, pixmap, clear_shapes=True):
@@ -4725,7 +4744,7 @@ class Canvas(
         """Generate new shape's group_id based on current shapes"""
         max_group_id = 0
         for shape in self.shapes:
-            if shape.group_id is not None:
+            if is_valid_group_id(shape.group_id):
                 max_group_id = max(max_group_id, shape.group_id)
         return max_group_id + 1
 

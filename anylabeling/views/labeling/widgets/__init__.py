@@ -22,6 +22,7 @@ _LAZY_IMPORTS: Dict[str, str] = {
     "DigitRenameManager": "digit_rename_manager",
     "DigitRenameShortcutDialog": "digit_rename_manager",
     "DigitBindDrawManager": "digit_bind_draw_manager",
+    "BindCommitStatus": "digit_bind_draw_manager",
     "DigitShortcutDialog": "label_dialog",
     "DigitShortcutPageManager": "digit_shortcut_page_manager",
     "FileDialogPreview": "file_dialog_preview",

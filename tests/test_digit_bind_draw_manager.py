@@ -11,6 +11,7 @@ import types
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from anylabeling.views.labeling.widgets.digit_bind_draw_manager import (  # noqa: E402
+    BindCommitStatus,
     BindPendingContext,
     DigitBindDrawManager,
 )
@@ -113,12 +114,12 @@ def test_7_5_source_without_gid_mints_and_flags_backfill():
     # Lazy: source still has no group_id at handle time.
     assert source.group_id is None
 
-    # consume_pending returns the backfill tuple.
-    label, gid, src, backfill = mgr.consume_pending()
-    assert label == "person"
-    assert gid == 1
-    assert src is source
-    assert backfill is True
+    result = mgr.consume_pending()
+    assert result.status is BindCommitStatus.READY
+    assert result.context.target_label == "person"
+    assert result.context.gid == 1
+    assert result.context.source is source
+    assert result.context.need_backfill is True
 
 
 def test_7_5_consume_then_clear_drops_pending():
@@ -135,7 +136,7 @@ def test_7_5_consume_then_clear_drops_pending():
     mgr.handle_digit(2)
 
     first = mgr.consume_pending()
-    assert first is not None
+    assert first.status is BindCommitStatus.READY
     # Pending still present until cleared (caller writes, then clears).
     assert mgr.pending is not None
     mgr.clear_pending()
@@ -183,9 +184,7 @@ def test_7_6b_duplicate_check_at_consume_toctou():
     lw.canvas.shapes.append(_person(gid=5))
 
     result = mgr.consume_pending()
-    assert (
-        result is None
-    ), "consume must reject when a duplicate appeared mid-draw"
+    assert result.status is BindCommitStatus.REJECTED
     assert mgr.pending is None
 
 
@@ -376,6 +375,7 @@ def test_7_15_clear_pending_leaves_source_untouched():
     mgr.clear_pending()
 
     assert mgr.pending is None
+    assert lw.digit_to_label is None
     assert (
         source.group_id is None
     ), "clear_pending must not backfill the source"
@@ -403,12 +403,13 @@ def test_7_14_consume_returns_backfill_before_commit():
     mgr = DigitBindDrawManager(lw)
     mgr.handle_digit(2)
 
-    label, gid, src, backfill = mgr.consume_pending()
+    result = mgr.consume_pending()
 
-    assert label == "person"
-    assert gid == 1
-    assert src is source
-    assert backfill is True
+    assert result.status is BindCommitStatus.READY
+    assert result.context.target_label == "person"
+    assert result.context.gid == 1
+    assert result.context.source is source
+    assert result.context.need_backfill is True
     # Source still un-modified: caller writes it next to the new shape.
     assert source.group_id is None
 
@@ -443,3 +444,44 @@ def test_is_active_only_in_bind_draw_mode():
     lw_off = _make_label_widget(config_mode="rename")
     assert DigitBindDrawManager(lw_on).is_active() is True
     assert DigitBindDrawManager(lw_off).is_active() is False
+
+
+def test_invalid_source_group_id_is_rejected_without_crash():
+    """A malformed source group ID must not be coerced or crash binding."""
+    source = _person(gid="7")
+    lw = _make_label_widget(
+        shortcuts={1: {"label": "head", "mode": "rectangle"}},
+        selected=[source],
+        shapes=[source],
+    )
+    mgr = DigitBindDrawManager(lw)
+
+    assert mgr.handle_digit(1) is True
+    assert mgr.pending is None
+    assert lw.digit_to_label is None
+
+
+def test_source_group_id_change_rejects_final_commit():
+    """A source changed during drawing must reject the target commit."""
+    source = _person(gid=4)
+    lw = _make_label_widget(
+        shortcuts={1: {"label": "head", "mode": "rectangle"}},
+        selected=[source],
+        shapes=[source],
+    )
+    mgr = DigitBindDrawManager(lw)
+    mgr.handle_digit(1)
+    source.group_id = 5
+
+    result = mgr.consume_pending()
+
+    assert result.status is BindCommitStatus.REJECTED
+    assert mgr.pending is None
+    assert lw.digit_to_label is None
+
+
+def test_consume_without_pending_has_explicit_status():
+    """No pending bind is distinct from a rejected pending bind."""
+    lw = _make_label_widget()
+    result = DigitBindDrawManager(lw).consume_pending()
+    assert result.status is BindCommitStatus.NO_PENDING

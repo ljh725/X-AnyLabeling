@@ -10,16 +10,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
+from anylabeling.views.labeling.person_instance import is_valid_group_id
+
 from .flat_index import FlatIndex, FlattenedRecord
 
 logger = logging.getLogger(__name__)
-
-
-def is_valid_group_id(value: Any) -> bool:
-    """Return whether a group_id is a non-negative integer."""
-    return (
-        isinstance(value, int) and not isinstance(value, bool) and value >= 0
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -346,25 +341,25 @@ class HeadFaceGroupIdRequired(ValidationRule):
 
 
 class HeadFaceGroupIdUniqueness(ValidationRule):
-    """Check that head/face group_id values do not repeat within a file."""
+    """Check that each head/face label occurs once per instance group."""
 
     name = "head_face_group_id_uniqueness"
     severity = "error"
-    description = "head/face 的 group_id 不应重复"
+    description = "同一 group_id 内 head 和 face 各自最多一个"
 
     def check_all(self, index: FlatIndex) -> List[Issue]:
         issues: List[Issue] = []
         for file_path, records in index._by_file.items():
-            by_gid: Dict[int, List[FlattenedRecord]] = {}
+            by_group_label: Dict[Tuple[int, str], List[FlattenedRecord]] = {}
             for rec in records:
                 if rec.label not in {"head", "face"}:
                     continue
                 gid = rec.group_id
                 if not is_valid_group_id(gid):
                     continue
-                by_gid.setdefault(gid, []).append(rec)
+                by_group_label.setdefault((gid, rec.label), []).append(rec)
 
-            for gid, grouped in by_gid.items():
+            for (gid, label), grouped in by_group_label.items():
                 if len(grouped) <= 1:
                     continue
                 for rec in grouped:
@@ -373,8 +368,9 @@ class HeadFaceGroupIdUniqueness(ValidationRule):
                             rule_name=self.name,
                             severity=self.severity,
                             message=(
-                                f"[group_id重复] 文件内 head/face 的 group_id={gid} "
-                                f"出现 {len(grouped)} 次 (shape #{rec.shape_index})"
+                                f"[标签重复] group_id={gid} 内 label='{label}' "
+                                f"出现 {len(grouped)} 次 "
+                                f"(shape #{rec.shape_index})"
                             ),
                             file_path=rec.file_path,
                             shape_index=rec.shape_index,

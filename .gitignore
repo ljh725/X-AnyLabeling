@@ -1,3 +1,6 @@
+# Local agent/IDE working files
+.zcode/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

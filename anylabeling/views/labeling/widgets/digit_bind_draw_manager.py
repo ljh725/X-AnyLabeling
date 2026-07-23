@@ -8,7 +8,7 @@ key, this manager resolves the target label/shape_type from the existing
 draw mode with a pending context. On draw completion, ``consume_pending``
 is called by ``LabelWidget.new_shape`` to write the pending label and
 group_id onto the new shape, and (if the source had no group_id) backfill
-the source within the same undo transaction.
+the source at the same final commit point.
 
 This manager mirrors ``DigitRenameManager`` (plain object, borrows
 ``label_widget.tr`` for i18n). The two are mutually exclusive digit
@@ -16,13 +16,14 @@ modes selected by the ``digit_shortcut_mode`` config key.
 """
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from enum import Enum
+from typing import Optional, Tuple
 
-# Labels that participate in person-instance binding.
-BIND_LABELS = ("person", "head", "face")
-
-# Only rectangles are accepted as bind targets/sources in v0.
-BIND_SHAPE_TYPE = "rectangle"
+from ..person_instance import (
+    INSTANCE_MEMBER_LABELS,
+    INSTANCE_SHAPE_TYPE,
+    is_valid_group_id,
+)
 
 
 @dataclass
@@ -46,6 +47,27 @@ class BindPendingContext:
     target_shape_type: str
     gid: int
     need_backfill: bool
+
+
+class BindCommitStatus(Enum):
+    """State returned when a completed drawing prepares bind commit."""
+
+    NO_PENDING = "no_pending"
+    READY = "ready"
+    REJECTED = "rejected"
+
+
+@dataclass(frozen=True)
+class BindCommitResult:
+    """Result of the final bind validation.
+
+    Attributes:
+        status: Whether no bind exists, the bind is ready, or it was rejected.
+        context: Validated pending context when ``status`` is ``READY``.
+    """
+
+    status: BindCommitStatus
+    context: Optional[BindPendingContext] = None
 
 
 class DigitBindDrawManager:
@@ -131,7 +153,11 @@ class DigitBindDrawManager:
             return True
 
         # Resolve group_id (inherit or mint; record need_backfill).
-        gid, need_backfill = self._resolve_gid(source)
+        resolved_gid = self._resolve_gid(source)
+        if resolved_gid is None:
+            self._hint_invalid_source_gid(getattr(source, "group_id", None))
+            return True
+        gid, need_backfill = resolved_gid
 
         # Pre-check duplicate target label within the group.
         if self._group_has_label(gid, target_label):
@@ -161,42 +187,57 @@ class DigitBindDrawManager:
     # ------------------------------------------------------------------
     def consume_pending(
         self,
-    ) -> Optional[Tuple[str, int, object, bool]]:
-        """Return the pending (label, gid, source, need_backfill) tuple,
-        after a second duplicate/validity check.
+    ) -> BindCommitResult:
+        """Validate and prepare the pending bind for atomic commit.
 
         Returns:
-            ``(label, gid, source, need_backfill)`` if a pending bind
-            exists and still passes validation; otherwise clears the
-            pending context and returns ``None``.
+            A three-state result distinguishing no pending bind from a
+            rejected bind and a bind that is ready to commit.
         """
         if self._pending is None:
-            return None
+            return BindCommitResult(BindCommitStatus.NO_PENDING)
 
         ctx = self._pending
 
         # Re-validate target shape_type (defensive: config may change).
         if not self._is_valid_target(ctx.target_label, ctx.target_shape_type):
-            self._pending = None
-            return None
+            return self._reject_pending()
+
+        if not is_valid_group_id(ctx.gid):
+            return self._reject_pending()
+
+        # Source may have been deleted or changed mid-draw.
+        if ctx.source not in self._label_widget.canvas.shapes:
+            return self._reject_pending()
+        if (
+            getattr(ctx.source, "label", None) not in INSTANCE_MEMBER_LABELS
+            or getattr(ctx.source, "shape_type", None) != INSTANCE_SHAPE_TYPE
+        ):
+            return self._reject_pending()
+
+        current_gid = getattr(ctx.source, "group_id", None)
+        if ctx.need_backfill:
+            if current_gid is not None:
+                self._hint_source_gid_changed()
+                return self._reject_pending()
+        elif not is_valid_group_id(current_gid) or current_gid != ctx.gid:
+            self._hint_source_gid_changed()
+            return self._reject_pending()
 
         # Second duplicate check (TOCTOU guard).
         if self._group_has_label(ctx.gid, ctx.target_label):
             self._hint_duplicate(ctx.gid, ctx.target_label)
-            self._pending = None
-            return None
+            return self._reject_pending()
 
-        # Source may have been deleted mid-draw; drop if gone.
-        if ctx.source not in self._label_widget.canvas.shapes:
-            self._pending = None
-            return None
-
-        return (
-            ctx.target_label,
-            ctx.gid,
-            ctx.source,
-            ctx.need_backfill,
+        return BindCommitResult(
+            status=BindCommitStatus.READY,
+            context=ctx,
         )
+
+    def _reject_pending(self) -> BindCommitResult:
+        """Clear transient state and return a rejected commit result."""
+        self.clear_pending()
+        return BindCommitResult(BindCommitStatus.REJECTED)
 
     def clear_pending(self) -> None:
         """Drop the pending context without committing.
@@ -205,6 +246,7 @@ class DigitBindDrawManager:
         source shape is left untouched (lazy backfill guarantee).
         """
         self._pending = None
+        self._label_widget.digit_to_label = None
 
     # ------------------------------------------------------------------
     # Resolution helpers
@@ -241,7 +283,10 @@ class DigitBindDrawManager:
     @staticmethod
     def _is_valid_target(label: str, shape_type: str) -> bool:
         """Return True only for rectangle + person/head/face targets."""
-        return shape_type == BIND_SHAPE_TYPE and label in BIND_LABELS
+        return (
+            shape_type == INSTANCE_SHAPE_TYPE
+            and label in INSTANCE_MEMBER_LABELS
+        )
 
     def _validate_source(self) -> Optional[object]:
         """Return the single selected person/head/face source, or None.
@@ -263,15 +308,15 @@ class DigitBindDrawManager:
             return None
 
         source = selected[0]
-        if getattr(source, "label", None) not in BIND_LABELS:
+        if getattr(source, "label", None) not in INSTANCE_MEMBER_LABELS:
             self._hint_bad_source_label(getattr(source, "label", None))
             return None
-        if getattr(source, "shape_type", None) != BIND_SHAPE_TYPE:
+        if getattr(source, "shape_type", None) != INSTANCE_SHAPE_TYPE:
             self._hint_bad_source_type(getattr(source, "shape_type", None))
             return None
         return source
 
-    def _resolve_gid(self, source: object) -> Tuple[int, bool]:
+    def _resolve_gid(self, source: object) -> Optional[Tuple[int, bool]]:
         """Resolve the group_id for the bind.
 
         If the source already has a group_id, inherit it. Otherwise mint
@@ -282,8 +327,12 @@ class DigitBindDrawManager:
         """
         existing = getattr(source, "group_id", None)
         if existing is not None:
-            return int(existing), False
+            if not is_valid_group_id(existing):
+                return None
+            return existing, False
         gid = self._label_widget.canvas.gen_new_group_id()
+        if not is_valid_group_id(gid):
+            return None
         return gid, True
 
     def _group_has_label(self, gid: int, label: str) -> bool:
@@ -312,7 +361,7 @@ class DigitBindDrawManager:
         return (
             not selected
             and target_label == "person"
-            and target_shape_type == BIND_SHAPE_TYPE
+            and target_shape_type == INSTANCE_SHAPE_TYPE
             and bool(lw._config.get("auto_person_instance"))
         )
 
@@ -362,6 +411,16 @@ class DigitBindDrawManager:
 
     def _hint_bad_source_type(self, shape_type: object) -> None:
         self._status("来源对象类型 {st} 不是 rectangle".format(st=shape_type))
+
+    def _hint_invalid_source_gid(self, group_id: object) -> None:
+        self._status(
+            "来源对象的 group_id={gid} 不合法，请先修正后再绑定".format(
+                gid=group_id
+            )
+        )
+
+    def _hint_source_gid_changed(self) -> None:
+        self._status("绘制期间来源对象的 group_id 已变化，已取消本次绑定")
 
     def _hint_duplicate(self, gid: int, label: str) -> None:
         self._status(

@@ -134,8 +134,8 @@ _RULE_REGISTRY: List[Dict[str, Any]] = [
     },
     {
         "name": "head_face_group_id_uniqueness",
-        "display": "Head/Face group_id 唯一性",
-        "description": "head/face 的 group_id 不应重复",
+        "display": "Head/Face 组内标签唯一性",
+        "description": "同一 group_id 内 head 和 face 各自最多一个",
         "severity": "error",
         "default_on": True,
     },

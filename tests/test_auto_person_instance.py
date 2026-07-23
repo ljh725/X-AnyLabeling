@@ -45,9 +45,7 @@ def _make_widget(canvas, config, last_label="", last_gid=None):
     w._apply_auto_person_instance = (
         lambda text: LabelingWidget._apply_auto_person_instance(w, text)
     )
-    w._consume_digit_bind = (
-        lambda last_gid: LabelingWidget._consume_digit_bind(w, last_gid)
-    )
+    w._consume_digit_bind = lambda: LabelingWidget._consume_digit_bind(w)
     # unique_label_list with no selection -> text stays None, then the
     # auto_use_last_label / digit branches decide text.
     w.unique_label_list = types.SimpleNamespace(selectedItems=lambda: [])
@@ -230,7 +228,22 @@ def test_bind_draw_group_id_wins_over_auto_person_instance(canvas):
             self.cleared = False
 
         def consume_pending(self):
-            return ("person", 7, source, False)
+            from anylabeling.views.labeling.widgets.digit_bind_draw_manager import (
+                BindCommitResult,
+                BindCommitStatus,
+                BindPendingContext,
+            )
+
+            return BindCommitResult(
+                BindCommitStatus.READY,
+                BindPendingContext(
+                    source=source,
+                    target_label="person",
+                    target_shape_type="rectangle",
+                    gid=7,
+                    need_backfill=False,
+                ),
+            )
 
         def clear_pending(self):
             self.cleared = True
@@ -252,6 +265,85 @@ def test_bind_draw_group_id_wins_over_auto_person_instance(canvas):
 
     assert captured == {"text": "person", "gid": 7}
     assert bind_manager.cleared is True
+
+
+def test_rejected_bind_does_not_fall_back_to_last_group_id(canvas):
+    """A rejected bind removes its target instead of ordinary fallback."""
+    from anylabeling.views.labeling.label_widget import LabelingWidget
+    from anylabeling.views.labeling.widgets.digit_bind_draw_manager import (
+        BindCommitResult,
+        BindCommitStatus,
+    )
+
+    canvas.shapes = [_new_rect(label="head")]
+    captured = {"discarded": False, "labeled": False}
+    canvas.discard_last_shape = lambda: captured.update(discarded=True)
+    canvas.set_last_label = lambda *args: captured.update(labeled=True)
+
+    class RejectedBindManager:
+        """Return a final bind rejection."""
+
+        def consume_pending(self):
+            """Return rejected state."""
+            return BindCommitResult(BindCommitStatus.REJECTED)
+
+    w = _make_widget(
+        canvas,
+        _base_config(auto_use_last_gid=True),
+        last_gid=9,
+    )
+    w.digit_to_label = "head"
+    w.digit_bind_draw_manager = RejectedBindManager()
+
+    LabelingWidget.new_shape(w)
+
+    assert captured == {"discarded": True, "labeled": False}
+
+
+def test_invalid_bound_label_does_not_backfill_source(canvas):
+    """Label validation must pass before the source group ID is mutated."""
+    from anylabeling.views.labeling.label_widget import LabelingWidget
+    from anylabeling.views.labeling.widgets.digit_bind_draw_manager import (
+        BindCommitResult,
+        BindCommitStatus,
+        BindPendingContext,
+    )
+
+    source = MockShape(label="head", shape_type="rectangle", group_id=None)
+    canvas.shapes = [source, _new_rect(label="person")]
+    captured = {"discarded": False, "labeled": False}
+    canvas.discard_last_shape = lambda: captured.update(discarded=True)
+    canvas.set_last_label = lambda *args: captured.update(labeled=True)
+
+    class ReadyBindManager:
+        """Return a pending bind that requires source backfill."""
+
+        def consume_pending(self):
+            """Return a ready commit context."""
+            return BindCommitResult(
+                BindCommitStatus.READY,
+                BindPendingContext(
+                    source=source,
+                    target_label="person",
+                    target_shape_type="rectangle",
+                    gid=3,
+                    need_backfill=True,
+                ),
+            )
+
+        def clear_pending(self):
+            """Clear the fake pending context."""
+
+    w = _make_widget(canvas, _base_config())
+    w.digit_to_label = "person"
+    w.digit_bind_draw_manager = ReadyBindManager()
+    w.validate_label = lambda text: False
+    w.error_message = lambda *args: None
+
+    LabelingWidget.new_shape(w)
+
+    assert source.group_id is None
+    assert captured == {"discarded": True, "labeled": False}
 
 
 def test_7_1b_auto_person_instance_off_keeps_group_id_none(canvas):

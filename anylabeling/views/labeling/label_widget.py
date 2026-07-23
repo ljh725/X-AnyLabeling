@@ -56,6 +56,7 @@ from .utils.style import (
 from ...config import get_config, save_config
 from .label_file import LabelFile, LabelFileError
 from .logger import logger
+from .person_instance import INSTANCE_SHAPE_TYPE, POSE_SUBJECT_LABEL
 from .filter_state import FilterState
 from .filter_engine import ShapeFilterEngine
 from .filter_navigation_engine import FilterNavigationEngine
@@ -105,6 +106,7 @@ from .widgets import (
     DigitRenameManager,
     DigitRenameShortcutDialog,
     DigitBindDrawManager,
+    BindCommitStatus,
     DigitShortcutDialog,
     DigitShortcutPageManager,
     LabelModifyDialog,
@@ -574,6 +576,9 @@ class LabelingWidget(LabelDialog):
         )
         self.canvas.scroll_request.connect(self.scroll_request)
         self.canvas.new_shape.connect(self.new_shape)
+        self.canvas.drawing_canceled.connect(
+            self.digit_bind_draw_manager.clear_pending
+        )
         self.canvas.show_shape.connect(self.show_shape)
         self.canvas.shape_moved.connect(self.set_dirty)
         self.canvas.shape_rotated.connect(self.set_dirty)
@@ -4076,6 +4081,9 @@ class LabelingWidget(LabelDialog):
     def toggle_draw_mode(
         self, edit=True, create_mode="rectangle", disable_auto_labeling=True
     ):
+        if edit and hasattr(self, "digit_bind_draw_manager"):
+            self.digit_bind_draw_manager.clear_pending()
+
         # Exit keypoint fill mode if switching away from point mode
         if (
             hasattr(self, "keypoint_fill_mode")
@@ -6775,22 +6783,9 @@ class LabelingWidget(LabelDialog):
         self.canvas.load_shapes([item.shape() for item in self.label_list])
 
     # Callback functions:
-    def _consume_digit_bind(self, last_gid):
-        """Feature 2: consume a bind_draw pending context if present.
-
-        Returns ``(text, group_id)`` when a pending bind exists and
-        passes validation, after backfilling the source shape's
-        group_id (D2: before set_last_label, same undo snapshot).
-        Returns ``None`` when no pending bind is active.
-        """
-        pending = self.digit_bind_draw_manager.consume_pending()
-        if pending is None:
-            return None
-        p_label, p_gid, p_source, p_backfill = pending
-        if p_backfill and p_source in self.canvas.shapes:
-            p_source.group_id = p_gid
-        self.digit_bind_draw_manager.clear_pending()
-        return p_label, p_gid
+    def _consume_digit_bind(self):
+        """Validate a pending bind without mutating annotation data."""
+        return self.digit_bind_draw_manager.consume_pending()
 
     def _apply_auto_person_instance(self, text):
         """Feature 1: mint a fresh group_id for a manually drawn person
@@ -6801,9 +6796,9 @@ class LabelingWidget(LabelDialog):
         (Decisions 2 and 3). Does NOT fire on the auto-labeling path.
         """
         if (
-            text == "person"
+            text == POSE_SUBJECT_LABEL
             and getattr(self.canvas.shapes[-1], "shape_type", None)
-            == "rectangle"
+            == INSTANCE_SHAPE_TYPE
             and self._config.get("auto_person_instance")
         ):
             new_gid = self.canvas.gen_new_group_id()
@@ -6884,9 +6879,14 @@ class LabelingWidget(LabelDialog):
                 # Consumed BEFORE last_gid is applied so the
                 # inherited/minted gid wins; source backfill happens
                 # before set_last_label (D2: same undo snapshot).
-                bound = self._consume_digit_bind(last_gid)
-                if bound is not None:
-                    text, group_id = bound
+                bind_result = self._consume_digit_bind()
+                if bind_result.status is BindCommitStatus.REJECTED:
+                    self.canvas.discard_last_shape()
+                    return
+                if bind_result.status is BindCommitStatus.READY:
+                    bound = bind_result.context
+                    text = bound.target_label
+                    group_id = bound.gid
                 elif last_gid is not None:
                     group_id = last_gid
             elif self._config["auto_use_last_label"] and last_label:
@@ -6932,6 +6932,9 @@ class LabelingWidget(LabelDialog):
                 ),
             )
             text = ""
+            if bound is not None:
+                self.digit_bind_draw_manager.clear_pending()
+                self.canvas.discard_last_shape()
             return
 
         if self.attributes and text:
@@ -6939,7 +6942,11 @@ class LabelingWidget(LabelDialog):
 
         if text:
             self.label_list.clearSelection()
+            if bound is not None and bound.need_backfill:
+                bound.source.group_id = bound.gid
             shape = self.canvas.set_last_label(text, flags, group_id)
+            if bound is not None:
+                self.digit_bind_draw_manager.clear_pending()
             shape.group_id = group_id
             shape.description = description
             if text not in [AutoLabelingMode.ADD, AutoLabelingMode.REMOVE]:

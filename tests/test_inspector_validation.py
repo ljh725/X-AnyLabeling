@@ -375,6 +375,53 @@ class TestHeadFaceGroupIdUniqueness:
             len(issues) == 0
         ), "Invalid group_id records should be filtered out"
 
+    def test_head_and_face_may_share_one_group_id(self):
+        """One head and one face are valid members of the same instance."""
+        rule = HeadFaceGroupIdUniqueness()
+        head = FlattenedRecord(
+            file_path="/file1.json",
+            image_path="img1.jpg",
+            shape_index=0,
+            label="head",
+            shape_type="rectangle",
+            group_id=1,
+        )
+        face = FlattenedRecord(
+            file_path="/file1.json",
+            image_path="img1.jpg",
+            shape_index=1,
+            label="face",
+            shape_type="rectangle",
+            group_id=1,
+        )
+        index = FlatIndex()
+        index._records = [head, face]
+        index._by_file = {"/file1.json": [head, face]}
+
+        assert rule.check_all(index) == []
+
+    def test_duplicate_head_in_one_group_is_reported(self):
+        """Two heads in one instance remain a validation error."""
+        rule = HeadFaceGroupIdUniqueness()
+        records = [
+            FlattenedRecord(
+                file_path="/file1.json",
+                image_path="img1.jpg",
+                shape_index=index,
+                label="head",
+                shape_type="rectangle",
+                group_id=1,
+            )
+            for index in range(2)
+        ]
+        flat_index = FlatIndex()
+        flat_index._records = records
+        flat_index._by_file = {"/file1.json": records}
+
+        issues = rule.check_all(flat_index)
+
+        assert len(issues) == 2
+
 
 class TestLabelShapeTypeBinding:
     """Test LabelShapeTypeBinding rule."""
