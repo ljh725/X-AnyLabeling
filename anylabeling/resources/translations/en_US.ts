@@ -2671,6 +2671,26 @@ Press Enter to search.</translation>
       <translation>Show Labels</translation>
     </message>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="0" />
+      <source>Show Rectangle Pixels</source>
+      <translation>Show Rectangle Pixels</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="0" />
+      <source>Show rectangle pixel size</source>
+      <translation>Show rectangle pixel size</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
+      <source>W %.1f px  H %.1f px</source>
+      <translation>W %.1f px  H %.1f px</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
+      <source>Max edge %.1f px &lt; %g px</source>
+      <translation>Max edge %.1f px &lt; %g px</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="1203" />
       <source>Show label inside shapes</source>
       <translation>Show label inside shapes</translation>

@@ -109,6 +109,13 @@ person_expand_for_keypoints:
   ratio: 0.05
   min_pixels: 8.0
 
+# person 小目标阈值（画布实时尺寸浮层 + 预留质检复用）
+# 当 person 矩形 max(W,H) < min_edge_px 时，浮层给出尺寸不足提示。
+# 此处为权威阈值源；label_widget 启动时读出并注入 canvas。
+# 36.0 px 属于合格边界，不提示（size < min_edge_px，严格小于）。
+person_small_target:
+  min_edge_px: 36.0
+
 rules:
   # ---- L1 硬规则（JSON 字段 / 基础合法性）----
   - rule_id: L1-01

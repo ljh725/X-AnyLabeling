@@ -371,3 +371,87 @@ def threshold_to_snapshot(
     if rule.error_requires:
         snap["error_requires"] = list(rule.error_requires)
     return snap
+
+
+# ---------------------------------------------------------------------------
+# Narrow readers (do NOT depend on the full L1/L2 rules validation)
+# ---------------------------------------------------------------------------
+#
+# ``load_threshold_profile`` validates the entire profile (all rules,
+# directions, severities, error_requires...). UI consumers that only need one
+# scalar (e.g. the canvas overlay threshold) must not be forced through that
+# full validation: an unrelated QA rule misconfiguration should never make the
+# UI silently fall back. The readers below load the YAML and validate ONLY the
+# requested block.
+
+DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX = 36.0
+
+
+def read_person_small_target_threshold(
+    path: Optional[str] = None,
+) -> float:
+    """Read ONLY the ``person_small_target.min_edge_px`` scalar.
+
+    This loads the YAML directly and validates just the requested block. It
+    deliberately avoids :func:`load_threshold_profile`, so an unrelated QA
+    rule misconfiguration cannot force a UI fallback (design rev.1 §10).
+
+    Fallback to ``36.0`` happens only when:
+    - the file cannot be read or parsed;
+    - the ``person_small_target`` block is missing;
+    - ``min_edge_px`` is missing, non-numeric, non-finite, or ``<= 0``.
+
+    Args:
+        path: Optional explicit YAML path. Defaults to the bundled profile.
+
+    Returns:
+        The threshold in image pixels (default ``36.0`` on any fallback).
+    """
+    yaml_path = path or DEFAULT_PROFILE_PATH
+    try:
+        with open(yaml_path, "r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh)
+    except (OSError, yaml.YAMLError) as exc:
+        logger.warning(
+            "Cannot read person_small_target from %s (%s); using default.",
+            yaml_path,
+            exc,
+        )
+        return DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
+
+    if not isinstance(data, dict):
+        logger.warning(
+            "person_small_target: profile root is not a mapping (%s); "
+            "using default.",
+            type(data).__name__,
+        )
+        return DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
+
+    block = data.get("person_small_target")
+    if not isinstance(block, dict):
+        logger.warning(
+            "person_small_target block missing/invalid; using default."
+        )
+        return DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
+
+    import math
+
+    raw = block.get("min_edge_px", DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX)
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        logger.warning(
+            "person_small_target.min_edge_px is not numeric (%r); "
+            "using default.",
+            raw,
+        )
+        return DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
+
+    if not math.isfinite(value) or value <= 0:
+        logger.warning(
+            "person_small_target.min_edge_px invalid (%r); using default.",
+            raw,
+        )
+        return DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
+
+    return value

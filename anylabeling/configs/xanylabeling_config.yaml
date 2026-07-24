@@ -20,6 +20,9 @@ show_groups: false
 show_masks: true
 show_texts: true
 show_labels: true
+# Live rectangle pixel-size overlay toggle (design rev.1 §5).
+# Mirrors show_labels: View menu checkable action -> set_canvas_params.
+show_rectangle_pixels: true
 label_display_mode: label
 show_scores: true
 show_degrees: false

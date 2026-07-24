@@ -2680,6 +2680,26 @@ Press Enter to search.</source>
       <translation>레이블만 표시</translation>
     </message>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="0" />
+      <source>Show Rectangle Pixels</source>
+      <translation>사각형 픽셀 표시</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="0" />
+      <source>Show rectangle pixel size</source>
+      <translation>사각형 픽셀 크기 표시</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
+      <source>W %.1f px  H %.1f px</source>
+      <translation>W %.1f px  H %.1f px</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
+      <source>Max edge %.1f px &lt; %g px</source>
+      <translation>최대 변 %.1f px &lt; %g px</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="1203" />
       <source>Show label inside shapes</source>
       <translation>도형 내부에 레이블 표시</translation>

@@ -2679,6 +2679,26 @@ Press Enter to search.</source>
       <translation>显示标签</translation>
     </message>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="0" />
+      <source>Show Rectangle Pixels</source>
+      <translation>显示矩形框像素</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="0" />
+      <source>Show rectangle pixel size</source>
+      <translation>显示矩形像素尺寸</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
+      <source>W %.1f px  H %.1f px</source>
+      <translation>W %.1f px  H %.1f px</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
+      <source>Max edge %.1f px &lt; %g px</source>
+      <translation>最大边 %.1f px &lt; %g px</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="1203" />
       <source>Show label inside shapes</source>
       <translation>显示标签</translation>

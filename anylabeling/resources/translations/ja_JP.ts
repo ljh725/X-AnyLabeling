@@ -2679,6 +2679,26 @@ Enterキーで検索を実行。</translation>
       <translation>ラベルを表示</translation>
     </message>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="0" />
+      <source>Show Rectangle Pixels</source>
+      <translation>矩形ピクセルを表示</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="0" />
+      <source>Show rectangle pixel size</source>
+      <translation>矩形のピクセルサイズを表示</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
+      <source>W %.1f px  H %.1f px</source>
+      <translation>W %.1f px  H %.1f px</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
+      <source>Max edge %.1f px &lt; %g px</source>
+      <translation>最大辺 %.1f px &lt; %g px</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="1203" />
       <source>Show label inside shapes</source>
       <translation>図形内にラベルを表示</translation>

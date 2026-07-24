@@ -25,6 +25,158 @@ from ..shape import Shape
 
 PERF_LOG_ENABLED = os.getenv("XANYLABELING_PERF_LOG") == "1"
 
+# Person small-target fallback threshold (image-pixel space).
+# The authoritative value lives in
+# ``configs/quality/l1_l2_threshold_profile_v0.yaml`` under
+# ``person_small_target.min_edge_px``; this constant is only a fallback used
+# when the profile cannot be loaded, so that canvas stays unit-testable
+# without a YAML dependency. See
+# ``docs/小目标Person矩形实时尺寸显示功能设计.md``.
+DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX = 36.0
+
+
+# ---------------------------------------------------------------------------
+# Size-overlay pure helpers (no QPainter dependency -> unit-testable)
+# ---------------------------------------------------------------------------
+# All size/threshold/anchor logic lives here so the drawing method only has
+# to translate results into QPainter calls. Geometry is in image-pixel space
+# (never screen pixels, never scaled by Shape.scale), matching the design
+# contract in ``docs/小目标Person矩形实时尺寸显示功能设计.md`` section 2.
+
+
+def normalize_two_points(p0, p1):
+    """Return ``(x_min, y_min, x_max, y_max)`` for two corner points.
+
+    Works for any drag direction (forward / reverse) and float coordinates,
+    matching the rectangle-creation geometry in ``mouseMoveEvent`` where the
+    in-progress rectangle is the pair ``(self.current[0], cursor)``.
+
+    Args:
+        p0: First point; must expose ``.x()`` and ``.y()``.
+        p1: Second point; must expose ``.x()`` and ``.y()``.
+
+    Returns:
+        A 4-tuple of floats ``(x_min, y_min, x_max, y_max)``.
+    """
+    x_min = min(p0.x(), p1.x())
+    x_max = max(p0.x(), p1.x())
+    y_min = min(p0.y(), p1.y())
+    y_max = max(p0.y(), p1.y())
+    return (x_min, y_min, x_max, y_max)
+
+
+def size_from_bbox(x_min, y_min, x_max, y_max):
+    """Return raw float ``(width, height, max_edge)`` of a bbox.
+
+    Threshold comparison MUST use these raw floats, never rounded or
+    formatted values (e.g. 35.96 is still < 36 even if it shows as "36").
+
+    Args:
+        x_min, y_min, x_max, y_max: Normalized bounding box in image px.
+
+    Returns:
+        ``(width, height, max_edge)`` where ``max_edge = max(width, height)``.
+    """
+    width = abs(x_max - x_min)
+    height = abs(y_max - y_min)
+    return (width, height, max(width, height))
+
+
+def is_person_small_target(label, max_edge, threshold):
+    """Return whether a person rectangle is below the small-target bar.
+
+    Only ``person`` rectangles can be "small"; any other label is always
+    neutral. The comparison is strict (``<``), so a value exactly on the
+    threshold (e.g. 36.0 vs 36.0) passes without warning.
+
+    Args:
+        label: The shape label string (or None during creation).
+        max_edge: ``max(width, height)`` as a raw float in image px.
+        threshold: The ``min_edge_px`` threshold in image px.
+
+    Returns:
+        True iff the label is ``person`` and ``max_edge < threshold``.
+    """
+    if label != "person":
+        return False
+    try:
+        return float(max_edge) < float(threshold)
+    except (TypeError, ValueError):
+        return False
+
+
+def _anchor_fits(cx, cy, w, h, viewport):
+    """Return whether an overlay box at (cx, cy) fits inside viewport."""
+    vx_min, vy_min, vx_max, vy_max = viewport
+    return (
+        cx >= vx_min and cy >= vy_min and cx + w <= vx_max and cy + h <= vy_max
+    )
+
+
+def _clamp_into(x, y, w, h, viewport):
+    """Clamp an overlay box's top-left into the viewport (no negative coord).
+
+    When the box is larger than the viewport, align to the viewport's near
+    corner instead of producing a negative coordinate.
+    """
+    vx_min, vy_min, vx_max, vy_max = viewport
+    cx_lo = vx_min
+    cx_hi = max(vx_min, vx_max - w)
+    cy_lo = vy_min
+    cy_hi = max(vy_min, vy_max - h)
+    return (min(max(x, cx_lo), cx_hi), min(max(y, cy_lo), cy_hi))
+
+
+def pick_overlay_anchor(bbox, text_w, text_h, gap, viewport, label_rect=None):
+    """Choose an anchor for the size overlay (design rev.1 §6.1/§6.2).
+
+    Preference order:
+
+    1. If a ``label_rect`` is available, anchor ABOVE it — left aligned,
+       then centered, then right aligned.
+    2. Otherwise fall back: rect above-outside, above-inside, top-left
+       outside, top-left inside.
+    3. Clamp into the current visible ``viewport``.
+
+    All coordinates are in image-pixel space.
+
+    Args:
+        bbox: ``(x_min, y_min, x_max, y_max)`` of the target rectangle.
+        text_w, text_h: Overlay box size in image px (already divided by
+            ``Shape.scale``).
+        gap: Screen-stable gap in image px.
+        viewport: ``(vx_min, vy_min, vx_max, vy_max)`` of the CURRENT VISIBLE
+            canvas region (never the full pixmap).
+        label_rect: Optional ``(x, y, w, h)`` of the label box to anchor
+            above; ``None`` skips the label-anchored candidates.
+
+    Returns:
+        ``(anchor_x, anchor_y)`` top-left of the overlay box.
+    """
+    x_min, y_min, x_max, y_max = bbox
+
+    # 1. Anchor above the label box (left / center / right aligned).
+    if label_rect is not None:
+        lx, ly, lw, _lh = label_rect
+        above_y = ly - text_h - gap
+        for cx in (lx, lx + (lw - text_w) / 2.0, lx + lw - text_w):
+            if _anchor_fits(cx, above_y, text_w, text_h, viewport):
+                return (cx, above_y)
+
+    # 2. Fallback candidates relative to the rectangle bbox.
+    candidates = (
+        (x_min, y_min - text_h - gap),  # above outside
+        (x_min, y_min + gap),  # above inside
+        (x_min - text_w - gap, y_min - text_h - gap),  # top-left outside
+        (x_min + gap, y_min + gap),  # top-left inside
+    )
+    for cx, cy in candidates:
+        if _anchor_fits(cx, cy, text_w, text_h, viewport):
+            return (cx, cy)
+
+    # 3. Clamp the preferred (above-outside) into the visible viewport.
+    return _clamp_into(x_min, y_min - text_h - gap, text_w, text_h, viewport)
+
 
 def _perf_log(message, *args):
     """Emit performance logs only when enabled by env var."""
@@ -177,6 +329,7 @@ class Canvas(
         self._pending_initial_backup = False
         self.current = None
         self.selected_shapes = []  # save the selected shapes here
+        self._selected_shapes_source = "none"
         self.selected_shapes_copy = []
         # self.line represents:
         #   - create_mode == 'polygon': edge from last point to current
@@ -201,6 +354,7 @@ class Canvas(
         self.prev_h_edge = None
         self.h_cuboid_face = None
         self.prev_h_cuboid_face = None
+        self._size_overlay_hover_shape = None
         self.moving_shape = False
         self._pending_edge_point = None
         self.rotating_shape = False
@@ -234,6 +388,10 @@ class Canvas(
         self.show_masks = True
         self.show_texts = True
         self.show_labels = True
+        # Independent toggle for the rectangle pixel-size overlay (design
+        # rev.1 §5). Mirrors show_labels' wiring: View menu checkable action
+        # -> set_canvas_params -> canvas.update(). Defaults to True.
+        self.show_rectangle_pixels = True
         self.label_display_mode = "label"
         self.show_scores = True
         self.show_degrees = False
@@ -313,6 +471,14 @@ class Canvas(
         # A preselected edge becomes a pending edge interaction on press and
         # is promoted to an edit target after a screen-space drag threshold.
         # Mouse edge editing is independent from formal object selection.
+
+        # Person small-target overlay threshold (image px). Read-only during
+        # paint; injected by label_widget from the quality profile YAML at
+        # startup. The overlay is pure transient drawing state (never enters
+        # Shape data, the undo stack, dirty flag, or JSON).
+        self.person_small_target_min_edge = (
+            DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
+        )
 
         # Precision drag mode (Feature 3). When active, mouse drag deltas
         # are scaled by 1/precision_factor using a virtual cursor that is
@@ -527,7 +693,7 @@ class Canvas(
         # push this right back onto the stack.
         shapes_backup = self.shapes_backups.pop()
         self.shapes = shapes_backup
-        self._set_selected_shapes([])
+        self._set_selected_shapes([], source="none")
         self.update()
 
     def enterEvent(self, _):
@@ -557,6 +723,20 @@ class Canvas(
             and getattr(shape, "visible", True)
             and not getattr(shape, "hidden_by_filter", False)
         )
+
+    def _set_size_overlay_hover_shape(self, shape) -> None:
+        """Set the rectangle currently hovered by the real canvas pointer."""
+        if (
+            shape is None
+            or shape not in self.shapes
+            or shape.shape_type != "rectangle"
+            or not self.is_shape_interactive(shape)
+        ):
+            shape = None
+        if self._size_overlay_hover_shape is shape:
+            return
+        self._size_overlay_hover_shape = shape
+        self.update()
 
     def _shape_hit_candidates(self, point):
         """Return shapes under a point in interaction priority order.
@@ -662,6 +842,199 @@ class Canvas(
             return False
         return True
 
+    def _standard_label_font(self):
+        """Return the font used by the standard label paint pass."""
+        return QtGui.QFont(
+            "Arial", int(max(6.0, int(round(8.0 / Shape.scale))))
+        )
+
+    def _standard_label_hovered_shape(self):
+        """Return the shape treated as hovered by the label paint pass."""
+        hovered_shape = self.h_hape
+        mp = self.prev_move_point
+        if hovered_shape is None:
+            for shape in self.shapes:
+                if (
+                    shape.shape_type == "point"
+                    and shape.points
+                    and self.is_shape_interactive(shape)
+                ):
+                    if (
+                        math.hypot(
+                            mp.x() - shape.points[0].x(),
+                            mp.y() - shape.points[0].y(),
+                        )
+                        * self.scale
+                        <= 10
+                    ):
+                        hovered_shape = shape
+                        break
+        return hovered_shape
+
+    def _is_standard_label_visible(self, shape, hovered_shape=None):
+        """Return whether the standard label is visible for ``shape``."""
+        if not self._should_draw_standard_label(shape):
+            return False
+        if not shape.visible or getattr(shape, "hidden_by_filter", False):
+            return False
+        if self.label_on_selection:
+            if hovered_shape is None:
+                hovered_shape = self._standard_label_hovered_shape()
+            if not (shape.selected or shape == hovered_shape):
+                return False
+        return True
+
+    def _standard_label_text_for_shape(self, shape):
+        """Return the standard label text, independent of visibility gates."""
+        if shape.label in [
+            "AUTOLABEL_OBJECT",
+            "AUTOLABEL_ADD",
+            "AUTOLABEL_REMOVE",
+        ]:
+            return None
+        display_mode = self.label_display_mode
+        if display_mode == "none":
+            return None
+        elif display_mode == "label":
+            label_text = shape.label
+        elif display_mode == "id":
+            label_text = (
+                str(shape.group_id) if shape.group_id is not None else ""
+            )
+        elif display_mode == "both":
+            if shape.group_id is not None:
+                label_text = f"{shape.label} #{shape.group_id}"
+            else:
+                label_text = shape.label
+        else:
+            label_text = shape.label
+        if not label_text:
+            return None
+        if shape.score is not None and self.show_scores:
+            label_text += f" {float(shape.score):.2f}"
+        if shape.shape_type == "rectangle":
+            extra_texts = []
+            if self.show_texts and shape.description:
+                extra_texts.append(str(shape.description))
+            if self.show_attributes and getattr(shape, "attributes", None):
+                extra_texts.extend(
+                    f"{key}: {value}"
+                    for key, value in shape.attributes.items()
+                )
+            if extra_texts:
+                label_text = " | ".join([label_text] + extra_texts)
+        return label_text or None
+
+    def _rectangle_label_rect_for_shape(self, shape, label_text, fm):
+        """Return the exact rectangle-label background rect."""
+        if (
+            self.pixmap is None
+            or not label_text
+            or shape.shape_type != "rectangle"
+        ):
+            return None
+        padding_x = 4
+        padding_y = 2
+        rect_width = fm.tightBoundingRect(label_text).width() + 2 * padding_x
+        rect_height = fm.height() + 2 * padding_y
+        try:
+            bbox = shape.bounding_rect()
+        except IndexError:
+            return None
+
+        rect_x = int(bbox.x())
+        max_x = self.pixmap.width() - rect_width
+        if max_x >= 0:
+            rect_x = min(max(rect_x, 0), max_x)
+        else:
+            rect_x = 0
+
+        rect_y = int(bbox.y() - rect_height - 1)
+        if rect_y < 0:
+            rect_y = int(bbox.y())
+        max_y = self.pixmap.height() - rect_height
+        if max_y >= 0:
+            rect_y = min(max(rect_y, 0), max_y)
+        else:
+            rect_y = 0
+
+        return QtCore.QRect(rect_x, rect_y, rect_width, rect_height)
+
+    def _standard_label_layout_for_shape(self, shape, label_text, fm):
+        """Return ``(background_rect, text_pos)`` for standard labels."""
+        padding_x = 4
+        padding_y = 2
+        text_rect = fm.tightBoundingRect(label_text)
+        rect_width = text_rect.width() + 2 * padding_x
+        rect_height = fm.height() + 2 * padding_y
+
+        if shape.shape_type == "rectangle":
+            rect = self._rectangle_label_rect_for_shape(shape, label_text, fm)
+            if rect is None:
+                return None
+            text_pos = QtCore.QPoint(
+                rect.x() + padding_x,
+                rect.y() + rect.height() - padding_y - fm.descent(),
+            )
+        elif shape.shape_type in [
+            "polygon",
+            "rotation",
+            "quadrilateral",
+            "cuboid",
+        ]:
+            try:
+                bbox = shape.bounding_rect()
+            except IndexError:
+                return None
+            rect = QtCore.QRect(
+                int(bbox.x()),
+                int(bbox.y()),
+                rect_width,
+                rect_height,
+            )
+            text_pos = QtCore.QPoint(
+                int(bbox.x() + padding_x),
+                int(bbox.y() + rect_height - padding_y - fm.descent()),
+            )
+        elif shape.shape_type == "circle":
+            points = shape.points
+            if not points:
+                return None
+            point = points[0]
+            rect = QtCore.QRect(
+                int(point.x() - rect_width / 2),
+                int(point.y() - rect_height / 2),
+                rect_width,
+                rect_height,
+            )
+            text_pos = QtCore.QPoint(
+                int(point.x() - rect_width / 2 + padding_x),
+                int(point.y() + rect_height / 2 - padding_y - fm.descent()),
+            )
+        elif shape.shape_type in [
+            "line",
+            "linestrip",
+            "point",
+        ]:
+            points = shape.points
+            if not points:
+                return None
+            point = points[0]
+            d_react = shape.point_size / shape.scale
+            rect = QtCore.QRect(
+                int(point.x() + d_react),
+                int(point.y() - 15),
+                rect_width,
+                rect_height,
+            )
+            text_pos = QtCore.QPoint(
+                int(point.x() + d_react + padding_x),
+                int(point.y() - 15 + rect_height - padding_y - fm.descent()),
+            )
+        else:
+            return None
+        return (rect, text_pos)
+
     def drawing(self):
         """Check if user is drawing (mode==CREATE)"""
         return self.mode == self.CREATE
@@ -710,6 +1083,7 @@ class Canvas(
 
     def un_highlight(self):
         """Unhighlight shape/vertex/edge"""
+        self._set_size_overlay_hover_shape(None)
         if self.h_hape:
             self.h_hape.highlight_clear()
             self.update()
@@ -786,7 +1160,9 @@ class Canvas(
                 self.override_cursor(CURSOR_DRAW)
                 return
 
-            if self.create_mode in ["rectangle", "cuboid"]:
+            if self.create_mode == "rectangle":
+                self._emit_show_shape_from_points(self.current[0], pos, pos)
+            elif self.create_mode == "cuboid":
                 shape_width = int(abs(self.current[0].x() - pos.x()))
                 shape_height = int(abs(self.current[0].y() - pos.y()))
                 self.show_shape.emit(shape_height, shape_width, pos)
@@ -943,11 +1319,7 @@ class Canvas(
                 except IndexError:
                     return
                 if self.h_hape.shape_type == "rectangle":
-                    p1 = self.h_hape[0]
-                    p2 = self.h_hape[2]
-                    shape_width = int(abs(p2.x() - p1.x()))
-                    shape_height = int(abs(p2.y() - p1.y()))
-                    self.show_shape.emit(shape_height, shape_width, pos)
+                    self._emit_show_shape_from_shape(self.h_hape, pos)
                 elif (
                     self.h_hape.shape_type == "cuboid"
                     and len(self.h_hape) >= 4
@@ -984,11 +1356,9 @@ class Canvas(
                 self.repaint()
                 self.moving_shape = True
                 if self.selected_shapes[-1].shape_type == "rectangle":
-                    p1 = self.selected_shapes[-1][0]
-                    p2 = self.selected_shapes[-1][2]
-                    shape_width = int(abs(p2.x() - p1.x()))
-                    shape_height = int(abs(p2.y() - p1.y()))
-                    self.show_shape.emit(shape_height, shape_width, pos)
+                    self._emit_show_shape_from_shape(
+                        self.selected_shapes[-1], pos
+                    )
                 elif (
                     self.selected_shapes[-1].shape_type == "cuboid"
                     and len(self.selected_shapes[-1]) >= 4
@@ -1030,11 +1400,7 @@ class Canvas(
                 except IndexError:
                     return
                 if self.h_hape.shape_type == "rectangle":
-                    p1 = self.h_hape[0]
-                    p2 = self.h_hape[2]
-                    shape_width = int(abs(p2.x() - p1.x()))
-                    shape_height = int(abs(p2.y() - p1.y()))
-                    self.show_shape.emit(shape_height, shape_width, pos)
+                    self._emit_show_shape_from_shape(self.h_hape, pos)
                 elif (
                     self.h_hape.shape_type == "cuboid"
                     and len(self.h_hape) >= 4
@@ -1105,6 +1471,7 @@ class Canvas(
                     # default hover loop (which would draw a whole-shape
                     # fill and clobber the edge highlight).
                     self.un_highlight()
+                    self._set_size_overlay_hover_shape(candidate.shape)
                     self.show_shape.emit(-1, -1, pos)
                     # This branch returns early, so the default hover loop
                     # below (which normally sets the cursor) never runs;
@@ -1114,6 +1481,7 @@ class Canvas(
                     return
 
         self.show_shape.emit(-1, -1, pos)
+        self._set_size_overlay_hover_shape(None)
 
         # Just hovering over the canvas, 2 possibilities:
         # - Highlight shapes
@@ -1206,6 +1574,7 @@ class Canvas(
             index = shape.nearest_vertex(pos, self.epsilon / self.scale)
             index_edge = shape.nearest_edge(pos, self.epsilon / self.scale)
             if index is not None:
+                self._set_size_overlay_hover_shape(shape)
                 if self.selected_vertex():
                     self.h_hape.highlight_clear()
                 self.prev_h_vertex = self.h_vertex = index
@@ -1228,6 +1597,7 @@ class Canvas(
                 and shape.can_add_point()
                 and shape.shape_type != "quadrilateral"
             ):
+                self._set_size_overlay_hover_shape(shape)
                 if self.selected_vertex():
                     self.h_hape.highlight_clear()
                 self.prev_h_vertex = self.h_vertex
@@ -1258,6 +1628,7 @@ class Canvas(
                 shape_hit = True
 
             if shape_hit:
+                self._set_size_overlay_hover_shape(shape)
                 if self.selected_vertex():
                     self.h_hape.highlight_clear()
                 self.prev_h_vertex = self.h_vertex
@@ -1291,11 +1662,7 @@ class Canvas(
                 self.update()
 
                 if shape.shape_type == "rectangle":
-                    p1 = self.h_hape[0]
-                    p2 = self.h_hape[2]
-                    shape_width = int(abs(p2.x() - p1.x()))
-                    shape_height = int(abs(p2.y() - p1.y()))
-                    self.show_shape.emit(shape_height, shape_width, pos)
+                    self._emit_show_shape_from_shape(self.h_hape, pos)
                 elif shape.shape_type == "cuboid" and len(self.h_hape) >= 4:
                     p1 = self.h_hape[0]
                     p2 = self.h_hape[2]
@@ -1789,13 +2156,13 @@ class Canvas(
                 self.current.pop_point()
                 self.finalise()
 
-    def select_shapes(self, shapes):
+    def select_shapes(self, shapes, source="canvas"):
         """Select some shapes"""
-        self._set_selected_shapes(shapes)
+        self._set_selected_shapes(shapes, source=source)
         self.set_hiding()
         self.update()
 
-    def _set_selected_shapes(self, shapes) -> None:
+    def _set_selected_shapes(self, shapes, source="canvas") -> None:
         """Commit formal selection before notifying observers.
 
         Canvas owns both the selected-shape list and each shape's visual
@@ -1817,6 +2184,7 @@ class Canvas(
         for shape in self.selected_shapes:
             shape.selected = False
         self.selected_shapes = selected
+        self._selected_shapes_source = source if selected else "none"
         for shape in self.selected_shapes:
             shape.selected = True
         self.set_hiding(bool(selected))
@@ -1825,6 +2193,7 @@ class Canvas(
 
     def select_shape_point(self, point, multiple_selection_mode):
         """Select the first shape created which contains this point."""
+        self._selected_shapes_source = "canvas"
         if self.selected_vertex():  # A vertex is marked for selection.
             index, shape = self.h_vertex, self.h_hape
             if shape.shape_type == "cuboid":
@@ -3054,201 +3423,23 @@ class Canvas(
                     )
 
         # Compute hover context once for the unified label gate.
-        hovered_shape = self.h_hape
-        mp = self.prev_move_point
-        if hovered_shape is None:
-            for s in self.shapes:
-                if (
-                    s.shape_type == "point"
-                    and s.points
-                    and self.is_shape_interactive(s)
-                ):
-                    if (
-                        math.hypot(
-                            mp.x() - s.points[0].x(),
-                            mp.y() - s.points[0].y(),
-                        )
-                        * self.scale
-                        <= 10
-                    ):
-                        hovered_shape = s
-                        break
+        hovered_shape = self._standard_label_hovered_shape()
 
         # Draw labels
         if self.show_labels:
-            p.setFont(
-                QtGui.QFont(
-                    "Arial", int(max(6.0, int(round(8.0 / Shape.scale))))
-                )
-            )
+            p.setFont(self._standard_label_font())
             labels = []
             for shape in self.shapes:
-                if not self._should_draw_standard_label(shape):
-                    continue
-                d_react = shape.point_size / shape.scale
-                if not shape.visible or getattr(
-                    shape, "hidden_by_filter", False
-                ):
-                    continue
-                if shape.label in [
-                    "AUTOLABEL_OBJECT",
-                    "AUTOLABEL_ADD",
-                    "AUTOLABEL_REMOVE",
-                ]:
-                    continue
-                display_mode = self.label_display_mode
-                if display_mode == "none":
-                    continue
-                elif display_mode == "label":
-                    label_text = shape.label
-                elif display_mode == "id":
-                    label_text = (
-                        str(shape.group_id)
-                        if shape.group_id is not None
-                        else ""
-                    )
-                elif display_mode == "both":
-                    if shape.group_id is not None:
-                        label_text = f"{shape.label} #{shape.group_id}"
-                    else:
-                        label_text = shape.label
-                else:
-                    label_text = shape.label
-                if not label_text:
-                    continue
-                if shape.score is not None and self.show_scores:
-                    label_text += f" {float(shape.score):.2f}"
-                if shape.shape_type == "rectangle":
-                    extra_texts = []
-                    if self.show_texts and shape.description:
-                        extra_texts.append(str(shape.description))
-                    if self.show_attributes and getattr(
-                        shape, "attributes", None
-                    ):
-                        extra_texts.extend(
-                            f"{key}: {value}"
-                            for key, value in shape.attributes.items()
-                        )
-                    if extra_texts:
-                        label_text = " | ".join([label_text] + extra_texts)
+                label_text = self._label_text_for_shape(shape, hovered_shape)
                 if not label_text:
                     continue
                 fm = QtGui.QFontMetrics(p.font())
-                text_rect = fm.tightBoundingRect(label_text)
-                padding_x = 4
-                padding_y = 2
-                rect_width = text_rect.width() + 2 * padding_x
-                rect_height = fm.height() + 2 * padding_y
-
-                if shape.shape_type == "rectangle":
-                    try:
-                        bbox = shape.bounding_rect()
-                    except IndexError:
-                        continue
-
-                    rect_x = int(bbox.x())
-                    max_x = self.pixmap.width() - rect_width
-                    if max_x >= 0:
-                        rect_x = min(max(rect_x, 0), max_x)
-                    else:
-                        rect_x = 0
-
-                    rect_y = int(bbox.y() - rect_height - 1)
-                    if rect_y < 0:
-                        rect_y = int(bbox.y())
-                    max_y = self.pixmap.height() - rect_height
-                    if max_y >= 0:
-                        rect_y = min(max(rect_y, 0), max_y)
-                    else:
-                        rect_y = 0
-
-                    rect = QtCore.QRect(
-                        rect_x,
-                        rect_y,
-                        rect_width,
-                        rect_height,
-                    )
-                    text_pos = QtCore.QPoint(
-                        rect_x + padding_x,
-                        rect_y + rect_height - padding_y - fm.descent(),
-                    )
-                elif shape.shape_type in [
-                    "polygon",
-                    "rotation",
-                    "quadrilateral",
-                    "cuboid",
-                ]:
-                    try:
-                        bbox = shape.bounding_rect()
-                    except IndexError:
-                        continue
-                    rect = QtCore.QRect(
-                        int(bbox.x()),
-                        int(bbox.y()),
-                        rect_width,
-                        rect_height,
-                    )
-                    text_pos = QtCore.QPoint(
-                        int(bbox.x() + padding_x),
-                        int(bbox.y() + rect_height - padding_y - fm.descent()),
-                    )
-                elif shape.shape_type == "circle":
-                    points = shape.points
-                    if not points:
-                        continue
-                    point = points[0]
-                    rect = QtCore.QRect(
-                        int(point.x() - rect_width / 2),
-                        int(point.y() - rect_height / 2),
-                        rect_width,
-                        rect_height,
-                    )
-                    text_pos = QtCore.QPoint(
-                        int(point.x() - rect_width / 2 + padding_x),
-                        int(
-                            point.y()
-                            + rect_height / 2
-                            - padding_y
-                            - fm.descent()
-                        ),
-                    )
-                elif shape.shape_type in [
-                    "line",
-                    "linestrip",
-                    "point",
-                ]:
-                    points = shape.points
-                    if not points:
-                        continue
-                    point = points[0]
-                    rect = QtCore.QRect(
-                        int(point.x() + d_react),
-                        int(point.y() - 15),
-                        rect_width,
-                        rect_height,
-                    )
-                    text_pos = QtCore.QPoint(
-                        int(point.x() + d_react + padding_x),
-                        int(
-                            point.y()
-                            - 15
-                            + rect_height
-                            - padding_y
-                            - fm.descent()
-                        ),
-                    )
-                else:
+                layout = self._standard_label_layout_for_shape(
+                    shape, label_text, fm
+                )
+                if layout is None:
                     continue
-
-                # --- Unified label visibility gate ---
-                # label_on_selection ON  = sparse: show only the label of
-                #   the hovered/selected shape itself (NOT its whole group).
-                # label_on_selection OFF = show all labels.
-                if self.label_on_selection:
-                    is_hovered = shape == hovered_shape
-                    show = shape.selected or is_hovered
-                    if not show:
-                        continue
+                rect, text_pos = layout
 
                 labels.append((shape, rect, text_pos, label_text))
 
@@ -3303,6 +3494,11 @@ class Canvas(
         # space, matching the convention used by the cross-line below.
         if self.rect_edge_align_enabled:
             self._draw_rect_edge_alignment_overlay(p)
+
+        # Live W/H size overlay for the in-progress or single-selected
+        # rectangle (person small-target warning). Pure transient drawing;
+        # never mutates Shape data, undo stack, dirty, or JSON.
+        self._draw_size_overlay(p)
 
         # Draw mouse coordinates
         if self.cross_line_show:
@@ -3905,6 +4101,9 @@ class Canvas(
             else:
                 self._adjust_rectangle_edge(shape, pos, wheel_up)
 
+            # Status bar from the same metrics as the overlay (rev.1 §3.2):
+            # wheel scaling / edge-adjust previously skipped show_shape.
+            self._emit_show_shape_from_shape(shape, pos)
             self.store_shapes()
             self.shape_moved.emit()
             self.update()
@@ -4089,6 +4288,26 @@ class Canvas(
             self.clear_rect_edge_alignment()
         self.update()
 
+    def set_person_small_target_min_edge(self, min_edge):
+        """Set the person small-target threshold in image-pixel space.
+
+        The overlay compares ``max(W, H)`` (image-pixel, raw float) against
+        this threshold; ``size < min_edge`` triggers the warning style. A
+        value equal to the threshold (e.g. 36.0 vs 36.0) is treated as
+        passing, so no warning is shown on the boundary.
+
+        Args:
+            min_edge: Minimum edge length in image pixels. Coerced to
+                ``float``; non-finite values fall back to the default.
+        """
+        try:
+            value = float(min_edge)
+        except (TypeError, ValueError):
+            value = DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
+        if not math.isfinite(value) or value <= 0:
+            value = DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
+        self.person_small_target_min_edge = value
+
     def _rect_edge_drag_update(self, pos):
         """Live-update the target edge during a rect-edge drag.
 
@@ -4122,6 +4341,10 @@ class Canvas(
                     active.shape, updated_geom, active.edge_name
                 )
             )
+        # Drive the status bar from the SAME metrics as the overlay (design
+        # rev.1 §3.2): previously this path only called update(), leaving the
+        # status bar H/W stale during an edge drag.
+        self._emit_show_shape_from_shape(active.shape, pos)
         self.update()
 
     def _rect_edge_clamp_coord_to_image(self, axis, coord):
@@ -4413,6 +4636,361 @@ class Canvas(
                     painter, hover, QtGui.QColor(255, 255, 255), width=1.5
                 )
 
+    def _rectangle_metrics(self, shape=None, p0=None, p1=None, source=""):
+        """Build a unified RectangleMetrics tuple from image-space geometry.
+
+        Both the status bar (int H/W) and the size overlay (float W/H) consume
+        this single source of truth, so they can never disagree (design
+        rev.1 §3.1). All values are raw floats in image px.
+
+        Args:
+            shape: A finished rectangle Shape (4/2 points). Mutually exclusive
+                with ``p0``/``p1``.
+            p0, p1: Two corner points (creation stage). Mutually exclusive
+                with ``shape``.
+            source: A label for the metric origin (creating / selected /
+                rect_edge_active / ...).
+
+        Returns:
+            ``(x_min, y_min, x_max, y_max, width, height, max_edge,
+            label, shape_or_none, source)`` or ``None`` when geometry is
+            unusable.
+        """
+        if shape is not None:
+            geom = rea.geometry_from_shape(shape)
+            if geom is None:
+                return None
+            x_min, y_min, x_max, y_max = (
+                geom.x_min,
+                geom.y_min,
+                geom.x_max,
+                geom.y_max,
+            )
+            label = shape.label
+        elif p0 is not None and p1 is not None:
+            x_min, y_min, x_max, y_max = normalize_two_points(p0, p1)
+            label = None
+        else:
+            return None
+        width, height, max_edge = size_from_bbox(x_min, y_min, x_max, y_max)
+        return (
+            x_min,
+            y_min,
+            x_max,
+            y_max,
+            width,
+            height,
+            max_edge,
+            label,
+            shape,
+            source,
+        )
+
+    def _emit_show_shape_from_shape(self, shape, pos):
+        """Emit show_shape with int H/W from the unified metrics (rev.1 §3.2).
+
+        Keeps the ``show_shape(int_height, int_width, QPointF)`` signature
+        unchanged while routing the status bar through the same metrics the
+        overlay uses, so the two never disagree. Degenerate rectangles are
+        skipped (the slot hides H/W when height/width <= 0).
+
+        Args:
+            shape: The rectangle shape just edited.
+            pos: Current cursor position in image coordinates.
+        """
+        metrics = self._rectangle_metrics(shape=shape, source="rect_edit")
+        if metrics is None:
+            return
+        # width=4, height=5, max_edge=6 in the metrics tuple.
+        width = metrics[4]
+        height = metrics[5]
+        if width <= 0 or height <= 0:
+            return
+        self.show_shape.emit(int(height), int(width), pos)
+
+    def _emit_show_shape_from_points(self, p0, p1, pos):
+        """Emit show_shape for an in-progress rectangle from unified metrics."""
+        metrics = self._rectangle_metrics(p0=p0, p1=p1, source="creating")
+        if metrics is None:
+            return
+        width = metrics[4]
+        height = metrics[5]
+        if width <= 0 or height <= 0:
+            return
+        self.show_shape.emit(int(height), int(width), pos)
+
+    def _resolve_overlay_metrics(self):
+        """Pick the rectangle the overlay describes and build its metrics.
+
+        Resolution priority (design rev.1 §3.4):
+
+        1. Creating a rectangle: ``self.current[0]`` + ``self.line[1]``.
+        2. Active rect-edge drag: ``rect_edge_active_edge.shape`` (R1 —
+           selection is cleared on edge-drag start, so this must NOT depend
+           on ``selected_shapes``).
+        3. Rectangle currently hovered by the real canvas pointer.
+        4. Single selected rectangle as a fallback.
+
+        Every candidate passes ``is_shape_interactive`` so filtered / hidden /
+        non-interactive shapes never show an overlay (R3).
+
+        Returns:
+            The metrics tuple from :meth:`_rectangle_metrics`, or ``None``.
+        """
+        # 1. Creation stage.
+        if self.drawing() and self.create_mode == "rectangle":
+            if not self.current or len(self.current) < 1:
+                return None
+            if len(self.line.points) < 2:
+                return None
+            return self._rectangle_metrics(
+                p0=self.current[0],
+                p1=self.line.points[1],
+                source="creating",
+            )
+
+        # 2. Active rect-edge drag (R1): selection is cleared at press, so
+        #    read the edited shape from the active edge instead.
+        active = self.rect_edge_active_edge
+        if active is not None and active.shape is not None:
+            shape = active.shape
+            if (
+                shape in self.shapes
+                and shape.shape_type == "rectangle"
+                and self.is_shape_interactive(shape)
+            ):
+                return self._rectangle_metrics(
+                    shape=shape, source="rect_edge_active"
+                )
+
+        # 3. Real canvas hover. This is separate from h_hape because h_hape
+        #    can be set by non-pointer flows such as label-loop navigation.
+        hover_shape = self._size_overlay_hover_shape
+        if hover_shape is not None:
+            if (
+                hover_shape in self.shapes
+                and hover_shape.shape_type == "rectangle"
+                and self.is_shape_interactive(hover_shape)
+            ):
+                return self._rectangle_metrics(
+                    shape=hover_shape, source="hover"
+                )
+
+        # 4. Single selected rectangle.
+        if (
+            len(self.selected_shapes) == 1
+            and self._selected_shapes_source != "label_list"
+        ):
+            shape = self.selected_shapes[0]
+            if (
+                shape in self.shapes
+                and shape.shape_type == "rectangle"
+                and self.is_shape_interactive(shape)
+            ):
+                return self._rectangle_metrics(shape=shape, source="selected")
+        return None
+
+    def _draw_size_overlay(self, painter):
+        """Draw the live W/H size overlay near the current rectangle.
+
+        Shows the image-pixel width/height of exactly one rectangle while
+        creating, edge-dragging, or single-selecting it. Applies the person
+        small-target warning when ``label == "person"`` and
+        ``max(W, H) < threshold``.
+
+        The overlay is pure transient drawing: it never mutates ``Shape``
+        data, the undo stack, the dirty flag, or JSON output. All size math
+        uses image-pixel raw floats.
+
+        Args:
+            painter: The active :class:`QPainter` (already scaled to pixmap
+                space by ``paintEvent``).
+        """
+        if not self.show_rectangle_pixels:
+            return
+        metrics = self._resolve_overlay_metrics()
+        if metrics is None:
+            return
+        (
+            x_min,
+            y_min,
+            x_max,
+            y_max,
+            width,
+            height,
+            max_edge,
+            label,
+            _shape,
+            _source,
+        ) = metrics
+        # A near-zero rectangle (click without dragging) has no size to show.
+        if max_edge < 1e-6:
+            return
+
+        threshold = self.person_small_target_min_edge
+        # During creation the label is unset, so this is always False then
+        # (design 5.1: no premature threshold warning while creating).
+        small = is_person_small_target(label, max_edge, threshold)
+
+        lines = [self.tr("W %.1f px  H %.1f px") % (width, height)]
+        if small:
+            lines.append(
+                self.tr("Max edge %.1f px < %g px") % (max_edge, threshold)
+            )
+
+        self._paint_overlay_box(
+            painter,
+            tuple(lines),
+            (x_min, y_min, x_max, y_max),
+            _shape,
+            warning=small,
+        )
+
+    def _label_text_for_shape(self, shape, hovered_shape=None):
+        """Return the label text rendered for a shape, or ``None`` to skip.
+
+        Mirrors the standard label pass (paintEvent) so the overlay anchors to
+        the SAME label box the user sees (design rev.1 §6.3: no parallel
+        approximation). Honours label_display_mode / show_scores /
+        show_texts / show_attributes exactly as the paint loop does.
+
+        Args:
+            shape: The shape whose label text to compute.
+
+        Returns:
+            The label string, or ``None`` when no label should be drawn.
+        """
+        if not self._is_standard_label_visible(shape, hovered_shape):
+            return None
+        return self._standard_label_text_for_shape(shape)
+
+    def _label_rect_for_shape(self, shape, label_text, fm):
+        """Return the label background rect for a rectangle shape.
+
+        Mirrors the rectangle branch of the standard label pass. ``fm`` must
+        be built from :meth:`_standard_label_font`, not from the overlay font,
+        so the anchor uses the same label box the user sees.
+
+        Args:
+            shape: The rectangle shape.
+            label_text: The label string (from _label_text_for_shape).
+            fm: A :class:`QFontMetrics` for the label font.
+
+        Returns:
+            A ``(x, y, w, h)`` tuple in image px, or ``None`` on failure.
+        """
+        rect = self._rectangle_label_rect_for_shape(shape, label_text, fm)
+        if rect is None:
+            return None
+        return (rect.x(), rect.y(), rect.width(), rect.height())
+
+    def _visible_overlay_rect(self):
+        """Return the current visible canvas region in image px.
+
+        Matches the paintEvent culling viewport (design rev.1 §7). Falls back
+        to the full pixmap when the widget has no size yet.
+        """
+        offset = self.offset_to_center()
+        vx_min = -offset.x()
+        vy_min = -offset.y()
+        vw = self.width() / self.scale if self.scale else 0.0
+        vh = self.height() / self.scale if self.scale else 0.0
+        if self.pixmap is not None and vw > 0 and vh > 0:
+            # Intersect with the pixmap bounds.
+            return (
+                max(0.0, vx_min),
+                max(0.0, vy_min),
+                min(float(self.pixmap.width()), vx_min + vw),
+                min(float(self.pixmap.height()), vy_min + vh),
+            )
+        if self.pixmap is not None:
+            return (
+                0.0,
+                0.0,
+                float(self.pixmap.width()),
+                float(self.pixmap.height()),
+            )
+        return (0.0, 0.0, 1.0, 1.0)
+
+    def _paint_overlay_box(self, painter, lines, bbox, shape, warning):
+        """Paint the semi-transparent overlay box with screen-stable sizing.
+
+        Uses Route B (image space + divide every screen-px constant by
+        ``Shape.scale``) WITHOUT the ``max(6.0, ...)`` floor that previously
+        made the overlay grow when zoomed in (R4). The viewport is the CURRENT
+        visible region, not the full pixmap (R2). The anchor prefers the label
+        box (R7) when ``shape`` is available.
+
+        Args:
+            painter: The active :class:`QPainter`.
+            lines: Tuple of text lines to render (1 or 2).
+            bbox: ``(x_min, y_min, x_max, y_max)`` of the target rectangle.
+            shape: The target Shape (for label-rect anchoring) or None.
+            warning: When True, render in the warning colour and border.
+        """
+        scale = Shape.scale if Shape.scale else 1.0
+        # R4: no max(6.0) floor — only guard against 0 so the font stays
+        # linearly inverse-scaled and screen-stable at every zoom.
+        font_size = max(1, int(round(8.0 / scale)))
+        font = QtGui.QFont("Arial", font_size, QtGui.QFont.Weight.Bold)
+        painter.setFont(font)
+        painter.setOpacity(1.0)
+        fm = QtGui.QFontMetrics(painter.font())
+
+        pad = max(1.0, 4.0 / scale)
+        gap = max(1.0, 6.0 / scale)
+        line_h = fm.height()
+        text_w = max(fm.horizontalAdvance(ln) for ln in lines)
+        box_w = text_w + 2 * pad
+        box_h = line_h * len(lines) + 2 * pad
+
+        viewport = self._visible_overlay_rect()
+
+        label_rect = None
+        if shape is not None:
+            label_text = self._label_text_for_shape(shape)
+            if label_text:
+                label_fm = QtGui.QFontMetrics(self._standard_label_font())
+                label_rect = self._label_rect_for_shape(
+                    shape, label_text, label_fm
+                )
+
+        ax, ay = pick_overlay_anchor(
+            bbox,
+            box_w,
+            box_h,
+            gap,
+            viewport,
+            label_rect=label_rect,
+        )
+
+        bg = QtGui.QColor(0, 0, 0, 180)
+        text_color = QtGui.QColor("#FFFFFF")
+        if warning:
+            text_color = QtGui.QColor("#FFB300")
+        box_rect = QtCore.QRectF(ax, ay, box_w, box_h)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QtGui.QBrush(bg))
+        painter.drawRect(box_rect)
+        if warning:
+            painter.setPen(
+                QtGui.QPen(
+                    QtGui.QColor("#FFB300"),
+                    max(1, 1.5 / scale),
+                )
+            )
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRect(box_rect)
+
+        painter.setPen(QtGui.QPen(text_color))
+        for i, ln in enumerate(lines):
+            painter.drawText(
+                QtCore.QPointF(
+                    ax + pad, ay + pad + (i + 1) * line_h - fm.descent()
+                ),
+                ln,
+            )
+
     @staticmethod
     def _draw_edge(painter, edge, color, width=2.0, dash=False):
         """Draw a single edge segment with a screen-stable pen.
@@ -4646,6 +5224,14 @@ class Canvas(
 
     def load_pixmap(self, pixmap, clear_shapes=True):
         """Load pixmap"""
+        self._set_size_overlay_hover_shape(None)
+        self._set_selected_shapes([], source="none")
+        self.selected_shapes_copy = []
+        self.h_hape = None
+        self.h_vertex = None
+        self.h_edge = None
+        self.h_cuboid_face = None
+        self.clear_rect_edge_alignment()
         self.pixmap = pixmap
         if clear_shapes:
             self.shapes = []
@@ -4664,6 +5250,9 @@ class Canvas(
         """Load shapes"""
         _t0 = time.perf_counter()
         if replace:
+            self._set_size_overlay_hover_shape(None)
+            self._set_selected_shapes([], source="none")
+            self.selected_shapes_copy = []
             self.shapes = list(shapes)
         else:
             self.shapes.extend(shapes)
@@ -4676,6 +5265,7 @@ class Canvas(
         _t_after_store = time.perf_counter()
         self.current = None
         self._brush_drawing = False
+        self._set_size_overlay_hover_shape(None)
         self.h_hape = None
         self.h_vertex = None
         self.h_edge = None
@@ -4724,6 +5314,15 @@ class Canvas(
     def reset_state(self):
         """Clear shapes and pixmap"""
         self.restore_cursor()
+        self._set_size_overlay_hover_shape(None)
+        self._set_selected_shapes([], source="none")
+        self.selected_shapes_copy = []
+        self.current = None
+        self._brush_drawing = False
+        self.h_hape = None
+        self.h_vertex = None
+        self.h_edge = None
+        self.h_cuboid_face = None
         self.pixmap = None
         self.shapes_backups = []
         self.is_move_editing = False

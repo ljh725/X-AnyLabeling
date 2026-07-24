@@ -123,6 +123,7 @@ from .widgets import (
     KeypointToolWindow,
     InspectorPanel,
 )
+from .widgets.canvas import DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
 from .widgets.pose_label import (
     PoseViewPanel,
 )
@@ -603,6 +604,14 @@ class LabelingWidget(LabelDialog):
         # Crosshair
         self.crosshair_settings = self._config["canvas"]["crosshair"]
         self.canvas.set_cross_line(**self.crosshair_settings)
+
+        # Person small-target overlay threshold. Authoritative value lives in
+        # the quality profile YAML (person_small_target.min_edge_px); read
+        # once at startup and injected into the canvas (which never reads
+        # YAML itself). Falls back to the canvas default on any load error.
+        self.canvas.set_person_small_target_min_edge(
+            self._load_person_small_target_threshold()
+        )
 
         # Filter execution engine (computes matches & applies visibility)
         self._filter_engine = ShapeFilterEngine(
@@ -1458,6 +1467,16 @@ class LabelingWidget(LabelDialog):
             enabled=True,
             auto_trigger=True,
         )
+        show_rectangle_pixels = action(
+            self.tr("Show Rectangle Pixels"),
+            lambda x: self.set_canvas_params("show_rectangle_pixels", x),
+            tip=self.tr("Show rectangle pixel size"),
+            icon=None,
+            checkable=True,
+            checked=self._config["show_rectangle_pixels"],
+            enabled=True,
+            auto_trigger=True,
+        )
         show_scores = action(
             self.tr("Show Scores"),
             lambda x: self.set_canvas_params("show_scores", x),
@@ -2145,6 +2164,7 @@ class LabelingWidget(LabelDialog):
             show_masks=show_masks,
             show_texts=show_texts,
             show_labels=show_labels,
+            show_rectangle_pixels=show_rectangle_pixels,
             show_scores=show_scores,
             show_degrees=show_degrees,
             show_attributes=show_attributes,
@@ -2497,6 +2517,7 @@ class LabelingWidget(LabelDialog):
                 show_masks,
                 show_texts,
                 show_labels,
+                show_rectangle_pixels,
                 show_scores,
                 show_degrees,
                 show_attributes,
@@ -6759,7 +6780,9 @@ class LabelingWidget(LabelDialog):
             self._list_selecting = True
             try:
                 if selected_shapes:
-                    self.canvas.select_shapes(selected_shapes)
+                    self.canvas.select_shapes(
+                        selected_shapes, source="label_list"
+                    )
                 else:
                     self.canvas.deselect_shape()
             finally:
@@ -7374,6 +7397,31 @@ class LabelingWidget(LabelDialog):
             self.actions.fit_window.setChecked(False)
         self.zoom_mode = self.FIT_WIDTH if value else self.MANUAL_ZOOM
         self.adjust_scale()
+
+    def _load_person_small_target_threshold(self) -> float:
+        """Read the person small-target threshold via the narrow reader.
+
+        Uses ``read_person_small_target_threshold`` which validates ONLY the
+        ``person_small_target`` block, so an unrelated QA rule
+        misconfiguration cannot force a UI fallback (design rev.1 §10).
+        Read once at startup and injected into the canvas via
+        ``set_person_small_target_min_edge``.
+
+        Returns:
+            The threshold in image pixels, or the default on error.
+        """
+        try:
+            from anylabeling.views.labeling.widgets.inspector.quality.threshold_profile import (
+                read_person_small_target_threshold,
+            )
+
+            return read_person_small_target_threshold()
+        except ImportError:
+            logger.warning(
+                "threshold_profile unavailable; using canvas default.",
+                exc_info=True,
+            )
+            return DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
 
     def set_cross_line(self):
         crosshair_dialog = CrosshairSettingsDialog(**self.crosshair_settings)
