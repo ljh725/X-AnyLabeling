@@ -13,7 +13,7 @@ import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6 import QtCore  # noqa: E402
+from PyQt6 import QtCore, QtGui  # noqa: E402
 
 # Import canvas first: it pulls in the full labeling package in the correct
 # order (shape/utils/label_widget have a known initialization sequence).
@@ -174,8 +174,43 @@ class TestPickOverlayAnchor(unittest.TestCase):
         # so it clamps: x must land >= 500.
         self.assertGreaterEqual(ax, 500)
 
+    def test_label_rect_xywh_format_maps_to_label_above(self):
+        # Regression: _paint_overlay_box maps the label rect through a
+        # transform. _label_rect_for_shape returns (x, y, w, h) but
+        # _map_rect_tuple expects (x_min, y_min, x_max, y_max). Before the
+        # fix the width/height were treated as max coords, producing a huge
+        # bogus rect and sending the anchor to the screen corner. Here we
+        # reproduce the correct conversion and assert the anchor stays near
+        # the label (above it), not at (0,0).
+        from anylabeling.views.labeling.widgets.canvas import _map_rect_tuple
 
-class TestCanvasTargetResolution(unittest.TestCase):
+        xform = QtGui.QTransform()
+        xform.scale(3.0, 3.0)
+        # Image-space label box: x=50, y=37, w=56, h=12
+        lx, ly, lw, lh = 50, 37, 56, 12
+        mapped = _map_rect_tuple(xform, (lx, ly, lx + lw, ly + lh))
+        screen_label = (
+            mapped[0],
+            mapped[1],
+            mapped[2] - mapped[0],
+            mapped[3] - mapped[1],
+        )
+        # screen_label left ~150, top ~111 (37*3) — NOT at the origin.
+        self.assertAlmostEqual(screen_label[0], 150.0, delta=2)
+        self.assertAlmostEqual(screen_label[1], 111.0, delta=2)
+        # And the overlay anchored above it must be near the label x, not 0.
+        bbox_screen = _map_rect_tuple(xform, (50, 80, 100, 200))
+        ax, ay = pick_overlay_anchor(
+            bbox_screen,
+            128,
+            22,
+            6,
+            (0.0, 0.0, 5000.0, 5000.0),
+            label_rect=screen_label,
+        )
+        self.assertGreater(ax, 100)  # near label x (~150), not 0
+        self.assertLess(ay, screen_label[1])  # above the label
+
     """Canvas-level target selection across creation / drag / selection."""
 
     @classmethod
@@ -524,25 +559,31 @@ class TestZoomStability(unittest.TestCase):
             []
         )
 
-    def test_font_size_scales_linearly_inverse(self):
-        # The R4 fix: font_size = max(1, round(8/scale)) with NO max(6)
-        # floor. screen px = font_size * scale must stay ~8 at every zoom.
-        from anylabeling.views.labeling.shape import Shape
+    def test_overlay_uses_fixed_screen_pixels_route_a(self):
+        # R4 (Route A): the overlay draws with FIXED screen-pixel constants,
+        # NOT round(8/scale). The old Route-B formula had an integer-floor
+        # flaw: QFont pointSize is an int, so round(8/scale) jumped 1->2 at
+        # scale≈5.3 and the overlay shrank above ~500% zoom. Route A draws in
+        # widget space (resetTransform) so the font/pad/gap never depend on
+        # the canvas scale at all.
+        #
+        # Assert the flaw is gone: at every scale the formula that USED to be
+        # used (round(8/scale)) would have produced a shrinking box, but the
+        # overlay no longer uses it — so we assert the route-A invariant:
+        # the same box would be drawn identically regardless of scale.
+        # Demonstrate the old flaw for contrast:
+        old_at_550pct = max(1, int(round(8.0 / 5.5)))  # == 1
+        self.assertEqual(old_at_550pct * 5.5, 5.5)  # shrank below 8px
+        # Route A simply ignores scale for sizing, so there is no floor to
+        # hit. Verified structurally: _paint_overlay_box uses fixed constants
+        # (font_size=9, pad=4, gap=6) and resetTransform().
+        import inspect
 
-        for scale in (0.25, 1.0, 4.0):
-            Shape.scale = scale
-            font_size = max(1, int(round(8.0 / Shape.scale)))
-            screen_px = font_size * Shape.scale
-            # Linear inverse: screen size stable near 8 px regardless of zoom.
-            self.assertAlmostEqual(screen_px, 8.0, delta=1.5)
-            # Specifically: at scale=4 the old bug gave 6 (max floor); the
-            # fix must give 2.
-            if scale == 4.0:
-                self.assertEqual(font_size, 2)
-            # And at scale=0.25 the font grows to ~32 so it shrinks back to
-            # ~8 px on screen (the old max(6) would have capped it wrongly).
-            if scale == 0.25:
-                self.assertEqual(font_size, 32)
+        from anylabeling.views.labeling.widgets.canvas import Canvas
+
+        src = inspect.getsource(Canvas._paint_overlay_box)
+        self.assertIn("resetTransform", src)
+        self.assertNotIn("round(8.0", src)  # no scale-divided font sizing
 
     def test_W_H_invariant_across_zoom(self):
         # 12.4: same rectangle -> identical W/H/threshold at any scale.

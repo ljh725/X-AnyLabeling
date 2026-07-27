@@ -113,6 +113,22 @@ def _anchor_fits(cx, cy, w, h, viewport):
     )
 
 
+def _map_rect_tuple(xform, rect):
+    """Map a ``(x_min, y_min, x_max, y_max)`` bbox through a QTransform.
+
+    Returns the mapped bbox as ``(x_min, y_min, x_max, y_max)`` (re-normalized
+    so min/max order holds even under negative-scale transforms).
+    """
+    x_min, y_min, x_max, y_max = rect
+    p_tl = xform.map(QtCore.QPointF(x_min, y_min))
+    p_tr = xform.map(QtCore.QPointF(x_max, y_min))
+    p_bl = xform.map(QtCore.QPointF(x_min, y_max))
+    p_br = xform.map(QtCore.QPointF(x_max, y_max))
+    xs = (p_tl.x(), p_tr.x(), p_bl.x(), p_br.x())
+    ys = (p_tl.y(), p_tr.y(), p_bl.y(), p_br.y())
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
 def _clamp_into(x, y, w, h, viewport):
     """Clamp an overlay box's top-left into the viewport (no negative coord).
 
@@ -138,15 +154,18 @@ def pick_overlay_anchor(bbox, text_w, text_h, gap, viewport, label_rect=None):
        outside, top-left inside.
     3. Clamp into the current visible ``viewport``.
 
-    All coordinates are in image-pixel space.
+    This is pure geometry and works in any consistent coordinate space. The
+    caller maps image-pixel geometry to screen pixels first so all inputs
+    (bbox, viewport, label_rect, box size, gap) share ONE space, which keeps
+    the overlay truly screen-stable at any zoom (Route A, design §8).
 
     Args:
-        bbox: ``(x_min, y_min, x_max, y_max)`` of the target rectangle.
-        text_w, text_h: Overlay box size in image px (already divided by
-            ``Shape.scale``).
-        gap: Screen-stable gap in image px.
-        viewport: ``(vx_min, vy_min, vx_max, vy_max)`` of the CURRENT VISIBLE
-            canvas region (never the full pixmap).
+        bbox: ``(x_min, y_min, x_max, y_max)`` of the target rectangle in
+            the caller's coordinate space.
+        text_w, text_h: Overlay box size in the caller's space.
+        gap: Gap between overlay and rectangle/label, in the caller's space.
+        viewport: ``(vx_min, vy_min, vx_max, vy_max)`` of the visible region
+            in the caller's space.
         label_rect: Optional ``(x, y, w, h)`` of the label box to anchor
             above; ``None`` skips the label-anchored candidates.
 
@@ -344,6 +363,23 @@ class Canvas(
         self.scale = 1.0
         self.pixmap = QtGui.QPixmap()
         self.visible = {}
+        # Stage 3 — three-box refine mode main-canvas visibility layer.
+        # ``_main_visibility_predicate`` is an optional Callable[[Shape], bool]
+        # installed by the refine workflow while a workgroup is ACTIVE.  It is
+        # consulted by ``main_visible``; paint passes + hit-test + edit gates
+        # all route through ``main_visible`` so the task layer is honoured in
+        # exactly one place.  None ⇒ no task layer (pure base visibility).
+        # ``_escape_workgroup_handler`` is the Esc tier-3 callback (§25.3).
+        # ``_overlay_provider`` returns an OverlayModel for paint, or None.
+        self._main_visibility_predicate = None
+        self._escape_workgroup_handler = None
+        self._overlay_provider = None
+        # Stage 6 — AC-058 gate.  When non-None, whole-shape edits (mouse
+        # whole-shape drag, keyboard arrow move, keyboard rotation) are
+        # blocked because the refine mode is ACTIVE and only edge-drag is a
+        # permitted member edit (§22.2).  Installed/cleared by the workflow
+        # alongside the visibility predicate.
+        self._whole_shape_edit_blocker = None
         self._hide_backround = False
         self.hide_backround = False
         self.h_hape = None
@@ -713,16 +749,106 @@ class Canvas(
         self.restore_cursor()
 
     def is_visible(self, shape):
-        """Check if a shape is visible"""
+        """Check if a shape is visible (canvas-level dict only).
+
+        Note: this is the *base-layer* canvas dict accessor.  For the unified
+        main-canvas effective visibility (used by paint + interaction gates)
+        use :meth:`main_visible`; for the navigator/restore base layer use
+        :meth:`base_visible`.
+        """
         return self.visible.get(shape, True)
 
-    def is_shape_interactive(self, shape: Shape) -> bool:
-        """Return whether a shape can be hovered, selected, or edited."""
+    def base_visible(self, shape) -> bool:
+        """User base-layer visibility (navigator + restore semantics).
+
+        Combines the canvas dict, the per-shape ``visible`` flag and the
+        filter ``hidden_by_filter`` flag — exactly the three signals the old
+        ``is_shape_interactive`` consulted.  This is the layer the refine
+        mode snapshots at entry and restores at exit; the task layer never
+        perturbs it.
+        """
         return (
-            self.is_visible(shape)
+            self.visible.get(shape, True)
             and getattr(shape, "visible", True)
             and not getattr(shape, "hidden_by_filter", False)
         )
+
+    def main_visible(self, shape) -> bool:
+        """Main-canvas effective visibility = base AND task predicate.
+
+        When no task predicate is installed this is identical to
+        :meth:`base_visible`.  All paint passes, hit-tests and edit gates
+        route through here so the refine-mode task layer is honoured in
+        exactly one place (audit §28.4 / risk #2).  On predicate error the
+        method fails closed (returns False) — never leak a non-member.
+        """
+        if not self.base_visible(shape):
+            return False
+        predicate = self._main_visibility_predicate
+        if predicate is None:
+            return True
+        try:
+            return bool(predicate(shape))
+        except Exception:  # noqa: BLE001 - fail closed
+            return False
+
+    def iter_main_visible_shapes(self):
+        """Yield shapes visible on the main canvas (base AND task layer)."""
+        for shape in self.shapes:
+            if self.main_visible(shape):
+                yield shape
+
+    def set_main_visibility_predicate(self, predicate) -> None:
+        """Install the optional main-canvas task visibility predicate.
+
+        ``predicate(shape) -> bool``; pass ``None`` to clear.  Triggers a
+        repaint so the main canvas reflects the new layer immediately.
+        """
+        self._main_visibility_predicate = predicate
+        self.update()
+
+    def clear_main_visibility_predicate(self) -> None:
+        self.set_main_visibility_predicate(None)
+
+    def set_escape_workgroup_handler(self, handler) -> None:
+        """Install the Esc tier-3 callback (§25.3).  ``None`` clears it."""
+        self._escape_workgroup_handler = handler
+
+    def set_overlay_provider(self, provider) -> None:
+        """Install a callable returning an OverlayModel for paint, or None."""
+        self._overlay_provider = provider
+        self.update()
+
+    def clear_overlay_provider(self) -> None:
+        self.set_overlay_provider(None)
+
+    def set_whole_shape_edit_blocker(self, blocker) -> None:
+        """Install an optional callable gating whole-shape edits (§22.2).
+
+        While the refine mode is ACTIVE, only rectangle edge-drag is a
+        permitted member edit.  Whole-shape mouse drag, keyboard arrow move
+        and keyboard rotation (Z/X/C/V) must be blocked.  ``blocker`` is a
+        zero-arg callable returning True when the block is active; pass
+        ``None`` to clear.  The Canvas never imports the workflow module.
+        """
+        self._whole_shape_edit_blocker = blocker
+
+    def is_whole_shape_edit_blocked(self) -> bool:
+        """Return True when whole-shape edits are currently blocked."""
+        if self._whole_shape_edit_blocker is None:
+            return False
+        try:
+            return bool(self._whole_shape_edit_blocker())
+        except Exception:  # noqa: BLE001 - fail closed
+            return True
+
+    def is_shape_interactive(self, shape: Shape) -> bool:
+        """Return whether a shape can be hovered, selected, or edited.
+
+        Routes through :meth:`main_visible` so the refine task layer gates
+        every interaction path in one place.
+        """
+        return self.main_visible(shape)
 
     def _set_size_overlay_hover_shape(self, shape) -> None:
         """Set the rectangle currently hovered by the real canvas pointer."""
@@ -875,7 +1001,7 @@ class Canvas(
         """Return whether the standard label is visible for ``shape``."""
         if not self._should_draw_standard_label(shape):
             return False
-        if not shape.visible or getattr(shape, "hidden_by_filter", False):
+        if not self.main_visible(shape):
             return False
         if self.label_on_selection:
             if hovered_shape is None:
@@ -1349,12 +1475,17 @@ class Canvas(
                 shape_height = int(abs(p2.y() - p1.y()))
                 self.show_shape.emit(shape_height, shape_width, pos)
             elif self.selected_shapes and self.prev_point:
-                self.h_cuboid_face = None
-                self.override_cursor(CURSOR_MOVE)
-                eff = self._effective_drag_pos(pos, ev)
-                self.bounded_move_shapes(self.selected_shapes, eff)
-                self.repaint()
-                self.moving_shape = True
+                # Stage 6 — AC-058: block mouse whole-shape drag while refine
+                # is ACTIVE (only edge-drag is permitted on members).
+                if self.is_whole_shape_edit_blocked():
+                    self.moving_shape = False
+                else:
+                    self.h_cuboid_face = None
+                    self.override_cursor(CURSOR_MOVE)
+                    eff = self._effective_drag_pos(pos, ev)
+                    self.bounded_move_shapes(self.selected_shapes, eff)
+                    self.repaint()
+                    self.moving_shape = True
                 if self.selected_shapes[-1].shape_type == "rectangle":
                     self._emit_show_shape_from_shape(
                         self.selected_shapes[-1], pos
@@ -2978,9 +3109,7 @@ class Canvas(
             p.setPen(pen)
             grouped_shapes = {}
             for shape in self.shapes:
-                if not shape.visible or getattr(
-                    shape, "hidden_by_filter", False
-                ):
+                if not self.main_visible(shape):
                     continue
                 if shape.group_id is None:
                     continue
@@ -3051,9 +3180,7 @@ class Canvas(
             linking_pairs = []
             group_color = (255, 128, 0)
             for shape in self.shapes:
-                if not shape.visible or getattr(
-                    shape, "hidden_by_filter", False
-                ):
+                if not self.main_visible(shape):
                     continue
 
                 try:
@@ -3109,9 +3236,7 @@ class Canvas(
         # Draw shape masks
         if self.show_masks:
             for shape in self.shapes:
-                if not shape.visible or getattr(
-                    shape, "hidden_by_filter", False
-                ):
+                if not self.main_visible(shape):
                     continue
                 if shape.shape_type not in [
                     "polygon",
@@ -3214,7 +3339,7 @@ class Canvas(
 
         # Draw degrees
         for shape in self.shapes:
-            if not shape.visible or getattr(shape, "hidden_by_filter", False):
+            if not self.main_visible(shape):
                 continue
             if not viewport_rect.intersects(shape.bounding_rect()):
                 continue
@@ -3366,9 +3491,7 @@ class Canvas(
             )
             p.setPen(pen)
             for shape in self.shapes:
-                if not shape.visible or getattr(
-                    shape, "hidden_by_filter", False
-                ):
+                if not self.main_visible(shape):
                     continue
                 if should_merge_rectangle_text(shape):
                     continue
@@ -3399,9 +3522,7 @@ class Canvas(
             )
             p.setPen(pen)
             for shape in self.shapes:
-                if not shape.visible or getattr(
-                    shape, "hidden_by_filter", False
-                ):
+                if not self.main_visible(shape):
                     continue
                 if should_merge_rectangle_text(shape):
                     continue
@@ -3445,9 +3566,7 @@ class Canvas(
 
             p.setPen(Qt.PenStyle.NoPen)
             for shape, rect, _, _ in labels:
-                if not shape.visible or getattr(
-                    shape, "hidden_by_filter", False
-                ):
+                if not self.main_visible(shape):
                     continue
                 bg_color = QtGui.QColor(shape.line_color)
                 bg_color.setAlphaF(0.85)
@@ -3457,9 +3576,7 @@ class Canvas(
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.setPen(QtGui.QColor("#ffffff"))
             for shape, _, text_pos, label_text in labels:
-                if not shape.visible or getattr(
-                    shape, "hidden_by_filter", False
-                ):
+                if not self.main_visible(shape):
                     continue
                 p.drawText(text_pos, label_text)
 
@@ -3475,7 +3592,12 @@ class Canvas(
         ):
             count = self._pose_renderer.render(
                 p,
-                self.shapes,
+                # Stage 3 — feed only main-visible shapes so the refine task
+                # layer also gates the pose overlay (PoseRenderer is a separate
+                # domain that only reads shape.visible; filtering here is the
+                # single chokepoint).  With predicate=None this is equivalent
+                # to the previous self.shapes (PoseRenderer filters internally).
+                list(self.iter_main_visible_shapes()),
                 self.pixmap.size(),
                 self.scale,
                 show_labels=True,
@@ -3526,9 +3648,7 @@ class Canvas(
             attributes_list = []
 
             for shape in self.shapes:
-                if not shape.visible or getattr(
-                    shape, "hidden_by_filter", False
-                ):
+                if not self.main_visible(shape):
                     continue
                 if should_merge_rectangle_text(shape):
                     continue
@@ -3645,9 +3765,7 @@ class Canvas(
                 )
 
             for shape, rect, _, _ in attributes_list:
-                if not shape.visible or getattr(
-                    shape, "hidden_by_filter", False
-                ):
+                if not self.main_visible(shape):
                     continue
 
                 background_color = QtGui.QColor(*self.attr_background_color)
@@ -3740,6 +3858,10 @@ class Canvas(
                 )
                 p.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, False)
 
+        # Stage 3 — three-box refine mode alignment overlay (§30).
+        # Read-only, non-modal, no hit-test participation, no Shape mutation.
+        self._paint_rect_refine_overlay(p)
+
         p.end()
         _dt = time.perf_counter() - _t0
         if _dt > 0.05:
@@ -3748,6 +3870,94 @@ class Canvas(
                 _dt,
                 len(self.shapes),
             )
+
+    def _paint_rect_refine_overlay(self, p: QtGui.QPainter) -> None:
+        """Draw the three-box refine alignment hint overlay (§30).
+
+        Non-modal, read-only, no hit-test.  For each comparable unique
+        relation, compute the live px delta from the Shape refs and show a
+        small green hint box when ``delta < alignment_hint_px`` (strict).
+        Text is fixed wording only — never a number, score or candidate count
+        (AC-097).  All geometry uses original-image coordinates transformed
+        through ``transform_pos`` so the result is zoom-independent (AC-093).
+        """
+        if self._overlay_provider is None:
+            return
+        try:
+            model = self._overlay_provider()
+        except Exception:  # noqa: BLE001 - never let overlay break paint
+            return
+        if model is None or not model.is_active or not model.relations:
+            return
+
+        green = QtGui.QColor("#22A06B")
+        hints = []
+        for relation in model.relations:
+            outer = relation.outer_ref
+            inner = relation.inner_ref
+            if outer is None or inner is None:
+                continue
+            # Live points read straight from the Shape refs so the overlay
+            # tracks an in-progress edge drag before release (AC-094).
+            try:
+                if relation.edge_kind == "top":
+                    # head.y_min vs person.y_min (both are upper edges).
+                    delta = abs(
+                        min(pt.y() for pt in inner.points)
+                        - min(pt.y() for pt in outer.points)
+                    )
+                    text_key = "top_edge_aligned"
+                else:
+                    # face.y_max vs head.y_max (both are lower edges).
+                    delta = abs(
+                        max(pt.y() for pt in inner.points)
+                        - max(pt.y() for pt in outer.points)
+                    )
+                    text_key = "bottom_edge_aligned"
+            except Exception:  # noqa: BLE001 - degenerate/missing points
+                continue
+            # Strict less-than: exactly the threshold shows nothing (AC-091).
+            if delta < relation.alignment_hint_px:
+                hints.append(text_key)
+        if not hints:
+            return
+
+        # Draw a compact green pill near the top-left of the viewport.
+        font = p.font()
+        font.setBold(True)
+        p.setFont(font)
+        # Fixed localized wording; never the numeric delta.
+        messages = {
+            "top_edge_aligned": self.tr("上沿已接近"),
+            "bottom_edge_aligned": self.tr("下沿已接近"),
+        }
+        metrics = p.fontMetrics()
+        pad_x, pad_y = 8, 4
+        line_h = metrics.height()
+        x0, y0 = 12, 12
+        for i, key in enumerate(dict.fromkeys(hints)):
+            text = messages.get(key, "")
+            if not text:
+                continue
+            w = metrics.horizontalAdvance(text)
+            rect = QtCore.QRectF(
+                x0,
+                y0 + i * (line_h + 2 * pad_y),
+                w + 2 * pad_x,
+                line_h + 2 * pad_y,
+            )
+            p.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
+            p.setBrush(green)
+            p.setPen(QtCore.Qt.PenStyle.NoPen)
+            p.drawRoundedRect(rect, 6, 6)
+            p.setPen(QtGui.QColor("white"))
+            p.drawText(
+                rect.adjusted(pad_x, pad_y, -pad_x, -pad_y),
+                QtCore.Qt.AlignmentFlag.AlignLeft
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                text,
+            )
+            p.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, False)
 
     def render_visualization(
         self,
@@ -4913,75 +5123,102 @@ class Canvas(
         return (0.0, 0.0, 1.0, 1.0)
 
     def _paint_overlay_box(self, painter, lines, bbox, shape, warning):
-        """Paint the semi-transparent overlay box with screen-stable sizing.
+        """Paint the size overlay with truly screen-stable sizing (Route A).
 
-        Uses Route B (image space + divide every screen-px constant by
-        ``Shape.scale``) WITHOUT the ``max(6.0, ...)`` floor that previously
-        made the overlay grow when zoomed in (R4). The viewport is the CURRENT
-        visible region, not the full pixmap (R2). The anchor prefers the label
-        box (R7) when ``shape`` is available.
+        Route A (design rev.1 §8): compute the anchor in image space, map it
+        back to widget/screen pixels via the painter's transform, then
+        ``resetTransform()`` and draw with FIXED screen-pixel constants. This
+        avoids Route B's integer-discretisation flaw: QFont pointSize is an
+        int, so ``round(8/scale)`` jumps 1->2 at scale≈5.3 and the overlay
+        shrinks above ~500% zoom. Fixed screen pixels have no such floor.
+
+        The viewport is the CURRENT visible region (R2); the anchor prefers
+        the label box (R7) when ``shape`` is available.
 
         Args:
-            painter: The active :class:`QPainter`.
+            painter: The active :class:`QPainter` (scaled to pixmap space by
+                ``paintEvent``; this method save/resetTransform/restore).
             lines: Tuple of text lines to render (1 or 2).
-            bbox: ``(x_min, y_min, x_max, y_max)`` of the target rectangle.
+            bbox: ``(x_min, y_min, x_max, y_max)`` of the target rectangle,
+                in image px.
             shape: The target Shape (for label-rect anchoring) or None.
             warning: When True, render in the warning colour and border.
         """
-        scale = Shape.scale if Shape.scale else 1.0
-        # R4: no max(6.0) floor — only guard against 0 so the font stays
-        # linearly inverse-scaled and screen-stable at every zoom.
-        font_size = max(1, int(round(8.0 / scale)))
+        # Fixed screen-pixel constants — independent of canvas zoom.
+        font_size = 9
+        pad = 4
+        gap = 6
         font = QtGui.QFont("Arial", font_size, QtGui.QFont.Weight.Bold)
-        painter.setFont(font)
-        painter.setOpacity(1.0)
-        fm = QtGui.QFontMetrics(painter.font())
-
-        pad = max(1.0, 4.0 / scale)
-        gap = max(1.0, 6.0 / scale)
+        fm = QtGui.QFontMetrics(font)
         line_h = fm.height()
         text_w = max(fm.horizontalAdvance(ln) for ln in lines)
         box_w = text_w + 2 * pad
         box_h = line_h * len(lines) + 2 * pad
 
-        viewport = self._visible_overlay_rect()
+        # Map image-space geometry to WIDGET LOGICAL pixels using the painter's
+        # own transform (the scale + translate set by paintEvent). Use
+        # transform() NOT combinedTransform(): after resetTransform() the
+        # painter draws in widget logical coordinates, and combinedTransform()
+        # would include the device (HiDPI) scale, placing the overlay off-window
+        # on high-DPI displays.
+        xform = painter.transform()
+        img_viewport = self._visible_overlay_rect()
+        screen_viewport = _map_rect_tuple(xform, img_viewport)
 
-        label_rect = None
+        screen_bbox = _map_rect_tuple(xform, bbox)
+
+        screen_label_rect = None
         if shape is not None:
             label_text = self._label_text_for_shape(shape)
             if label_text:
                 label_fm = QtGui.QFontMetrics(self._standard_label_font())
-                label_rect = self._label_rect_for_shape(
+                img_label = self._label_rect_for_shape(
                     shape, label_text, label_fm
                 )
+                if img_label is not None:
+                    # _label_rect_for_shape returns (x, y, w, h) but
+                    # _map_rect_tuple expects (x_min, y_min, x_max,
+                    # y_max); convert, map, then back to (x, y, w, h) for
+                    # pick_overlay_anchor.
+                    lx, ly, lw, lh = img_label
+                    mapped = _map_rect_tuple(xform, (lx, ly, lx + lw, ly + lh))
+                    screen_label_rect = (
+                        mapped[0],
+                        mapped[1],
+                        mapped[2] - mapped[0],
+                        mapped[3] - mapped[1],
+                    )
 
         ax, ay = pick_overlay_anchor(
-            bbox,
+            screen_bbox,
             box_w,
             box_h,
             gap,
-            viewport,
-            label_rect=label_rect,
+            screen_viewport,
+            label_rect=screen_label_rect,
         )
 
         bg = QtGui.QColor(0, 0, 0, 180)
         text_color = QtGui.QColor("#FFFFFF")
         if warning:
             text_color = QtGui.QColor("#FFB300")
+
+        # Switch to widget/screen space: reset the canvas scale+translate so
+        # fixed screen-pixel geometry draws at the right size regardless of
+        # zoom. Save/restore keeps the rest of paintEvent untouched.
+        painter.save()
+        painter.resetTransform()
         box_rect = QtCore.QRectF(ax, ay, box_w, box_h)
+        painter.setOpacity(1.0)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QtGui.QBrush(bg))
         painter.drawRect(box_rect)
         if warning:
-            painter.setPen(
-                QtGui.QPen(
-                    QtGui.QColor("#FFB300"),
-                    max(1, 1.5 / scale),
-                )
-            )
+            painter.setPen(QtGui.QPen(QtGui.QColor("#FFB300"), 1.5))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRect(box_rect)
 
+        painter.setFont(font)
         painter.setPen(QtGui.QPen(text_color))
         for i, ln in enumerate(lines):
             painter.drawText(
@@ -4990,6 +5227,7 @@ class Canvas(
                 ),
                 ln,
             )
+        painter.restore()
 
     @staticmethod
     def _draw_edge(painter, edge, color, width=2.0, dash=False):
@@ -5023,6 +5261,9 @@ class Canvas(
 
     def rotate_by_keyboard(self, theta):
         """Rotate selected shapes by an theta (using keyboard)"""
+        # Stage 6 — AC-058: block keyboard rotation while refine ACTIVE.
+        if self.is_whole_shape_edit_blocked():
+            return
         if self.selected_shapes:
             rotating_shape = False
             for i, shape in enumerate(self.selected_shapes):
@@ -5047,13 +5288,22 @@ class Canvas(
     def keyPressEvent(self, ev):
         """Key press event"""
         key = ev.key()
-        # Rectangle edge editing: Esc cancels the current drag but never
-        # toggles the mode or the View-menu action. The
-        # default key handling lives in ``_dispatch_default_key_press`` so
-        # this dispatcher stays under the McCabe complexity cap.
-        if key == QtCore.Qt.Key.Key_Escape and self.rect_edge_align_enabled:
-            if self._handle_rect_edge_escape():
+        # Esc arbitration (§25.3), in fixed priority order:
+        #   tier 1: rect-edge drag     → cancel drag, consume
+        #   tier 2: rect-edge pending   → clear pending, consume
+        #   tier 3: refine workgroup    → workflow rollback, consume
+        #   tier 4: Canvas/Qt default Esc
+        # The refine tier is injected as a narrow callback so Canvas never
+        # imports the workflow module.
+        if key == QtCore.Qt.Key.Key_Escape:
+            if (
+                self.rect_edge_align_enabled
+                and self._handle_rect_edge_escape()
+            ):
                 return
+            if self._escape_workgroup_handler is not None:
+                if self._escape_workgroup_handler():
+                    return
         self._dispatch_default_key_press(ev)
 
     def _dispatch_default_key_press(self, ev):
@@ -5118,6 +5368,11 @@ class Canvas(
             QtCore.Qt.Key.Key_Right,
         ):
             return False
+        # Stage 6 — AC-058: block keyboard whole-shape move while the refine
+        # mode is ACTIVE (only edge-drag is permitted).  Consume the key so
+        # the move never happens.
+        if self.is_whole_shape_edit_blocked():
+            return True
         step = (
             MOVE_SPEED
             if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier

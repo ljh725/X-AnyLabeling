@@ -128,6 +128,17 @@ from .widgets.pose_label import (
     PoseViewPanel,
 )
 
+# Stage 4A — three-box refine mode real wiring.
+from .rect_refine_types import (  # noqa: E402
+    RectRefineState,
+    SaveResult,
+    ShapeRefineView,
+)
+from .rect_refine_workflow import RectRefineWorkflow  # noqa: E402
+from .widgets.inspector.quality.geometry import (  # noqa: E402
+    bbox_from_two_corners as _rect_refine_bbox,
+)
+
 PERF_LOG_ENABLED = os.getenv("XANYLABELING_PERF_LOG") == "1"
 DATASET_INDEX_AUTO_REFRESH_DELAY_MS = 1500
 
@@ -136,6 +147,177 @@ def _perf_log(message, *args):
     """Emit performance logs only when enabled by env var."""
     if PERF_LOG_ENABLED:
         logger.info(message, *args)
+
+
+# ---------------------------------------------------------------------------
+# Stage 4A — three-box refine mode adapter implementations.
+#
+# These thin classes bridge the PyQt-free :class:`RectRefineWorkflow` to the
+# live ``LabelingWidget`` / ``Canvas``.  They are constructed lazily on first
+# mode enable (see ``LabelingWidget._ensure_rect_refine_workflow``) and never
+# hold Qt widgets beyond the widget reference itself.
+# ---------------------------------------------------------------------------
+
+
+class _RectRefineCanvasAdapter:
+    """Bridge workflow → Canvas rect-edge + undo-stack queries (§27.4)."""
+
+    def __init__(self, widget):
+        self._widget = widget
+
+    def is_rect_edge_dragging(self) -> bool:
+        return self._widget.canvas.rect_edge_dragging
+
+    def has_rect_edge_pending(self) -> bool:
+        return self._widget.canvas.rect_edge_pending_edge is not None
+
+    def cancel_rect_edge_drag(self) -> None:
+        self._widget.canvas.cancel_rect_edge_drag()
+
+    def clear_rect_edge_pending(self) -> None:
+        self._widget.canvas.clear_rect_edge_alignment()
+
+    def undo_backup_count(self) -> int:
+        return len(self._widget.canvas.shapes_backups)
+
+    def shape_alive(self, shape_ref) -> bool:
+        return shape_ref in self._widget.canvas.shapes
+
+    def shapes_count(self) -> int:
+        return len(self._widget.canvas.shapes)
+
+    # Stage 3 — task visibility + Esc + overlay hooks.
+
+    def install_workgroup_visibility(
+        self, member_shape_ids, image_token: str
+    ) -> None:
+        """Restrict main-canvas visibility to workgroup members.
+
+        The predicate closes over ``(image_token, id(shape))`` so a stale
+        member ref from a previous image is never admitted.  Failures inside
+        the predicate are caught by :meth:`Canvas.main_visible` (fail closed).
+        """
+
+        def predicate(shape):
+            return (image_token, id(shape)) in member_shape_ids
+
+        self._widget.canvas.set_main_visibility_predicate(predicate)
+
+    def clear_workgroup_visibility(self) -> None:
+        self._widget.canvas.clear_main_visibility_predicate()
+
+    def set_escape_handler(self, handler) -> None:
+        # Wrap the workflow Esc handler so the widget can re-sync the menu /
+        # accept QAction state after a rollback transitions ACTIVE→SELECTING.
+        widget = self._widget
+
+        def wrapped(*args, **kwargs):
+            consumed = handler(*args, **kwargs) if handler else False
+            widget._sync_rect_refine_action_state()
+            return consumed
+
+        self._widget.canvas.set_escape_workgroup_handler(wrapped)
+
+    def install_overlay_provider(self, provider) -> None:
+        self._widget.canvas.set_overlay_provider(provider)
+
+    def clear_overlay_provider(self) -> None:
+        self._widget.canvas.clear_overlay_provider()
+
+    def set_whole_shape_edit_blocker(self, blocker) -> None:
+        self._widget.canvas.set_whole_shape_edit_blocker(blocker)
+
+    # Stage 6 — workgroup-limited undo point read/write.  Converts between
+    # QPointF lists and plain tuples so the PyQt-free workflow never touches
+    # Qt types.  set_shape_points invalidates the Shape cache so paint / hit
+    # tests see the restored geometry immediately.
+    def get_shape_points(self, shape_ref):
+        return tuple((p.x(), p.y()) for p in shape_ref.points)
+
+    def set_shape_points(self, shape_ref, points):
+        shape_ref.points = [QtCore.QPointF(x, y) for x, y in points]
+        if hasattr(shape_ref, "_invalidate_cache"):
+            shape_ref._invalidate_cache()
+        self._widget.canvas.update()
+
+
+class _RectRefineSaveAdapter:
+    """Bridge workflow → real save path (§27.5).
+
+    Reuses ``save_file_dialog`` / ``save_labels`` / ``set_clean``.  An empty
+    dialog result is a user cancel; a ``save_labels`` ``False`` is a write
+    failure.  Both keep the workgroup ACTIVE.
+    """
+
+    def __init__(self, widget):
+        self._widget = widget
+
+    def save_current(self) -> SaveResult:
+        widget = self._widget
+        filename = widget.save_file_dialog()
+        if not filename:
+            return SaveResult.CANCELLED
+        if widget.save_labels(filename):
+            widget.add_recent_file(filename)
+            widget.set_clean()
+            return SaveResult.SUCCESS
+        return SaveResult.FAILED
+
+
+class _RectRefineDirtyAdapter:
+    """Bridge workflow → global dirty flag with precise restore (§32.3).
+
+    ``set_dirty(True)`` routes through the existing ``set_dirty`` so the
+    title/navigator refresh semantics are preserved; ``set_dirty(False)``
+    uses ``set_clean``.  The workflow never calls an unconditional clean
+    (audit risk #4).
+    """
+
+    def __init__(self, widget):
+        self._widget = widget
+
+    def is_dirty(self) -> bool:
+        return self._widget.dirty
+
+    def set_dirty(self, value: bool) -> None:
+        if value:
+            self._widget.dirty = True
+            self._widget.actions.save.setEnabled(True)
+            if (
+                hasattr(self._widget, "navigator_dialog")
+                and self._widget.navigator_dialog.isVisible()
+            ):
+                self._widget.update_navigator_shapes()
+            self._widget.update_progress_title()
+        else:
+            self._widget.set_clean()
+
+
+class _RectRefineShapeViewBuilder:
+    """Build a pure-logic :class:`ShapeRefineView` from a live Shape.
+
+    Points are copied out as plain ``(x, y)`` tuples so the grouping layer
+    never touches ``QPointF`` (audit risk #10).  ``shape_ref`` carries the
+    real Shape reference for the workflow's overlay / rollback use.
+    """
+
+    def __init__(self, widget):
+        self._widget = widget
+
+    def build_view(self, shape, shape_index, image_token, base_visible=True):
+        points = tuple((p.x(), p.y()) for p in shape.points)
+        bbox = _rect_refine_bbox(points)
+        return ShapeRefineView(
+            shape_id=(image_token, id(shape)),
+            shape_ref=shape,
+            shape_index=shape_index,
+            label=shape.label,
+            shape_type=shape.shape_type,
+            group_id=shape.group_id,
+            points=points,
+            bbox=bbox,
+            base_visible=base_visible,
+        )
 
 
 LABEL_COLORMAP = utils.label_colormap()
@@ -330,6 +512,18 @@ class LabelingWidget(LabelDialog):
 
         # Whether we need to save or not.
         self.dirty = False
+
+        # Stage 4A — three-box refine mode runtime identity.
+        # ``_rect_refine_image_token`` is a monotonically increasing integer
+        # bumped once per successful ``load_file``. It scopes workgroup member
+        # identity ``(token, id(shape))`` to one image-load lifetime so a
+        # reloaded image cannot be mutated via stale Shape references
+        # (invariant §22.3 #3, audit risk on cross-image callbacks).
+        self._rect_refine_image_token_seq = 0
+        self._rect_refine_image_token = None
+        # Lazy-constructed on first enable(); see _ensure_rect_refine_workflow.
+        self._rect_refine_workflow = None
+        self._rect_refine_view_builder = None
 
         self._no_selection_slot = False
         self._copied_shapes = None
@@ -581,7 +775,10 @@ class LabelingWidget(LabelDialog):
             self.digit_bind_draw_manager.clear_pending
         )
         self.canvas.show_shape.connect(self.show_shape)
-        self.canvas.shape_moved.connect(self.set_dirty)
+        # Stage 4A — route shape_moved through a dirty-aware wrapper so an
+        # ACTIVE refine workgroup never triggers auto-save (audit risk #1).
+        # The inspector-refresh subscription below stays untouched.
+        self.canvas.shape_moved.connect(self._on_canvas_shape_moved_for_dirty)
         self.canvas.shape_rotated.connect(self.set_dirty)
         self.canvas.selection_changed.connect(self.shape_selection_changed)
         # Inspector table refresh (debounced)
@@ -1562,6 +1759,30 @@ class LabelingWidget(LabelDialog):
             checked=False,
             enabled=True,
         )
+        # Stage 4B — three-box refine mode.  Master toggle (checkable, no
+        # default shortcut per §4) plus a Ctrl+Enter accept action (§14.1).
+        # Ctrl+Enter is hardcoded here; stage 5 will make it configurable via
+        # the ``accept_rect_refine_workgroup`` shortcut key.
+        toggle_rect_refine_mode = action(
+            self.tr("三框精修模式"),
+            self._toggle_rect_refine_mode,
+            tip=self.tr(
+                "开启三框精修模式：选择 person/head/face 建立临时工作组"
+            ),
+            icon=None,
+            checkable=True,
+            checked=False,  # Not persisted; always off at startup.
+            enabled=True,
+        )
+        accept_rect_refine_workgroup = action(
+            self.tr("通过当前工作组"),
+            self._accept_rect_refine_workgroup,
+            shortcut="Ctrl+Return",
+            tip=self.tr("保存当前工作组的精修结果（Ctrl+Enter）"),
+            icon=None,
+            checkable=False,
+            enabled=False,  # Enabled only when a workgroup is ACTIVE.
+        )
         # Languages
         select_lang_en = action(
             "English",
@@ -2172,6 +2393,8 @@ class LabelingWidget(LabelDialog):
             label_on_selection=label_on_selection,
             toggle_rect_edge_align=toggle_rect_edge_align,
             toggle_precision_mode_lock=toggle_precision_mode_lock,
+            toggle_rect_refine_mode=toggle_rect_refine_mode,
+            accept_rect_refine_workgroup=accept_rect_refine_workgroup,
             show_navigator=show_navigator,
             toggle_inspector=toggle_inspector,
             toggle_global_filter_keep=toggle_global_filter_keep,
@@ -2526,6 +2749,8 @@ class LabelingWidget(LabelDialog):
                 pose_view,
                 toggle_rect_edge_align,
                 toggle_precision_mode_lock,
+                toggle_rect_refine_mode,
+                accept_rect_refine_workgroup,
                 show_groups,
                 hide_selected_polygons,
                 show_hidden_polygons,
@@ -3526,6 +3751,19 @@ class LabelingWidget(LabelDialog):
 
     # Callbacks
     def undo_shape_edit(self):
+        # Stage 6 — ACTIVE workgroup safety gate.  Must run before any of the
+        # normal undo steps: ``canvas.restore_shape()`` replaces the shapes
+        # list (breaking member ``id(shape)`` identity) and ``set_dirty()``
+        # would leak geometry to auto-save (audit risk #5).  The gate is on
+        # the method entry, not on QAction enabled, so shortcuts and direct
+        # code calls cannot bypass it.
+        wf = self._rect_refine_workflow
+        if wf is not None and wf.is_active_workgroup():
+            wf.handle_undo_request()
+            self.actions.undo.setEnabled(self.canvas.is_shape_restorable)
+            self._sync_rect_refine_action_state()
+            return
+        # Non-ACTIVE: original behaviour, byte-for-byte unchanged.
         # Drop any pending bind-draw context (task 3.14): the source
         # shape's group_id was never written (lazy backfill), so there
         # is nothing to revert on the source — only clear the intent.
@@ -4104,6 +4342,16 @@ class LabelingWidget(LabelDialog):
     ):
         if edit and hasattr(self, "digit_bind_draw_manager"):
             self.digit_bind_draw_manager.clear_pending()
+
+        # Stage 4B — entering a create mode (or any non-edit mode) is mutually
+        # exclusive with the three-box refine workflow (§5, AC-004).  Roll
+        # back any active workgroup and close the mode before switching.
+        if not edit and self._rect_refine_workflow is not None:
+            if self._rect_refine_workflow.state != RectRefineState.OFF:
+                self._rect_refine_workflow.enter_mutex_mode(
+                    reason=f"create:{create_mode}"
+                )
+                self._sync_rect_refine_action_state()
 
         # Exit keypoint fill mode if switching away from point mode
         if (
@@ -6337,6 +6585,12 @@ class LabelingWidget(LabelDialog):
         ):
             self._pose_focus_by_filter(selected_shapes)
 
+        # Stage 4A — forward the committed formal selection to the refine
+        # workflow. Only SELECTING builds a workgroup; ACTIVE updates the
+        # recorded member. Non-rect / non-three-box selections are ignored
+        # by the workflow's own guard.
+        self._rect_refine_forward_selection(selected_shapes)
+
     def add_label(self, shape, update_last_label=True, refresh_filters=True):
         if shape.group_id is None:
             text = shape.label
@@ -7097,10 +7351,22 @@ class LabelingWidget(LabelDialog):
             return
 
         shapes = getattr(self.canvas, "shapes", [])
-        canvas_visible = getattr(self.canvas, "visible", {})
         h_shape = getattr(self.canvas, "h_hape", None)
         for shape in shapes:
             shape._is_highlighted = shape == h_shape
+        # Stage 3 — §28.5: the navigator must always reflect the *base* layer,
+        # never the refine task layer.  When a workgroup is ACTIVE the canvas
+        # visibility predicate hides non-members on the main canvas, but the
+        # navigator must keep showing them per the user's base filter.  Build a
+        # base-layer map explicitly in that case; otherwise pass the canvas
+        # dict unchanged (non-refine path stays byte-identical).
+        wf = getattr(self, "_rect_refine_workflow", None)
+        if wf is not None and wf.is_active_workgroup():
+            canvas_visible = {
+                shape: self.canvas.base_visible(shape) for shape in shapes
+            }
+        else:
+            canvas_visible = getattr(self.canvas, "visible", {})
         self.navigator_dialog.set_shapes(shapes, canvas_visible)
 
     def on_navigator_zoom_changed(
@@ -7499,6 +7765,84 @@ class LabelingWidget(LabelDialog):
             )
         else:
             self.status(self.tr("精修模式锁定已解除"), 2000)
+
+    # ------------------------------------------------------------------
+    # Stage 4B — three-box refine mode user-facing entry points.
+    # ------------------------------------------------------------------
+
+    def _toggle_rect_refine_mode(self, enabled: bool) -> None:
+        """View-menu toggle for the three-box refine mode (§4, §26.1/26.8).
+
+        The workflow ``state`` is the single source of truth; the menu
+        checked-state is derived from it, never the reverse (§27.6).  On
+        enable we capture the base layer and enter SELECTING; on disable we
+        roll back any active workgroup and restore the base layer.
+        """
+        wf = self._ensure_rect_refine_workflow()
+        if enabled:
+            if self.canvas.drawing():
+                # Refine mode requires edit mode; leave create modes first.
+                self.set_edit_mode()
+            token = self._rect_refine_image_token
+            if token is None:
+                # No image loaded yet: mode opens but stays idle until a
+                # successful load_file bumps the token (§26.1 last paragraph).
+                wf.enable("pending", [])
+            else:
+                views = [
+                    self._rect_refine_view_builder.build_view(s, i, token)
+                    for i, s in enumerate(self.canvas.shapes)
+                ]
+                wf.enable(token, views)
+            self.status(self.tr("三框精修模式已开启"))
+        else:
+            wf.disable(reason="user_toggle")
+            self.status(self.tr("三框精修模式已关闭"))
+        # Sync the menu check to the authoritative workflow state.
+        self._sync_rect_refine_action_state()
+
+    def _accept_rect_refine_workgroup(self) -> None:
+        """Ctrl+Enter handler: commit the active workgroup via save (§14).
+
+        Guarded to ACTIVE; a no-op when no workgroup is active so the
+        shortcut never collides with the plain Save action (AC-070).
+        """
+        wf = self._rect_refine_workflow
+        if wf is None or not wf.is_active_workgroup():
+            return
+        wf.accept_current_workgroup()
+        self._sync_rect_refine_action_state()
+
+    def _sync_rect_refine_action_state(self) -> None:
+        """Mirror the workflow state into the menu/accept action state.
+
+        Call after any state transition so the QAction checked/enabled flags
+        always reflect the single source of truth (§27.6).
+        """
+        wf = self._rect_refine_workflow
+        mode_on = wf is not None and wf.state != RectRefineState.OFF
+        active = wf is not None and wf.is_active_workgroup()
+        # Block signals to avoid the toggled signal re-entering the handler.
+        act_toggle = self.actions.toggle_rect_refine_mode
+        act_accept = self.actions.accept_rect_refine_workgroup
+        act_toggle.blockSignals(True)
+        act_toggle.setChecked(mode_on)
+        act_toggle.blockSignals(False)
+        act_accept.setEnabled(active)
+
+    def _rect_refine_before_leaving_image(self) -> None:
+        """Roll back the active workgroup before switching/closing an image.
+
+        Must run *before* ``may_continue()`` so the temp geometry never
+        triggers the "save annotations?" prompt (AC-081).  The mode itself
+        stays open; ``load_file``'s token bump + ``on_image_loaded`` resets
+        the new image to SELECTING (§26.7).
+        """
+        wf = self._rect_refine_workflow
+        if wf is None or wf.state == RectRefineState.OFF:
+            return
+        wf.before_image_change()
+        self._sync_rect_refine_action_state()
 
     def _sync_pose_config(self) -> None:
         """Copy PoseDisplayConfig fields into self._config['pose_view']."""
@@ -7913,7 +8257,144 @@ class LabelingWidget(LabelDialog):
             filename,
         )
 
+        # Stage 4A — a new image-load lifecycle just completed successfully.
+        # Bump the token *after* every failure path has passed so the
+        # workflow only ever sees tokens for actually-loaded images. Notify
+        # an active refine workflow so it refreshes its base layer and drops
+        # any stale workgroup bound to the previous image.
+        self._advance_rect_refine_image_token()
+        if self._rect_refine_workflow is not None:
+            self._rect_refine_workflow.on_image_loaded(
+                self._rect_refine_image_token
+            )
+
         return True
+
+    # ------------------------------------------------------------------
+    # Stage 4A — three-box refine mode wiring (no user-facing UI yet).
+    # ------------------------------------------------------------------
+
+    def _advance_rect_refine_image_token(self):
+        """Bump the per-load image token; returns the new token.
+
+        Called once at the very end of a successful ``load_file``.  The token
+        scopes workgroup member identity to one image-load lifetime so a
+        reloaded image (same path, fresh Shapes) cannot be touched by stale
+        references (invariant §22.3 #3).
+        """
+        self._rect_refine_image_token_seq += 1
+        self._rect_refine_image_token = str(self._rect_refine_image_token_seq)
+        return self._rect_refine_image_token
+
+    def _ensure_rect_refine_workflow(self):
+        """Lazily build the workflow + adapters on first use.
+
+        Constructing in ``__init__`` would add overhead for users who never
+        enter refine mode.  Returns the existing workflow if already built.
+        Exposed for stage 4B's menu entry and for tests.
+        """
+        if self._rect_refine_workflow is not None:
+            return self._rect_refine_workflow
+        self._rect_refine_view_builder = _RectRefineShapeViewBuilder(self)
+        self._rect_refine_workflow = RectRefineWorkflow(
+            canvas=_RectRefineCanvasAdapter(self),
+            save=_RectRefineSaveAdapter(self),
+            dirty=_RectRefineDirtyAdapter(self),
+            view_builder=self._rect_refine_view_builder,
+            config=self._build_rect_refine_config(),
+        )
+        return self._rect_refine_workflow
+
+    def _build_rect_refine_config(self) -> dict:
+        """Build the workflow config dict from the ``rect_refine`` yaml block.
+
+        Maps the flat yaml layout (top-level thresholds + nested
+        face_to_head / head_to_person) onto the nested ``DEFAULTS`` shape the
+        workflow expects (``general`` sub-dict).  Falls back to the grouping
+        module defaults when the user config is absent or malformed so a bad
+        value never breaks startup (§31.1).
+        """
+        from .rect_refine_grouping import DEFAULTS as _RR_DEFAULTS
+
+        user = self._config.get("rect_refine", {}) or {}
+        if not isinstance(user, dict):
+            return _RR_DEFAULTS
+        cfg = {
+            "face_to_head": dict(_RR_DEFAULTS["face_to_head"]),
+            "head_to_person": dict(_RR_DEFAULTS["head_to_person"]),
+            "general": dict(_RR_DEFAULTS["general"]),
+        }
+        # Overlay nested subsections if present and dict-shaped.
+        for sub in ("face_to_head", "head_to_person"):
+            val = user.get(sub)
+            if isinstance(val, dict):
+                cfg[sub].update(val)
+        # Map flat top-level thresholds into the ``general`` sub-dict.
+        for key in (
+            "min_accept_score",
+            "ambiguous_top_gap",
+            "alignment_hint_px",
+        ):
+            if key in user:
+                cfg["general"][key] = user[key]
+        return cfg
+
+    def _rect_refine_forward_selection(self, selected_shapes):
+        """Forward a committed Canvas selection to the refine workflow.
+
+        Builds pure-logic views for the selected shapes and the full canvas
+        shape list, then hands them to the workflow.  Only SELECTING builds a
+        workgroup; ACTIVE updates the recorded member; other states ignore.
+        A ``None`` token (no image loaded yet) is a no-op.
+        """
+        wf = self._rect_refine_workflow
+        if wf is None:
+            return
+        if wf.state not in (RectRefineState.SELECTING, RectRefineState.ACTIVE):
+            return
+        token = self._rect_refine_image_token
+        if token is None:
+            return
+        builder = self._rect_refine_view_builder
+        selected_views = [
+            builder.build_view(s, i, token)
+            for i, s in enumerate(selected_shapes)
+        ]
+        all_views = [
+            builder.build_view(s, i, token)
+            for i, s in enumerate(self.canvas.shapes)
+        ]
+        wf.on_selection_changed(selected_views, all_views)
+        # SELECTING→ACTIVE (or ACTIVE→ACTIVE member update) may have flipped
+        # the accept action's enabled state; re-sync the QAction flags.
+        self._sync_rect_refine_action_state()
+
+    def _on_canvas_shape_moved_for_dirty(self):
+        """Dirty-aware replacement for the ``shape_moved → set_dirty`` slot.
+
+        When an ACTIVE refine workgroup exists, geometry changes are recorded
+        on the workgroup only — never routed to ``set_dirty`` / auto-save
+        (audit risk #1).  Undo/title/navigator UI still refresh.  Outside a
+        workgroup the original ``set_dirty`` behavior is preserved verbatim.
+        """
+        wf = self._rect_refine_workflow
+        if wf is not None and wf.is_active_workgroup():
+            wf.note_geometry_changed()
+            # Stage 6 — push a points snapshot so a workgroup-limited Ctrl+Z
+            # can restore this edit in place (see handle_undo_request).
+            wf.commit_member_points()
+            # Allow undo UI refresh; never auto-save, never enable the plain
+            # Save action (forcing the user through accept-workgroup).
+            self.actions.undo.setEnabled(self.canvas.is_shape_restorable)
+            self.actions.save.setEnabled(False)
+            if (
+                hasattr(self, "navigator_dialog")
+                and self.navigator_dialog.isVisible()
+            ):
+                self.update_navigator_shapes()
+            self.update_progress_title()
+            return
+        self.set_dirty()
 
     def _pose_focus_by_filter(self, selected_shapes):
         """Pose View click-to-focus: set the gid filter to the clicked
@@ -8210,6 +8691,7 @@ class LabelingWidget(LabelDialog):
                 break
 
     def open_prev_image(self, _value=False):
+        self._rect_refine_before_leaving_image()
         if not self.may_continue():
             return
         if self.file_list_widget.count() <= 0:
@@ -8228,6 +8710,7 @@ class LabelingWidget(LabelDialog):
     def open_next_image(self, _value=False, load=True):
         _t_next = time.perf_counter()
         _perf_log("open_next_image enter: current=%s", self.filename)
+        self._rect_refine_before_leaving_image()
         if not self.may_continue():
             return
         count = self.file_list_widget.count()
@@ -8256,6 +8739,7 @@ class LabelingWidget(LabelDialog):
 
     # File
     def open_file(self, _value=False):
+        self._rect_refine_before_leaving_image()
         if not self.may_continue():
             return
         path = osp.dirname(str(self.filename)) if self.filename else "."
@@ -8380,6 +8864,7 @@ class LabelingWidget(LabelDialog):
             self.set_clean()
 
     def close_file(self, _value=False):
+        self._rect_refine_before_leaving_image()
         if not self.may_continue():
             return
         self.reset_state()
@@ -8451,6 +8936,7 @@ class LabelingWidget(LabelDialog):
         return image_file
 
     def delete_file(self):
+        self._rect_refine_before_leaving_image()
         mb = QtWidgets.QMessageBox
         if self._config.get("keep_prev", False):
             mb.warning(
@@ -8492,6 +8978,7 @@ class LabelingWidget(LabelDialog):
                 self.load_file(self.filename)
 
     def delete_image_file(self):
+        self._rect_refine_before_leaving_image()
         if len(self.image_list) < 2:
             return
 

@@ -465,6 +465,14 @@
       <source>Click to create point of shape '%s'</source>
       <translation>点击以创建对象“%s”的顶点</translation>
     </message>
+    <message>
+      <source>上沿已接近</source>
+      <translation>上沿已接近</translation>
+    </message>
+    <message>
+      <source>下沿已接近</source>
+      <translation>下沿已接近</translation>
+    </message>
   </context>
   <context>
     <name>ChatMessage</name>
@@ -3533,6 +3541,30 @@ This warning will only be shown once. Do you want to continue?</source>
       <location filename="../../views/labeling/label_widget.py" line="6553" />
       <source>Object Description</source>
       <translation>对象文本描述</translation>
+    </message>
+    <message>
+      <source>三框精修模式</source>
+      <translation>三框精修模式</translation>
+    </message>
+    <message>
+      <source>开启三框精修模式：选择 person/head/face 建立临时工作组</source>
+      <translation>开启三框精修模式：选择 person/head/face 建立临时工作组</translation>
+    </message>
+    <message>
+      <source>通过当前工作组</source>
+      <translation>通过当前工作组</translation>
+    </message>
+    <message>
+      <source>保存当前工作组的精修结果（Ctrl+Enter）</source>
+      <translation>保存当前工作组的精修结果（Ctrl+Enter）</translation>
+    </message>
+    <message>
+      <source>三框精修模式已开启</source>
+      <translation>三框精修模式已开启</translation>
+    </message>
+    <message>
+      <source>三框精修模式已关闭</source>
+      <translation>三框精修模式已关闭</translation>
     </message>
   </context>
   <context>

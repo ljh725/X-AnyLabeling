@@ -297,6 +297,10 @@ def _shortcut_label(short_key: str) -> str:
             SETTINGS_TRANSLATION_CONTEXT,
             "Toggle Precision Refinement",
         ),
+        "accept_rect_refine_workgroup": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Accept Three-Box Refine Workgroup",
+        ),
         "edit_group_id": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Open Group ID Manager"
         ),
@@ -1145,6 +1149,7 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "toggle_visibility_shapes",
             "toggle_rect_edge_align",
             "toggle_precision_mode_lock",
+            "accept_rect_refine_workgroup",
             "zoom_in",
             "zoom_out",
             "zoom_to_original",
