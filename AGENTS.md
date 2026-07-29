@@ -33,6 +33,33 @@ pre-commit run --all-files                   # Pre-commit gate
 & $py scripts/compile_languages.py           # Rebuild .qm + resources.py after .ts changes
 ```
 
+### Context budget rules
+
+For long-running Codex sessions, preserve context budget as an engineering
+resource: prefer precise searches, narrow reads, batched edits, and scoped
+verification over broad file dumps or repeated full-suite confirmation.
+
+- Treat `anylabeling/views/labeling/label_widget.py` and
+  `anylabeling/views/labeling/widgets/canvas.py` as high-cost files. Before
+  editing either file, locate targets with `rg -n` / `Select-String`, then read
+  only the smallest useful line window. Default to about 10-30 lines around the
+  target; expand only when the surrounding control flow is genuinely needed.
+- When multiple changes touch the same large file, batch them into one planned
+  patch where practical. Avoid repeated read-edit-read cycles on
+  `label_widget.py` / `canvas.py`.
+- After formatting or linting modifies a file, re-read only the exact affected
+  area before further edits. Do not re-open broad chunks just to refresh file
+  state.
+- Do not run full pytest merely to reconfirm already-known results. For normal
+  edits, run only the affected 1-2 test files or the narrowest relevant test
+  selectors. Run the full suite only for cross-cutting changes, release checks,
+  or when explicitly requested.
+- Keep command output short. Prefer quiet test output such as `pytest -q` and
+  inspect only the final failure/pass summary unless detailed failure output is
+  needed for debugging.
+- Before creating or rewriting large review documents, ask the user whether
+  they want a concise checklist, a detailed review, or a full artifact.
+
 ### Windows / PowerShell command rules
 
 All agent-run CLI work in this repo should use PowerShell syntax. Do not mix in
