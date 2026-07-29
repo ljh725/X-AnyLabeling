@@ -697,8 +697,8 @@ def _sync_file_list_current_row(self, filename):
 | `anylabeling/views/labeling/label_file.py` | 1, F | 性能埋点、日志开关 |
 | `anylabeling/views/labeling/widgets/canvas.py` | 1, 3, 6, F | 性能埋点、undo 参数、viewport 裁剪、日志开关 |
 | `anylabeling/views/labeling/shape.py` | 6 | bbox 缓存、path 缓存、`__getstate__` |
-| `docs/background-scan-manualization-checklist.md` | — | 任务状态更新 |
-| `docs/background-scan-manualization-summary.md` | — | 功能总结文档 |
+| `docs/filter-080_task_后台扫描手动化清单.md` | — | 任务状态更新 |
+| `docs/filter-090_summary_后台扫描手动化总结.md` | — | 功能总结文档 |
 
 ---
 

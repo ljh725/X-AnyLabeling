@@ -24,7 +24,7 @@
 |------|----------|
 | `anylabeling/views/labeling/widgets/canvas.py` | 原生标签绘制 gate、PoseRenderer 调用位置、shape 可交互判断 |
 | `anylabeling/views/labeling/label_widget.py` | 自动聚合状态、列表选择过滤、关闭/ESC 行为 |
-| `docs/pose_label_feature_summary.md` | 如需要，补充行为总结 |
+| `docs/pose-010_summary_pose关键点标签显示功能总结.md` | 如需要，补充行为总结 |
 
 ## 3. Pose View 标签隐藏方案
 

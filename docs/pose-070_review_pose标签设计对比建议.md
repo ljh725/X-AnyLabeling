@@ -1,7 +1,7 @@
 # Pose 关键点标签显示设计文档对比与建议
 
 > 对比文档：
-> - `docs/0616_html_to_pyqt6_conversion_plan.md`
+> - `docs/pose-060_task_pose标签防遮挡html转pyqt6.md`
 > - `docs/superpowers/specs/2026-06-16-pose-keypoint-label-display-design.md`
 >
 > 日期：2026-06-16
@@ -12,7 +12,7 @@
 
 核心差异在于实施路径：
 
-- `0616_html_to_pyqt6_conversion_plan.md` 更偏向“HTML 原型到 PyQt6 的迁移路线图”，强调先做独立 PyQt 原型，再逐步集成。
+- `pose-060_task_pose标签防遮挡html转pyqt6.md` 更偏向“HTML 原型到 PyQt6 的迁移路线图”，强调先做独立 PyQt 原型，再逐步集成。
 - `2026-06-16-pose-keypoint-label-display-design.md` 更偏向“产品化架构设计”，主张跳过独立原型窗口，直接以纯模块接入现有 `Canvas`。
 
 建议采用第二个文档作为主实施蓝图，同时吸收第一个文档中的迁移映射、现有架构分析和风险清单。
@@ -34,7 +34,7 @@
 
 ### 3.1 文档定位不同
 
-`0616_html_to_pyqt6_conversion_plan.md` 是迁移型文档。它关注：
+`pose-060_task_pose标签防遮挡html转pyqt6.md` 是迁移型文档。它关注：
 
 - HTML 界面结构如何映射到 PyQt6 控件
 - CSS 变量如何映射到项目主题 token
@@ -57,7 +57,7 @@
 
 ### 3.2 实施路径不同
 
-`0616_html_to_pyqt6_conversion_plan.md` 推荐分阶段混合路线：
+`pose-060_task_pose标签防遮挡html转pyqt6.md` 推荐分阶段混合路线：
 
 ```text
 HTML 原型
@@ -95,7 +95,7 @@ Dock / 配置 / 测试
 
 ### 3.3 模块边界不同
 
-`0616_html_to_pyqt6_conversion_plan.md` 的 Phase 0 会新增：
+`pose-060_task_pose标签防遮挡html转pyqt6.md` 的 Phase 0 会新增：
 
 ```text
 anylabeling/views/labeling/widgets/pose_label_prototype/
@@ -117,7 +117,7 @@ anylabeling/views/labeling/widgets/pose_label/
 
 ### 4.1 HTML 转换方案：原型保真优先
 
-`0616_html_to_pyqt6_conversion_plan.md` 的核心思路是先确保 HTML 原型能被完整翻译到 PyQt6。
+`pose-060_task_pose标签防遮挡html转pyqt6.md` 的核心思路是先确保 HTML 原型能被完整翻译到 PyQt6。
 
 它更重视：
 
@@ -191,7 +191,7 @@ M7：补齐 i18n、手动验收、代码质量检查
 
 `2026-06-16-pose-keypoint-label-display-design.md` 中写到在 `LabelingWidget.__init__` 中调用 `addDockWidget()`。
 
-但 `0616_html_to_pyqt6_conversion_plan.md` 中提到当前实际 UI 主要在 `LabelingWidget` 中构建，且可能没有使用 `QMainWindow` 的 dock 系统。
+但 `pose-060_task_pose标签防遮挡html转pyqt6.md` 中提到当前实际 UI 主要在 `LabelingWidget` 中构建，且可能没有使用 `QMainWindow` 的 dock 系统。
 
 因此开工前需要确认：
 

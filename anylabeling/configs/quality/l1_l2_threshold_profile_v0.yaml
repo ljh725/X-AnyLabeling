@@ -22,7 +22,7 @@
 #   error_requires       error 二次确认条件（list[str]），空表示无需
 #                        二次确认即可直接升 error
 #
-# 详见 docs/阶段一L1_L2质检规则阈值与输出规格_v0.md 第 2、3 节。
+# 详见 docs/qc-040_spec_v0_阶段一l1_l2质检规则阈值与输出规格.md 第 2、3 节。
 
 profile_id: v0_default
 schema_version: l1_l2_qc.v1

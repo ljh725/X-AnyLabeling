@@ -38,7 +38,7 @@ upstream beta.4 的筛选能力只有两个直接连 handler 的 `QComboBox`（`
 
 `filter_state.py` 用**快照/恢复**模式：`load_file()` 切图时，先 `_copy_filter_state()` 存进 `_pending_filter_restore`，重置，重载 shapes，再通过 setters 恢复并重新应用。这样 label/gid/shape_type 选择在图片间**存活**。
 
-这正是 [docs/filter_state_engine_pattern.md](../filter_state_engine_pattern.md) 里「单字段驱动状态机」模式的落地：`FilterState` 是 State 层，`ShapeFilterEngine` 是 Engine 层，UI 只负责调 setters。
+这正是 [docs/filter-030_des_筛选状态引擎模式.md](../filter-030_des_筛选状态引擎模式.md) 里「单字段驱动状态机」模式的落地：`FilterState` 是 State 层，`ShapeFilterEngine` 是 Engine 层，UI 只负责调 setters。
 
 ### 2. SQLite 派生索引：5000 图从卡死到秒级
 
@@ -54,7 +54,7 @@ JSON 仍是唯一真相源，SQLite 是**可丢弃、可重建**的派生缓存�
 
 ### 4. 模式可复用：Inspector / focus-solo 的模板
 
-`docs/filter_state_engine_pattern.md` 明确把这个 State/Engine/UI 三层架构作为**可复用模板**，计划用于未来的「属性筛选 / 文件筛选 / Inspector 筛选 / focus-solo 可见性」——一次设计，多处复用。
+`docs/filter-030_des_筛选状态引擎模式.md` 明确把这个 State/Engine/UI 三层架构作为**可复用模板**，计划用于未来的「属性筛选 / 文件筛选 / Inspector 筛选 / focus-solo 可见性」——一次设计，多处复用。
 
 ---
 
@@ -81,11 +81,11 @@ JSON 仍是唯一真相源，SQLite 是**可丢弃、可重建**的派生缓存�
 
 ## 设计方法论沉淀
 
-- 📄 [**filter_state_engine_pattern.md**](../filter_state_engine_pattern.md) — 单字段驱动状态机模式（State/Engine/UI 三层），本功能是该模式的第一个落地点
-- 📄 [**dataset_filter_index_design.md**](../dataset_filter_index_design.md) — SQLite 派生索引设计（可丢弃、可重建）
-- 📄 [**json_filter_checker_blueprint.md**](../json_filter_checker_blueprint.md) — JSON 筛选蓝图
-- 📄 [**shape_type_filter_technical_spec.md**](../shape_type_filter_technical_spec.md) — shape_type 筛选技术规格
-- 📄 [**filter_result_navigation_implementation_plan.md**](../filter_result_navigation_implementation_plan.md) — 筛选结果导航实现计划
+- 📄 [**filter-030_des_筛选状态引擎模式.md**](../filter-030_des_筛选状态引擎模式.md) — 单字段驱动状态机模式（State/Engine/UI 三层），本功能是该模式的第一个落地点
+- 📄 [**filter-060_des_数据集筛选索引设计.md**](../filter-060_des_数据集筛选索引设计.md) — SQLite 派生索引设计（可丢弃、可重建）
+- 📄 [**filter-050_des_json筛选规则检查蓝图.md**](../filter-050_des_json筛选规则检查蓝图.md) — JSON 筛选蓝图
+- 📄 [**filter-020_spec_形状类型筛选技术规格.md**](../filter-020_spec_形状类型筛选技术规格.md) — shape_type 筛选技术规格
+- 📄 [**filter-040_task_筛选结果导航实现计划.md**](../filter-040_task_筛选结果导航实现计划.md) — 筛选结果导航实现计划
 
 ---
 

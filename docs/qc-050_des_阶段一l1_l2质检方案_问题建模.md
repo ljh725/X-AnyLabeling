@@ -8,8 +8,8 @@
 - 一个真实人物目标可以只标注 `head`、只标注 `face`，或只标注 `head + face`，不要求三类框同时存在。
 - 因此，完整性不能再定义为“person 组必须有 head/face”。
 - 当前文档已经更新：
-  - [目标框准确度治理建模.md](D:/xinjiegou-X-AnyLabeling-4.0.0-beta.4/docs/目标框准确度治理建模.md)
-  - [L1_L2目标框质量校验规则规格表.md](D:/xinjiegou-X-AnyLabeling-4.0.0-beta.4/docs/L1_L2目标框质量校验规则规格表.md)
+  - [qc-020_note_目标框准确度治理建模.md](D:/xinjiegou-X-AnyLabeling-4.0.0-beta.4/docs/qc-020_note_目标框准确度治理建模.md)
+  - [qc-030_spec_l1_l2目标框质量校验规则规格表.md](D:/xinjiegou-X-AnyLabeling-4.0.0-beta.4/docs/qc-030_spec_l1_l2目标框质量校验规则规格表.md)
 - 当前阶段已经从纯问题建模进入“阶段一 L1/L2 质量校验方案规格化”。
 
 【核心问题表述】

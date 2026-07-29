@@ -103,7 +103,7 @@ beta.11：统一 `_shape_hit_candidates`，按 **`(级别, 主排序值, 次排�
 
 ## 五、交付物
 
-1. `docs/SELECTION_MIGRATION_PLAN.md`（本文件）
+1. `docs/filter-120_task_复杂对象选择优化迁移计划.md`（本文件）
 2. 代码改动：`shape.py`(+1 行)、`canvas.py`(+75 行新方法 + ~100 行重写 3 处调用点)
 3. git 产物：tag `selection-migration/baseline-2026-06-29`（本地+远程）、分支 `feature/selection-optimization`（本地+远程）
 
@@ -120,7 +120,7 @@ beta.11：统一 `_shape_hit_candidates`，按 **`(级别, 主排序值, 次排�
 |------|----|----|----|
 | `anylabeling/views/labeling/shape.py` | +4 | 0 | +4 |
 | `anylabeling/views/labeling/widgets/canvas.py` | +121 | -61 | +60 |
-| `docs/SELECTION_MIGRATION_PLAN.md` | +117 | 0 | +117 |
+| `docs/filter-120_task_复杂对象选择优化迁移计划.md` | +117 | 0 | +117 |
 | **合计** | | | **+181** |
 
 ---

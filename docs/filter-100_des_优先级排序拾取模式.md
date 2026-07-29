@@ -8,7 +8,7 @@
 |---|---|
 | 文档性质 | 通用设计模式（Design Pattern）+ 案例剖析 |
 | 来源 | 从 X-AnyLabeling 4.0.0-beta.11 功能 C `_shape_hit_candidates` 抽象提炼 |
-| 配套 | 详见 `SELECTION_MIGRATION_PLAN.md`（该模式的一次迁移实践） |
+| 配套 | 详见 `filter-120_task_复杂对象选择优化迁移计划.md`（该模式的一次迁移实践） |
 | 创建 | 2026-06-29 |
 
 ---
@@ -312,7 +312,7 @@ B 大框(0,0)-(80,80)   stack=1, 包含(11,11)
 排序后: [A, B] → 选中 A ✅
 ```
 
-> 更详细的演算见 `SELECTION_MIGRATION_PLAN.md` 与 `tests/test_shape_hit_candidates.py`。
+> 更详细的演算见 `filter-120_task_复杂对象选择优化迁移计划.md` 与 `tests/test_shape_hit_candidates.py`。
 
 ---
 
@@ -512,4 +512,4 @@ priority = (level, dist, area, stack)   # dist 是浮点
 | 调用点② 点击 | `canvas.py:1604` |
 | 调用点③ 双击 | `canvas.py:1522` |
 | 算法单测 | `tests/test_shape_hit_candidates.py` |
-| 迁移实践文档 | `docs/SELECTION_MIGRATION_PLAN.md` |
+| 迁移实践文档 | `docs/filter-120_task_复杂对象选择优化迁移计划.md` |

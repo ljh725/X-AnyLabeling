@@ -38,7 +38,7 @@
 
 ## 方案：决策转排序
 
-核心思想来自我沉淀的 [PATTERN_CARD_001](../PATTERN_CARD_001_decision_to_sort.md)——**把多重 if-elif 决策转成可比较的元组排序**。
+核心思想来自我沉淀的 [PATTERN_CARD_001](../meth-050_note_模式卡片001_决策转排序.md)——**把多重 if-elif 决策转成可比较的元组排序**。
 
 对每个候选 shape 计算一个 **4 元组优先级**，最后按元组字典序升序排序（越小越优先），返回排好序的 `[shape, ...]` 列表：
 
@@ -167,7 +167,7 @@ priority = (2, area_large, 0.0, -stack_index)  # 外层大框
 
 这个功能的设计思路被我抽象成了一张可复用的「模式卡片」：
 
-- 📇 [**PATTERN_CARD_001 决策转排序**](../PATTERN_CARD_001_decision_to_sort.md) — 把多重 if-elif 决策转成可比较的元组排序的通用模板，含多目标选择实例
+- 📇 [**PATTERN_CARD_001 决策转排序**](../meth-050_note_模式卡片001_决策转排序.md) — 把多重 if-elif 决策转成可比较的元组排序的通用模板，含多目标选择实例
 
 ---
 

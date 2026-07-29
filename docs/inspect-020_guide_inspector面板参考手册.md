@@ -2,7 +2,7 @@
 
 > **最后更新**: 2026-04-30  
 > **关联**：`AGENTS.md` → Inspector module 章节  
-> **对应设计文档**：`docs/data-inspector-panel-design.md`（设计阶段，已过期）
+> **对应设计文档**：`docs/inspect-010_des_数据检查面板设计.md`（设计阶段，已过期）
 
 ---
 

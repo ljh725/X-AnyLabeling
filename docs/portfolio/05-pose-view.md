@@ -175,9 +175,9 @@ flake8 clean，black 通过。回归测试见 [`docs/feature_interaction_test_ma
 
 ## 设计文档
 
-- [`docs/pose_view_label_decoupling_plan.md`](../pose_view_label_decoupling_plan.md) — 解耦方案
-- [`docs/pose_label_feature_summary.md`](../pose_label_feature_summary.md) — 功能总结
-- [`docs/POSE_VIEW_LAYOUT_TABLE_MODEL.md`](../POSE_VIEW_LAYOUT_TABLE_MODEL.md) — 布局表格模型
+- [`docs/pose-020_des_pose视图标签解耦方案.md`](../pose-020_des_pose视图标签解耦方案.md) — 解耦方案
+- [`docs/pose-010_summary_pose关键点标签显示功能总结.md`](../pose-010_summary_pose关键点标签显示功能总结.md) — 功能总结
+- [`docs/pose-050_des_pose视图标签布局表格模型.md`](../pose-050_des_pose视图标签布局表格模型.md) — 布局表格模型
 - [`docs/keypoint_fill_call_chain.md`](../keypoint_fill_call_chain.md) — Keypoint Fill 调用链
 - [`docs/feature_interaction_test_matrix.md`](../feature_interaction_test_matrix.md) — 交互测试矩阵
 

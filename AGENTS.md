@@ -181,7 +181,7 @@ command with approval outside the sandbox instead of changing the environment.
 
 ### 阶段一 L1/L2 质检模块 (`anylabeling/views/labeling/widgets/inspector/quality/`)
 
-纯 Python（不依赖 PyQt6），可独立 import。规格见 `docs/阶段一L1_L2质检规则阈值与输出规格_v0.md`。
+纯 Python（不依赖 PyQt6），可独立 import。规格见 `docs/qc-040_spec_v0_阶段一l1_l2质检规则阈值与输出规格.md`。
 
 | 文件 | 职责 |
 |------|------|

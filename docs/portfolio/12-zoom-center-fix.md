@@ -18,7 +18,7 @@ upstream beta.4 已经*尝试*做「缩放到鼠标位置」，但**在竖图上
   → 而同样面积的横图 800×600 正常
 ```
 
-**根因三层**（详见 [docs/zoom_center_drift_analysis.md](../zoom_center_drift_analysis.md)）：
+**根因三层**（详见 [docs/canvas-070_note_缩放中心飘移分析.md](../canvas-070_note_缩放中心飘移分析.md)）：
 
 1. **主因**：`scroll_area.setWidgetResizable(True)` 让 Qt 把 canvas widget 的 `width()` 钳制到 viewport 宽度（竖图逻辑宽 600×1.35≈810 远小于 1920 viewport），于是 `canvas.width()` 在缩放前后**不变** → buggy 的 guard `if canvas_width_old != canvas_width_new` 判 **False** → 整个滚动补偿被跳过，但 `scale` 确实变了（1.35→1.50），鼠标下的点就漂了 ~45px。
 2. **次因**：即使补偿运行，y 轴位移复用了 **width** 比率；竖图的高度才是约束维，y 补偿算错。
@@ -82,7 +82,7 @@ upstream 即使算出补偿值也会把**不可达**的滚动值写进 `scroll_v
 
 ### 3. 符号验证式文档
 
-[docs/zoom_center_drift_implementation_plan.md](../zoom_center_drift_implementation_plan.md) 用一节专门做**符号/正负号验证**：证明 `new_scroll = old_scroll + delta` 保持 `screen_pos = widget_pos - scroll_value` 不变量。这种「数学论证写进设计文档」的做法让修复可审计。
+[docs/canvas-080_task_缩放中心飘移修复计划.md](../canvas-080_task_缩放中心飘移修复计划.md) 用一节专门做**符号/正负号验证**：证明 `new_scroll = old_scroll + delta` 保持 `screen_pos = widget_pos - scroll_value` 不变量。这种「数学论证写进设计文档」的做法让修复可审计。
 
 ### 4. 诚实界定范围
 
@@ -112,8 +112,8 @@ upstream 即使算出补偿值也会把**不可达**的滚动值写进 `scroll_v
 
 ## 设计文档
 
-- 📄 [**zoom_center_drift_analysis.md**](../zoom_center_drift_analysis.md) — 根因三层分析（主因/次因/第三层）
-- 📄 [**zoom_center_drift_implementation_plan.md**](../zoom_center_drift_implementation_plan.md) — 坐标锚点方案 + 符号验证 + Phase 2 范围界定
+- 📄 [**canvas-070_note_缩放中心飘移分析.md**](../canvas-070_note_缩放中心飘移分析.md) — 根因三层分析（主因/次因/第三层）
+- 📄 [**canvas-080_task_缩放中心飘移修复计划.md**](../canvas-080_task_缩放中心飘移修复计划.md) — 坐标锚点方案 + 符号验证 + Phase 2 范围界定
 
 ---
 

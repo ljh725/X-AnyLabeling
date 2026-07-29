@@ -763,7 +763,7 @@ Expected: no errors (max complexity 18).
 
 ## Self-Review Checklist
 
-- [ ] **Spec coverage:** Every requirement in `docs/0616_pose_view_label_hide_and_auto_aggregation_change_plan.md` maps to at least one task above.
+- [ ] **Spec coverage:** Every requirement in `docs/pose-080_des_pose标签隐藏与自动聚合方案.md` maps to at least one task above.
 - [ ] **Pose View native labels hidden:** Task 3 Step 8 (`_should_draw_standard_label`) and Step 9 (PoseRenderer outside `show_labels`).
 - [ ] **`show_labels` controls Pose labels:** Task 4 Step 11.
 - [ ] **Auto-focus ARMED/FOCUSED/OFF:** Task 6 Steps 15-18.

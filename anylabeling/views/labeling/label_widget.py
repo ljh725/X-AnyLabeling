@@ -7627,7 +7627,7 @@ class LabelingWidget(LabelDialog):
         # Symbol verified: new_scroll = old_scroll + delta keeps the
         # image point's screen position invariant
         # (screen_pos = widget_pos - scroll_value). See
-        # docs/zoom_center_drift_implementation_plan.md sec 2 & step 2.5.
+        # docs/canvas-080_task_缩放中心飘移修复计划.md sec 2 & step 2.5.
         delta = new_pos - old_pos
 
         target_h = self._clamp_scroll_value(h_bar, old_h + delta.x())

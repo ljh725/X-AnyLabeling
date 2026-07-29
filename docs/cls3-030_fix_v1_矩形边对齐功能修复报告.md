@@ -1,10 +1,10 @@
 # 矩形边对齐功能修复报告 v1
 
-> 本文档对应审核结论 `docs/矩形边对齐功能审核结论_v1.md`，记录 3 个 Findings 的修复方案、
+> 本文档对应审核结论 `docs/cls3-040_review_v1_矩形边对齐功能审核结论.md`，记录 3 个 Findings 的修复方案、
 > 代码改动、验证结果。
 >
-> - 审核结论：`docs/矩形边对齐功能审核结论_v1.md`（Codex v1）
-> - 原实现报告：`docs/矩形边对齐功能实现报告.md`
+> - 审核结论：`docs/cls3-040_review_v1_矩形边对齐功能审核结论.md`（Codex v1）
+> - 原实现报告：`docs/cls3-020_impl_矩形边对齐功能实现报告.md`
 > - 修复提交：`78c8327 fix(rect-edge-align): address Codex audit v1`
 > - 实现前备份节点：`backup/before-rect-edge-align`
 

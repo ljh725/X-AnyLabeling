@@ -18,7 +18,7 @@ Usage::
         [--image-dir /path/to/images]
 
 The run is strictly read-only: no JSON is written back.  See
-``docs/阶段一L1_L2质检实现任务文档.md`` section G.
+``docs/qc-060_task_阶段一l1_l2质检实现任务文档.md`` section G.
 """
 
 from __future__ import annotations

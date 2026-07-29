@@ -10,7 +10,8 @@ Public API for the quality-check pipeline:
         load_threshold_profile,
     )
 
-See ``docs/阶段一L1_L2质检规则阈值与输出规格_v0.md`` for the v0 spec.
+See ``docs/qc-040_spec_v0_阶段一l1_l2质检规则阈值与输出规格.md``
+for the v0 spec.
 """
 
 # flake8: noqa

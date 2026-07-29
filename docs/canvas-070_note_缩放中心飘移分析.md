@@ -144,7 +144,7 @@ def zoom_request(self, delta, pos):
 
 ---
 
-## 十、对实现文档（zoom_center_drift_implementation_plan.md）的评审反馈
+## 十、对实现文档（canvas-080_task_缩放中心飘移修复计划.md）的评审反馈
 
 > 本节是对配套实现文档的技术评审。认可整体思路（image-anchor 模型 + 纳入 `offset_to_center`），但发现 **1 个致命符号问题 + 2 个隐患 + 1 个边界一致性问题**，必须在编码前澄清。
 

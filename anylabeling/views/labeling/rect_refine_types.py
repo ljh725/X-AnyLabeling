@@ -4,7 +4,7 @@
 This module is pure Python data layer (``Enum`` + ``dataclass``).  It holds
 *zero* business logic and never touches a real :class:`Shape` instance.
 
-The architecture rule from ``docs/三框精修模式交互与状态机设计.md`` §23.3:
+The architecture rule from ``docs/cls3-090_des_三框精修模式交互与状态机设计.md`` §23.3:
 grouping/types must be importable in a process without PyQt6 installed.
 The concrete :class:`~anylabeling.views.labeling.shape.Shape` reference is
 carried as an opaque ``shape_ref`` field (typed ``Any``); pure-logic code

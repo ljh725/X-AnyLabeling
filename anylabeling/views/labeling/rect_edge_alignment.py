@@ -4,7 +4,7 @@ This module is a lightweight, QtWidgets-free helper that provides the
 geometry primitives used by the rectangle edge editing interaction on the
 canvas.
 
-Scope (see ``docs/矩形边对齐功能实现任务文档.md``):
+Scope (see ``docs/cls3-010_task_矩形边对齐功能实现任务文档.md``):
 
 - Defines ``RectGeometry`` and ``RectEdgeRef``.
 - Provides rectangle point normalization (2-point or 4-point -> bbox/four-point).

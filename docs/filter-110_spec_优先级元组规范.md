@@ -2,7 +2,7 @@
 
 > 本文档对 X-AnyLabeling 功能 C `_shape_hit_candidates` 的 priority 元组做**严谨的、统一的、逐 case 对齐代码**的表征。
 >
-> 它是其它文档（`PRIORITY_BASED_PICKING_PATTERN.md` / `PATTERN_CARD_001_...`）的**权威基准**：当任何文档与本文冲突时，以本文为准，以代码为最终真相。
+> 它是其它文档（`filter-100_des_优先级排序拾取模式.md` / `PATTERN_CARD_001_...`）的**权威基准**：当任何文档与本文冲突时，以本文为准，以代码为最终真相。
 
 | | |
 |---|---|
@@ -194,9 +194,9 @@ priority = (4维排序键)
 
 | 文档 | 使用的命名层级 | 与本文关系 |
 |------|--------------|-----------|
-| `PRIORITY_BASED_PICKING_PATTERN.md` | 层级 B（已修正） | 一致，本文是其 priority 表述的权威基准 |
-| `PATTERN_CARD_001_decision_to_sort.md` | 层级 B（已修正） | 一致，卡片速记参考本文 §2 |
-| `SELECTION_MIGRATION_PLAN.md` | 层级 B（已修正） | 一致 |
+| `filter-100_des_优先级排序拾取模式.md` | 层级 B（已修正） | 一致，本文是其 priority 表述的权威基准 |
+| `meth-050_note_模式卡片001_决策转排序.md` | 层级 B（已修正） | 一致，卡片速记参考本文 §2 |
+| `filter-120_task_复杂对象选择优化迁移计划.md` | 层级 B（已修正） | 一致 |
 | `PROBLEM_REPRESENTATION_*.md` | 思维方法层 | 不涉及具体命名，正交 |
 | **本文** | **层级 B + §2 取值表** | **权威基准** |
 

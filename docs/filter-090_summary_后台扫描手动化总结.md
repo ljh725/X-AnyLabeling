@@ -60,7 +60,7 @@
 - `anylabeling/views/labeling/label_widget.py`
 - `anylabeling/views/labeling/label_file.py`
 - `anylabeling/views/labeling/widgets/canvas.py`
-- `docs/background-scan-manualization-checklist.md`
+- `docs/filter-080_task_后台扫描手动化清单.md`
 
 ## 使用方式
 
@@ -86,7 +86,7 @@ XANYLABELING_PERF_LOG=1
 
 ## 验证情况
 
-- 任务书 `docs/background-scan-manualization-checklist.md` 中 Task A 到 Task F 的 checklist 与验收项均已勾选完成。
+- 任务书 `docs/filter-080_task_后台扫描手动化清单.md` 中 Task A 到 Task F 的 checklist 与验收项均已勾选完成。
 - 已运行 `flake8 anylabeling/views/labeling/label_widget.py anylabeling/views/labeling/label_file.py anylabeling/views/labeling/widgets/canvas.py`。
 - flake8 仍报告若干既有问题，包括复杂度、未使用 blocker 变量和一个缺少占位符的 f-string；本次新增修改点没有引入新的性能日志直出问题。
 

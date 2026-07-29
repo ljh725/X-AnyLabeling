@@ -323,10 +323,10 @@ ljh725/X-AnyLabeling  ← 本仓库（93 commits / ~1.5 万行扩展代码）
 
 在实现这些功能的过程中，我把一些可复用的设计决策记录成了「模式卡片」和设计文档：
 
-- [PATTERN_CARD_001 决策转排序](PATTERN_CARD_001_decision_to_sort.md)——把多重 if-elif 决策转成可比较的元组排序
-- [filter_state_engine_pattern.md](filter_state_engine_pattern.md)——单字段驱动状态机模式
-- [canvas_refactor_plan.md](canvas_refactor_plan.md)——Canvas 分析与重构方法论
-- [annotation_quality_methodology_prompt_guide.md](annotation_quality_methodology_prompt_guide.md)——标注质检方法论
+- [PATTERN_CARD_001 决策转排序](meth-050_note_模式卡片001_决策转排序.md)——把多重 if-elif 决策转成可比较的元组排序
+- [filter-030_des_筛选状态引擎模式.md](filter-030_des_筛选状态引擎模式.md)——单字段驱动状态机模式
+- [canvas-020_des_canvas重构方案.md](canvas-020_des_canvas重构方案.md)——Canvas 分析与重构方法论
+- [meth-020_guide_标注质量方法论prompt指南.md](meth-020_guide_标注质量方法论prompt指南.md)——标注质检方法论
 
 ---
 

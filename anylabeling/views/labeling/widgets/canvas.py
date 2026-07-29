@@ -4476,7 +4476,7 @@ class Canvas(
 
     # ------------------------------------------------------------------
     # Rectangle edge editing mode.
-    # See docs/矩形边对齐功能实现任务文档.md and rect_edge_alignment.py.
+    # See docs/cls3-010_task_矩形边对齐功能实现任务文档.md and rect_edge_alignment.py.
     # All logic here is guarded by ``self.rect_edge_align_enabled`` so the
     # default editing experience is unchanged when the mode is off.
     # ------------------------------------------------------------------

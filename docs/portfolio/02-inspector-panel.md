@@ -177,9 +177,9 @@ _by_group: Dict[(file_path, group_id), List[...]]    # 按分组
 
 ## 设计文档
 
-- [`docs/data-inspector-panel-design.md`](../data-inspector-panel-design.md) — 设计动机与架构
-- [`docs/inspector-panel-reference.md`](../inspector-panel-reference.md) — Inspector 速查手册
-- [`docs/Inspector_L1_L2质检复核队列使用说明.md`](../Inspector_L1_L2质检复核队列使用说明.md) — 质检复核使用说明
+- [`docs/inspect-010_des_数据检查面板设计.md`](../inspect-010_des_数据检查面板设计.md) — 设计动机与架构
+- [`docs/inspect-020_guide_inspector面板参考手册.md`](../inspect-020_guide_inspector面板参考手册.md) — Inspector 速查手册
+- [`docs/qc-090_guide_inspector_l1_l2质检复核队列使用说明.md`](../qc-090_guide_inspector_l1_l2质检复核队列使用说明.md) — 质检复核使用说明
 
 ---
 

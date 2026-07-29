@@ -5,10 +5,10 @@
 
 规则、阈值、输出字段仍以以下文档为准：
 
-- `docs/阶段一L1_L2质检规则阈值与输出规格_v0.md`
-- `docs/阶段一L1_L2质检实现任务文档.md`
-- `docs/inspector-panel-reference.md`
-- `docs/inspector-external-result-format.md`
+- `docs/qc-040_spec_v0_阶段一l1_l2质检规则阈值与输出规格.md`
+- `docs/qc-060_task_阶段一l1_l2质检实现任务文档.md`
+- `docs/inspect-020_guide_inspector面板参考手册.md`
+- `docs/inspect-030_spec_inspector外部结果格式.md`
 
 ## 1. 背景
 

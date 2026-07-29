@@ -6,7 +6,7 @@
 - `head/face` 仍然应该有合法 `group_id`，不能因为解耦而变成 `null`。
 - 当前 `group_merger.py` 的“统一真实人物 id”逻辑会覆盖正式 `group_id` 语义。
 - `s22-none.json` 中出现 `face.group_id = null`，本质上应作为待复核或数据问题，而不是正常最终状态。
-- `docs/annotation_quality_methodology_prompt_guide.md` 强调：先建立质量判断体系，再决定规则、统计、模型或工具实现。
+- `docs/meth-020_guide_标注质量方法论prompt指南.md` 强调：先建立质量判断体系，再决定规则、统计、模型或工具实现。
 - `pose_qa/docs/quality_strategy.md` 建议四层质检：L1 硬规则、L2 人体结构/几何规则、L3 模型差异、L4 主动复查队列。
 
 【核心问题表述】

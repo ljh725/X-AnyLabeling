@@ -150,7 +150,7 @@ def select_shape_point(self, point, multiple_selection_mode):
 
 ## 技术文档
 
-**文档位置**: `docs/Label on Selection.md`  
+**文档位置**: `docs/filter-010_guide_选中即显功能说明.md`
 **版本**: 4.0  
 **更新日期**: 2026-04-23
 
@@ -230,7 +230,7 @@ print(f"paintEvent: label_on_selection={self.label_on_selection}")
 1. **不要恢复粘滞选中逻辑** - 当前设计是快速检查模式
 2. **保持三层保护机制** - 但都是"取消选中"而非"保持选中"
 3. **统一处理所有形状类型** - 避免特殊分支导致遗漏
-4. **更新文档同步** - 代码变更时同步更新 `docs/Label on Selection.md`
+4. **更新文档同步** - 代码变更时同步更新 `docs/filter-010_guide_选中即显功能说明.md`
 
 ---
 

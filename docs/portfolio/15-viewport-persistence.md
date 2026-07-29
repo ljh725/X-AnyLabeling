@@ -127,7 +127,7 @@ target_h = max(min, min(max, target_h))            # clamp 到有效区间
 
 ## 设计文档
 
-- 📄 [**viewport_state_management.md**](../viewport_state_management.md) — 304 行完整设计文档（11 节：组件/策略/坐标转换/调用链/边界/交互/UI/调试/版本史）
+- 📄 [**canvas-060_des_视口状态管理.md**](../canvas-060_des_视口状态管理.md) — 304 行完整设计文档（11 节：组件/策略/坐标转换/调用链/边界/交互/UI/调试/版本史）
 
 ---
 

@@ -323,10 +323,10 @@ Product validation showed poor usability, and a strong image edge is not necessa
 
 While implementing these features, I distilled reusable design decisions into "pattern cards" and design docs (in Chinese):
 
-- [PATTERN_CARD_001 Decision-to-Sort](PATTERN_CARD_001_decision_to_sort.md) — turning multi-way if-elif decisions into comparable tuple sorts
-- [filter_state_engine_pattern.md](filter_state_engine_pattern.md) — single-field-driven state-machine pattern
-- [canvas_refactor_plan.md](canvas_refactor_plan.md) — Canvas analysis & refactoring methodology
-- [annotation_quality_methodology_prompt_guide.md](annotation_quality_methodology_prompt_guide.md) — annotation-QC methodology
+- [PATTERN_CARD_001 Decision-to-Sort](meth-050_note_模式卡片001_决策转排序.md) — turning multi-way if-elif decisions into comparable tuple sorts
+- [filter-030_des_筛选状态引擎模式.md](filter-030_des_筛选状态引擎模式.md) — single-field-driven state-machine pattern
+- [canvas-020_des_canvas重构方案.md](canvas-020_des_canvas重构方案.md) — Canvas analysis & refactoring methodology
+- [meth-020_guide_标注质量方法论prompt指南.md](meth-020_guide_标注质量方法论prompt指南.md) — annotation-QC methodology
 
 ---
 

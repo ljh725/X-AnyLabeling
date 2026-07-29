@@ -17,7 +17,8 @@ Usage::
         [--base-profile v0_default] \\
         [--target-profile v1_after_review]
 
-See ``docs/阶段一L1_L2质检规则阈值与输出规格_v0.md`` section 9.
+See ``docs/qc-040_spec_v0_阶段一l1_l2质检规则阈值与输出规格.md``
+section 9.
 """
 
 from __future__ import annotations

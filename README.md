@@ -203,9 +203,9 @@ For architecture diagrams, code snippets with `file:line` links, and deeper tech
 
 While implementing these features, I distilled reusable design decisions into "pattern cards" and design docs (in Chinese):
 
-- [PATTERN_CARD_001 Decision-to-Sort](docs/PATTERN_CARD_001_decision_to_sort.md) — turning multi-way if-elif decisions into comparable tuple sorts
-- [filter_state_engine_pattern.md](docs/filter_state_engine_pattern.md) — single-field-driven state-machine pattern
-- [canvas_refactor_plan.md](docs/canvas_refactor_plan.md) — Canvas analysis & refactoring methodology
+- [PATTERN_CARD_001 Decision-to-Sort](docs/meth-050_note_模式卡片001_决策转排序.md) — turning multi-way if-elif decisions into comparable tuple sorts
+- [filter-030_des_筛选状态引擎模式.md](docs/filter-030_des_筛选状态引擎模式.md) — single-field-driven state-machine pattern
+- [canvas-020_des_canvas重构方案.md](docs/canvas-020_des_canvas重构方案.md) — Canvas analysis & refactoring methodology
 
 ---
 

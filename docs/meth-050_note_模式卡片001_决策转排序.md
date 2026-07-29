@@ -8,8 +8,8 @@
 | 卡片编号 | #001 |
 | 模式名 | 决策转排序（Decision → Sort） |
 | 首次遇到 | 2026-06-29，X-AnyLabeling 功能 C 选择优化迁移 |
-| 配套详解 | `docs/PRIORITY_BASED_PICKING_PATTERN.md` |
-| 配套实践 | `docs/SELECTION_MIGRATION_PLAN.md`、`tests/test_shape_hit_candidates.py` |
+| 配套详解 | `docs/filter-100_des_优先级排序拾取模式.md` |
+| 配套实践 | `docs/filter-120_task_复杂对象选择优化迁移计划.md`、`tests/test_shape_hit_candidates.py` |
 | 难度认知 | **代码不难（就一行 sort），难在"想不到"这个转换** |
 
 ---
@@ -126,8 +126,8 @@
 
 ## 九、关联资源（深挖时按图索骥）
 
-- **完整模式文档**：`docs/PRIORITY_BASED_PICKING_PATTERN.md`（13 节 + 附录，含演算/反模式/扩展）
-- **真实案例迁移**：`docs/SELECTION_MIGRATION_PLAN.md`（beta.4 → beta.11 全过程）
+- **完整模式文档**：`docs/filter-100_des_优先级排序拾取模式.md`（13 节 + 附录，含演算/反模式/扩展）
+- **真实案例迁移**：`docs/filter-120_task_复杂对象选择优化迁移计划.md`（beta.4 → beta.11 全过程）
 - **可运行单测**：`tests/test_shape_hit_candidates.py`（6 场景验证算法正确性）
 - **源码实现**：`anylabeling/views/labeling/widgets/canvas.py:496-586`
 
@@ -139,7 +139,7 @@
 
 ```
 docs/PATTERN_CARD_<编号>_<模式名>.md
-  例：PATTERN_CARD_001_decision_to_sort.md      ← 本卡
+  例：meth-050_note_模式卡片001_决策转排序.md      ← 本卡
       PATTERN_CARD_002_xxx.md                   ← 下次遇到新模式时新建
 ```
 

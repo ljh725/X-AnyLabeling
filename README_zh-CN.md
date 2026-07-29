@@ -202,9 +202,9 @@ elif edge_name == RECT_EDGE_BOTTOM:
 
 实现这些功能时，我把可复用的设计决策记录成了「模式卡片」和设计文档：
 
-- [PATTERN_CARD_001 决策转排序](docs/PATTERN_CARD_001_decision_to_sort.md)——把多重 if-elif 决策转成可比较的元组排序
-- [filter_state_engine_pattern.md](docs/filter_state_engine_pattern.md)——单字段驱动状态机模式
-- [canvas_refactor_plan.md](docs/canvas_refactor_plan.md)——Canvas 分析与重构方法论
+- [PATTERN_CARD_001 决策转排序](docs/meth-050_note_模式卡片001_决策转排序.md)——把多重 if-elif 决策转成可比较的元组排序
+- [filter-030_des_筛选状态引擎模式.md](docs/filter-030_des_筛选状态引擎模式.md)——单字段驱动状态机模式
+- [canvas-020_des_canvas重构方案.md](docs/canvas-020_des_canvas重构方案.md)——Canvas 分析与重构方法论
 
 ---
 

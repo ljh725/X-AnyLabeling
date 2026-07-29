@@ -51,7 +51,7 @@
 | [`vitpose_rename_pred_jsons.py`](../../scripts/vitpose_rename_pred_jsons.py) | 291 | 将 `{stem}_pred.json` 按 stem 对齐图片重命名 |
 | [`vitpose_labels_rename_pred_jsons.py`](../../scripts/vitpose_labels_rename_pred_jsons.py) | 396 | 按 group_id 把 ViTPose 预测关键点注入 X-AnyLabeling JSON |
 
-**方法论价值**：用模型预测**反查人工标注盲点**——把 ViTPose 推理结果按 group_id 注入标注 JSON，对比差异，发现人工漏标/错标。配套 [`docs/vitpose-model-disagreement-ranking-qc-method.md`](../vitpose-model-disagreement-ranking-qc-method.md)。
+**方法论价值**：用模型预测**反查人工标注盲点**——把 ViTPose 推理结果按 group_id 注入标注 JSON，对比差异，发现人工漏标/错标。配套 [`docs/qc-110_note_vitpose模型分歧排序qc方法.md`](../qc-110_note_vitpose模型分歧排序qc方法.md)。
 
 ### C. 质检 CLI（与 Inspector 联动）
 
@@ -122,7 +122,7 @@
 
 1. **完整数据闭环**：从 JSON 标注 → 格式转换 → 划分 → 可视化 → 预标注对比 → 规则质检，覆盖姿态数据生产全链路，而非孤立工具。
 
-2. **质检体系化**：脚本与规格文档（[`L1_L2目标框质量校验规则规格表.md`](../L1_L2目标框质量校验规则规格表.md)、[`阶段一L1_L2质检规则阈值与输出规格_v0.md`](../阶段一L1_L2质检规则阈值与输出规格_v0.md)）配套，validate 脚本输出 Inspector 可导入的 8 列 review.tsv。
+2. **质检体系化**：脚本与规格文档（[`qc-030_spec_l1_l2目标框质量校验规则规格表.md`](../qc-030_spec_l1_l2目标框质量校验规则规格表.md)、[`qc-040_spec_v0_阶段一l1_l2质检规则阈值与输出规格.md`](../qc-040_spec_v0_阶段一l1_l2质检规则阈值与输出规格.md)）配套，validate 脚本输出 Inspector 可导入的 8 列 review.tsv。
 
 3. **预标注对比方法论**：ViTPose 脚本实现"按 group_id 注入预测关键点"的对齐策略，体现用模型预测反查人工标注盲点的数据治理思维。
 
@@ -140,9 +140,9 @@
 
 ## 配套规格文档
 
-- [`docs/L1_L2目标框质量校验规则规格表.md`](../L1_L2目标框质量校验规则规格表.md) — L1/L2 规则规格
-- [`docs/阶段一L1_L2质检规则阈值与输出规格_v0.md`](../阶段一L1_L2质检规则阈值与输出规格_v0.md) — 阈值与输出规格
-- [`docs/vitpose-model-disagreement-ranking-qc-method.md`](../vitpose-model-disagreement-ranking-qc-method.md) — ViTPose 分歧排序 QC 方法
+- [`docs/qc-030_spec_l1_l2目标框质量校验规则规格表.md`](../qc-030_spec_l1_l2目标框质量校验规则规格表.md) — L1/L2 规则规格
+- [`docs/qc-040_spec_v0_阶段一l1_l2质检规则阈值与输出规格.md`](../qc-040_spec_v0_阶段一l1_l2质检规则阈值与输出规格.md) — 阈值与输出规格
+- [`docs/qc-110_note_vitpose模型分歧排序qc方法.md`](../qc-110_note_vitpose模型分歧排序qc方法.md) — ViTPose 分歧排序 QC 方法
 
 ---
 
