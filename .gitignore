@@ -208,3 +208,18 @@ nul
 /scripts/s*_pred.json
 # - pose_qa 下的数据样本 (保留 pose_qa/*.py 与 *.md)
 /pose_qa/s*.json
+# - 第三方/AI 代码评审过程产物（文档归档不入库，保留本地）
+/docs/gpt55-*.md
+/docs/minimax-*
+/docs/zcode-*.md
+/docs/codex-*.md
+/docs/incremental_review_outputs/
+/docs/基本代码问题三轮检测提示词md
+/docs/增量代码评测扫描脚本规格.md
+/docs/第一轮结构梳理记录.md
+# - 本地存储分析/扫描过程产物（脚本本身亦为临时工具，不入库）
+/storage_reports/
+.vite/
+/tools/analyze_c_drive_storage.ps1
+/tools/measure_storage_paths.ps1
+/scripts/scan_incremental_code_review.py

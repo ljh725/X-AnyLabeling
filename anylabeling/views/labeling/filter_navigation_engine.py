@@ -6,7 +6,36 @@ Used to build and update the "remaining matched files" navigation set.
 
 import json
 import os.path as osp
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
+
+NAVIGATION_ENABLED = "enabled"
+NAVIGATION_NO_ACTIVE_FILTER = "no_active_filter"
+NAVIGATION_INDEX_NOT_READY = "index_not_ready"
+NAVIGATION_NO_MATCHES = "no_matches"
+
+
+class FilterNavigationSession:
+    """Result of preparing dataset-wide filter navigation."""
+
+    def __init__(
+        self,
+        status: str,
+        matched_files: Optional[List[str]] = None,
+        state: Optional[Any] = None,
+    ):
+        self.status = status
+        self.matched_files = list(matched_files or [])
+        self.state = state
+
+    @property
+    def active(self) -> bool:
+        """Return whether the session has matched files to navigate."""
+        return self.status == NAVIGATION_ENABLED and bool(self.matched_files)
+
+    @property
+    def initial_count(self) -> int:
+        """Return the number of files captured when navigation starts."""
+        return len(self.matched_files)
 
 
 class FilterNavigationEngine:
@@ -35,6 +64,46 @@ class FilterNavigationEngine:
             if self.file_matches_filter(image_file, filter_state, output_dir):
                 matched.append(image_file)
         return matched
+
+    def prepare_dataset_navigation(
+        self,
+        image_files: List[str],
+        filter_state,
+        dataset_index,
+    ) -> FilterNavigationSession:
+        """Prepare a dataset-index-backed navigation session.
+
+        UI callers provide current image order, active filter state, and the
+        derived dataset index. The engine owns the match calculation and
+        returns a status object for the UI to render.
+        """
+        if not filter_state.has_active_filter():
+            return FilterNavigationSession(
+                status=NAVIGATION_NO_ACTIVE_FILTER,
+            )
+
+        state = filter_state.copy()
+        if dataset_index is None or not dataset_index.is_ready():
+            return FilterNavigationSession(
+                status=NAVIGATION_INDEX_NOT_READY,
+                state=state,
+            )
+
+        all_matched = dataset_index.query(state)
+        image_set = set(image_files)
+        matched = [path for path in all_matched if path in image_set]
+        if not matched:
+            return FilterNavigationSession(
+                status=NAVIGATION_NO_MATCHES,
+                matched_files=[],
+                state=state,
+            )
+
+        return FilterNavigationSession(
+            status=NAVIGATION_ENABLED,
+            matched_files=matched,
+            state=state,
+        )
 
     def file_matches_filter(
         self,

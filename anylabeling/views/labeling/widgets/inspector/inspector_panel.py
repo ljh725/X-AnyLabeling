@@ -60,6 +60,20 @@ from .quality.threshold_suggestion import (
 logger = logging.getLogger(__name__)
 
 
+def _format_export_diagnostics(result: ExportResult, limit: int = 20) -> str:
+    """Return compact export diagnostics for the status tooltip."""
+    lines: List[str] = []
+    entries = [("ERROR", result.errors), ("WARN", result.warnings)]
+    for level, diagnostics in entries:
+        for path, message in diagnostics[:limit]:
+            lines.append(f"{level}: {path}: {message}")
+        if len(diagnostics) > limit:
+            lines.append(
+                f"{level}: ... {len(diagnostics) - limit} more omitted"
+            )
+    return "\n".join(lines)
+
+
 class InspectorScanThread(QtCore.QThread):
     """Background worker for inspector scan and validation."""
 
@@ -140,6 +154,49 @@ class InspectorScanThread(QtCore.QThread):
                 self.finished_with_result.emit(index, report)
         except Exception as exc:
             logger.exception("Inspector scan worker failed")
+            self.error.emit(str(exc))
+
+
+class InspectorExportThread(QtCore.QThread):
+    """Background worker for Inspector file export."""
+
+    progress = QtCore.pyqtSignal(int, int, str)
+    finished_with_result = QtCore.pyqtSignal(object)
+    error = QtCore.pyqtSignal(str)
+
+    def __init__(
+        self,
+        report: ValidationReport,
+        output_dir: str,
+        parent: Optional[QtCore.QObject] = None,
+    ):
+        """Initialize the export worker."""
+        super().__init__(parent)
+        self._report = report
+        self._output_dir = output_dir
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        """Request cancellation before the next file copy starts."""
+        self._cancelled = True
+
+    def run(self) -> None:  # noqa: D401 — QThread override
+        """Run export off the UI thread and emit a result."""
+        try:
+            manager = ExportManager()
+
+            def on_progress(current: int, total: int, name: str) -> None:
+                self.progress.emit(current, total, name)
+
+            result = manager.export(
+                report=self._report,
+                output_dir=self._output_dir,
+                progress_callback=on_progress,
+                cancel_callback=lambda: self._cancelled,
+            )
+            self.finished_with_result.emit(result)
+        except Exception as exc:  # noqa: BLE001 — isolate worker crashes
+            logger.exception("Inspector export worker failed")
             self.error.emit(str(exc))
 
 
@@ -263,6 +320,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._last_report: Optional[ValidationReport] = None
         self._file_list: List[str] = []
         self._scan_thread: Optional[InspectorScanThread] = None
+        self._export_thread: Optional[InspectorExportThread] = None
         self._current_file_path: Optional[str] = None
         # L1/L2 quality review state
         self._quality_thread: Optional[QualityScanThread] = None
@@ -286,7 +344,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
 
     def _on_rule_config_changed(self) -> None:
         """Rebuild the engine when user changes rule configuration."""
-        if self._scan_thread is not None:
+        if self._scan_thread is not None or self._export_thread is not None:
             return
         self._engine = ValidationEngine(self._rule_config.build_rules())
         self._last_report = None
@@ -408,22 +466,98 @@ class InspectorPanel(QtWidgets.QDockWidget):
             )
             return
 
+        if self._export_thread is not None:
+            return
+
         self._export_btn.setEnabled(False)
-        self._export_status.setText(self.tr("正在导出..."))
+        self._export_status.setToolTip("")
+        self._export_status.setText(self.tr("正在准备导出..."))
         self._export_status.setStyleSheet("color: #888; font-size: 9pt;")
 
-        result = self._export_manager.export(
-            report=self._last_report,
-            output_dir=output_dir,
+        self._export_thread = InspectorExportThread(
+            self._last_report,
+            output_dir,
+            self,
         )
+        self._export_thread.progress.connect(self._on_export_progress)
+        self._export_thread.finished_with_result.connect(
+            self._on_export_finished
+        )
+        self._export_thread.error.connect(self._on_export_error)
+        self._export_thread.finished.connect(self._on_export_thread_finished)
+        self._export_thread.start()
 
+    def _on_export_progress(
+        self, current: int, total: int, filename: str
+    ) -> None:
+        """Show background export progress in the export tab."""
+        safe_total = max(total, 1)
+        percent = int((max(current, 0) / safe_total) * 100)
+        if filename:
+            self._export_status.setText(
+                self.tr("正在导出: %d/%d (%d%%) %s")
+                % (current, safe_total, percent, filename)
+            )
+        else:
+            self._export_status.setText(
+                self.tr("正在导出: %d/%d (%d%%)")
+                % (current, safe_total, percent)
+            )
+
+    def _on_export_finished(self, result: ExportResult) -> None:
+        """Show completed export counts and diagnostics."""
+        self._show_export_result(result)
+
+    def _on_export_error(self, message: str) -> None:
+        """Show unrecoverable export worker failures."""
+        self._export_status.setText(self.tr("导出失败: %s") % message)
+        self._export_status.setStyleSheet("color: #b71c1c; font-size: 9pt;")
+        self._export_status.setToolTip(message)
+
+    def _on_export_thread_finished(self) -> None:
+        """Clear the worker thread reference and restore export controls."""
+        self._export_thread = None
+        self._update_export_button()
+
+    def _show_export_result(self, result: ExportResult) -> None:
+        """Render export result counts, warnings, and errors."""
+        warning_count = len(result.warnings)
+        error_count = len(result.errors)
         if result.errors:
             self._export_status.setText(
-                self.tr("导出完成。复制 %d JSON + %d 图片，%d 错误。")
+                self.tr("导出完成。复制 %d JSON + %d 图片，%d 错误，%d 警告。")
                 % (
                     result.copied_files,
                     result.copied_images,
-                    len(result.errors),
+                    error_count,
+                    warning_count,
+                )
+            )
+            self._export_status.setStyleSheet(
+                "color: #e65100; font-size: 9pt;"
+            )
+        elif result.cancelled:
+            self._export_status.setText(
+                self.tr("导出已取消。已复制 %d JSON + %d 图片，%d 警告。")
+                % (
+                    result.copied_files,
+                    result.copied_images,
+                    warning_count,
+                )
+            )
+            self._export_status.setStyleSheet(
+                "color: #e65100; font-size: 9pt;"
+            )
+        elif result.warnings:
+            self._export_status.setText(
+                self.tr(
+                    "导出完成。复制 %d JSON + %d 图片到 %d 子目录，%d 警告。"
+                )
+                % (
+                    result.copied_files,
+                    result.copied_images,
+                    len(result.rules_exported),
+                    warning_count,
                 )
             )
             self._export_status.setStyleSheet(
@@ -442,14 +576,15 @@ class InspectorPanel(QtWidgets.QDockWidget):
                 "color: #2e7d32; font-size: 9pt;"
             )
 
-        self._export_btn.setEnabled(True)
+        self._export_status.setToolTip(_format_export_diagnostics(result))
 
     def _update_export_button(self) -> None:
         has_dir = bool(self._export_dir_edit.text().strip())
         has_report = (
             self._last_report is not None and self._last_report.issue_count > 0
         )
-        self._export_btn.setEnabled(has_dir and has_report)
+        idle = self._scan_thread is None and self._export_thread is None
+        self._export_btn.setEnabled(has_dir and has_report and idle)
 
     def _on_import_external_results(self) -> None:
         """Import external validation issues and replace current results."""
@@ -770,8 +905,10 @@ class InspectorPanel(QtWidgets.QDockWidget):
             enabled and self._can_scan_current()
         )
         self._rule_config.setEnabled(enabled)
-        export_enabled = enabled and self._export_btn.isEnabled()
-        self._export_btn.setEnabled(export_enabled)
+        if enabled:
+            self._update_export_button()
+        else:
+            self._export_btn.setEnabled(False)
 
     def _show_scan_progress(self, total: int) -> None:
         """Reset and show scan progress UI."""
@@ -907,7 +1044,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
         re-reading all other files, then runs all rules on the updated
         in-memory index.
         """
-        if self._scan_thread is not None:
+        if self._scan_thread is not None or self._export_thread is not None:
             return
 
         json_path = self._resolve_current_json_path()
@@ -957,7 +1094,7 @@ class InspectorPanel(QtWidgets.QDockWidget):
 
         If json_paths is None, uses the file list set via set_file_list().
         """
-        if self._scan_thread is not None:
+        if self._scan_thread is not None or self._export_thread is not None:
             logger.info("Inspector scan already running")
             return
 
@@ -1010,6 +1147,8 @@ class InspectorPanel(QtWidgets.QDockWidget):
             self._scan_thread.cancel()
         if self._quality_thread is not None:
             self._quality_thread.cancel()
+        if self._export_thread is not None:
+            self._export_thread.cancel()
         self._flush_quality_feedback()
         super().closeEvent(event)
 

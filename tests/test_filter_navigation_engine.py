@@ -4,7 +4,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
 ENGINE_PATH = (
     ROOT_DIR / "anylabeling/views/labeling/filter_navigation_engine.py"
@@ -24,7 +23,25 @@ STATE_MODULE = importlib.util.module_from_spec(STATE_SPEC)
 STATE_SPEC.loader.exec_module(STATE_MODULE)
 
 FilterNavigationEngine = ENGINE_MODULE.FilterNavigationEngine
+NAVIGATION_ENABLED = ENGINE_MODULE.NAVIGATION_ENABLED
+NAVIGATION_INDEX_NOT_READY = ENGINE_MODULE.NAVIGATION_INDEX_NOT_READY
+NAVIGATION_NO_ACTIVE_FILTER = ENGINE_MODULE.NAVIGATION_NO_ACTIVE_FILTER
+NAVIGATION_NO_MATCHES = ENGINE_MODULE.NAVIGATION_NO_MATCHES
 FilterState = STATE_MODULE.FilterState
+
+
+class _DatasetIndex:
+    def __init__(self, ready=True, matches=None):
+        self._ready = ready
+        self._matches = list(matches or [])
+        self.queried_with = None
+
+    def is_ready(self):
+        return self._ready
+
+    def query(self, filter_state):
+        self.queried_with = filter_state
+        return list(self._matches)
 
 
 class TestFilterNavigationEngine(unittest.TestCase):
@@ -73,11 +90,23 @@ class TestFilterNavigationEngine(unittest.TestCase):
             image_c = str(Path(temp_dir) / "c.jpg")
             self._write_label(
                 Path(temp_dir) / "a.json",
-                [{"label": "person", "group_id": 1, "shape_type": "rectangle"}],
+                [
+                    {
+                        "label": "person",
+                        "group_id": 1,
+                        "shape_type": "rectangle",
+                    }
+                ],
             )
             self._write_label(
                 Path(temp_dir) / "b.json",
-                [{"label": "person", "group_id": 2, "shape_type": "rectangle"}],
+                [
+                    {
+                        "label": "person",
+                        "group_id": 2,
+                        "shape_type": "rectangle",
+                    }
+                ],
             )
             self._write_label(
                 Path(temp_dir) / "c.json",
@@ -149,6 +178,68 @@ class TestFilterNavigationEngine(unittest.TestCase):
                     ),
                     [image],
                 )
+
+    # ------------------------------------------------------------------
+    # prepare_dataset_navigation
+    # ------------------------------------------------------------------
+
+    def test_prepare_dataset_navigation_requires_active_filter(self):
+        engine = FilterNavigationEngine()
+
+        session = engine.prepare_dataset_navigation(
+            ["a.jpg"],
+            FilterState(),
+            _DatasetIndex(ready=True, matches=["a.jpg"]),
+        )
+
+        self.assertEqual(session.status, NAVIGATION_NO_ACTIVE_FILTER)
+        self.assertFalse(session.active)
+
+    def test_prepare_dataset_navigation_requires_ready_index(self):
+        engine = FilterNavigationEngine()
+
+        session = engine.prepare_dataset_navigation(
+            ["a.jpg"],
+            FilterState(labels={"person"}),
+            _DatasetIndex(ready=False, matches=["a.jpg"]),
+        )
+
+        self.assertEqual(session.status, NAVIGATION_INDEX_NOT_READY)
+        self.assertFalse(session.active)
+        self.assertEqual(session.state.labels, {"person"})
+
+    def test_prepare_dataset_navigation_filters_to_current_image_list(self):
+        engine = FilterNavigationEngine()
+        dataset_index = _DatasetIndex(
+            ready=True,
+            matches=["hidden.jpg", "b.jpg", "a.jpg"],
+        )
+        filter_state = FilterState(labels={"person"})
+
+        session = engine.prepare_dataset_navigation(
+            ["a.jpg", "b.jpg"],
+            filter_state,
+            dataset_index,
+        )
+
+        self.assertEqual(session.status, NAVIGATION_ENABLED)
+        self.assertEqual(session.matched_files, ["b.jpg", "a.jpg"])
+        self.assertEqual(session.initial_count, 2)
+        self.assertTrue(session.active)
+        self.assertIsNot(session.state, filter_state)
+
+    def test_prepare_dataset_navigation_reports_no_matches(self):
+        engine = FilterNavigationEngine()
+
+        session = engine.prepare_dataset_navigation(
+            ["a.jpg"],
+            FilterState(labels={"person"}),
+            _DatasetIndex(ready=True, matches=["hidden.jpg"]),
+        )
+
+        self.assertEqual(session.status, NAVIGATION_NO_MATCHES)
+        self.assertEqual(session.matched_files, [])
+        self.assertFalse(session.active)
 
     # ------------------------------------------------------------------
     # shapes_match_filter

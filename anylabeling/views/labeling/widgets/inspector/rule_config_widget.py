@@ -17,6 +17,13 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
+from anylabeling.views.labeling.label_shape_contract import (
+    DEFAULT_POINT_LABELS as CONTRACT_POINT_LABELS,
+    DEFAULT_RECTANGLE_LABELS as CONTRACT_RECTANGLE_LABELS,
+    DEFAULT_SHARED_LABELS as CONTRACT_SHARED_LABELS,
+    labels_to_csv,
+)
+
 from .validation_engine import (
     ValidationRule,
     ValidationEngine,
@@ -36,56 +43,9 @@ from .validation_engine import (
 logger = logging.getLogger(__name__)
 
 # ── Default project label set (20 labels) ───────────────────────
-DEFAULT_SHARED_LABELS = ",".join(
-    [
-        "person",
-        "head",
-        "face",
-        "nose",
-        "l_eye",
-        "r_eye",
-        "l_ear",
-        "r_ear",
-        "l_sho",
-        "r_sho",
-        "l_elb",
-        "r_elb",
-        "l_wri",
-        "r_wri",
-        "l_hip",
-        "r_hip",
-        "l_knee",
-        "r_knee",
-        "l_ank",
-        "r_ank",
-    ]
-)
-
-# Rectangle labels default
-DEFAULT_RECT_LABELS = "person,head,face"
-
-# Point labels default (17 keypoints)
-DEFAULT_POINT_LABELS = ",".join(
-    [
-        "nose",
-        "l_eye",
-        "r_eye",
-        "l_ear",
-        "r_ear",
-        "l_sho",
-        "r_sho",
-        "l_elb",
-        "r_elb",
-        "l_wri",
-        "r_wri",
-        "l_hip",
-        "r_hip",
-        "l_knee",
-        "r_knee",
-        "l_ank",
-        "r_ank",
-    ]
-)
+DEFAULT_SHARED_LABELS = labels_to_csv(CONTRACT_SHARED_LABELS)
+DEFAULT_RECT_LABELS = labels_to_csv(CONTRACT_RECTANGLE_LABELS)
+DEFAULT_POINT_LABELS = labels_to_csv(CONTRACT_POINT_LABELS)
 
 _SEVERITY_COLORS = {
     "error": "#DC3545",

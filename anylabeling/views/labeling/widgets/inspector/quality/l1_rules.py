@@ -13,6 +13,12 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 
+from anylabeling.views.labeling.label_shape_contract import (
+    DEFAULT_POINT_LABEL_SET,
+    DEFAULT_RECTANGLE_LABEL_SET,
+    expected_shape_type_for_label,
+)
+
 from . import geometry as G
 from .quality_issue import PrimaryMetric, QcFile, QcShape, QualityIssue
 from .threshold_profile import ThresholdProfile
@@ -20,29 +26,8 @@ from .threshold_profile import ThresholdProfile
 logger = logging.getLogger(__name__)
 
 
-# Labels expected to be rectangles vs points (mirrors the existing
-# inspector LabelShapeTypeBinding, kept local to avoid the PyQt import
-# chain).
-RECTANGLE_LABELS = {"person", "head", "face"}
-POINT_LABELS = {
-    "nose",
-    "l_eye",
-    "r_eye",
-    "l_ear",
-    "r_ear",
-    "l_sho",
-    "r_sho",
-    "l_elb",
-    "r_elb",
-    "l_wri",
-    "r_wri",
-    "l_hip",
-    "r_hip",
-    "l_knee",
-    "r_knee",
-    "l_ank",
-    "r_ank",
-}
+RECTANGLE_LABELS = DEFAULT_RECTANGLE_LABEL_SET
+POINT_LABELS = DEFAULT_POINT_LABEL_SET
 
 
 def _bbox_list(bbox: Optional[G.BBox]) -> Optional[List[float]]:
@@ -110,11 +95,7 @@ def _check_shape_type_binding(
     label = shape.label
     if not label:
         return []  # handled by L1-01
-    expected: Optional[str] = None
-    if label in RECTANGLE_LABELS:
-        expected = "rectangle"
-    elif label in POINT_LABELS:
-        expected = "point"
+    expected: Optional[str] = expected_shape_type_for_label(label)
     if expected is None:
         return []  # unbound labels are not an L1 error here
     if shape.shape_type == expected:

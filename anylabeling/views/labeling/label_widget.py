@@ -59,7 +59,14 @@ from .logger import logger
 from .person_instance import INSTANCE_SHAPE_TYPE, POSE_SUBJECT_LABEL
 from .filter_state import FilterState
 from .filter_engine import ShapeFilterEngine
-from .filter_navigation_engine import FilterNavigationEngine
+from .filter_index import build_shape_filter_index
+from .filter_navigation_engine import (
+    FilterNavigationEngine,
+    NAVIGATION_ENABLED,
+    NAVIGATION_INDEX_NOT_READY,
+    NAVIGATION_NO_ACTIVE_FILTER,
+    NAVIGATION_NO_MATCHES,
+)
 from .dataset_filter_index import (
     DATASET_INDEX_CACHED,
     DATASET_INDEX_FAILED,
@@ -4773,24 +4780,19 @@ class LabelingWidget(LabelDialog):
     # ------------------------------------------------------------------
 
     def enable_filter_navigation(self, status_prefix=None):
-        if not self._filter_state.has_active_filter():
+        session = self._filter_navigation_engine.prepare_dataset_navigation(
+            image_files=self.image_list,
+            filter_state=self._filter_state,
+            dataset_index=self._dataset_filter_index,
+        )
+        if session.status == NAVIGATION_NO_ACTIVE_FILTER:
             self.status(
                 self.tr("No active filter for result navigation"), 3000
             )
             self._set_filter_navigation_action_checked(False)
             return False
 
-        state = self._copy_filter_state()
-        if (
-            self._dataset_filter_index is not None
-            and self._dataset_filter_index.is_ready()
-        ):
-            # Fast path: query derived SQLite index
-            all_matched = self._dataset_filter_index.query(state)
-            image_set = set(self.image_list)
-            matched = [p for p in all_matched if p in image_set]
-        else:
-            # If index is not ready, prompt user instead of full JSON scan
+        if session.status == NAVIGATION_INDEX_NOT_READY:
             self.status(
                 self.tr(
                     "Dataset index not ready. Please wait or rebuild index."
@@ -4799,15 +4801,20 @@ class LabelingWidget(LabelDialog):
             )
             self._set_filter_navigation_action_checked(False)
             return False
-        self._filter_navigation_files = matched
-        self._filter_navigation_initial_count = len(matched)
-        self._filter_navigation_state = state
-        self._filter_navigation_active = bool(matched)
 
-        if not matched:
+        if session.status == NAVIGATION_NO_MATCHES:
             self.status(self.tr("No files match the current filter"), 3000)
             self._set_filter_navigation_action_checked(False)
             return False
+
+        if session.status != NAVIGATION_ENABLED:
+            self._set_filter_navigation_action_checked(False)
+            return False
+
+        self._filter_navigation_files = list(session.matched_files)
+        self._filter_navigation_initial_count = session.initial_count
+        self._filter_navigation_state = session.state
+        self._filter_navigation_active = session.active
         self._show_filter_navigation_status(
             status_prefix or self.tr("Filter result navigation enabled")
         )
@@ -5482,20 +5489,7 @@ class LabelingWidget(LabelDialog):
 
     def _rebuild_filter_index(self):
         """Build current-image index: label/gid/shape_type → list of items."""
-        idx = {"label": {}, "gid": {}, "shape_type": {}, "all": []}
-        for item in self.label_list:
-            shape = item.shape()
-            idx["all"].append(item)
-            lbl = str(shape.label)
-            idx["label"].setdefault(lbl, []).append(item)
-            if shape.group_id is not None:
-                gid_str = str(shape.group_id)
-                idx["gid"].setdefault(gid_str, []).append(item)
-            if shape.shape_type:
-                idx["shape_type"].setdefault(str(shape.shape_type), []).append(
-                    item
-                )
-        self._filter_index = idx
+        self._filter_index = build_shape_filter_index(self.label_list)
 
     def toggle_global_filter_keep(self, enabled):
         self._global_filter_keep_enabled = enabled

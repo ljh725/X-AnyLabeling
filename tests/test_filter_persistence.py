@@ -54,10 +54,14 @@ class _FakeFilterEngine:
         return self.changed
 
     def compute_matches(self, *_args, **_kwargs):
-        raise AssertionError("Should not compute matches without active filter")
+        raise AssertionError(
+            "Should not compute matches without active filter"
+        )
 
     def sync_label_list_visibility(self, *_args, **_kwargs):
-        raise AssertionError("Should not sync filtered visibility without active filter")
+        raise AssertionError(
+            "Should not sync filtered visibility without active filter"
+        )
 
 
 @unittest.skipUnless(
@@ -78,7 +82,9 @@ class TestFilterPersistence(unittest.TestCase):
         gid_box = QtWidgets.QComboBox()
         gid_box.addItems(["-1", "7"])
         gid_signals = []
-        gid_box.currentIndexChanged.connect(lambda idx: gid_signals.append(idx))
+        gid_box.currentIndexChanged.connect(
+            lambda idx: gid_signals.append(idx)
+        )
         widget.gid_filter_combobox = types.SimpleNamespace(gid_box=gid_box)
 
         type_box = QtWidgets.QComboBox()
@@ -111,23 +117,23 @@ class TestFilterPersistence(unittest.TestCase):
         widget._pending_filter_restore = types.SimpleNamespace(
             labels={"car"}, gid="", shape_type=None
         )
-        widget._filter_state = FilterState(labels={"old"}, gid="9", shape_type="point")
+        widget._filter_state = FilterState(
+            labels={"old"}, gid="9", shape_type="point"
+        )
         widget.label_list = _FakeLabelList()
         widget._filter_index = object()
 
         calls = []
         widget._rebuild_filter_index = lambda: calls.append("rebuild")
         widget._collect_filter_options = lambda: ({"car"}, set(), set())
-        widget.update_combo_box = (
-            lambda **kwargs: calls.append(("labels", kwargs))
+        widget.update_combo_box = lambda **kwargs: calls.append(
+            ("labels", kwargs)
         )
         widget.update_gid_box = lambda **kwargs: calls.append(("gid", kwargs))
-        widget.update_shape_type_box = (
-            lambda **kwargs: calls.append(("type", kwargs))
+        widget.update_shape_type_box = lambda **kwargs: calls.append(
+            ("type", kwargs)
         )
-        widget._apply_combined_shape_filters = (
-            lambda: calls.append("apply")
-        )
+        widget._apply_combined_shape_filters = lambda: calls.append("apply")
 
         LabelingWidget._refresh_shape_filters(widget)
 
@@ -141,7 +147,9 @@ class TestFilterPersistence(unittest.TestCase):
         self.assertIn("rebuild", calls)
         self.assertIn("apply", calls)
 
-    def test_apply_combined_shape_filters_restores_visibility_without_filter(self):
+    def test_apply_combined_shape_filters_restores_visibility_without_filter(
+        self,
+    ):
         status_messages = []
         widget = types.SimpleNamespace()
         widget._filter_state = FilterState()
@@ -165,7 +173,9 @@ class TestFilterPersistence(unittest.TestCase):
         self.assertEqual(widget.update_navigator_shapes_calls, 1)
         self.assertEqual(status_messages[-1], "")
 
-    def test_apply_combined_shape_filters_clears_navigation_without_filter(self):
+    def test_apply_combined_shape_filters_clears_navigation_without_filter(
+        self,
+    ):
         status_messages = []
         widget = types.SimpleNamespace()
         widget._filter_state = FilterState()
@@ -178,6 +188,7 @@ class TestFilterPersistence(unittest.TestCase):
         widget.canvas = _FakeCanvas()
         widget.navigator_dialog = _FakeNavigatorDialog(visible=True)
         widget.status = lambda message, *_args: status_messages.append(message)
+        widget.tr = lambda text: text
         widget.update_navigator_shapes_calls = 0
         widget.update_navigator_shapes = lambda: setattr(
             widget,
@@ -185,6 +196,9 @@ class TestFilterPersistence(unittest.TestCase):
             widget.update_navigator_shapes_calls + 1,
         )
         widget._set_filter_navigation_action_checked = lambda _checked: None
+        widget.clear_filter_navigation = lambda: (
+            LabelingWidget.clear_filter_navigation(widget)
+        )
 
         LabelingWidget._apply_combined_shape_filters(widget)
 

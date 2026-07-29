@@ -10,6 +10,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
+from anylabeling.views.labeling.label_shape_contract import (
+    DEFAULT_POINT_LABEL_SET,
+)
 from anylabeling.views.labeling.person_instance import is_valid_group_id
 
 from .flat_index import FlatIndex, FlattenedRecord
@@ -473,25 +476,7 @@ class GroupIdKeypointIntegrity(ValidationRule):
         "person 是唯一的 pose 主体；关键点必须绑定到含 person 的 group_id"
     )
 
-    COCO_KEYPOINTS: Set[str] = {
-        "nose",
-        "l_eye",
-        "r_eye",
-        "l_ear",
-        "r_ear",
-        "l_sho",
-        "r_sho",
-        "l_elb",
-        "r_elb",
-        "l_wri",
-        "r_wri",
-        "l_hip",
-        "r_hip",
-        "l_knee",
-        "r_knee",
-        "l_ank",
-        "r_ank",
-    }
+    COCO_KEYPOINTS = DEFAULT_POINT_LABEL_SET
 
     def check_all(self, index: FlatIndex) -> List[Issue]:
         issues: List[Issue] = []
@@ -616,32 +601,11 @@ class AttributeConsistency(ValidationRule):
     description = "shape 属性/flag 一致性"
 
     def check(self, record, all_records, index):
-        issues: List[Issue] = []
-
         # difficult flag on point keypoints is unusual
         if (
             record.difficulty
             and record.shape_type == "point"
-            and record.label
-            in {
-                "nose",
-                "l_eye",
-                "r_eye",
-                "l_ear",
-                "r_ear",
-                "l_sho",
-                "r_sho",
-                "l_elb",
-                "r_elb",
-                "l_wri",
-                "r_wri",
-                "l_hip",
-                "r_hip",
-                "l_knee",
-                "r_knee",
-                "l_ank",
-                "r_ank",
-            }
+            and record.label in DEFAULT_POINT_LABEL_SET
         ):
             return Issue(
                 rule_name=self.name,
