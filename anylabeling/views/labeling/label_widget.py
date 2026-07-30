@@ -100,7 +100,6 @@ from .widgets import (
     CompareViewManager,
     CompareViewSlider,
     VQADialog,
-    CrosshairSettingsDialog,
     FileDialogPreview,
     PPOCRDialog,
     ShapeModifyDialog,
@@ -806,8 +805,7 @@ class LabelingWidget(LabelDialog):
         )
 
         # Crosshair
-        self.crosshair_settings = self._config["canvas"]["crosshair"]
-        self.canvas.set_cross_line(**self.crosshair_settings)
+        self.canvas.set_cross_line(**self._config["canvas"]["crosshair"])
 
         # Person small-target overlay threshold. Authoritative value lives in
         # the quality profile YAML (person_small_target.min_edge_px); read
@@ -1624,7 +1622,7 @@ class LabelingWidget(LabelDialog):
         )
         set_cross_line = action(
             self.tr("Set Cross Line"),
-            self.set_cross_line,
+            self.open_crosshair_settings,
             tip=self.tr("Adjust cross line for mouse position"),
             icon="cartesian",
         )
@@ -7683,17 +7681,6 @@ class LabelingWidget(LabelDialog):
             )
             return DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
 
-    def set_cross_line(self):
-        crosshair_dialog = CrosshairSettingsDialog(**self.crosshair_settings)
-        if crosshair_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-            crosshair_settings = crosshair_dialog.get_settings()
-            show = crosshair_settings["show"]
-            width = crosshair_settings["width"]
-            color = crosshair_settings["color"]
-            opacity = crosshair_settings["opacity"]
-            self.canvas.set_cross_line(show, width, color, opacity)
-            self._config["canvas"]["crosshair"] = crosshair_settings
-
     def set_canvas_params(self, key, value):
         self._config[key] = value
         assert hasattr(self.canvas, key), f"Canvas has no attribute {key}"
@@ -7849,7 +7836,17 @@ class LabelingWidget(LabelDialog):
         self.canvas.update()
         self._sync_pose_config()
 
-    def open_settings_dialog(self):
+    def open_crosshair_settings(self) -> None:
+        """Open the unified settings dialog at the crosshair controls."""
+        self.open_settings_dialog(setting_key="canvas.crosshair.show")
+
+    def open_settings_dialog(
+        self,
+        _checked: bool = False,
+        *,
+        setting_key: str | None = None,
+    ) -> None:
+        """Open settings and optionally navigate to one configuration field."""
         if self._settings_controller is None:
             return
         if self._settings_dialog is None:
@@ -7857,6 +7854,8 @@ class LabelingWidget(LabelDialog):
                 self, self._settings_controller
             )
         self._settings_dialog.show()
+        if setting_key is not None:
+            self._settings_dialog.navigate_to_setting(setting_key)
         self._settings_dialog.raise_()
         self._settings_dialog.activateWindow()
 

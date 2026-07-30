@@ -18,7 +18,6 @@ _LAZY_IMPORTS: Dict[str, str] = {
     "CompareViewSlider": "compare_view",
     "ChatbotDialog": "chatbot_dialog",
     "ClassifierDialog": "classifier_dialog",
-    "CrosshairSettingsDialog": "crosshair_settings_dialog",
     "DigitRenameManager": "digit_rename_manager",
     "DigitRenameShortcutDialog": "digit_rename_manager",
     "DigitBindDrawManager": "digit_bind_draw_manager",

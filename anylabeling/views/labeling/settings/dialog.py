@@ -23,6 +23,7 @@ from .editors import (
 )
 from .schema import (
     SettingField,
+    SETTING_FIELD_MAP,
     SETTINGS_PRIMARY_ORDER,
     fields_for_primary,
 )
@@ -72,6 +73,7 @@ class SettingsDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self._controller = controller
         self._bindings: dict[str, EditorBinding] = {}
+        self._field_rows: dict[str, QtWidgets.QWidget] = {}
         self._nav_item_widgets: dict[
             str, tuple[QtWidgets.QLabel, QtWidgets.QLabel]
         ] = {}
@@ -720,6 +722,38 @@ class SettingsDialog(QtWidgets.QDialog):
         self._reset_nav_scroll()
         QtCore.QTimer.singleShot(0, self._reset_nav_scroll)
 
+    def navigate_to_setting(self, key: str) -> None:
+        """Select the owning page and scroll one settings field into view."""
+        field = SETTING_FIELD_MAP.get(key)
+        if field is None:
+            raise KeyError(key)
+        try:
+            nav_row = self._nav_items.index(field.primary)
+        except ValueError as exc:
+            raise KeyError(key) from exc
+
+        if self.nav_list.currentRow() == nav_row:
+            self._update_nav_visuals(field.primary)
+            self._render_primary(field.primary)
+        else:
+            self.nav_list.setCurrentRow(nav_row)
+        QtCore.QTimer.singleShot(
+            0, lambda setting_key=key: self._queue_setting_scroll(setting_key)
+        )
+
+    def _queue_setting_scroll(self, key: str) -> None:
+        """Wait one more event turn for the scroll range to stabilize."""
+        QtCore.QTimer.singleShot(
+            0, lambda setting_key=key: self._scroll_to_setting(setting_key)
+        )
+
+    def _scroll_to_setting(self, key: str) -> None:
+        """Scroll to a rendered settings row when it is available."""
+        row = self._field_rows.get(key)
+        if row is None:
+            return
+        self.content_scroll.ensureWidgetVisible(row, 0, self._section_gap)
+
     def _update_nav_visuals(self, active_primary: str) -> None:
         for primary, labels in self._nav_item_widgets.items():
             icon_label, text_label = labels
@@ -796,6 +830,7 @@ class SettingsDialog(QtWidgets.QDialog):
     def _render_primary(self, primary: str) -> None:
         self._active_primary = primary
         self._bindings.clear()
+        self._field_rows.clear()
         self._shortcut_editor_roots = []
         self.header_title.setText(self._display_primary_text(primary))
         self._clear_layout(self.content_body_layout)
@@ -1445,6 +1480,7 @@ class SettingsDialog(QtWidgets.QDialog):
                 | QtCore.Qt.AlignmentFlag.AlignVCenter,
             )
             self.content_body_layout.addWidget(row)
+            self._field_rows[field.key] = row
             self._bindings[field.key] = EditorBinding(
                 field, setter, error_setter
             )

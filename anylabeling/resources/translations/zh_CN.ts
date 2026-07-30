@@ -1096,54 +1096,6 @@
     </message>
   </context>
   <context>
-    <name>CrosshairSettingsDialog</name>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="23" />
-      <source>Crosshair Settings</source>
-      <translation>十字线设置</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="40" />
-      <source>Show Crosshair:</source>
-      <translation>显示十字线：</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="51" />
-      <source>Line width:</source>
-      <translation>线条宽度：</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="73" />
-      <source>Line Opacity:</source>
-      <translation>线条透明度：</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="98" />
-      <source>Line Color:</source>
-      <translation>线条颜色：</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="120" />
-      <source>Choose Color</source>
-      <translation>选取颜色</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="134" />
-      <source>Reset</source>
-      <translation>重置</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="138" />
-      <source>OK</source>
-      <translation>确认</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="142" />
-      <source>Cancel</source>
-      <translation>取消</translation>
-    </message>
-  </context>
-  <context>
     <name>DeleteComponentDialog</name>
     <message>
       <location filename="../../views/labeling/vqa/dialogs.py" line="874" />

@@ -453,6 +453,7 @@ class Canvas(
         self.cross_line_width = 2.0
         self.cross_line_color = "#00FF00"
         self.cross_line_opacity = 0.5
+        self._crosshair_cursor_active = False
 
         # Set attributes color options.
         self.attr_background_color = self.attributes_config.get(
@@ -738,6 +739,7 @@ class Canvas(
 
     def leaveEvent(self, _):
         """Mouse leave event"""
+        self._clear_crosshair_cursor()
         self.store_moving_shape()
         self.un_highlight()
         self.restore_cursor()
@@ -1250,6 +1252,39 @@ class Canvas(
         ) ** 0.5
         return distance >= AUTO_DECODE_MOVE_THRESHOLD
 
+    def _point_in_pixmap(self, pos: QtCore.QPointF) -> bool:
+        """Return whether an image-space point is inside the current pixmap."""
+        return (
+            self.pixmap is not None
+            and not self.pixmap.isNull()
+            and 0.0 <= pos.x() < self.pixmap.width()
+            and 0.0 <= pos.y() < self.pixmap.height()
+        )
+
+    def _update_crosshair_cursor(self, pos: QtCore.QPointF) -> None:
+        """Store the cursor position and schedule a crosshair repaint."""
+        previous_pos = self.prev_move_point
+        was_active = self._crosshair_cursor_active
+        is_active = self._point_in_pixmap(pos)
+
+        self.prev_move_point = pos
+        self._crosshair_cursor_active = is_active
+
+        cursor_changed = previous_pos != pos or was_active != is_active
+        if (
+            self.cross_line_show
+            and cursor_changed
+            and (was_active or is_active)
+        ):
+            self.update()
+
+    def _clear_crosshair_cursor(self) -> None:
+        """Hide the crosshair and repaint when it was previously visible."""
+        was_active = self._crosshair_cursor_active
+        self._crosshair_cursor_active = False
+        if self.cross_line_show and was_active:
+            self.update()
+
     # QT Overload
     def mouseMoveEvent(self, ev):  # noqa: C901
         """Update line with last point and current coordinates"""
@@ -1261,7 +1296,7 @@ class Canvas(
             return
 
         prev_hover_shape = self.h_hape
-        self.prev_move_point = pos
+        self._update_crosshair_cursor(pos)
 
         # Handle auto decode mode
         if (
@@ -3622,23 +3657,7 @@ class Canvas(
         # never mutates Shape data, undo stack, dirty, or JSON.
         self._draw_size_overlay(p)
 
-        # Draw mouse coordinates
-        if self.cross_line_show:
-            pen = QtGui.QPen(
-                QtGui.QColor(self.cross_line_color),
-                max(1, int(round(self.cross_line_width / Shape.scale))),
-                Qt.PenStyle.DashLine,
-            )
-            p.setPen(pen)
-            p.setOpacity(self.cross_line_opacity)
-            p.drawLine(
-                QtCore.QPointF(self.prev_move_point.x(), 0),
-                QtCore.QPointF(self.prev_move_point.x(), self.pixmap.height()),
-            )
-            p.drawLine(
-                QtCore.QPointF(0, self.prev_move_point.y()),
-                QtCore.QPointF(self.pixmap.width(), self.prev_move_point.y()),
-            )
+        self._draw_crosshair(p)
 
         # Draw attributes
         if self.show_attributes:
@@ -5000,6 +5019,37 @@ class Canvas(
                 return self._rectangle_metrics(shape=shape, source="selected")
         return None
 
+    def _draw_crosshair(self, painter: QtGui.QPainter) -> None:
+        """Draw cursor-aligned guides without leaking painter state."""
+        if (
+            not self.cross_line_show
+            or not self._crosshair_cursor_active
+            or self.pixmap is None
+            or self.pixmap.isNull()
+        ):
+            return
+
+        scale = max(float(self.scale), 1e-12)
+        pen = QtGui.QPen(
+            QtGui.QColor(self.cross_line_color),
+            max(1, int(round(self.cross_line_width / scale))),
+            Qt.PenStyle.DashLine,
+        )
+        painter.save()
+        try:
+            painter.setPen(pen)
+            painter.setOpacity(self.cross_line_opacity)
+            painter.drawLine(
+                QtCore.QPointF(self.prev_move_point.x(), 0),
+                QtCore.QPointF(self.prev_move_point.x(), self.pixmap.height()),
+            )
+            painter.drawLine(
+                QtCore.QPointF(0, self.prev_move_point.y()),
+                QtCore.QPointF(self.pixmap.width(), self.prev_move_point.y()),
+            )
+        finally:
+            painter.restore()
+
     def _draw_size_overlay(self, painter):
         """Draw the live W/H size overlay near the current rectangle.
 
@@ -5479,6 +5529,7 @@ class Canvas(
 
     def load_pixmap(self, pixmap, clear_shapes=True):
         """Load pixmap"""
+        self._crosshair_cursor_active = False
         self._set_size_overlay_hover_shape(None)
         self._set_selected_shapes([], source="none")
         self.selected_shapes_copy = []
@@ -5569,6 +5620,7 @@ class Canvas(
     def reset_state(self):
         """Clear shapes and pixmap"""
         self.restore_cursor()
+        self._crosshair_cursor_active = False
         self._set_size_overlay_hover_shape(None)
         self._set_selected_shapes([], source="none")
         self.selected_shapes_copy = []

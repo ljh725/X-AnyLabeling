@@ -6,9 +6,11 @@ from unittest import mock
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
-    from PyQt6 import QtWidgets
+    from PyQt6 import QtCore, QtWidgets
 
-    from anylabeling.views.labeling.settings.controller import SettingsController
+    from anylabeling.views.labeling.settings.controller import (
+        SettingsController,
+    )
     from anylabeling.views.labeling.settings.dialog import SettingsDialog
     from anylabeling.views.labeling.settings.schema import load_template_config
 
@@ -17,7 +19,9 @@ except Exception:
     PYQT_AVAILABLE = False
 
 
-@unittest.skipUnless(PYQT_AVAILABLE, "PyQt6 is required for settings dialog tests")
+@unittest.skipUnless(
+    PYQT_AVAILABLE, "PyQt6 is required for settings dialog tests"
+)
 class TestSettingsDialogLayout(unittest.TestCase):
 
     def setUp(self):
@@ -92,6 +96,31 @@ class TestSettingsDialogLayout(unittest.TestCase):
         self.assertEqual(bottom_margins.right(), 0)
         self.assertEqual(bottom_margins.top(), 8)
         self.assertEqual(bottom_margins.bottom(), 8)
+
+    def test_navigate_to_crosshair_setting_selects_visible_canvas_row(self):
+        dialog = self._create_dialog()
+
+        dialog.navigate_to_setting("canvas.crosshair.show")
+        self.app.processEvents()
+        self.app.processEvents()
+
+        self.assertEqual(dialog._active_primary, "Canvas")
+        self.assertEqual(
+            dialog.nav_list.currentRow(),
+            dialog._nav_items.index("Canvas"),
+        )
+        row = dialog._field_rows["canvas.crosshair.show"]
+        viewport = dialog.content_scroll.viewport()
+        row_top = row.mapTo(viewport, QtCore.QPoint(0, 0)).y()
+        row_bottom = row_top + row.height()
+        self.assertGreater(row_bottom, 0)
+        self.assertLess(row_top, viewport.height())
+
+    def test_navigate_to_setting_rejects_unknown_key(self):
+        dialog = self._create_dialog()
+
+        with self.assertRaises(KeyError):
+            dialog.navigate_to_setting("canvas.crosshair.unknown")
 
     def test_shape_uses_same_viewport_gap(self):
         dialog = self._create_dialog()
@@ -186,7 +215,9 @@ class TestSettingsDialogLayout(unittest.TestCase):
         dialog._on_shortcuts_reset_clicked()
         self.app.processEvents()
 
-        self.assertEqual(controller.get_value("shortcuts.show_masks"), "Ctrl+M")
+        self.assertEqual(
+            controller.get_value("shortcuts.show_masks"), "Ctrl+M"
+        )
         self.assertEqual(
             controller.get_value("shortcuts.toggle_compare_view"),
             "Ctrl+Alt+C",

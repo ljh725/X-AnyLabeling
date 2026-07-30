@@ -341,7 +341,6 @@ class SettingsRuntimeApplier:
             str(crosshair["color"]),
             float(crosshair["opacity"]),
         )
-        self._widget.crosshair_settings = dict(crosshair)
 
     def apply_canvas_brush(self) -> None:
         brush = self._widget._config["canvas"]["brush"]

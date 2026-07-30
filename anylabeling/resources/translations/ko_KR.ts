@@ -1097,54 +1097,6 @@
     </message>
   </context>
   <context>
-    <name>CrosshairSettingsDialog</name>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="23" />
-      <source>Crosshair Settings</source>
-      <translation>십자선 설정</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="40" />
-      <source>Show Crosshair:</source>
-      <translation>십자선 표시:</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="51" />
-      <source>Line width:</source>
-      <translation>선 너비:</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="73" />
-      <source>Line Opacity:</source>
-      <translation>선 불투명도:</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="98" />
-      <source>Line Color:</source>
-      <translation>선 색상:</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="120" />
-      <source>Choose Color</source>
-      <translation>색상 선택</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="134" />
-      <source>Reset</source>
-      <translation>초기화</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="138" />
-      <source>OK</source>
-      <translation>확인</translation>
-    </message>
-    <message>
-      <location filename="../../views/labeling/widgets/crosshair_settings_dialog.py" line="142" />
-      <source>Cancel</source>
-      <translation>취소</translation>
-    </message>
-  </context>
-  <context>
     <name>DeleteComponentDialog</name>
     <message>
       <location filename="../../views/labeling/vqa/dialogs.py" line="874" />
