@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from anylabeling.views.labeling.rect_refine_focus import (
     RectRefineFocusController,
 )
@@ -20,17 +18,13 @@ def _view(
     token: str = TOKEN,
     visible: bool = True,
     shape_type: str = "rectangle",
-    group_id: Any = None,
 ) -> ShapeRefineView:
     """Build one deterministic immutable Shape view."""
-    x1, y1, x2, y2 = bbox
     return ShapeRefineView(
         shape_id=(token, index),
         shape_index=index,
         label=label,
         shape_type=shape_type,
-        group_id=group_id,
-        points=((x1, y1), (x2, y1), (x2, y2), (x1, y2)),
         bbox=bbox,
         base_visible=visible,
     )

@@ -1,0 +1,94 @@
+[
+  {
+    "name": "s18166",
+    "source": "D:/Deepseek/2604keypoints_cls3/exp_output/s18166.json",
+    "shapes": [
+      {"id": "person_0", "label": "person", "points": [[464, 48], [650, 449]]},
+      {"id": "person_1", "label": "person", "points": [[674, 94], [800, 450]]},
+      {"id": "person_2", "label": "person", "points": [[1, 19], [203, 450]]},
+      {"id": "person_3", "label": "person", "points": [[312, 124], [447, 412]]},
+      {"id": "person_4", "label": "person", "points": [[221, 93], [313, 450]]},
+      {"id": "head_5", "label": "head", "points": [[300, 124], [319, 146]]},
+      {"id": "head_6", "label": "head", "points": [[145, 115], [166, 146]]},
+      {"id": "head_7", "label": "head", "points": [[776, 129], [800, 168]]},
+      {"id": "head_8", "label": "head", "points": [[162, 145], [192, 181]]},
+      {"id": "head_9", "label": "head", "points": [[194, 144], [218, 175]]},
+      {"id": "head_10", "label": "head", "points": [[678, 142], [710, 180]]},
+      {"id": "head_11", "label": "head", "points": [[256, 96], [303, 154]]},
+      {"id": "head_12", "label": "head", "points": [[706, 93], [763, 155]]},
+      {"id": "head_13", "label": "head", "points": [[386, 125], [436, 177]]},
+      {"id": "head_14", "label": "head", "points": [[533, 51], [589, 127]]},
+      {"id": "head_15", "label": "head", "points": [[12, 25], [151, 159]]},
+      {"id": "head_16", "label": "head", "points": [[194, 116], [219, 146]]},
+      {"id": "face_17", "label": "face", "points": [[176, 155], [189, 178]]},
+      {"id": "face_18", "label": "face", "points": [[286, 112], [304, 154]]},
+      {"id": "face_19", "label": "face", "points": [[776, 137], [799, 168]]},
+      {"id": "face_20", "label": "face", "points": [[195, 152], [213, 174]]},
+      {"id": "face_21", "label": "face", "points": [[678, 155], [704, 180]]},
+      {"id": "face_22", "label": "face", "points": [[198, 125], [214, 144]]},
+      {"id": "face_23", "label": "face", "points": [[149, 119], [164, 144]]},
+      {"id": "face_24", "label": "face", "points": [[542, 66], [584, 128]]}
+    ],
+    "expected_links": [
+      ["person_0", "head_14"],
+      ["head_14", "face_24"],
+      ["person_1", "head_7"],
+      ["head_7", "face_19"],
+      ["person_1", "head_10"],
+      ["head_10", "face_21"],
+      ["person_1", "head_12"],
+      ["person_2", "head_6"],
+      ["head_6", "face_23"],
+      ["person_2", "head_8"],
+      ["head_8", "face_17"],
+      ["person_2", "head_15"],
+      ["person_3", "head_13"],
+      ["person_4", "head_11"],
+      ["head_11", "face_18"]
+    ]
+  },
+  {
+    "name": "s55",
+    "source": "D:/Deepseek/2604keypoints_cls3/exp_output/s55.json",
+    "shapes": [
+      {"id": "person_0", "label": "person", "points": [[1, 317], [67, 517]]},
+      {"id": "person_1", "label": "person", "points": [[258, 332], [334, 525]]},
+      {"id": "person_2", "label": "person", "points": [[306, 323], [369, 487]]},
+      {"id": "person_3", "label": "person", "points": [[75, 328], [116, 445]]},
+      {"id": "head_4", "label": "head", "points": [[437, 263], [454, 281]]},
+      {"id": "head_5", "label": "head", "points": [[582, 305], [596, 320]]},
+      {"id": "head_6", "label": "head", "points": [[309, 323], [329, 347]]},
+      {"id": "head_7", "label": "head", "points": [[468, 284], [483, 300]]},
+      {"id": "head_8", "label": "head", "points": [[371, 220], [386, 234]]},
+      {"id": "head_9", "label": "head", "points": [[296, 331], [319, 357]]},
+      {"id": "head_10", "label": "head", "points": [[434, 337], [449, 353]]},
+      {"id": "head_11", "label": "head", "points": [[84, 328], [102, 347]]},
+      {"id": "head_12", "label": "head", "points": [[11, 316], [43, 346]]},
+      {"id": "face_13", "label": "face", "points": [[91, 332], [101, 347]]},
+      {"id": "face_14", "label": "face", "points": [[584, 310], [594, 322]]},
+      {"id": "face_15", "label": "face", "points": [[439, 339], [449, 354]]},
+      {"id": "face_16", "label": "face", "points": [[23, 323], [44, 347]]}
+    ],
+    "expected_links": [
+      ["person_0", "head_12"],
+      ["head_12", "face_16"],
+      ["person_1", "head_9"],
+      ["person_2", "head_6"],
+      ["person_3", "head_11"],
+      ["head_11", "face_13"]
+    ]
+  },
+  {
+    "name": "s77",
+    "source": "D:/Deepseek/2604keypoints_cls3/exp_output/s77.json",
+    "shapes": [
+      {"id": "person_0", "label": "person", "points": [[152, 220], [228, 447]]},
+      {"id": "head_1", "label": "head", "points": [[195, 220], [227, 260]]},
+      {"id": "face_2", "label": "face", "points": [[205, 231], [226, 259]]}
+    ],
+    "expected_links": [
+      ["person_0", "head_1"],
+      ["head_1", "face_2"]
+    ]
+  }
+]

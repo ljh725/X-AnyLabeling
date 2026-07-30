@@ -8,10 +8,10 @@ know about Canvas, Qt, dirty state, undo, saving, or Shape mutation.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, FrozenSet, Optional, Sequence
+from typing import FrozenSet, Optional, Sequence
 
-from .rect_refine_grouping import DEFAULTS, infer
-from .rect_refine_types import ConflictCode, ShapeId, ShapeRefineView
+from .rect_refine_grouping import infer
+from .rect_refine_types import ShapeId, ShapeRefineView
 
 
 @dataclass(frozen=True)
@@ -20,20 +20,13 @@ class FocusResult:
 
     member_ids: FrozenSet[ShapeId] = frozenset()
     message: Optional[str] = None
-    conflict_code: Optional[ConflictCode] = None
 
 
 class RectRefineFocusController:
     """Track mode/focus state and delegate geometric association to infer()."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        """Initialize an inactive controller.
-
-        Args:
-            config: Grouping thresholds and weights. Existing grouping defaults
-                are used when omitted.
-        """
-        self._config = config if config is not None else DEFAULTS
+    def __init__(self) -> None:
+        """Initialize an inactive controller."""
         self._enabled = False
         self._image_token = ""
         self._focused_ids: Optional[FrozenSet[ShapeId]] = None
@@ -105,15 +98,7 @@ class RectRefineFocusController:
         if anchor.shape_id[0] != self._image_token:
             return None
 
-        grouping = infer(anchor, all_views, self._config)
-        if grouping.is_conflict:
-            self._focused_ids = None
-            code = grouping.conflict_code
-            return FocusResult(
-                message=code.value if code is not None else "group_conflict",
-                conflict_code=code,
-            )
-
+        grouping = infer(anchor, all_views)
         member_ids = frozenset(member.shape_id for member in grouping.members)
         self._focused_ids = member_ids or frozenset((anchor.shape_id,))
         return FocusResult(

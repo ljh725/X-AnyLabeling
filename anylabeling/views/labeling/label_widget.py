@@ -168,8 +168,6 @@ class _RectRefineShapeViewBuilder:
             shape_index=shape_index,
             label=shape.label,
             shape_type=shape.shape_type,
-            group_id=shape.group_id,
-            points=points,
             bbox=bbox,
             base_visible=self._widget.canvas.base_visible(shape),
         )
@@ -372,9 +370,7 @@ class LabelingWidget(LabelDialog):
         self._rect_refine_image_token_seq = 0
         self._rect_refine_image_token = None
         self._rect_refine_view_builder = _RectRefineShapeViewBuilder(self)
-        self._rect_refine_focus_controller = RectRefineFocusController(
-            config=self._build_rect_refine_config()
-        )
+        self._rect_refine_focus_controller = RectRefineFocusController()
 
         self._no_selection_slot = False
         self._copied_shapes = None
@@ -8022,40 +8018,6 @@ class LabelingWidget(LabelDialog):
         self._rect_refine_image_token_seq += 1
         self._rect_refine_image_token = str(self._rect_refine_image_token_seq)
         return self._rect_refine_image_token
-
-    def _build_rect_refine_config(self) -> dict:
-        """Build grouping config from the ``rect_refine`` yaml block.
-
-        Maps the flat yaml layout (top-level thresholds + nested
-        face_to_head / head_to_person) onto the nested ``DEFAULTS`` shape the
-        grouping algorithm expects. Falls back to the grouping
-        module defaults when the user config is absent or malformed so a bad
-        value never breaks startup.
-        """
-        from .rect_refine_grouping import DEFAULTS as _RR_DEFAULTS
-
-        user = self._config.get("rect_refine", {}) or {}
-        if not isinstance(user, dict):
-            return _RR_DEFAULTS
-        cfg = {
-            "face_to_head": dict(_RR_DEFAULTS["face_to_head"]),
-            "head_to_person": dict(_RR_DEFAULTS["head_to_person"]),
-            "general": dict(_RR_DEFAULTS["general"]),
-        }
-        # Overlay nested subsections if present and dict-shaped.
-        for sub in ("face_to_head", "head_to_person"):
-            val = user.get(sub)
-            if isinstance(val, dict):
-                cfg[sub].update(val)
-        # Map flat top-level thresholds into the ``general`` sub-dict.
-        for key in (
-            "min_accept_score",
-            "ambiguous_top_gap",
-            "alignment_hint_px",
-        ):
-            if key in user:
-                cfg["general"][key] = user[key]
-        return cfg
 
     def _rect_refine_forward_selection(self, selected_shapes):
         """Focus geometrically related rectangles for one valid selection."""
