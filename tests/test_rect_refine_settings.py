@@ -1,9 +1,7 @@
-"""Stage 5 tests: settings config injection + schema shortcut key +
-runtime_applier action map for the three-box refine mode.
+"""Settings and threshold tests for the three-box focus mode.
 
-These verify the wiring that makes the refine mode configurable via the
-settings dialog (shortcut remapping) and the yaml config block (threshold
-tuning).  Pure-Python where possible; the action-map check is PyQt offscreen.
+The grouping thresholds remain configurable. The removed transaction accept
+action must not remain in the shortcut schema, runtime map, or default config.
 """
 
 from __future__ import annotations
@@ -25,7 +23,7 @@ except Exception:  # noqa: BLE001
 
 
 # ---------------------------------------------------------------------------
-# 1. Schema: accept_rect_refine_workgroup is a registered View shortcut
+# 1. Schema: the removed transaction accept shortcut is absent
 # ---------------------------------------------------------------------------
 
 
@@ -33,14 +31,14 @@ except Exception:  # noqa: BLE001
     SCHEMA_AVAILABLE, "Settings schema dependencies are unavailable"
 )
 class TestSchemaShortcutRegistration(unittest.TestCase):
-    def test_accept_key_in_view_category(self):
+    def test_accept_key_not_in_view_category(self):
         categories = _shortcut_category_map()
         view_keys = categories.get("View", ())
-        self.assertIn("accept_rect_refine_workgroup", view_keys)
+        self.assertNotIn("accept_rect_refine_workgroup", view_keys)
 
-    def test_accept_field_present_in_setting_fields(self):
+    def test_accept_field_not_in_setting_fields(self):
         keys = {f.key for f in SETTING_FIELDS}
-        self.assertIn("shortcuts.accept_rect_refine_workgroup", keys)
+        self.assertNotIn("shortcuts.accept_rect_refine_workgroup", keys)
 
 
 # ---------------------------------------------------------------------------
@@ -122,7 +120,7 @@ class TestConfigInjection(unittest.TestCase):
 
 
 class TestShippedConfigYaml(unittest.TestCase):
-    def test_yaml_has_rect_refine_block_and_shortcut(self):
+    def test_yaml_has_rect_refine_block_without_accept_shortcut(self):
         import yaml
 
         cfg_path = os.path.join(
@@ -139,14 +137,14 @@ class TestShippedConfigYaml(unittest.TestCase):
         self.assertEqual(rr["min_accept_score"], 0.55)
         self.assertIn("face_to_head", rr)
         self.assertIn("head_to_person", rr)
-        # Shortcut registered with the spec default.
-        self.assertEqual(
-            cfg["shortcuts"]["accept_rect_refine_workgroup"], "Ctrl+Return"
+        self.assertNotIn(
+            "accept_rect_refine_workgroup",
+            cfg["shortcuts"],
         )
 
 
 # ---------------------------------------------------------------------------
-# 4. runtime_applier action map (PyQt offscreen)
+# 4. runtime_applier no longer wires the removed action
 # ---------------------------------------------------------------------------
 
 
@@ -154,18 +152,15 @@ class TestShippedConfigYaml(unittest.TestCase):
     SCHEMA_AVAILABLE, "Settings schema dependencies are unavailable"
 )
 class TestRuntimeApplierActionMap(unittest.TestCase):
-    def test_accept_action_in_shortcut_map(self):
-        # Source-level guard: the runtime_applier module must wire the new
-        # shortcut key to the QAction.  We inspect the module source rather
-        # than booting the full widget (which is heavy and covered by the
-        # UI integration tests).
+    def test_accept_action_not_in_shortcut_map(self):
+        # Source-level guard avoids booting the full widget here.
         import inspect
 
         from anylabeling.views.labeling.settings import runtime_applier
 
         src = inspect.getsource(runtime_applier)
-        self.assertIn("shortcuts.accept_rect_refine_workgroup", src)
-        self.assertIn("accept_rect_refine_workgroup", src)
+        self.assertNotIn("shortcuts.accept_rect_refine_workgroup", src)
+        self.assertNotIn("accept_rect_refine_workgroup", src)
 
 
 if __name__ == "__main__":

@@ -118,7 +118,6 @@ class SettingsRuntimeApplier:
             "shortcuts.toggle_compare_view": self._widget.actions.toggle_compare_view,
             "shortcuts.toggle_rect_edge_align": self._widget.actions.toggle_rect_edge_align,
             "shortcuts.toggle_precision_mode_lock": self._widget.actions.toggle_precision_mode_lock,
-            "shortcuts.accept_rect_refine_workgroup": self._widget.actions.accept_rect_refine_workgroup,
             "shortcuts.auto_label": self._widget.actions.toggle_auto_labeling_widget,
             "shortcuts.auto_run": self._widget.actions.run_all_images,
             "shortcuts.loop_thru_labels": self._widget.actions.loop_thru_labels,

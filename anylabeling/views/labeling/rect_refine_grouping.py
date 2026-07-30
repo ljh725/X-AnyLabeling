@@ -632,7 +632,7 @@ def _infer_from_person(
     """§29.4 full downward inference.
 
     Steps mirror the spec exactly; GID conflicts short-circuit to
-    ``CONFLICT`` and prevent workgroup construction.
+    ``CONFLICT`` and prevent focus construction.
     """
     f2h_cfg = config["face_to_head"]
     h2p_cfg = config["head_to_person"]

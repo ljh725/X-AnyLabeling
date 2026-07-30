@@ -465,14 +465,6 @@
       <source>Click to create point of shape '%s'</source>
       <translation type="unfinished" />
     </message>
-    <message>
-      <source>上沿已接近</source>
-      <translation>Top edge aligned</translation>
-    </message>
-    <message>
-      <source>下沿已接近</source>
-      <translation>Bottom edge aligned</translation>
-    </message>
   </context>
   <context>
     <name>ChatMessage</name>
@@ -3488,28 +3480,20 @@ This warning will only be shown once. Do you want to continue?</translation>
       <translation>Object Description</translation>
     </message>
     <message>
-      <source>三框精修模式</source>
-      <translation>Three-Box Refine Mode</translation>
+      <source>三框聚焦模式</source>
+      <translation>Three-Box Focus Mode</translation>
     </message>
     <message>
-      <source>开启三框精修模式：选择 person/head/face 建立临时工作组</source>
-      <translation>Enable three-box refine mode: select person/head/face to build a temporary workgroup</translation>
+      <source>选择 person/head/face，仅显示按相对位置筛选出的关联矩形框</source>
+      <translation>Select person/head/face to show only geometrically related rectangles</translation>
     </message>
     <message>
-      <source>通过当前工作组</source>
-      <translation>Accept Current Workgroup</translation>
+      <source>三框聚焦模式已开启</source>
+      <translation>Three-box focus mode enabled</translation>
     </message>
     <message>
-      <source>保存当前工作组的精修结果（Ctrl+Enter）</source>
-      <translation>Save the current workgroup's refine result (Ctrl+Enter)</translation>
-    </message>
-    <message>
-      <source>三框精修模式已开启</source>
-      <translation>Three-box refine mode enabled</translation>
-    </message>
-    <message>
-      <source>三框精修模式已关闭</source>
-      <translation>Three-box refine mode disabled</translation>
+      <source>三框聚焦模式已关闭</source>
+      <translation>Three-box focus mode disabled</translation>
     </message>
   </context>
   <context>

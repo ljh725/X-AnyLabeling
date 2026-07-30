@@ -212,7 +212,6 @@ shortcuts:
   toggle_compare_view: Ctrl+Alt+C
   toggle_rect_edge_align: Ctrl+Shift+E
   toggle_precision_mode_lock: Ctrl+Alt+F
-  accept_rect_refine_workgroup: Ctrl+Return
 
   auto_label: Ctrl+A
   auto_run: Ctrl+Shift+B
@@ -310,4 +309,3 @@ rect_refine:
     upper_ideal_lo: 0.10
     upper_ideal_hi: 0.30
     upper_high: 0.60
-
