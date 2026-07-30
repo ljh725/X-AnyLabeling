@@ -9,7 +9,10 @@ from anylabeling.views.labeling.rect_refine_grouping import (
     infer,
     loosely_nested,
 )
-from anylabeling.views.labeling.rect_refine_types import ShapeRefineView
+from anylabeling.views.labeling.rect_refine_types import (
+    RectRefineLabelRoles,
+    ShapeRefineView,
+)
 from scripts.compare_rect_refine_grouping import compare_samples
 
 TOKEN = "image-1"
@@ -83,6 +86,20 @@ def test_person_anchor_includes_related_heads_and_faces() -> None:
     }
 
 
+def test_halfperson_uses_default_body_role() -> None:
+    """Half-person rectangles use the same relation chain as person."""
+    halfperson = _view("halfperson", (0, 0, 100, 150), 1)
+    head = _view("head", (30, 0, 70, 45), 2)
+    face = _view("face", (38, 8, 68, 42), 3)
+    pool = [halfperson, head, face]
+
+    assert _member_ids(halfperson, pool) == {
+        halfperson.shape_id,
+        head.shape_id,
+        face.shape_id,
+    }
+
+
 def test_head_anchor_includes_persons_and_faces_without_top_one() -> None:
     """Head selection retains all plausible neighbours, not a scored top-1."""
     person_a = _view("person", (0, 0, 100, 200), 1)
@@ -99,6 +116,40 @@ def test_head_anchor_includes_persons_and_faces_without_top_one() -> None:
     }
 
 
+def test_head_keeps_person_and_halfperson_body_candidates() -> None:
+    """A head retains every plausible configured body role candidate."""
+    person = _view("person", (0, 0, 100, 200), 1)
+    halfperson = _view("halfperson", (20, 0, 110, 150), 2)
+    head = _view("head", (35, 5, 70, 45), 3)
+    pool = [person, halfperson, head]
+
+    assert _member_ids(head, pool) == {
+        person.shape_id,
+        halfperson.shape_id,
+        head.shape_id,
+    }
+
+
+def test_custom_body_role_replaces_default_labels() -> None:
+    """Injected roles allow project labels without changing geometry code."""
+    roles = RectRefineLabelRoles(
+        body=frozenset(("upper_body",)),
+        head=frozenset(("head",)),
+        face=frozenset(("face",)),
+    )
+    upper_body = _view("upper_body", (0, 0, 100, 150), 1)
+    person = _view("person", (0, 0, 100, 200), 2)
+    head = _view("head", (30, 5, 70, 45), 3)
+    pool = [upper_body, person, head]
+
+    assert {
+        member.shape_id for member in infer(upper_body, pool, roles).members
+    } == {upper_body.shape_id, head.shape_id}
+    assert infer(person, pool, roles).nonblocking_message == (
+        "anchor_invalid_geometry"
+    )
+
+
 def test_face_anchor_builds_head_person_chain() -> None:
     """Face selection walks upward through every loose related head."""
     person = _view("person", (0, 0, 100, 200), 1)
@@ -108,6 +159,20 @@ def test_face_anchor_builds_head_person_chain() -> None:
 
     assert _member_ids(face, pool) == {
         person.shape_id,
+        head.shape_id,
+        face.shape_id,
+    }
+
+
+def test_face_anchor_builds_head_halfperson_chain() -> None:
+    """Face selection walks upward to a configured halfperson body."""
+    halfperson = _view("halfperson", (0, 0, 100, 150), 1)
+    head = _view("head", (30, 5, 70, 45), 2)
+    face = _view("face", (38, 12, 68, 42), 3)
+    pool = [halfperson, head, face]
+
+    assert _member_ids(face, pool) == {
+        halfperson.shape_id,
         head.shape_id,
         face.shape_id,
     }
@@ -149,3 +214,19 @@ def test_real_samples_keep_all_reviewed_true_targets() -> None:
     assert report["summary"]["visibility_reduction"] > 0.80
     assert report["legacy_scoring_baseline"]["expected_hits"] == 36
     assert report["comparison"]["expected_hit_delta"] == 10
+
+
+def test_halfperson_keeps_reviewed_real_geometry_links() -> None:
+    """A reviewed real body geometry keeps its links when relabelled."""
+    fixture = (
+        Path(__file__).parent / "fixtures" / "rect_refine_real_samples.json"
+    )
+    samples = json.loads(fixture.read_text(encoding="utf-8"))
+    sample = next(item for item in samples if item["name"] == "s77")
+    sample["name"] = "s77-halfperson"
+    sample["shapes"][0]["label"] = "halfperson"
+
+    report = compare_samples([sample])
+
+    assert report["summary"]["expected_hits"] == 4
+    assert report["summary"]["expected_total"] == 4

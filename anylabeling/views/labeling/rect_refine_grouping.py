@@ -1,13 +1,17 @@
-"""Loose relative-geometry filtering for person, head, and face rectangles."""
+"""Loose relative-geometry filtering for body, head, and face rectangles."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, Tuple
+from typing import FrozenSet, List, Optional, Sequence, Tuple
 
-from .rect_refine_types import BBox, ShapeRefineView
+from .rect_refine_types import (
+    BBox,
+    DEFAULT_RECT_REFINE_LABEL_ROLES,
+    RectRefineLabelRoles,
+    ShapeRefineView,
+)
 
-ANCHOR_LABELS = ("person", "head", "face")
 _EPS = 1e-9
 
 
@@ -59,23 +63,26 @@ def loosely_nested(inner: ShapeRefineView, outer: ShapeRefineView) -> bool:
     )
 
 
-def _refinable(view: ShapeRefineView) -> bool:
+def _refinable(
+    view: ShapeRefineView,
+    label_roles: RectRefineLabelRoles,
+) -> bool:
     """Return whether a Shape view participates in three-box filtering."""
     return (
-        view.label in ANCHOR_LABELS
+        label_roles.contains(view.label)
         and view.shape_type == "rectangle"
         and _valid_bbox(view.bbox)
     )
 
 
 def _related(
-    inner_label: str,
-    outer_label: str,
+    inner_labels: FrozenSet[str],
+    outer_labels: FrozenSet[str],
     pool: Sequence[ShapeRefineView],
 ) -> List[Tuple[ShapeRefineView, ShapeRefineView]]:
     """Return all loose inner/outer pairs in stable canvas order."""
-    inner_views = [view for view in pool if view.label == inner_label]
-    outer_views = [view for view in pool if view.label == outer_label]
+    inner_views = [view for view in pool if view.label in inner_labels]
+    outer_views = [view for view in pool if view.label in outer_labels]
     return [
         (inner, outer)
         for outer in outer_views
@@ -95,24 +102,33 @@ def _dedupe_sorted(
 def infer(
     anchor: ShapeRefineView,
     all_shapes: Sequence[ShapeRefineView],
+    label_roles: RectRefineLabelRoles = DEFAULT_RECT_REFINE_LABEL_ROLES,
 ) -> GroupingResult:
     """Filter geometrically related rectangles for one selected anchor."""
-    if not _refinable(anchor):
+    if not _refinable(anchor, label_roles):
         return GroupingResult(
             members=(anchor,),
             nonblocking_message="anchor_invalid_geometry",
         )
 
-    pool = [view for view in all_shapes if _refinable(view)]
-    head_person_pairs = _related("head", "person", pool)
-    face_head_pairs = _related("face", "head", pool)
+    pool = [view for view in all_shapes if _refinable(view, label_roles)]
+    head_body_pairs = _related(
+        label_roles.head,
+        label_roles.body,
+        pool,
+    )
+    face_head_pairs = _related(
+        label_roles.face,
+        label_roles.head,
+        pool,
+    )
     members: List[ShapeRefineView] = [anchor]
 
-    if anchor.label == "person":
+    if anchor.label in label_roles.body:
         heads = [
             head
-            for head, person in head_person_pairs
-            if person.shape_id == anchor.shape_id
+            for head, body in head_body_pairs
+            if body.shape_id == anchor.shape_id
         ]
         head_ids = {head.shape_id for head in heads}
         faces = [
@@ -120,10 +136,10 @@ def infer(
         ]
         members.extend(heads)
         members.extend(faces)
-    elif anchor.label == "head":
+    elif anchor.label in label_roles.head:
         members.extend(
-            person
-            for head, person in head_person_pairs
+            body
+            for head, body in head_body_pairs
             if head.shape_id == anchor.shape_id
         )
         members.extend(
@@ -138,19 +154,16 @@ def infer(
             if face.shape_id == anchor.shape_id
         ]
         head_ids = {head.shape_id for head in heads}
-        persons = [
-            person
-            for head, person in head_person_pairs
-            if head.shape_id in head_ids
+        bodies = [
+            body for head, body in head_body_pairs if head.shape_id in head_ids
         ]
         members.extend(heads)
-        members.extend(persons)
+        members.extend(bodies)
 
     return GroupingResult(members=_dedupe_sorted(members))
 
 
 __all__ = [
-    "ANCHOR_LABELS",
     "GroupingResult",
     "infer",
     "loosely_nested",

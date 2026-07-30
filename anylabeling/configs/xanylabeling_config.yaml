@@ -273,3 +273,14 @@ pose_view:
     - "#3498db"
     - "#2ecc71"
   color_preset: "default"
+
+# Label roles used by three-box rectangle focus.
+rect_refine:
+  label_roles:
+    body:
+      - person
+      - halfperson
+    head:
+      - head
+    face:
+      - face

@@ -11,7 +11,12 @@ from dataclasses import dataclass
 from typing import FrozenSet, Optional, Sequence
 
 from .rect_refine_grouping import infer
-from .rect_refine_types import ShapeId, ShapeRefineView
+from .rect_refine_types import (
+    DEFAULT_RECT_REFINE_LABEL_ROLES,
+    RectRefineLabelRoles,
+    ShapeId,
+    ShapeRefineView,
+)
 
 
 @dataclass(frozen=True)
@@ -25,8 +30,12 @@ class FocusResult:
 class RectRefineFocusController:
     """Track mode/focus state and delegate geometric association to infer()."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        label_roles: RectRefineLabelRoles = (DEFAULT_RECT_REFINE_LABEL_ROLES),
+    ) -> None:
         """Initialize an inactive controller."""
+        self._label_roles = label_roles
         self._enabled = False
         self._image_token = ""
         self._focused_ids: Optional[FrozenSet[ShapeId]] = None
@@ -98,7 +107,7 @@ class RectRefineFocusController:
         if anchor.shape_id[0] != self._image_token:
             return None
 
-        grouping = infer(anchor, all_views)
+        grouping = infer(anchor, all_views, self._label_roles)
         member_ids = frozenset(member.shape_id for member in grouping.members)
         self._focused_ids = member_ids or frozenset((anchor.shape_id,))
         return FocusResult(
@@ -106,11 +115,10 @@ class RectRefineFocusController:
             message=grouping.nonblocking_message,
         )
 
-    @staticmethod
-    def _is_valid_anchor(view: ShapeRefineView) -> bool:
+    def _is_valid_anchor(self, view: ShapeRefineView) -> bool:
         """Return whether a Shape view may trigger geometric focus."""
         return (
-            view.label in ("person", "head", "face")
+            self._label_roles.contains(view.label)
             and view.shape_type == "rectangle"
             and view.base_visible
         )

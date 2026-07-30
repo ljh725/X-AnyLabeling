@@ -135,7 +135,10 @@ from .widgets.pose_label import (
 )
 
 from .rect_refine_focus import RectRefineFocusController  # noqa: E402
-from .rect_refine_types import ShapeRefineView  # noqa: E402
+from .rect_refine_types import (  # noqa: E402
+    ShapeRefineView,
+    parse_rect_refine_label_roles,
+)
 from .widgets.inspector.quality.geometry import (  # noqa: E402
     bbox_from_two_corners as _rect_refine_bbox,
 )
@@ -370,7 +373,12 @@ class LabelingWidget(LabelDialog):
         self._rect_refine_image_token_seq = 0
         self._rect_refine_image_token = None
         self._rect_refine_view_builder = _RectRefineShapeViewBuilder(self)
-        self._rect_refine_focus_controller = RectRefineFocusController()
+        rect_refine_roles = parse_rect_refine_label_roles(
+            self._config.get("rect_refine")
+        )
+        self._rect_refine_focus_controller = RectRefineFocusController(
+            label_roles=rect_refine_roles
+        )
 
         self._no_selection_slot = False
         self._copied_shapes = None

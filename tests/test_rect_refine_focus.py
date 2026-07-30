@@ -5,7 +5,10 @@ from __future__ import annotations
 from anylabeling.views.labeling.rect_refine_focus import (
     RectRefineFocusController,
 )
-from anylabeling.views.labeling.rect_refine_types import ShapeRefineView
+from anylabeling.views.labeling.rect_refine_types import (
+    RectRefineLabelRoles,
+    ShapeRefineView,
+)
 
 TOKEN = "image-1"
 
@@ -62,11 +65,57 @@ def test_valid_selection_focuses_related_rectangles() -> None:
     assert controller.focused_ids == result.member_ids
 
 
+def test_default_controller_accepts_halfperson_anchor() -> None:
+    """The shipped roles treat halfperson as a body rectangle."""
+    halfperson = _view("halfperson", (0, 0, 100, 150), 1)
+    head = _view("head", (30, 5, 70, 45), 2)
+    controller = RectRefineFocusController()
+    controller.enable(TOKEN)
+
+    result = controller.focus_from_selection(
+        [halfperson],
+        [halfperson, head],
+    )
+
+    assert result is not None
+    assert result.member_ids == frozenset((halfperson.shape_id, head.shape_id))
+
+
+def test_controller_uses_injected_custom_roles() -> None:
+    """User-configured body labels replace shipped body labels."""
+    roles = RectRefineLabelRoles(
+        body=frozenset(("upper_body",)),
+        head=frozenset(("head",)),
+        face=frozenset(("face",)),
+    )
+    upper_body = _view("upper_body", (0, 0, 100, 150), 1)
+    person = _view("person", (0, 0, 100, 200), 2)
+    head = _view("head", (30, 5, 70, 45), 3)
+    controller = RectRefineFocusController(label_roles=roles)
+    controller.enable(TOKEN)
+
+    assert (
+        controller.focus_from_selection(
+            [upper_body],
+            [upper_body, person, head],
+        )
+        is not None
+    )
+    controller.clear_focus()
+    assert (
+        controller.focus_from_selection(
+            [person],
+            [upper_body, person, head],
+        )
+        is None
+    )
+
+
 def test_invalid_selection_leaves_existing_focus_unchanged() -> None:
     """Non-target and multi-selection events do not disturb current focus."""
     person, head = _related_views()
     polygon = _view(
-        "person",
+        "halfperson",
         (0, 0, 10, 10),
         3,
         shape_type="polygon",

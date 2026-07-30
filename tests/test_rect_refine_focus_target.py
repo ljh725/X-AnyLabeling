@@ -100,17 +100,28 @@ def _rect(
     return shape
 
 
-def _enter_focus(widget: Any, person: Shape, head: Shape) -> None:
+def _enter_focus(widget: Any, body: Shape, head: Shape) -> None:
     """Enable the mode and establish a focus through public UI events."""
-    widget.load_shapes([person, head], replace=True, store_backup=False)
+    widget.load_shapes([body, head], replace=True, store_backup=False)
     widget._toggle_rect_refine_mode(True)
-    widget.canvas.select_shapes([person], source="canvas")
+    widget.canvas.select_shapes([body], source="canvas")
     assert widget.canvas._main_visibility_predicate is not None
 
 
 def test_menu_uses_lightweight_focus_wording(widget: Any) -> None:
     """The menu describes focus instead of the removed refine transaction."""
     assert widget.actions.toggle_rect_refine_mode.text() == "三框聚焦模式"
+
+
+def test_halfperson_enters_focus_from_shipped_config(widget: Any) -> None:
+    """The default YAML exposes halfperson as a body-role anchor."""
+    halfperson = _rect("halfperson", 10, 10, 120, 160)
+    head = _rect("head", 40, 20, 60, 60)
+
+    _enter_focus(widget, halfperson, head)
+
+    assert widget._rect_refine_focus_controller.has_focus is True
+    assert len(widget._rect_refine_focus_controller.focused_ids) == 2
 
 
 def test_focused_shape_move_uses_native_dirty_and_save(
