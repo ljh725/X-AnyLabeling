@@ -4,9 +4,14 @@ Computes files / shapes that match a saved FilterState snapshot.
 Used to build and update the "remaining matched files" navigation set.
 """
 
+from __future__ import annotations
+
 import json
 import os.path as osp
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from .dataset_index import DatasetIndexQueryProtocol
 
 NAVIGATION_ENABLED = "enabled"
 NAVIGATION_NO_ACTIVE_FILTER = "no_active_filter"
@@ -69,12 +74,12 @@ class FilterNavigationEngine:
         self,
         image_files: List[str],
         filter_state,
-        dataset_index,
+        dataset_index: Optional[DatasetIndexQueryProtocol],
     ) -> FilterNavigationSession:
         """Prepare a dataset-index-backed navigation session.
 
         UI callers provide current image order, active filter state, and the
-        derived dataset index. The engine owns the match calculation and
+        dataset-index query provider. The engine owns the match calculation and
         returns a status object for the UI to render.
         """
         if not filter_state.has_active_filter():
@@ -83,7 +88,7 @@ class FilterNavigationEngine:
             )
 
         state = filter_state.copy()
-        if dataset_index is None or not dataset_index.is_ready():
+        if dataset_index is None or not dataset_index.is_query_ready:
             return FilterNavigationSession(
                 status=NAVIGATION_INDEX_NOT_READY,
                 state=state,

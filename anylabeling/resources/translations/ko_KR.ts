@@ -465,6 +465,16 @@
       <source>Click to create point of shape '%s'</source>
       <translation>도형 '%s'에 점을 만들려면 클릭하세요</translation>
     </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="5000" />
+      <source>W %.1f px  H %.1f px</source>
+      <translation>W %.1f px  H %.1f px</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="5003" />
+      <source>Max edge %.1f px &lt; %g px</source>
+      <translation>최대 변 %.1f px &lt; %g px</translation>
+    </message>
   </context>
   <context>
     <name>ChatMessage</name>
@@ -2642,14 +2652,24 @@ Press Enter to search.</source>
       <translation>사각형 픽셀 크기 표시</translation>
     </message>
     <message>
-      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
-      <source>W %.1f px  H %.1f px</source>
-      <translation>W %.1f px  H %.1f px</translation>
+      <location filename="../../views/labeling/label_widget.py" line="1543" />
+      <source>Show Rectangle Size Violations</source>
+      <translation>사각형 크기 이상 표시</translation>
     </message>
     <message>
-      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
-      <source>Max edge %.1f px &lt; %g px</source>
-      <translation>최대 변 %.1f px &lt; %g px</translation>
+      <location filename="../../views/labeling/label_widget.py" line="1546" />
+      <source>Show proactive warnings for configured rectangle size rules</source>
+      <translation>설정된 사각형 크기 규칙에 대한 경고 자동 표시</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1554" />
+      <source>Configure Rectangle Size Rules</source>
+      <translation>사각형 크기 규칙 설정</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1557" />
+      <source>Edit category-specific rectangle width and height thresholds</source>
+      <translation>카테고리별 사각형 너비 및 높이 임계값 편집</translation>
     </message>
     <message>
       <location filename="../../views/labeling/label_widget.py" line="1203" />
@@ -6104,6 +6124,132 @@ Do you want to continue?</source>
       <location filename="../../views/labeling/widgets/vqa_dialog.py" line="1915" />
       <source>VQA data refreshed successfully!</source>
       <translation>VQA 데이터가 성공적으로 새로고침되었습니다!</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleTable</name>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="61" />
+      <source>Enabled</source>
+      <translation>활성화</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="62" />
+      <source>Label</source>
+      <translation>라벨</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="63" />
+      <source>Min width (px)</source>
+      <translation>최소 너비 (px)</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="64" />
+      <source>Min height (px)</source>
+      <translation>최소 높이 (px)</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="65" />
+      <source>Trigger</source>
+      <translation>판정 조건</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="66" />
+      <source>Action</source>
+      <translation>작업</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="98" />
+      <source>Add rule</source>
+      <translation>규칙 추가</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="192" />
+      <source>Exact label</source>
+      <translation>정확히 일치하는 라벨</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="203" />
+      <source>Any configured dimension</source>
+      <translation>설정된 치수 중 하나</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="204" />
+      <source>All configured dimensions</source>
+      <translation>설정된 모든 치수</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="211" />
+      <source>Remove</source>
+      <translation>삭제</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="227" />
+      <source>Not checked</source>
+      <translation>검사 안 함</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleDialog</name>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="293" />
+      <source>Rectangle size rules</source>
+      <translation>사각형 크기 규칙</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="306" />
+      <source>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</source>
+      <translation>실제 값이 임계값보다 작거나 같으면 사각형이 비정상입니다. 비워 둔 치수는 검사하지 않습니다.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="337" />
+      <source>Apply</source>
+      <translation>적용</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="339" />
+      <source>Cancel</source>
+      <translation>취소</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="369" />
+      <source>Cannot apply rules: {0}</source>
+      <translation>규칙을 적용할 수 없습니다: {0}</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="401" />
+      <source>Label must not be empty.</source>
+      <translation>라벨은 비워 둘 수 없습니다.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="403" />
+      <source>The label '{0}' is duplicated.</source>
+      <translation>라벨 '{0}'이(가) 중복되었습니다.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="409" />
+      <source>Width threshold must be a positive finite number.</source>
+      <translation>너비 임계값은 양의 유한 숫자여야 합니다.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="413" />
+      <source>Height threshold must be a positive finite number.</source>
+      <translation>높이 임계값은 양의 유한 숫자여야 합니다.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="417" />
+      <source>An enabled rule needs at least one W/H threshold.</source>
+      <translation>활성화된 규칙에는 W/H 임계값이 하나 이상 필요합니다.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="420" />
+      <source>Trigger must be 'any' or 'all'.</source>
+      <translation>판정 조건은 'any' 또는 'all'이어야 합니다.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="425" />
+      <source>Rule row {0}: {1}</source>
+      <translation>규칙 {0}행: {1}</translation>
     </message>
   </context>
   <context>

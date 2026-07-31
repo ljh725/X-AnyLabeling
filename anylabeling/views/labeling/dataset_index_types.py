@@ -1,19 +1,15 @@
-from .dataset_index import (
-    DatasetFilterIndex,
+"""Compatibility imports for relocated dataset-index contracts."""
+
+from .dataset_index.types import (
     DatasetIndexAutoRefreshPolicy,
     DatasetIndexContext,
     DatasetIndexQueryProtocol,
-    DatasetIndexResult,
     DatasetIndexState,
-    make_db_path,
 )
 
 __all__ = [
-    "DatasetFilterIndex",
     "DatasetIndexAutoRefreshPolicy",
     "DatasetIndexContext",
     "DatasetIndexQueryProtocol",
-    "DatasetIndexResult",
     "DatasetIndexState",
-    "make_db_path",
 ]

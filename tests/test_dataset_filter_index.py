@@ -1,23 +1,15 @@
-import importlib.util
 import json
 import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-MODULE_PATH = ROOT_DIR / "anylabeling/views/labeling/dataset_filter_index.py"
-
-MODULE_SPEC = importlib.util.spec_from_file_location(
-    "dataset_filter_index_module", MODULE_PATH
+from anylabeling.views.labeling.dataset_index import (
+    DATASET_INDEX_READY,
+    INDEX_STATUS_OK,
+    DatasetFilterIndex,
+    install_staged_database,
 )
-MODULE = importlib.util.module_from_spec(MODULE_SPEC)
-MODULE_SPEC.loader.exec_module(MODULE)
-
-DatasetFilterIndex = MODULE.DatasetFilterIndex
-DATASET_INDEX_READY = MODULE.DATASET_INDEX_READY
-INDEX_STATUS_OK = MODULE.INDEX_STATUS_OK
-install_staged_database = MODULE.install_staged_database
 
 
 class TestDatasetFilterIndex(unittest.TestCase):

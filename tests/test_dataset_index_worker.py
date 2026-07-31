@@ -3,11 +3,11 @@
 import json
 from pathlib import Path
 
-from anylabeling.views.labeling.dataset_filter_index import (
+from anylabeling.views.labeling.dataset_index import (
     DatasetFilterIndex,
     install_staged_database,
 )
-from anylabeling.views.labeling.dataset_filter_index_worker import (
+from anylabeling.views.labeling.dataset_index.worker import (
     DatasetIndexWorker,
 )
 
@@ -28,6 +28,36 @@ def _write_label(path: Path, label: str) -> None:
         ),
         encoding="utf-8",
     )
+
+
+def test_progress_signal_is_throttled_but_first_and_last_are_kept():
+    """Rapid per-file callbacks must not flood the UI event queue."""
+    now = [0.0]
+    progress = []
+    worker = DatasetIndexWorker(
+        "refresh",
+        "cache.db",
+        [],
+        progress_interval_seconds=0.1,
+        clock=lambda: now[0],
+    )
+    worker.progress_changed.connect(
+        lambda current, total, filename: progress.append(
+            (current, total, filename)
+        )
+    )
+
+    worker._emit_progress(1, 100, "1.json")
+    worker._emit_progress(2, 100, "2.json")
+    now[0] = 0.11
+    worker._emit_progress(3, 100, "3.json")
+    worker._emit_progress(100, 100, "100.json")
+
+    assert progress == [
+        (1, 100, "1.json"),
+        (3, 100, "3.json"),
+        (100, 100, "100.json"),
+    ]
 
 
 def test_rebuild_worker_stages_before_replacing_live_database(tmp_path):

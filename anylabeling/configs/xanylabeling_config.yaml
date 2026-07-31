@@ -23,6 +23,17 @@ show_labels: true
 # Live rectangle pixel-size overlay toggle (design rev.1 §5).
 # Mirrors show_labels: View menu checkable action -> set_canvas_params.
 show_rectangle_pixels: true
+# Proactive current-image warnings for configured rectangle-size rules.
+show_rectangle_size_violations: false
+# A configured dimension is abnormal when actual_px <= threshold_px.
+# "all" preserves the legacy both-dimensions trigger while the new inclusive
+# boundary intentionally makes equality abnormal.
+rectangle_size_rules:
+  - label: person
+    min_width_px: 36.0
+    min_height_px: 36.0
+    trigger_mode: all
+    enabled: true
 label_display_mode: label
 show_scores: true
 show_degrees: false

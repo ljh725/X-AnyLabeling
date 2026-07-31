@@ -465,6 +465,16 @@
       <source>Click to create point of shape '%s'</source>
       <translation type="unfinished" />
     </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="5000" />
+      <source>W %.1f px  H %.1f px</source>
+      <translation>W %.1f px  H %.1f px</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="5003" />
+      <source>Max edge %.1f px &lt; %g px</source>
+      <translation>Max edge %.1f px &lt; %g px</translation>
+    </message>
   </context>
   <context>
     <name>ChatMessage</name>
@@ -2633,14 +2643,24 @@ Press Enter to search.</translation>
       <translation>Show rectangle pixel size</translation>
     </message>
     <message>
-      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
-      <source>W %.1f px  H %.1f px</source>
-      <translation>W %.1f px  H %.1f px</translation>
+      <location filename="../../views/labeling/label_widget.py" line="1543" />
+      <source>Show Rectangle Size Violations</source>
+      <translation>Show Rectangle Size Violations</translation>
     </message>
     <message>
-      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
-      <source>Max edge %.1f px &lt; %g px</source>
-      <translation>Max edge %.1f px &lt; %g px</translation>
+      <location filename="../../views/labeling/label_widget.py" line="1546" />
+      <source>Show proactive warnings for configured rectangle size rules</source>
+      <translation>Show proactive warnings for configured rectangle size rules</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1554" />
+      <source>Configure Rectangle Size Rules</source>
+      <translation>Configure Rectangle Size Rules</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1557" />
+      <source>Edit category-specific rectangle width and height thresholds</source>
+      <translation>Edit category-specific rectangle width and height thresholds</translation>
     </message>
     <message>
       <location filename="../../views/labeling/label_widget.py" line="1203" />
@@ -6079,6 +6099,132 @@ Do you want to continue?</source>
       <location filename="../../views/labeling/widgets/vqa_dialog.py" line="1915" />
       <source>VQA data refreshed successfully!</source>
       <translation type="unfinished" />
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleTable</name>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="61" />
+      <source>Enabled</source>
+      <translation>Enabled</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="62" />
+      <source>Label</source>
+      <translation>Label</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="63" />
+      <source>Min width (px)</source>
+      <translation>Min width (px)</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="64" />
+      <source>Min height (px)</source>
+      <translation>Min height (px)</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="65" />
+      <source>Trigger</source>
+      <translation>Trigger</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="66" />
+      <source>Action</source>
+      <translation>Action</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="98" />
+      <source>Add rule</source>
+      <translation>Add rule</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="192" />
+      <source>Exact label</source>
+      <translation>Exact label</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="203" />
+      <source>Any configured dimension</source>
+      <translation>Any configured dimension</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="204" />
+      <source>All configured dimensions</source>
+      <translation>All configured dimensions</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="211" />
+      <source>Remove</source>
+      <translation>Remove</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="227" />
+      <source>Not checked</source>
+      <translation>Not checked</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleDialog</name>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="293" />
+      <source>Rectangle size rules</source>
+      <translation>Rectangle size rules</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="306" />
+      <source>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</source>
+      <translation>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="337" />
+      <source>Apply</source>
+      <translation>Apply</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="339" />
+      <source>Cancel</source>
+      <translation>Cancel</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="369" />
+      <source>Cannot apply rules: {0}</source>
+      <translation>Cannot apply rules: {0}</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="401" />
+      <source>Label must not be empty.</source>
+      <translation>Label must not be empty.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="403" />
+      <source>The label '{0}' is duplicated.</source>
+      <translation>The label '{0}' is duplicated.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="409" />
+      <source>Width threshold must be a positive finite number.</source>
+      <translation>Width threshold must be a positive finite number.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="413" />
+      <source>Height threshold must be a positive finite number.</source>
+      <translation>Height threshold must be a positive finite number.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="417" />
+      <source>An enabled rule needs at least one W/H threshold.</source>
+      <translation>An enabled rule needs at least one W/H threshold.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="420" />
+      <source>Trigger must be 'any' or 'all'.</source>
+      <translation>Trigger must be 'any' or 'all'.</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="425" />
+      <source>Rule row {0}: {1}</source>
+      <translation>Rule row {0}: {1}</translation>
     </message>
   </context>
   <context>

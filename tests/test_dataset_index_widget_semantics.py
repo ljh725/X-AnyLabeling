@@ -3,9 +3,6 @@
 import inspect
 from types import SimpleNamespace
 
-from anylabeling.views.labeling.dataset_filter_index import (
-    DATASET_INDEX_STALE,
-)
 from anylabeling.views.labeling.label_widget import LabelingWidget
 
 
@@ -29,130 +26,62 @@ def test_background_label_check_does_not_create_modal_progress_dialog():
     assert "ApplicationModal" not in source
 
 
-def test_index_failure_after_json_save_is_queued_not_raised():
-    """A derived-cache failure must not escape the post-save sync hook."""
-
-    class BrokenIndex:
-        """Index stub that simulates a SQLite write failure."""
-
-        @staticmethod
-        def refresh_file(_image_path, _output_dir):
-            """Raise a representative cache failure."""
-            raise RuntimeError("cache unavailable")
-
-    statuses = []
-    messages = []
-    widget = SimpleNamespace(
-        _dataset_index_worker=None,
-        _dataset_filter_index=BrokenIndex(),
-        _pending_dataset_index_refresh_files=set(),
-        output_dir=None,
-        _set_dataset_index_state=statuses.append,
-        status=lambda message, _delay: messages.append(message),
-        tr=lambda text: text,
+def test_three_dataset_index_actions_delegate_to_controller():
+    """Refresh, rebuild, and cancel handlers must be pure delegations."""
+    refresh_source = inspect.getsource(LabelingWidget.refresh_dataset_index)
+    rebuild_source = inspect.getsource(LabelingWidget.rebuild_dataset_index)
+    cancel_source = inspect.getsource(
+        LabelingWidget.cancel_dataset_index_build
     )
 
-    LabelingWidget._sync_dataset_index_after_save(widget, "sample.jpg")
+    assert "_dataset_index_controller.refresh()" in refresh_source
+    assert "_dataset_index_controller.rebuild()" in rebuild_source
+    assert "_dataset_index_controller.cancel()" in cancel_source
+    assert "_start_dataset_index_worker" not in refresh_source
+    assert "_start_dataset_index_worker" not in rebuild_source
 
-    assert widget._pending_dataset_index_refresh_files == {"sample.jpg"}
-    assert statuses == [DATASET_INDEX_STALE]
-    assert messages == ["Label saved; dataset index sync pending"]
+
+def test_authoritative_save_delegates_index_sync_to_controller():
+    """Successful JSON save must invoke the controller label-saved hook."""
+    source = inspect.getsource(LabelingWidget.save_labels)
+
+    assert "_dataset_index_controller.label_saved(self.image_path)" in source
+
+
+def test_filter_navigation_receives_controller_query_contract():
+    """Widget must not expose the raw SQLite index to navigation logic."""
+    source = inspect.getsource(LabelingWidget.enable_filter_navigation)
+
+    assert "dataset_index=self._dataset_index_controller," in source
+    assert "_dataset_index_controller.index" not in source
+
+
+def test_auto_refresh_policy_is_not_owned_by_labeling_widget():
+    """Automatic cache verification must be a controller policy."""
+    assert not hasattr(LabelingWidget, "_schedule_dataset_index_refresh")
+    assert not hasattr(LabelingWidget, "_auto_refresh_dataset_index")
 
 
 def test_force_detach_resets_same_dataset_worker_and_index():
-    """Changing output directory must detach even when the root is unchanged."""
+    """Changing output directory must delegate a forced controller detach."""
+    calls = []
 
-    class Signal:
-        """Minimal Qt signal stand-in."""
+    class Controller:
+        """Record directory preparation requests."""
 
         @staticmethod
-        def disconnect():
-            """Accept disconnection."""
+        def prepare_for_directory(dataset_root, output_dir, *, force=False):
+            """Record one controller lifecycle request."""
+            calls.append((dataset_root, output_dir, force))
 
-    class Worker:
-        """Cancellable worker stand-in."""
-
-        progress_changed = Signal()
-        finished = Signal()
-        cancelled = Signal()
-        failed = Signal()
-
-        def __init__(self):
-            self.cancel_called = False
-            self.wait_called = False
-            self.delete_called = False
-
-        def cancel(self):
-            """Record cancellation."""
-            self.cancel_called = True
-
-        def wait(self):
-            """Record the join."""
-            self.wait_called = True
-
-        def deleteLater(self):
-            """Record deferred deletion."""
-            self.delete_called = True
-
-    class Index:
-        """Closable index stand-in."""
-
-        def __init__(self):
-            self.closed = False
-
-        def close(self):
-            """Record closure."""
-            self.closed = True
-
-    class Action:
-        """Action enable-state stand-in."""
-
-        def __init__(self):
-            self.enabled = None
-
-        def setEnabled(self, enabled):
-            """Record the enabled state."""
-            self.enabled = enabled
-
-    worker = Worker()
-    index = Index()
-    actions = SimpleNamespace(
-        refresh_dataset_index=Action(),
-        rebuild_dataset_index=Action(),
-        cancel_dataset_index=Action(),
-    )
     widget = SimpleNamespace(
-        _dataset_index_timer=None,
-        _dataset_index_root="same-root",
-        _dataset_index_worker=worker,
-        _dataset_filter_index=index,
-        _pending_dataset_index_refresh_files={"pending.jpg"},
-        _dataset_index_mode="refresh",
-        _dataset_index_state=None,
-        actions=actions,
+        _dataset_index_controller=Controller(),
+        output_dir="labels-b",
         _normalize_dataset_root=lambda root: root,
-    )
-    widget._finish_dataset_index_worker = lambda: (
-        LabelingWidget._finish_dataset_index_worker(widget)
-    )
-    widget._close_dataset_filter_index = lambda: (
-        LabelingWidget._close_dataset_filter_index(widget)
-    )
-    widget._set_dataset_index_state = lambda state: setattr(
-        widget, "_dataset_index_state", state
     )
 
     LabelingWidget._prepare_dataset_index_for_directory(
         widget, "same-root", force=True
     )
 
-    assert worker.cancel_called
-    assert worker.wait_called
-    assert worker.delete_called
-    assert index.closed
-    assert widget._dataset_index_worker is None
-    assert widget._dataset_filter_index is None
-    assert widget._pending_dataset_index_refresh_files == set()
-    assert actions.refresh_dataset_index.enabled is True
-    assert actions.rebuild_dataset_index.enabled is True
-    assert actions.cancel_dataset_index.enabled is False
+    assert calls == [("same-root", "labels-b", True)]

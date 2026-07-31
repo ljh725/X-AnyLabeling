@@ -36,12 +36,17 @@ class _DatasetIndex:
         self._matches = list(matches or [])
         self.queried_with = None
 
-    def is_ready(self):
+    @property
+    def is_query_ready(self):
         return self._ready
 
     def query(self, filter_state):
         self.queried_with = filter_state
         return list(self._matches)
+
+    @staticmethod
+    def query_shapes(_filter_state):
+        return {}
 
 
 class TestFilterNavigationEngine(unittest.TestCase):

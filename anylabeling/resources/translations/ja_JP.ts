@@ -465,6 +465,16 @@
       <source>Click to create point of shape '%s'</source>
       <translation>クリックして図形 '%s' の頂点を作成</translation>
     </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="5000" />
+      <source>W %.1f px  H %.1f px</source>
+      <translation>W %.1f px  H %.1f px</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/canvas.py" line="5003" />
+      <source>Max edge %.1f px &lt; %g px</source>
+      <translation>最大辺 %.1f px &lt; %g px</translation>
+    </message>
   </context>
   <context>
     <name>ChatMessage</name>
@@ -2641,14 +2651,24 @@ Enterキーで検索を実行。</translation>
       <translation>矩形のピクセルサイズを表示</translation>
     </message>
     <message>
-      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
-      <source>W %.1f px  H %.1f px</source>
-      <translation>W %.1f px  H %.1f px</translation>
+      <location filename="../../views/labeling/label_widget.py" line="1543" />
+      <source>Show Rectangle Size Violations</source>
+      <translation>矩形サイズ異常を表示</translation>
     </message>
     <message>
-      <location filename="../../views/labeling/widgets/canvas.py" line="0" />
-      <source>Max edge %.1f px &lt; %g px</source>
-      <translation>最大辺 %.1f px &lt; %g px</translation>
+      <location filename="../../views/labeling/label_widget.py" line="1546" />
+      <source>Show proactive warnings for configured rectangle size rules</source>
+      <translation>設定した矩形サイズルールの警告を自動表示</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1554" />
+      <source>Configure Rectangle Size Rules</source>
+      <translation>矩形サイズルールを設定</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1557" />
+      <source>Edit category-specific rectangle width and height thresholds</source>
+      <translation>カテゴリ別の矩形の幅と高さのしきい値を編集</translation>
     </message>
     <message>
       <location filename="../../views/labeling/label_widget.py" line="1203" />
@@ -6102,6 +6122,132 @@ Do you want to continue?</source>
       <location filename="../../views/labeling/widgets/vqa_dialog.py" line="1915" />
       <source>VQA data refreshed successfully!</source>
       <translation>VQAデータが正常に更新されました！</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleTable</name>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="61" />
+      <source>Enabled</source>
+      <translation>有効</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="62" />
+      <source>Label</source>
+      <translation>ラベル</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="63" />
+      <source>Min width (px)</source>
+      <translation>最小幅 (px)</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="64" />
+      <source>Min height (px)</source>
+      <translation>最小高さ (px)</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="65" />
+      <source>Trigger</source>
+      <translation>判定条件</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="66" />
+      <source>Action</source>
+      <translation>操作</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="98" />
+      <source>Add rule</source>
+      <translation>ルールを追加</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="192" />
+      <source>Exact label</source>
+      <translation>完全一致ラベル</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="203" />
+      <source>Any configured dimension</source>
+      <translation>設定したいずれかの寸法</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="204" />
+      <source>All configured dimensions</source>
+      <translation>設定したすべての寸法</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="211" />
+      <source>Remove</source>
+      <translation>削除</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="227" />
+      <source>Not checked</source>
+      <translation>判定しない</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleDialog</name>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="293" />
+      <source>Rectangle size rules</source>
+      <translation>矩形サイズルール</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="306" />
+      <source>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</source>
+      <translation>実際の値がしきい値以下の場合、矩形は異常です。空欄の寸法は判定しません。</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="337" />
+      <source>Apply</source>
+      <translation>適用</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="339" />
+      <source>Cancel</source>
+      <translation>キャンセル</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="369" />
+      <source>Cannot apply rules: {0}</source>
+      <translation>ルールを適用できません: {0}</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="401" />
+      <source>Label must not be empty.</source>
+      <translation>ラベルを空にすることはできません。</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="403" />
+      <source>The label '{0}' is duplicated.</source>
+      <translation>ラベル「{0}」が重複しています。</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="409" />
+      <source>Width threshold must be a positive finite number.</source>
+      <translation>幅のしきい値は正の有限数でなければなりません。</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="413" />
+      <source>Height threshold must be a positive finite number.</source>
+      <translation>高さのしきい値は正の有限数でなければなりません。</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="417" />
+      <source>An enabled rule needs at least one W/H threshold.</source>
+      <translation>有効なルールには少なくとも1つのW/Hしきい値が必要です。</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="420" />
+      <source>Trigger must be 'any' or 'all'.</source>
+      <translation>判定条件は「any」または「all」でなければなりません。</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/widgets/rectangle_size_rule_dialog.py" line="425" />
+      <source>Rule row {0}: {1}</source>
+      <translation>ルール行 {0}: {1}</translation>
     </message>
   </context>
   <context>

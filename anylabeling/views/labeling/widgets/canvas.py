@@ -3,6 +3,9 @@
 import math
 import os
 import time
+from collections.abc import Iterable, Mapping
+from typing import Optional
+
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QWheelEvent
@@ -21,7 +24,15 @@ from .. import utils
 from .. import rect_edge_alignment as rea
 from ..logger import logger
 from ..rect_edge_interaction import RectEdgeInteractionController
+from ..rectangle_size import RectangleSizeIssue, pick_overlay_anchor
 from ..shape import Shape
+from .rectangle_size_overlay import (
+    RectangleSizeOverlayRenderer,
+    RectangleSizeOverlayRequest,
+    map_rect_tuple as _map_rect_tuple,
+    merge_overlay_requests,
+    overlay_request_from_issue,
+)
 
 PERF_LOG_ENABLED = os.getenv("XANYLABELING_PERF_LOG") == "1"
 
@@ -105,98 +116,6 @@ def is_person_small_target(label, max_edge, threshold):
         return False
 
 
-def _anchor_fits(cx, cy, w, h, viewport):
-    """Return whether an overlay box at (cx, cy) fits inside viewport."""
-    vx_min, vy_min, vx_max, vy_max = viewport
-    return (
-        cx >= vx_min and cy >= vy_min and cx + w <= vx_max and cy + h <= vy_max
-    )
-
-
-def _map_rect_tuple(xform, rect):
-    """Map a ``(x_min, y_min, x_max, y_max)`` bbox through a QTransform.
-
-    Returns the mapped bbox as ``(x_min, y_min, x_max, y_max)`` (re-normalized
-    so min/max order holds even under negative-scale transforms).
-    """
-    x_min, y_min, x_max, y_max = rect
-    p_tl = xform.map(QtCore.QPointF(x_min, y_min))
-    p_tr = xform.map(QtCore.QPointF(x_max, y_min))
-    p_bl = xform.map(QtCore.QPointF(x_min, y_max))
-    p_br = xform.map(QtCore.QPointF(x_max, y_max))
-    xs = (p_tl.x(), p_tr.x(), p_bl.x(), p_br.x())
-    ys = (p_tl.y(), p_tr.y(), p_bl.y(), p_br.y())
-    return (min(xs), min(ys), max(xs), max(ys))
-
-
-def _clamp_into(x, y, w, h, viewport):
-    """Clamp an overlay box's top-left into the viewport (no negative coord).
-
-    When the box is larger than the viewport, align to the viewport's near
-    corner instead of producing a negative coordinate.
-    """
-    vx_min, vy_min, vx_max, vy_max = viewport
-    cx_lo = vx_min
-    cx_hi = max(vx_min, vx_max - w)
-    cy_lo = vy_min
-    cy_hi = max(vy_min, vy_max - h)
-    return (min(max(x, cx_lo), cx_hi), min(max(y, cy_lo), cy_hi))
-
-
-def pick_overlay_anchor(bbox, text_w, text_h, gap, viewport, label_rect=None):
-    """Choose an anchor for the size overlay (design rev.1 §6.1/§6.2).
-
-    Preference order:
-
-    1. If a ``label_rect`` is available, anchor ABOVE it — left aligned,
-       then centered, then right aligned.
-    2. Otherwise fall back: rect above-outside, above-inside, top-left
-       outside, top-left inside.
-    3. Clamp into the current visible ``viewport``.
-
-    This is pure geometry and works in any consistent coordinate space. The
-    caller maps image-pixel geometry to screen pixels first so all inputs
-    (bbox, viewport, label_rect, box size, gap) share ONE space, which keeps
-    the overlay truly screen-stable at any zoom (Route A, design §8).
-
-    Args:
-        bbox: ``(x_min, y_min, x_max, y_max)`` of the target rectangle in
-            the caller's coordinate space.
-        text_w, text_h: Overlay box size in the caller's space.
-        gap: Gap between overlay and rectangle/label, in the caller's space.
-        viewport: ``(vx_min, vy_min, vx_max, vy_max)`` of the visible region
-            in the caller's space.
-        label_rect: Optional ``(x, y, w, h)`` of the label box to anchor
-            above; ``None`` skips the label-anchored candidates.
-
-    Returns:
-        ``(anchor_x, anchor_y)`` top-left of the overlay box.
-    """
-    x_min, y_min, x_max, y_max = bbox
-
-    # 1. Anchor above the label box (left / center / right aligned).
-    if label_rect is not None:
-        lx, ly, lw, _lh = label_rect
-        above_y = ly - text_h - gap
-        for cx in (lx, lx + (lw - text_w) / 2.0, lx + lw - text_w):
-            if _anchor_fits(cx, above_y, text_w, text_h, viewport):
-                return (cx, above_y)
-
-    # 2. Fallback candidates relative to the rectangle bbox.
-    candidates = (
-        (x_min, y_min - text_h - gap),  # above outside
-        (x_min, y_min + gap),  # above inside
-        (x_min - text_w - gap, y_min - text_h - gap),  # top-left outside
-        (x_min + gap, y_min + gap),  # top-left inside
-    )
-    for cx, cy in candidates:
-        if _anchor_fits(cx, cy, text_w, text_h, viewport):
-            return (cx, cy)
-
-    # 3. Clamp the preferred (above-outside) into the visible viewport.
-    return _clamp_into(x_min, y_min - text_h - gap, text_w, text_h, viewport)
-
-
 def _perf_log(message, *args):
     """Emit performance logs only when enabled by env var."""
     if PERF_LOG_ENABLED:
@@ -267,6 +186,8 @@ class Canvas(
     selection_changed = QtCore.pyqtSignal(list)
     shape_moved = QtCore.pyqtSignal()
     shape_rotated = QtCore.pyqtSignal()
+    shape_changed = QtCore.pyqtSignal(object)
+    shapes_changed = QtCore.pyqtSignal(tuple)
     drawing_polygon = QtCore.pyqtSignal(bool)
     drawing_canceled = QtCore.pyqtSignal()
     vertex_selected = QtCore.pyqtSignal(bool)
@@ -416,6 +337,10 @@ class Canvas(
         # rev.1 §5). Mirrors show_labels' wiring: View menu checkable action
         # -> set_canvas_params -> canvas.update(). Defaults to True.
         self.show_rectangle_pixels = True
+        self.show_rectangle_size_violations = False
+        self._rectangle_size_overlay_renderer = RectangleSizeOverlayRenderer()
+        self._rectangle_size_issues: tuple[RectangleSizeIssue, ...] = ()
+        self._rectangle_size_issue_shapes: dict[object, Shape] = {}
         self.label_display_mode = "label"
         self.show_scores = True
         self.show_degrees = False
@@ -719,6 +644,8 @@ class Canvas(
         shapes_backup = self.shapes_backups.pop()
         self.shapes = shapes_backup
         self._set_selected_shapes([], source="none")
+        self._reset_rectangle_size_issue_state()
+        self.notify_shapes_changed()
         self.update()
 
     def enterEvent(self, _):
@@ -789,6 +716,7 @@ class Canvas(
         repaint so the main canvas reflects the new layer immediately.
         """
         self._main_visibility_predicate = predicate
+        self.notify_shapes_changed()
         self.update()
 
     def clear_main_visibility_predicate(self) -> None:
@@ -801,6 +729,28 @@ class Canvas(
         path in one place.
         """
         return self.main_visible(shape)
+
+    def notify_shape_changed(self, shape: Shape) -> None:
+        """Publish an advisory incremental change for one current shape.
+
+        This method does not mutate the shape, create an undo snapshot, mark
+        annotation data dirty, or schedule a repaint. External shape editors
+        should call it after committing an in-place geometry or metadata
+        change.
+
+        Args:
+            shape: Live shape reference that may belong to this canvas.
+        """
+        if any(current is shape for current in self.shapes):
+            self.shape_changed.emit(shape)
+
+    def notify_shapes_changed(self) -> None:
+        """Publish an immutable full snapshot for general observers.
+
+        The full notification is used when membership, order, shape
+        references, or a canvas-wide visibility policy changes.
+        """
+        self.shapes_changed.emit(tuple(self.shapes))
 
     def _set_size_overlay_hover_shape(self, shape) -> None:
         """Set the rectangle currently hovered by the real canvas pointer."""
@@ -2206,6 +2156,11 @@ class Canvas(
         self.selected_shapes_copy = []
         self.repaint()
         self.store_shapes()
+        if copy:
+            self.notify_shapes_changed()
+        else:
+            for shape in self.selected_shapes:
+                self.notify_shape_changed(shape)
         # Emit so selection-derived views refresh: a copy replaced the
         # selected shape references, and a move changed points/bbox (the
         # stable preview should re-evaluate its target rect).
@@ -2822,6 +2777,7 @@ class Canvas(
         index, shape = self.h_vertex, self.h_hape
         if shape.shape_type == "cuboid":
             self.move_cuboid_control(shape, index, pos)
+            self.notify_shape_changed(shape)
             return
         point = shape[index]
         if (
@@ -2867,6 +2823,7 @@ class Canvas(
             shape.move_vertex_by(left_index, left_shift)
         else:
             shape.move_vertex_by(index, pos - point)
+        self.notify_shape_changed(shape)
 
     def bounded_move_shapes(self, shapes, pos):
         """Move shapes. Adjust position to be bounded by pixmap border"""
@@ -2899,6 +2856,7 @@ class Canvas(
         if dp:
             for shape in shapes:
                 shape.move_by(dp)
+                self.notify_shape_changed(shape)
             self.prev_point = pos
             return True
         return False
@@ -2937,6 +2895,7 @@ class Canvas(
             #     return False  # No need to rotate
             shape.points[j] = pos
         shape.direction = (shape.direction - theta) % (2 * math.pi)
+        self.notify_shape_changed(shape)
         return True
 
     def deselect_shape(self):
@@ -2957,6 +2916,7 @@ class Canvas(
                 deleted_shapes.append(shape)
             self.store_shapes()
             self._set_selected_shapes([])
+            self.notify_shapes_changed()
             self.update()
         return deleted_shapes
 
@@ -2968,11 +2928,14 @@ class Canvas(
             for selected in self.selected_shapes
             if selected is not shape
         ]
-        if shape in self.shapes:
+        removed = shape in self.shapes
+        if removed:
             self.shapes.remove(shape)
         self.store_shapes()
         if was_selected:
             self._set_selected_shapes(remaining_selection)
+        if removed:
+            self.notify_shapes_changed()
         self.update()
 
     def duplicate_selected_shapes(self):
@@ -4011,6 +3974,7 @@ class Canvas(
         self.store_shapes()
         self.current = None
         self.set_hiding(False)
+        self.notify_shapes_changed()
         self.new_shape.emit()
         self.update()
         if self.is_auto_labeling:
@@ -4185,6 +4149,7 @@ class Canvas(
             # wheel scaling / edge-adjust previously skipped show_shape.
             self._emit_show_shape_from_shape(shape, pos)
             self.store_shapes()
+            self.notify_shape_changed(shape)
             self.shape_moved.emit()
             self.update()
             ev.accept()
@@ -4412,6 +4377,7 @@ class Canvas(
         # Live edit: mutate the target shape in place. The drag start
         # points are preserved so Esc can restore them.
         rea.apply_edge_coord(active.shape, active.edge_name, coord)
+        self.notify_shape_changed(active.shape)
         # Refresh the active edge from the just-mutated geometry so the
         # overlay follows the live position instead of the original edge.
         updated_geom = rea.geometry_from_shape(active.shape)
@@ -4502,6 +4468,7 @@ class Canvas(
             # the drag preview mutated them in place.
             shape.points = list(start_points)
             shape._invalidate_cache()
+            self.notify_shape_changed(shape)
 
         self.override_cursor(CURSOR_DEFAULT)
         self.update()
@@ -4901,27 +4868,115 @@ class Canvas(
         finally:
             painter.restore()
 
-    def _draw_size_overlay(self, painter):
-        """Draw the live W/H size overlay near the current rectangle.
+    @property
+    def rectangle_size_issues(self) -> tuple[RectangleSizeIssue, ...]:
+        """Return the proactive issue snapshot currently exposed to paint."""
+        return self._rectangle_size_issues
 
-        Shows the image-pixel width/height of exactly one rectangle while
-        creating, edge-dragging, or single-selecting it. Applies the person
-        small-target warning when ``label == "person"`` and
-        ``max(W, H) < threshold``.
+    def set_rectangle_size_issues(
+        self,
+        issues: Iterable[RectangleSizeIssue],
+        shape_lookup: Optional[object] = None,
+    ) -> None:
+        """Atomically replace proactive issues and reconnect live shapes.
 
-        The overlay is pure transient drawing: it never mutates ``Shape``
-        data, the undo stack, the dirty flag, or JSON output. All size math
-        uses image-pixel raw floats.
+        ``shape_lookup`` may be a mapping or callable accepting candidate_id.
+        When omitted, the default Monitor identity contract ``id(shape)`` is
+        resolved from the current Canvas snapshot.
 
         Args:
-            painter: The active :class:`QPainter` (already scaled to pixmap
-                space by ``paintEvent``).
+            issues: Current immutable Monitor issue snapshot.
+            shape_lookup: Optional mapping/callable for custom candidate IDs.
+
+        Raises:
+            TypeError: If an issue or lookup object has an invalid type.
+            ValueError: If issue candidate identities are duplicated.
         """
-        if not self.show_rectangle_pixels:
+        issue_tuple = tuple(issues)
+        issue_ids = set()
+        for issue in issue_tuple:
+            if not isinstance(issue, RectangleSizeIssue):
+                raise TypeError(
+                    "rectangle-size issues must be RectangleSizeIssue objects"
+                )
+            if issue.candidate_id in issue_ids:
+                raise ValueError(
+                    "rectangle-size issues need unique candidate_id values"
+                )
+            issue_ids.add(issue.candidate_id)
+
+        if (
+            shape_lookup is not None
+            and not callable(shape_lookup)
+            and not isinstance(shape_lookup, Mapping)
+        ):
+            raise TypeError("shape_lookup must be a mapping or callable")
+
+        current_by_identity = {id(shape): shape for shape in self.shapes}
+        issue_shapes = {}
+        for issue in issue_tuple:
+            if callable(shape_lookup):
+                shape = shape_lookup(issue.candidate_id)
+            elif isinstance(shape_lookup, Mapping):
+                shape = shape_lookup.get(issue.candidate_id)
+            else:
+                shape = current_by_identity.get(issue.candidate_id)
+            if shape is not None and any(
+                current is shape for current in self.shapes
+            ):
+                issue_shapes[issue.candidate_id] = shape
+
+        self._rectangle_size_issues = issue_tuple
+        self._rectangle_size_issue_shapes = issue_shapes
+        self.update()
+
+    def clear_rectangle_size_issues(self) -> None:
+        """Clear proactive issue state and schedule removal from the canvas."""
+        if (
+            not self._rectangle_size_issues
+            and not self._rectangle_size_issue_shapes
+        ):
             return
+        self._reset_rectangle_size_issue_state()
+        self.update()
+
+    def _reset_rectangle_size_issue_state(self) -> None:
+        """Clear issue state without independently scheduling a repaint."""
+        self._rectangle_size_issues = ()
+        self._rectangle_size_issue_shapes.clear()
+
+    def _overlay_label_rect_for_shape(
+        self,
+        shape: Optional[Shape],
+    ) -> Optional[tuple[float, float, float, float]]:
+        """Return the current standard label rect for overlay anchoring."""
+        if shape is None:
+            return None
+        label_text = self._label_text_for_shape(shape)
+        if not label_text:
+            return None
+        label_metrics = QtGui.QFontMetrics(self._standard_label_font())
+        return self._label_rect_for_shape(shape, label_text, label_metrics)
+
+    def _overlay_candidate_id_for_shape(self, shape: Shape) -> object:
+        """Return a Monitor candidate ID when available for one live shape."""
+        for (
+            candidate_id,
+            issue_shape,
+        ) in self._rectangle_size_issue_shapes.items():
+            if issue_shape is shape:
+                return candidate_id
+        return id(shape)
+
+    def _normal_size_overlay_request(
+        self,
+    ) -> Optional[RectangleSizeOverlayRequest]:
+        """Build the ordinary hover/selection/creation request when visible."""
+        if not self.show_rectangle_pixels:
+            return None
         metrics = self._resolve_overlay_metrics()
         if metrics is None:
-            return
+            return None
         (
             x_min,
             y_min,
@@ -4934,27 +4989,80 @@ class Canvas(
             _shape,
             _source,
         ) = metrics
-        # A near-zero rectangle (click without dragging) has no size to show.
         if max_edge < 1e-6:
-            return
+            return None
 
         threshold = self.person_small_target_min_edge
-        # During creation the label is unset, so this is always False then
-        # (design 5.1: no premature threshold warning while creating).
-        small = is_person_small_target(label, max_edge, threshold)
-
+        legacy_warning = (
+            not self.show_rectangle_size_violations
+            and is_person_small_target(label, max_edge, threshold)
+        )
         lines = [self.tr("W %.1f px  H %.1f px") % (width, height)]
-        if small:
+        if legacy_warning:
             lines.append(
                 self.tr("Max edge %.1f px < %g px") % (max_edge, threshold)
             )
+        candidate_id = (
+            self._overlay_candidate_id_for_shape(_shape)
+            if _shape is not None
+            else "ordinary-rectangle-creation"
+        )
+        return RectangleSizeOverlayRequest(
+            candidate_id=candidate_id,
+            lines=tuple(lines),
+            bbox=(x_min, y_min, x_max, y_max),
+            label_rect=self._overlay_label_rect_for_shape(_shape),
+            warning=legacy_warning,
+        )
 
-        self._paint_overlay_box(
+    def _violation_overlay_requests(
+        self,
+    ) -> tuple[RectangleSizeOverlayRequest, ...]:
+        """Build paint requests for current visible proactive issues."""
+        if not self.show_rectangle_size_violations:
+            return ()
+        requests = []
+        for issue in self._rectangle_size_issues:
+            shape = self._rectangle_size_issue_shapes.get(issue.candidate_id)
+            if (
+                shape is None
+                or not any(current is shape for current in self.shapes)
+                or not self.is_shape_interactive(shape)
+            ):
+                continue
+            requests.append(
+                overlay_request_from_issue(
+                    issue,
+                    label_rect=self._overlay_label_rect_for_shape(shape),
+                )
+            )
+        return tuple(requests)
+
+    def _combined_size_overlay_requests(
+        self,
+    ) -> tuple[RectangleSizeOverlayRequest, ...]:
+        """Return one deduplicated sequence for the shared layout pass."""
+        return merge_overlay_requests(
+            self._normal_size_overlay_request(),
+            self._violation_overlay_requests(),
+        )
+
+    def _draw_size_overlay(self, painter: QtGui.QPainter) -> None:
+        """Draw ordinary and proactive rectangle overlays in one layout pass.
+
+        The overlay remains transient UI state: no Shape, JSON, undo, or dirty
+        state is changed.
+
+        Args:
+            painter: Active painter already transformed into image space.
+        """
+        requests = self._combined_size_overlay_requests()
+        if not requests:
+            return
+        self._rectangle_size_overlay_renderer.render(
             painter,
-            tuple(lines),
-            (x_min, y_min, x_max, y_max),
-            _shape,
-            warning=small,
+            requests,
+            self._visible_overlay_rect(),
         )
 
     def _label_text_for_shape(self, shape, hovered_shape=None):
@@ -5024,111 +5132,33 @@ class Canvas(
         return (0.0, 0.0, 1.0, 1.0)
 
     def _paint_overlay_box(self, painter, lines, bbox, shape, warning):
-        """Paint the size overlay with truly screen-stable sizing (Route A).
+        """Delegate one legacy prompt to the reusable multi-box renderer.
 
-        Route A (design rev.1 §8): compute the anchor in image space, map it
-        back to widget/screen pixels via the painter's transform, then
-        ``resetTransform()`` and draw with FIXED screen-pixel constants. This
-        avoids Route B's integer-discretisation flaw: QFont pointSize is an
-        int, so ``round(8/scale)`` jumps 1->2 at scale≈5.3 and the overlay
-        shrinks above ~500% zoom. Fixed screen pixels have no such floor.
-
-        The viewport is the CURRENT visible region (R2); the anchor prefers
-        the label box (R7) when ``shape`` is available.
+        The renderer maps image geometry to widget pixels and uses
+        ``resetTransform()`` internally, preserving the existing fixed-size
+        appearance at every Canvas zoom level.
 
         Args:
             painter: The active :class:`QPainter` (scaled to pixmap space by
-                ``paintEvent``; this method save/resetTransform/restore).
+                ``paintEvent``).
             lines: Tuple of text lines to render (1 or 2).
             bbox: ``(x_min, y_min, x_max, y_max)`` of the target rectangle,
                 in image px.
             shape: The target Shape (for label-rect anchoring) or None.
             warning: When True, render in the warning colour and border.
         """
-        # Fixed screen-pixel constants — independent of canvas zoom.
-        font_size = 9
-        pad = 4
-        gap = 6
-        font = QtGui.QFont("Arial", font_size, QtGui.QFont.Weight.Bold)
-        fm = QtGui.QFontMetrics(font)
-        line_h = fm.height()
-        text_w = max(fm.horizontalAdvance(ln) for ln in lines)
-        box_w = text_w + 2 * pad
-        box_h = line_h * len(lines) + 2 * pad
-
-        # Map image-space geometry to WIDGET LOGICAL pixels using the painter's
-        # own transform (the scale + translate set by paintEvent). Use
-        # transform() NOT combinedTransform(): after resetTransform() the
-        # painter draws in widget logical coordinates, and combinedTransform()
-        # would include the device (HiDPI) scale, placing the overlay off-window
-        # on high-DPI displays.
-        xform = painter.transform()
-        img_viewport = self._visible_overlay_rect()
-        screen_viewport = _map_rect_tuple(xform, img_viewport)
-
-        screen_bbox = _map_rect_tuple(xform, bbox)
-
-        screen_label_rect = None
-        if shape is not None:
-            label_text = self._label_text_for_shape(shape)
-            if label_text:
-                label_fm = QtGui.QFontMetrics(self._standard_label_font())
-                img_label = self._label_rect_for_shape(
-                    shape, label_text, label_fm
-                )
-                if img_label is not None:
-                    # _label_rect_for_shape returns (x, y, w, h) but
-                    # _map_rect_tuple expects (x_min, y_min, x_max,
-                    # y_max); convert, map, then back to (x, y, w, h) for
-                    # pick_overlay_anchor.
-                    lx, ly, lw, lh = img_label
-                    mapped = _map_rect_tuple(xform, (lx, ly, lx + lw, ly + lh))
-                    screen_label_rect = (
-                        mapped[0],
-                        mapped[1],
-                        mapped[2] - mapped[0],
-                        mapped[3] - mapped[1],
-                    )
-
-        ax, ay = pick_overlay_anchor(
-            screen_bbox,
-            box_w,
-            box_h,
-            gap,
-            screen_viewport,
-            label_rect=screen_label_rect,
+        request = RectangleSizeOverlayRequest(
+            candidate_id=id(shape) if shape is not None else "legacy-overlay",
+            lines=tuple(lines),
+            bbox=bbox,
+            label_rect=self._overlay_label_rect_for_shape(shape),
+            warning=warning,
         )
-
-        bg = QtGui.QColor(0, 0, 0, 180)
-        text_color = QtGui.QColor("#FFFFFF")
-        if warning:
-            text_color = QtGui.QColor("#FFB300")
-
-        # Switch to widget/screen space: reset the canvas scale+translate so
-        # fixed screen-pixel geometry draws at the right size regardless of
-        # zoom. Save/restore keeps the rest of paintEvent untouched.
-        painter.save()
-        painter.resetTransform()
-        box_rect = QtCore.QRectF(ax, ay, box_w, box_h)
-        painter.setOpacity(1.0)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QtGui.QBrush(bg))
-        painter.drawRect(box_rect)
-        if warning:
-            painter.setPen(QtGui.QPen(QtGui.QColor("#FFB300"), 1.5))
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawRect(box_rect)
-
-        painter.setFont(font)
-        painter.setPen(QtGui.QPen(text_color))
-        for i, ln in enumerate(lines):
-            painter.drawText(
-                QtCore.QPointF(
-                    ax + pad, ay + pad + (i + 1) * line_h - fm.descent()
-                ),
-                ln,
-            )
-        painter.restore()
+        self._rectangle_size_overlay_renderer.render(
+            painter,
+            (request,),
+            self._visible_overlay_rect(),
+        )
 
     @staticmethod
     def _draw_edge(painter, edge, color, width=2.0, dash=False):
@@ -5316,12 +5346,14 @@ class Canvas(
         self.shapes[-1].group_id = group_id
         self.shapes_backups.pop()
         self.store_shapes()
+        self.notify_shape_changed(self.shapes[-1])
         return self.shapes[-1]
 
     def undo_last_line(self):
         """Undo last line"""
         assert self.shapes
         self.current = self.shapes.pop()
+        self.notify_shapes_changed()
         self.current.set_open()
         if self.create_mode in ["polygon", "linestrip", "quadrilateral"]:
             self.line.points = [self.current[-1], self.current[0]]
@@ -5339,14 +5371,18 @@ class Canvas(
 
     def discard_last_shape(self) -> None:
         """Discard the provisional shape created by a rejected commit."""
+        removed = False
         if self.shapes:
             self.shapes.pop()
+            removed = True
         if self.shapes_backups:
             self.shapes_backups.pop()
         self.current = None
         self._brush_drawing = False
         self.set_hiding(False)
         self.drawing_polygon.emit(False)
+        if removed:
+            self.notify_shapes_changed()
         self.update()
 
     def undo_last_point(self):
@@ -5377,6 +5413,8 @@ class Canvas(
         self.pixmap = pixmap
         if clear_shapes:
             self.shapes = []
+            self._reset_rectangle_size_issue_state()
+            self.notify_shapes_changed()
         self.update()
 
     def _has_pose_shapes(self):
@@ -5391,6 +5429,7 @@ class Canvas(
     def load_shapes(self, shapes, replace=True, store_backup=True):
         """Load shapes"""
         _t0 = time.perf_counter()
+        self._reset_rectangle_size_issue_state()
         if replace:
             self._set_size_overlay_hover_shape(None)
             self._set_selected_shapes([], source="none")
@@ -5415,6 +5454,7 @@ class Canvas(
         # Drop any in-progress rectangle edge edit so transient state never
         # leaks across images.
         self.clear_rect_edge_alignment()
+        self.notify_shapes_changed()
         self.update()
         _t_total = time.perf_counter()
         total_time = _t_total - _t0
@@ -5430,6 +5470,7 @@ class Canvas(
     def set_shape_visible(self, shape, value):
         """Set visibility for a shape"""
         self.visible[shape] = value
+        self.notify_shape_changed(shape)
         self.update()
 
     def current_cursor(self):
@@ -5467,11 +5508,14 @@ class Canvas(
         self.h_edge = None
         self.h_cuboid_face = None
         self.pixmap = None
+        self.shapes = []
+        self._reset_rectangle_size_issue_state()
         self.shapes_backups = []
         self.is_move_editing = False
         self.compare_pixmap = None
         # Reset every transient rectangle-edge interaction state.
         self.clear_rect_edge_alignment()
+        self.notify_shapes_changed()
         self.update()
 
     def set_cross_line(self, show, width, color, opacity):
@@ -5495,6 +5539,7 @@ class Canvas(
         for shape in self.shapes:
             if shape.group_id in group_ids:
                 shape.group_id = new_group_id
+                self.notify_shape_changed(shape)
 
     def group_selected_shapes(self):
         """Group selected shapes"""
@@ -5528,6 +5573,7 @@ class Canvas(
             for shape in self.selected_shapes:
                 if shape.group_id is None:
                     shape.group_id = new_group_id
+                    self.notify_shape_changed(shape)
 
         self.update()
 
@@ -5546,5 +5592,6 @@ class Canvas(
             for shape in self.shapes:
                 if shape.group_id == group_id:
                     shape.group_id = None
+                    self.notify_shape_changed(shape)
 
         self.update()

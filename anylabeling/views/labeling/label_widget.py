@@ -7,7 +7,7 @@ import os.path as osp
 import re
 import shutil
 import time
-from typing import Callable, Optional, Set
+from typing import Callable, Optional
 
 import cv2
 import numpy as np
@@ -67,20 +67,15 @@ from .filter_navigation_engine import (
     NAVIGATION_NO_ACTIVE_FILTER,
     NAVIGATION_NO_MATCHES,
 )
-from .dataset_filter_index import (
-    DATASET_INDEX_CACHED,
-    DATASET_INDEX_FAILED,
-    DATASET_INDEX_MISSING,
-    DATASET_INDEX_READY,
-    DATASET_INDEX_STALE,
-    DATASET_INDEX_SYNCING,
+from .dataset_index import (
     INDEX_STATUS_MISSING,
-    DatasetFilterIndex,
-    install_staged_database,
-    make_db_path,
-    remove_database_files,
+    DatasetIndexState,
 )
-from .dataset_filter_index_worker import DatasetIndexWorker
+from .dataset_index.controller import (
+    START_REJECTED_BUSY,
+    START_REJECTED_NO_IMAGES,
+    DatasetIndexController,
+)
 from .settings import SettingsController, SettingsDialog
 from .settings.runtime_applier import SettingsRuntimeApplier
 from .shape import Shape
@@ -119,6 +114,8 @@ from .widgets import (
     GroupIDModifyDialog,
     OverviewDialog,
     Popup,
+    RectangleSizeFeatureController,
+    RectangleSizeRuleDialog,
     SearchBar,
     ToolBar,
     UniqueLabelQListWidget,
@@ -144,7 +141,6 @@ from .widgets.inspector.quality.geometry import (  # noqa: E402
 )
 
 PERF_LOG_ENABLED = os.getenv("XANYLABELING_PERF_LOG") == "1"
-DATASET_INDEX_AUTO_REFRESH_DELAY_MS = 1500
 
 
 def _perf_log(message, *args):
@@ -430,13 +426,8 @@ class LabelingWidget(LabelDialog):
         self._filter_index = None
 
         # Dataset filter index (SQLite derived cache)
-        self._dataset_filter_index: Optional[DatasetFilterIndex] = None
-        self._dataset_index_worker: Optional[DatasetIndexWorker] = None
-        self._dataset_index_timer: Optional[QtCore.QTimer] = None
-        self._pending_dataset_index_refresh_files: Set[str] = set()
-        self._dataset_index_state = DATASET_INDEX_MISSING
-        self._dataset_index_root: Optional[str] = None
-        self._dataset_index_mode: Optional[str] = None
+        self._dataset_index_controller = DatasetIndexController(parent=self)
+        self._connect_dataset_index_controller()
         self._dataset_all_image_files = []
 
         # Filter result navigation state
@@ -661,6 +652,17 @@ class LabelingWidget(LabelDialog):
         self.canvas.set_person_small_target_min_edge(
             self._load_person_small_target_threshold()
         )
+        self.rectangle_size_controller = RectangleSizeFeatureController(
+            self.canvas,
+            self._config,
+            persist_config=save_config,
+            parent=self,
+        )
+        if self.rectangle_size_controller.startup_config_error is not None:
+            logger.warning(
+                "Invalid rectangle-size rules; using the migrated default: %s",
+                self.rectangle_size_controller.startup_config_error,
+            )
 
         # Filter execution engine (computes matches & applies visibility)
         self._filter_engine = ShapeFilterEngine(
@@ -1526,6 +1528,26 @@ class LabelingWidget(LabelDialog):
             enabled=True,
             auto_trigger=True,
         )
+        show_rectangle_size_violations = action(
+            self.tr("Show Rectangle Size Violations"),
+            self.set_rectangle_size_violations_enabled,
+            tip=self.tr(
+                "Show proactive warnings for configured rectangle size rules"
+            ),
+            icon=None,
+            checkable=True,
+            checked=self.rectangle_size_controller.enabled,
+            enabled=True,
+        )
+        configure_rectangle_size_rules = action(
+            self.tr("Configure Rectangle Size Rules"),
+            self.configure_rectangle_size_rules,
+            tip=self.tr(
+                "Edit category-specific rectangle width and height thresholds"
+            ),
+            icon=None,
+            enabled=True,
+        )
         show_scores = action(
             self.tr("Show Scores"),
             lambda x: self.set_canvas_params("show_scores", x),
@@ -2225,6 +2247,8 @@ class LabelingWidget(LabelDialog):
             show_texts=show_texts,
             show_labels=show_labels,
             show_rectangle_pixels=show_rectangle_pixels,
+            show_rectangle_size_violations=show_rectangle_size_violations,
+            configure_rectangle_size_rules=configure_rectangle_size_rules,
             show_scores=show_scores,
             show_degrees=show_degrees,
             show_attributes=show_attributes,
@@ -2579,6 +2603,8 @@ class LabelingWidget(LabelDialog):
                 show_texts,
                 show_labels,
                 show_rectangle_pixels,
+                show_rectangle_size_violations,
+                configure_rectangle_size_rules,
                 show_scores,
                 show_degrees,
                 show_attributes,
@@ -4594,7 +4620,7 @@ class LabelingWidget(LabelDialog):
         session = self._filter_navigation_engine.prepare_dataset_navigation(
             image_files=self.image_list,
             filter_state=self._filter_state,
-            dataset_index=self._dataset_filter_index,
+            dataset_index=self._dataset_index_controller,
         )
         if session.status == NAVIGATION_NO_ACTIVE_FILTER:
             self.status(
@@ -4652,15 +4678,13 @@ class LabelingWidget(LabelDialog):
             status_prefix=self.tr("Filter result navigation refreshed")
         )
 
-    def refresh_dataset_index(self):
-        self._start_dataset_index_worker(
-            "refresh", self._dataset_index_files(), self.output_dir
-        )
+    def refresh_dataset_index(self) -> None:
+        """Delegate incremental dataset-index refresh to the controller."""
+        self._dataset_index_controller.refresh()
 
-    def rebuild_dataset_index(self):
-        self._start_dataset_index_worker(
-            "rebuild", self._dataset_index_files(), self.output_dir
-        )
+    def rebuild_dataset_index(self) -> None:
+        """Delegate full dataset-index rebuild to the controller."""
+        self._dataset_index_controller.rebuild()
 
     def _dataset_index_files(self):
         """Return the complete dataset list, independent of UI filtering."""
@@ -4671,93 +4695,55 @@ class LabelingWidget(LabelDialog):
         """Return a stable directory identity for index lifecycle checks."""
         return osp.normcase(osp.abspath(osp.normpath(str(dataset_root or ""))))
 
-    def _set_dataset_index_state(self, state):
-        """Set the runtime state of the dataset index."""
-        self._dataset_index_state = state
-
-    def _close_dataset_filter_index(self):
-        """Close the active query connection without deleting its cache."""
-        if self._dataset_filter_index is not None:
-            self._dataset_filter_index.close()
-            self._dataset_filter_index = None
+    def _connect_dataset_index_controller(self) -> None:
+        """Connect controller lifecycle events to UI-only slots."""
+        controller = self._dataset_index_controller
+        controller.busy_changed.connect(self._on_dataset_index_busy_changed)
+        controller.task_started.connect(self._on_dataset_index_started)
+        controller.start_rejected.connect(
+            self._on_dataset_index_start_rejected
+        )
+        controller.cancellation_requested.connect(
+            self._on_dataset_index_cancellation_requested
+        )
+        controller.progress_changed.connect(self._on_dataset_index_progress)
+        controller.task_finished.connect(self._on_dataset_index_finished)
+        controller.task_cancelled.connect(self._on_dataset_index_cancelled)
+        controller.task_failed.connect(self._on_dataset_index_failed)
+        controller.install_failed.connect(
+            self._on_dataset_index_install_failed
+        )
+        controller.statuses_refresh_requested.connect(
+            self._refresh_dataset_index_statuses
+        )
+        controller.cache_attached.connect(
+            self._on_dataset_index_cache_attached
+        )
+        controller.label_sync_deferred.connect(
+            self._on_dataset_index_label_sync_deferred
+        )
 
     def _prepare_dataset_index_for_directory(self, dataset_root, force=False):
         """Detach work belonging to another dataset before a folder switch."""
         normalized_root = self._normalize_dataset_root(dataset_root)
-        if self._dataset_index_timer is not None:
-            self._dataset_index_timer.stop()
-            self._dataset_index_timer.deleteLater()
-            self._dataset_index_timer = None
-        if not force and self._dataset_index_root == normalized_root:
-            return
-        if self._dataset_index_worker is not None:
-            worker = self._dataset_index_worker
-            try:
-                worker.progress_changed.disconnect()
-                worker.finished.disconnect()
-                worker.cancelled.disconnect()
-                worker.failed.disconnect()
-            except TypeError:
-                pass
-            worker.cancel()
-            worker.wait()
-            self._finish_dataset_index_worker()
-        self._close_dataset_filter_index()
-        self._pending_dataset_index_refresh_files.clear()
-        self._dataset_index_root = normalized_root
-        self._dataset_index_mode = None
-        self._set_dataset_index_state(DATASET_INDEX_MISSING)
+        self._dataset_index_controller.prepare_for_directory(
+            normalized_root,
+            self.output_dir,
+            force=force,
+        )
 
     def _attach_existing_dataset_index(self, dataset_root, image_files):
         """Attach a persisted cache immediately without scanning JSON files."""
         normalized_root = self._normalize_dataset_root(dataset_root)
-        if (
-            self._dataset_filter_index is not None
-            and self._dataset_index_root == normalized_root
-            and self._dataset_filter_index.is_ready()
-        ):
-            if (
-                self._dataset_filter_index.snapshot_state()
-                == DATASET_INDEX_READY
-                and self._dataset_filter_index.is_compatible(
-                    normalized_root, self.output_dir
-                )
-            ):
-                self._apply_cached_dataset_statuses(image_files)
-                return True
-            self._close_dataset_filter_index()
-
-        db_path = make_db_path(normalized_root)
-        if not osp.isfile(db_path):
-            self._set_dataset_index_state(DATASET_INDEX_MISSING)
-            return False
-
-        index = DatasetFilterIndex(db_path)
-        if not index.open():
-            self._set_dataset_index_state(DATASET_INDEX_FAILED)
-            return False
-        if index.snapshot_state() != DATASET_INDEX_READY:
-            index.close()
-            self._set_dataset_index_state(DATASET_INDEX_STALE)
-            return False
-        if not index.is_compatible(normalized_root, self.output_dir):
-            index.close()
-            self._set_dataset_index_state(DATASET_INDEX_STALE)
-            return False
-
-        self._close_dataset_filter_index()
-        self._dataset_filter_index = index
-        self._dataset_index_root = normalized_root
-        self._set_dataset_index_state(DATASET_INDEX_CACHED)
-        self._apply_cached_dataset_statuses(image_files)
-        self.status(self.tr("Using cached dataset index; sync pending"), 3000)
-        return True
+        return self._dataset_index_controller.attach_existing(
+            normalized_root,
+            self.output_dir,
+            image_files,
+        )
 
     def _apply_cached_dataset_statuses(self, image_files):
         """Apply cached label-presence state without remote filesystem calls."""
-        if self._dataset_filter_index is None:
-            return
-        statuses = self._dataset_filter_index.file_statuses(image_files)
+        statuses = self._dataset_index_controller.file_statuses(image_files)
         batch = []
         label_paths = []
         for image_path in image_files:
@@ -4777,42 +4763,9 @@ class LabelingWidget(LabelDialog):
             )
         self._on_inspector_labels_found(label_paths)
 
-    def _schedule_dataset_index_refresh(self, dataset_root):
-        """Schedule a non-blocking verification of an attached cache."""
-        if self._dataset_index_state != DATASET_INDEX_CACHED:
-            return
-        if self._dataset_index_timer is not None:
-            self._dataset_index_timer.stop()
-            self._dataset_index_timer.deleteLater()
-        normalized_root = self._normalize_dataset_root(dataset_root)
-        timer = QtCore.QTimer(self)
-        timer.setSingleShot(True)
-        timer.timeout.connect(
-            lambda: self._auto_refresh_dataset_index(normalized_root)
-        )
-        self._dataset_index_timer = timer
-        timer.start(DATASET_INDEX_AUTO_REFRESH_DELAY_MS)
-
-    def _auto_refresh_dataset_index(self, expected_root):
-        """Start delayed refresh only if the same dataset is still active."""
-        timer = self.sender()
-        if isinstance(timer, QtCore.QTimer):
-            timer.deleteLater()
-        self._dataset_index_timer = None
-        current_root = self._normalize_dataset_root(self.last_open_dir)
-        if (
-            current_root != expected_root
-            or self._dataset_index_worker is not None
-        ):
-            return
-        self._start_dataset_index_worker(
-            "refresh", self._dataset_index_files(), self.output_dir
-        )
-
-    def cancel_dataset_index_build(self):
-        if self._dataset_index_worker is not None:
-            self._dataset_index_worker.cancel()
-            self.status(self.tr("Cancelling dataset index build..."), 3000)
+    def cancel_dataset_index_build(self) -> None:
+        """Delegate cooperative cancellation to the controller."""
+        self._dataset_index_controller.cancel()
 
     def scan_exif_orientation(self):
         """Manually trigger EXIF orientation scan for all images."""
@@ -4829,57 +4782,31 @@ class LabelingWidget(LabelDialog):
             3000,
         )
 
-    def _start_dataset_index_worker(self, mode, image_files, output_dir=None):
-        if self._dataset_index_worker is not None:
-            self.status(self.tr("Dataset index task is already running"), 3000)
+    def _on_dataset_index_busy_changed(self, busy: bool) -> None:
+        """Reflect controller busy state in the three lifecycle actions."""
+        if not hasattr(self, "actions"):
             return
-        if not image_files:
-            self.status(
-                self.tr("No images to index. Open a directory first."),
-                3000,
-            )
-            return
-        dataset_root = self._normalize_dataset_root(
-            self.last_open_dir or self.current_path()
-        )
-        db_path = make_db_path(dataset_root)
-        self._dataset_index_worker = DatasetIndexWorker(
-            mode,
-            db_path,
-            image_files,
-            output_dir,
-            dataset_root,
-            self,
-        )
-        self._dataset_index_root = dataset_root
-        self._dataset_index_mode = mode
-        self._set_dataset_index_state(DATASET_INDEX_SYNCING)
-        self._dataset_index_worker.progress_changed.connect(
-            self._on_dataset_index_progress
-        )
-        self._dataset_index_worker.finished.connect(
-            self._on_dataset_index_finished
-        )
-        self._dataset_index_worker.cancelled.connect(
-            self._on_dataset_index_cancelled
-        )
-        self._dataset_index_worker.failed.connect(
-            self._on_dataset_index_failed
-        )
-        self.actions.refresh_dataset_index.setEnabled(False)
-        self.actions.rebuild_dataset_index.setEnabled(False)
-        self.actions.cancel_dataset_index.setEnabled(True)
-        self.status(self.tr("Synchronizing dataset index..."), 3000)
-        self._dataset_index_worker.start()
+        self.actions.refresh_dataset_index.setEnabled(not busy)
+        self.actions.rebuild_dataset_index.setEnabled(not busy)
+        self.actions.cancel_dataset_index.setEnabled(busy)
 
-    def _finish_dataset_index_worker(self):
-        if self._dataset_index_worker is not None:
-            self._dataset_index_worker.deleteLater()
-            self._dataset_index_worker = None
-        self._dataset_index_mode = None
-        self.actions.refresh_dataset_index.setEnabled(True)
-        self.actions.rebuild_dataset_index.setEnabled(True)
-        self.actions.cancel_dataset_index.setEnabled(False)
+    def _on_dataset_index_started(self, _mode: str) -> None:
+        """Show the common status for a controller-started index task."""
+        self.status(self.tr("Synchronizing dataset index..."), 3000)
+
+    def _on_dataset_index_start_rejected(self, reason: str) -> None:
+        """Translate a controller start rejection into a UI message."""
+        if reason == START_REJECTED_BUSY:
+            message = self.tr("Dataset index task is already running")
+        elif reason == START_REJECTED_NO_IMAGES:
+            message = self.tr("No images to index. Open a directory first.")
+        else:
+            message = self.tr("Dataset index task could not be started")
+        self.status(message, 3000)
+
+    def _on_dataset_index_cancellation_requested(self) -> None:
+        """Show feedback for a cooperative cancellation request."""
+        self.status(self.tr("Cancelling dataset index build..."), 3000)
 
     def _on_dataset_index_progress(self, current, total, filename):
         self.status(
@@ -4889,51 +4816,9 @@ class LabelingWidget(LabelDialog):
             1000,
         )
 
-    def _on_dataset_index_finished(self, result):
-        worker_root = self._normalize_dataset_root(
-            getattr(self._dataset_index_worker, "dataset_root", "")
-        )
-        current_root = self._normalize_dataset_root(self.last_open_dir)
-        if worker_root and worker_root != current_root:
-            remove_database_files(result.staged_db_path)
-            self._finish_dataset_index_worker()
-            return
-
-        db_path = result.target_db_path or make_db_path(current_root)
-        if result.staged_db_path:
-            self._close_dataset_filter_index()
-            try:
-                install_staged_database(result.staged_db_path, db_path)
-            except OSError as exc:
-                remove_database_files(result.staged_db_path)
-                self._dataset_filter_index = DatasetFilterIndex(db_path)
-                old_index_available = self._dataset_filter_index.open()
-                self._set_dataset_index_state(
-                    DATASET_INDEX_STALE
-                    if old_index_available
-                    else DATASET_INDEX_FAILED
-                )
-                if old_index_available:
-                    self._apply_cached_dataset_statuses(list(self.image_list))
-                self.status(
-                    self.tr("Dataset index install failed: {message}").format(
-                        message=str(exc)
-                    ),
-                    5000,
-                )
-                self._finish_dataset_index_worker()
-                return
-        else:
-            self._close_dataset_filter_index()
-
-        self._dataset_filter_index = DatasetFilterIndex(db_path)
-        if self._dataset_filter_index.open():
-            self._refresh_pending_dataset_index_files()
-            self._set_dataset_index_state(DATASET_INDEX_READY)
-            self._apply_cached_dataset_statuses(list(self.image_list))
-        else:
-            self._set_dataset_index_state(DATASET_INDEX_FAILED)
-        if self._dataset_index_state == DATASET_INDEX_READY:
+    def _on_dataset_index_finished(self, result) -> None:
+        """Show the final result after Controller installation completes."""
+        if self._dataset_index_controller.state is DatasetIndexState.READY:
             self.status(
                 self.tr(
                     "Dataset index ready: inserted={inserted}, "
@@ -4950,50 +4835,42 @@ class LabelingWidget(LabelDialog):
             )
         else:
             self.status(self.tr("Dataset index could not be opened"), 5000)
-        self._finish_dataset_index_worker()
 
-    def _on_dataset_index_cancelled(self, result):
-        if self._dataset_filter_index is not None:
-            self._refresh_pending_dataset_index_files()
-            self._set_dataset_index_state(DATASET_INDEX_CACHED)
-        else:
-            self._set_dataset_index_state(DATASET_INDEX_MISSING)
+    def _on_dataset_index_install_failed(self, _result, message: str) -> None:
+        """Show an atomic staging-install failure."""
+        self.status(
+            self.tr("Dataset index install failed: {message}").format(
+                message=message
+            ),
+            5000,
+        )
+
+    def _on_dataset_index_cancelled(self, _result) -> None:
+        """Show completion of a cooperative cancellation."""
         self.status(self.tr("Dataset index build cancelled"), 3000)
-        self._finish_dataset_index_worker()
 
-    def _on_dataset_index_failed(self, message):
-        if self._dataset_filter_index is not None:
-            self._refresh_pending_dataset_index_files()
-            self._set_dataset_index_state(DATASET_INDEX_STALE)
-        else:
-            self._set_dataset_index_state(DATASET_INDEX_FAILED)
+    def _on_dataset_index_failed(self, message: str) -> None:
+        """Show a controller-owned worker failure."""
         self.status(
             self.tr("Dataset index build failed: {message}").format(
                 message=message
             ),
             5000,
         )
-        self._finish_dataset_index_worker()
 
-    def _refresh_pending_dataset_index_files(self):
-        """Apply saves made while an index worker was running."""
-        if self._dataset_filter_index is None:
-            return
-        pending = sorted(self._pending_dataset_index_refresh_files)
-        self._pending_dataset_index_refresh_files.clear()
-        for image_path in pending:
-            try:
-                self._dataset_filter_index.refresh_file(
-                    image_path, self.output_dir
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "Deferred dataset index refresh failed for %s: %s",
-                    image_path,
-                    exc,
-                )
-                self._pending_dataset_index_refresh_files.add(image_path)
-                self._set_dataset_index_state(DATASET_INDEX_STALE)
+    def _refresh_dataset_index_statuses(self) -> None:
+        """Apply controller-owned cache statuses to the current UI list."""
+        self._apply_cached_dataset_statuses(list(self.image_list))
+
+    def _on_dataset_index_cache_attached(self) -> None:
+        """Show feedback when a persisted cache is attached."""
+        self.status(self.tr("Using cached dataset index; sync pending"), 3000)
+
+    def _on_dataset_index_label_sync_deferred(
+        self, _image_path: str, _message: str
+    ) -> None:
+        """Report a non-fatal post-save index synchronization failure."""
+        self.status(self.tr("Label saved; dataset index sync pending"), 5000)
 
     def _set_filter_navigation_action_checked(self, checked):
         if not hasattr(self, "actions"):
@@ -5382,6 +5259,7 @@ class LabelingWidget(LabelDialog):
             shape.description = description
             shape.difficult = difficult
             shape.kie_linking = kie_linking
+            self.canvas.notify_shape_changed(shape)
 
             self._update_shape_color(shape)
 
@@ -5464,6 +5342,7 @@ class LabelingWidget(LabelDialog):
         shape.description = description
         shape.difficult = difficult
         shape.kie_linking = kie_linking
+        self.canvas.notify_shape_changed(shape)
 
         # Add to label history
         self.label_dialog.add_label_history(shape.label)
@@ -5644,6 +5523,7 @@ class LabelingWidget(LabelDialog):
         else:
             return
 
+        self.canvas.notify_shape_changed(shape)
         self.set_dirty()
         self.canvas.update()
 
@@ -6213,6 +6093,7 @@ class LabelingWidget(LabelDialog):
                 item.setText(new_label)
             else:
                 item.setText(f"{new_label} ({shape.group_id})")
+        self.canvas.notify_shape_changed(shape)
         self.set_dirty()
         self.canvas.update()
 
@@ -6233,6 +6114,7 @@ class LabelingWidget(LabelDialog):
                 item.setText(shape.label)
             else:
                 item.setText(f"{shape.label} ({new_gid})")
+        self.canvas.notify_shape_changed(shape)
         self.set_dirty()
         self._refresh_shape_filters()
         self.canvas.update()
@@ -6242,7 +6124,9 @@ class LabelingWidget(LabelDialog):
             return
         if shape_index >= len(self.canvas.shapes):
             return
-        self.canvas.shapes[shape_index].difficult = checked
+        shape = self.canvas.shapes[shape_index]
+        shape.difficult = checked
+        self.canvas.notify_shape_changed(shape)
         self.set_dirty()
 
     def _reset_attributes_panel(self):
@@ -6724,36 +6608,13 @@ class LabelingWidget(LabelDialog):
             # JSON is authoritative. A derived-index failure is isolated and
             # retried later; it must never turn a successful label save into a
             # failed save operation.
-            self._sync_dataset_index_after_save(self.image_path)
+            self._dataset_index_controller.label_saved(self.image_path)
             return True
         except LabelFileError as e:
             self.error_message(
                 self.tr("Error saving label data"), self.tr("<b>%s</b>") % e
             )
             return False
-
-    def _sync_dataset_index_after_save(self, image_path):
-        """Refresh one derived index record or queue it for a later retry."""
-        if self._dataset_index_worker is not None:
-            self._pending_dataset_index_refresh_files.add(image_path)
-            return
-        if self._dataset_filter_index is None:
-            return
-        try:
-            self._dataset_filter_index.refresh_file(
-                image_path, self.output_dir
-            )
-        except Exception as exc:  # noqa: BLE001
-            self._pending_dataset_index_refresh_files.add(image_path)
-            self._set_dataset_index_state(DATASET_INDEX_STALE)
-            logger.warning(
-                "JSON saved but dataset index refresh failed for %s: %s",
-                image_path,
-                exc,
-            )
-            self.status(
-                self.tr("Label saved; dataset index sync pending"), 5000
-            )
 
     def duplicate_selected_shape(self):
         added_shapes = self.canvas.duplicate_selected_shapes()
@@ -6916,6 +6777,7 @@ class LabelingWidget(LabelDialog):
                 if label and group_id is not None:
                     shape.label = label
                     shape.group_id = group_id
+                    self.canvas.notify_shape_changed(shape)
                     self.add_label(shape)
                     self.canvas.shapes_backups.pop()
                     self.canvas.store_shapes()
@@ -7491,6 +7353,27 @@ class LabelingWidget(LabelDialog):
         assert hasattr(self.canvas, key), f"Canvas has no attribute {key}"
         setattr(self.canvas, key, value)
         self.canvas.update()
+
+    def set_rectangle_size_violations_enabled(self, enabled: bool) -> None:
+        """Toggle proactive rectangle-size validation and persist it.
+
+        Args:
+            enabled: Whether current-image issues should be monitored.
+        """
+        self.rectangle_size_controller.set_enabled(enabled)
+
+    def configure_rectangle_size_rules(self) -> None:
+        """Open the rule editor and atomically apply an accepted snapshot."""
+        dialog = RectangleSizeRuleDialog(
+            self.rectangle_size_controller.rules,
+            self,
+        )
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        rules = dialog.accepted_rules
+        if rules is None:
+            return
+        self.rectangle_size_controller.set_rules(rules)
 
     def toggle_pose_view(self, enabled: bool) -> None:
         """Toggle the Pose View rendering mode on the canvas.
@@ -8934,7 +8817,7 @@ class LabelingWidget(LabelDialog):
             self._set_file_item_checked(item, False)
 
         cache_attached = self._attach_existing_dataset_index(
-            dirpath, image_files
+            dirpath, all_image_files
         )
 
         self.actions.open_next_image.setEnabled(True)
@@ -8954,9 +8837,7 @@ class LabelingWidget(LabelDialog):
             time.perf_counter() - _t0,
         )
 
-        if cache_attached:
-            self._schedule_dataset_index_refresh(dirpath)
-        else:
+        if not cache_attached:
             # No cache exists yet. Discover label presence in the background,
             # but never block annotation with an application-modal dialog.
             self._start_label_check_worker(image_files)
@@ -9276,6 +9157,7 @@ class LabelingWidget(LabelDialog):
                 shape.description = description
                 shape.difficult = difficult
                 shape.kie_linking = kie_linking
+                self.canvas.notify_shape_changed(shape)
                 # Update unique label list
                 if not self.unique_label_list.find_items_by_label(shape.label):
                     unique_label_item = (
@@ -9324,7 +9206,9 @@ class LabelingWidget(LabelDialog):
         if self.canvas.current is not None:
             self.canvas.current.description = description
         elif self.canvas.editing() and len(self.canvas.selected_shapes) == 1:
-            self.canvas.selected_shapes[0].description = description
+            shape = self.canvas.selected_shapes[0]
+            shape.description = description
+            self.canvas.notify_shape_changed(shape)
         else:
             self.other_data["description"] = description
         self.set_dirty()
