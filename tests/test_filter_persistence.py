@@ -64,6 +64,19 @@ class _FakeFilterEngine:
         )
 
 
+class _ExplodingImageList:
+    def __contains__(self, _item):
+        raise AssertionError("show_shape must not scan image_list")
+
+
+class _FakePoint:
+    def x(self):
+        return 12
+
+    def y(self):
+        return 34
+
+
 @unittest.skipUnless(
     PYQT_AVAILABLE, "PyQt6 is required for filter persistence tests"
 )
@@ -74,6 +87,21 @@ class TestFilterPersistence(unittest.TestCase):
         cls.app = QtWidgets.QApplication.instance()
         if cls.app is None:
             cls.app = QtWidgets.QApplication([])
+
+    def test_show_shape_uses_indexed_file_lookup(self):
+        messages = []
+        widget = types.SimpleNamespace(
+            filename="image.jpg",
+            fn_to_index={"image.jpg": 0},
+            image_list=_ExplodingImageList(),
+            image_path="image.jpg",
+            status=lambda message: messages.append(message),
+            tr=lambda message: message,
+        )
+
+        LabelingWidget.show_shape(widget, 20, 10, _FakePoint())
+
+        self.assertEqual(messages, ["X: 12, Y: 34 | H: 20, W: 10"])
 
     def test_set_gid_and_type_values_update_state_when_blocked(self):
         widget = types.SimpleNamespace()

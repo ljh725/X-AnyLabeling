@@ -248,6 +248,13 @@ class TestApplyEdgeCoord(unittest.TestCase):
         geom = geometry_from_shape(shape)
         self.assertLess(geom.x_min, geom.x_max)
 
+    def test_apply_returns_false_for_noop(self):
+        shape = _rect([(10, 5), (20, 5), (20, 30), (10, 30)])
+
+        ok = apply_edge_coord(shape, RECT_EDGE_LEFT, 10, min_size=1.0)
+
+        self.assertFalse(ok)
+
 
 if __name__ == "__main__":
     unittest.main()

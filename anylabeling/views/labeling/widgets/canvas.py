@@ -1125,6 +1125,16 @@ class Canvas(
         """Check if selected a vertex"""
         return self.h_vertex is not None
 
+    def _should_defer_drag_overlays(self):
+        """Return True while whole-shape dragging can use lighter painting."""
+        return (
+            self.moving_shape
+            and bool(self.selected_shapes)
+            and not self.selected_vertex()
+            and not self.selected_cuboid_face()
+            and not self.rect_edge_dragging
+        )
+
     def selected_edge(self):
         """Check if selected an edge"""
         return self.h_edge is not None
@@ -1314,13 +1324,13 @@ class Canvas(
             if self.selected_shapes_copy and self.prev_point:
                 self.override_cursor(CURSOR_MOVE)
                 eff = self._effective_drag_pos(pos, ev)
-                self.bounded_move_shapes(self.selected_shapes_copy, eff)
-                self.repaint()
+                if self.bounded_move_shapes(self.selected_shapes_copy, eff):
+                    self.update()
             elif self.selected_shapes:
                 self.selected_shapes_copy = [
                     s.copy() for s in self.selected_shapes
                 ]
-                self.repaint()
+                self.update()
             return
 
         # A press on any rectangle edge is initially pending. Crossing the
@@ -1413,8 +1423,9 @@ class Canvas(
                 self.h_cuboid_face = None
                 self.override_cursor(CURSOR_MOVE)
                 eff = self._effective_drag_pos(pos, ev)
-                self.bounded_move_shapes(self.selected_shapes, eff)
-                self.repaint()
+                if not self.bounded_move_shapes(self.selected_shapes, eff):
+                    return
+                self.update()
                 self.moving_shape = True
                 if self.selected_shapes[-1].shape_type == "rectangle":
                     self._emit_show_shape_from_shape(
@@ -3013,6 +3024,7 @@ class Canvas(
                 )
 
         Shape.scale = self.scale
+        defer_drag_overlays = self._should_defer_drag_overlays()
 
         # Draw loading/waiting screen
         if self.is_loading:
@@ -3177,7 +3189,7 @@ class Canvas(
                 p.drawPolygon(arrow_points)
 
         # Draw shape masks
-        if self.show_masks:
+        if self.show_masks and not defer_drag_overlays:
             for shape in self.shapes:
                 if not self.main_visible(shape):
                     continue
@@ -3415,13 +3427,14 @@ class Canvas(
         def should_merge_rectangle_text(shape):
             return (
                 self.show_labels
+                and not defer_drag_overlays
                 and shape.shape_type == "rectangle"
                 and not (self.label_on_selection and not shape.selected)
                 and shape.label not in autolabel_names
             )
 
         # Draw texts
-        if self.show_texts:
+        if self.show_texts and not defer_drag_overlays:
             text_color = "#FFFFFF"
             background_color = "#007BFF"
             p.setFont(
@@ -3486,11 +3499,10 @@ class Canvas(
                         description,
                     )
 
-        # Compute hover context once for the unified label gate.
-        hovered_shape = self._standard_label_hovered_shape()
-
         # Draw labels
-        if self.show_labels:
+        if self.show_labels and not defer_drag_overlays:
+            # Compute hover context only when labels are actually painted.
+            hovered_shape = self._standard_label_hovered_shape()
             p.setFont(self._standard_label_font())
             labels = []
             for shape in self.shapes:
@@ -3566,7 +3578,7 @@ class Canvas(
         self._draw_crosshair(p)
 
         # Draw attributes
-        if self.show_attributes:
+        if self.show_attributes and not defer_drag_overlays:
             font_size = int(max(8.0, int(round(10.0 / Shape.scale))))
             font = QtGui.QFont("Arial", font_size, QtGui.QFont.Weight.Bold)
             p.setFont(font)
@@ -4376,7 +4388,9 @@ class Canvas(
 
         # Live edit: mutate the target shape in place. The drag start
         # points are preserved so Esc can restore them.
-        rea.apply_edge_coord(active.shape, active.edge_name, coord)
+        changed = rea.apply_edge_coord(active.shape, active.edge_name, coord)
+        if not changed:
+            return
         self.notify_shape_changed(active.shape)
         # Refresh the active edge from the just-mutated geometry so the
         # overlay follows the live position instead of the original edge.

@@ -11,7 +11,12 @@ import os.path as osp
 import sqlite3
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import (
+    FIRST_COMPLETED,
+    Future,
+    ThreadPoolExecutor,
+    wait,
+)
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
@@ -30,7 +35,38 @@ INDEX_STATUS_MISSING = "missing"
 INDEX_STATUS_ERROR = "error"
 SQLITE_BUSY_TIMEOUT_MS = 30000
 INDEX_READ_WORKERS = 4
-INDEX_READ_BATCH_SIZE = 64
+INDEX_READ_PREFETCH_LIMIT = 64
+# Compatibility alias for extensions that imported the pre-pipeline name.
+INDEX_READ_BATCH_SIZE = INDEX_READ_PREFETCH_LIMIT
+QUERY_INDEX_DEFINITIONS = (
+    (
+        "idx_shapes_label",
+        "CREATE INDEX IF NOT EXISTS idx_shapes_label ON shapes(label)",
+    ),
+    (
+        "idx_shapes_group_id",
+        "CREATE INDEX IF NOT EXISTS idx_shapes_group_id ON shapes(group_id)",
+    ),
+    (
+        "idx_shapes_shape_type",
+        "CREATE INDEX IF NOT EXISTS idx_shapes_shape_type "
+        "ON shapes(shape_type)",
+    ),
+    (
+        "idx_shapes_file_id",
+        "CREATE INDEX IF NOT EXISTS idx_shapes_file_id ON shapes(file_id)",
+    ),
+    (
+        "idx_shapes_file_shape",
+        "CREATE INDEX IF NOT EXISTS idx_shapes_file_shape "
+        "ON shapes(file_id, shape_index)",
+    ),
+    (
+        "idx_files_sort_order",
+        "CREATE INDEX IF NOT EXISTS idx_files_sort_order "
+        "ON files(sort_order)",
+    ),
+)
 
 DATASET_INDEX_MISSING = "missing"
 DATASET_INDEX_CACHED = "cached_unverified"
@@ -48,6 +84,23 @@ META_SHAPE_COUNT = "shape_count"
 
 ProgressCallback = Callable[[int, int, str], None]
 CancelCheck = Callable[[], bool]
+
+
+@dataclass
+class DatasetIndexPerformance:
+    """Non-persisted performance measurements for one index operation."""
+
+    planning_seconds: float = 0.0
+    pipeline_wall_seconds: float = 0.0
+    read_work_seconds: float = 0.0
+    sqlite_write_seconds: float = 0.0
+    commit_seconds: float = 0.0
+    index_build_seconds: float = 0.0
+    finalize_seconds: float = 0.0
+    integrity_check_seconds: float = 0.0
+    foreign_key_check_seconds: float = 0.0
+    json_bytes: int = 0
+    max_in_flight: int = 0
 
 
 @dataclass
@@ -70,6 +123,9 @@ class DatasetIndexResult:
     target_db_path: Optional[str] = None
     staged_db_path: Optional[str] = None
     error_messages: List[str] = field(default_factory=list)
+    performance: DatasetIndexPerformance = field(
+        default_factory=DatasetIndexPerformance
+    )
 
     @property
     def changed(self) -> int:
@@ -90,6 +146,7 @@ class PreparedIndexFile:
     shapes: List[tuple] = field(default_factory=list)
     status: str = INDEX_STATUS_MISSING
     error_message: str = ""
+    read_seconds: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +165,7 @@ class DatasetFilterIndex:
         self,
         db_path: Optional[str] = None,
         journal_mode: str = "wal",
+        defer_query_indexes: bool = False,
     ):
         """初始化索引实例。
 
@@ -115,9 +173,12 @@ class DatasetFilterIndex:
             db_path: SQLite 数据库文件路径。若为 None，则后续所有操作跳过。
             journal_mode: SQLite 日志模式。正式缓存使用 ``wal``，临时重建
                 数据库使用 ``delete``，确保所有数据都落入单个主文件后再替换。
+            defer_query_indexes: 是否在 ``rebuild`` 数据写入完成后再创建查询
+                索引。仅应对可丢弃的 staging 数据库启用。
         """
         self.db_path = db_path
         self.journal_mode = journal_mode.lower()
+        self.defer_query_indexes = defer_query_indexes
         self._conn: Optional[sqlite3.Connection] = None
 
     # ------------------------------------------------------------------
@@ -263,6 +324,16 @@ class DatasetFilterIndex:
         except sqlite3.Error:
             return False
 
+    def foreign_key_check(self) -> bool:
+        """Return whether SQLite reports no foreign-key violations."""
+        if self._conn is None:
+            return False
+        try:
+            row = self._conn.execute("PRAGMA foreign_key_check").fetchone()
+            return row is None
+        except sqlite3.Error:
+            return False
+
     # ------------------------------------------------------------------
     # 高层操作（供外部调用）
     # ------------------------------------------------------------------
@@ -300,11 +371,15 @@ class DatasetFilterIndex:
             image_files, output_dir, progress_callback, cancel_check
         )
         if not result.cancelled and not result.fatal_error:
+            finalize_started = time.perf_counter()
             self._write_snapshot_metadata(
                 image_files, output_dir, dataset_root, DATASET_INDEX_READY
             )
             self._populate_result_summary(result)
             self._conn.commit()
+            result.performance.finalize_seconds = (
+                time.perf_counter() - finalize_started
+            )
         result.elapsed_seconds = time.perf_counter() - started_at
         result.target_db_path = self.db_path
         return result
@@ -368,13 +443,52 @@ class DatasetFilterIndex:
             image_files, output_dir, progress_callback, cancel_check
         )
         if not result.cancelled and not result.fatal_error:
+            if self.defer_query_indexes:
+                index_started = time.perf_counter()
+                self._conn.execute("BEGIN")
+                try:
+                    indexes_created = self._create_query_indexes(cancel_check)
+                    if not indexes_created:
+                        self._conn.rollback()
+                        result.cancelled = True
+                    else:
+                        result.performance.index_build_seconds = (
+                            time.perf_counter() - index_started
+                        )
+                except Exception:
+                    self._conn.rollback()
+                    raise
+        if not result.cancelled and not result.fatal_error:
+            finalize_started = time.perf_counter()
             self._write_snapshot_metadata(
                 image_files, output_dir, dataset_root, DATASET_INDEX_READY
             )
             self._populate_result_summary(result)
             self._conn.commit()
+            result.performance.finalize_seconds = (
+                time.perf_counter() - finalize_started
+            )
         result.elapsed_seconds = time.perf_counter() - started_at
         result.target_db_path = self.db_path
+        performance = result.performance
+        logger.info(
+            "Dataset index rebuild metrics: files=%d shapes=%d total=%.3fs "
+            "planning=%.3fs pipeline=%.3fs read_work=%.3fs "
+            "sqlite_write=%.3fs commit=%.3fs indexes=%.3fs "
+            "finalize=%.3fs json_bytes=%d max_in_flight=%d",
+            len(image_files),
+            result.shape_count,
+            result.elapsed_seconds,
+            performance.planning_seconds,
+            performance.pipeline_wall_seconds,
+            performance.read_work_seconds,
+            performance.sqlite_write_seconds,
+            performance.commit_seconds,
+            performance.index_build_seconds,
+            performance.finalize_seconds,
+            performance.json_bytes,
+            performance.max_in_flight,
+        )
         return result
 
     def refresh_file(
@@ -568,7 +682,7 @@ class DatasetFilterIndex:
         - files: 存储文件级元数据（路径、mtime、size、shape 数量等）。
         - shapes: 存储 shape 级轻量索引字段（label、group_id、shape_type）。
 
-        同时创建 shapes 表上的索引，加速查询。
+        默认同时创建查询索引；staging rebuild 可以延迟到数据写入完成后创建。
         """
         assert self._conn is not None
         existing_version = self._read_schema_version()
@@ -614,20 +728,9 @@ class DatasetFilterIndex:
                 shape_type TEXT,
                 FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
             );
-
-            CREATE INDEX IF NOT EXISTS idx_shapes_label
-                ON shapes(label);
-            CREATE INDEX IF NOT EXISTS idx_shapes_group_id
-                ON shapes(group_id);
-            CREATE INDEX IF NOT EXISTS idx_shapes_shape_type
-                ON shapes(shape_type);
-            CREATE INDEX IF NOT EXISTS idx_shapes_file_id
-                ON shapes(file_id);
-            CREATE INDEX IF NOT EXISTS idx_shapes_file_shape
-                ON shapes(file_id, shape_index);
-            CREATE INDEX IF NOT EXISTS idx_files_sort_order
-                ON files(sort_order);
             """)
+        if not self.defer_query_indexes:
+            self._create_query_indexes()
         file_columns = {
             row[1] for row in self._conn.execute("PRAGMA table_info(files)")
         }
@@ -641,6 +744,25 @@ class DatasetFilterIndex:
             ("schema_version", SCHEMA_VERSION),
         )
         self._conn.commit()
+
+    def _create_query_indexes(
+        self,
+        cancel_check: Optional[CancelCheck] = None,
+    ) -> bool:
+        """Create all query indexes, optionally stopping between indexes.
+
+        Args:
+            cancel_check: Optional callback checked between index builds.
+
+        Returns:
+            ``True`` when every index exists, or ``False`` when cancelled.
+        """
+        assert self._conn is not None
+        for _name, statement in QUERY_INDEX_DEFINITIONS:
+            if cancel_check and cancel_check():
+                return False
+            self._conn.execute(statement)
+        return not (cancel_check and cancel_check())
 
     def _read_schema_version(self) -> Optional[str]:
         """读取当前缓存数据库的 schema 版本。
@@ -864,9 +986,11 @@ class DatasetFilterIndex:
         progress_callback: Optional[ProgressCallback] = None,
         cancel_check: Optional[CancelCheck] = None,
     ) -> DatasetIndexResult:
-        """批量插入所有图片文件（ rebuild 时调用）。
+        """Stream prepared files into SQLite during a full rebuild.
 
-        遍历所有图片，逐个插入文件记录和 shape 记录，最后统一提交事务。
+        A bounded number of JSON reads run concurrently. The caller thread
+        writes each completed result immediately, allowing reads and SQLite
+        writes to overlap without sharing the connection across threads.
 
         Args:
             image_files: 所有图片路径列表。
@@ -879,40 +1003,107 @@ class DatasetFilterIndex:
         """
         result = DatasetIndexResult(total=len(image_files))
         total = len(image_files)
+        planning_started = time.perf_counter()
         entries = [
             (img, self._json_path_for_image(img, output_dir), sort_order)
             for sort_order, img in enumerate(image_files)
         ]
+        result.performance.planning_seconds = (
+            time.perf_counter() - planning_started
+        )
         worker_count = min(INDEX_READ_WORKERS, max(total, 1))
+        prefetch_limit = min(INDEX_READ_PREFETCH_LIMIT, max(total, 1))
+        entry_iterator = iter(entries)
+        pending: Set[Future[PreparedIndexFile]] = set()
+        completed = 0
+        pipeline_started = time.perf_counter()
+
+        if cancel_check and cancel_check():
+            result.cancelled = True
+            self._conn.rollback()
+            result.performance.pipeline_wall_seconds = (
+                time.perf_counter() - pipeline_started
+            )
+            return result
+
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            for offset in range(0, total, INDEX_READ_BATCH_SIZE):
+            while len(pending) < prefetch_limit:
+                try:
+                    entry = next(entry_iterator)
+                except StopIteration:
+                    break
+                pending.add(executor.submit(self._prepare_index_file, *entry))
+            result.performance.max_in_flight = len(pending)
+
+            while pending:
                 if cancel_check and cancel_check():
                     result.cancelled = True
+                    for future in pending:
+                        future.cancel()
                     self._conn.rollback()
-                    return result
-                batch = entries[offset : offset + INDEX_READ_BATCH_SIZE]
-                prepared_files = list(
-                    executor.map(
-                        lambda args: self._prepare_index_file(*args), batch
+                    result.performance.pipeline_wall_seconds = (
+                        time.perf_counter() - pipeline_started
                     )
+                    return result
+
+                done, pending = wait(
+                    pending,
+                    return_when=FIRST_COMPLETED,
                 )
-                for prepared in prepared_files:
+                for future in done:
                     if cancel_check and cancel_check():
                         result.cancelled = True
+                        for pending_future in pending:
+                            pending_future.cancel()
                         self._conn.rollback()
+                        result.performance.pipeline_wall_seconds = (
+                            time.perf_counter() - pipeline_started
+                        )
                         return result
+
+                    prepared = future.result()
+                    result.performance.read_work_seconds += (
+                        prepared.read_seconds
+                    )
+                    result.performance.json_bytes += prepared.json_size
+
+                    try:
+                        entry = next(entry_iterator)
+                    except StopIteration:
+                        entry = None
+                    if entry is not None:
+                        pending.add(
+                            executor.submit(self._prepare_index_file, *entry)
+                        )
+                        result.performance.max_in_flight = max(
+                            result.performance.max_in_flight,
+                            len(pending),
+                        )
+
+                    write_started = time.perf_counter()
                     status = self._insert_prepared_file(prepared)
+                    result.performance.sqlite_write_seconds += (
+                        time.perf_counter() - write_started
+                    )
                     result.inserted += 1
                     if status == INDEX_STATUS_ERROR:
                         result.failed += 1
                         result.error_messages.append(prepared.json_path)
+                    completed += 1
                     if progress_callback:
                         progress_callback(
-                            prepared.sort_order + 1,
+                            completed,
                             total,
                             osp.basename(prepared.json_path),
                         )
+        commit_started = time.perf_counter()
         self._conn.commit()
+        result.performance.commit_seconds = (
+            time.perf_counter() - commit_started
+        )
+        result.performance.pipeline_wall_seconds = (
+            time.perf_counter() - pipeline_started
+        )
         return result
 
     def _insert_single(
@@ -939,6 +1130,7 @@ class DatasetFilterIndex:
         cls, image_path: str, json_path: str, sort_order: int
     ) -> PreparedIndexFile:
         """Read one JSON file without touching the SQLite connection."""
+        read_started = time.perf_counter()
         try:
             stat_result = os.stat(json_path)
         except OSError:
@@ -948,6 +1140,7 @@ class DatasetFilterIndex:
                 sort_order=sort_order,
                 status=INDEX_STATUS_MISSING,
                 error_message="JSON file does not exist",
+                read_seconds=time.perf_counter() - read_started,
             )
         shapes, error_message = cls._read_shapes(json_path)
         status = INDEX_STATUS_ERROR if error_message else INDEX_STATUS_OK
@@ -961,6 +1154,7 @@ class DatasetFilterIndex:
             shapes=shapes,
             status=status,
             error_message=error_message,
+            read_seconds=time.perf_counter() - read_started,
         )
 
     def _insert_prepared_file(self, prepared: PreparedIndexFile) -> str:

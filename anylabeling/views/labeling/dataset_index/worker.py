@@ -88,7 +88,11 @@ class DatasetIndexWorker(QtCore.QThread):
         staged_db_path = None
         if self.mode == "rebuild":
             staged_db_path = make_staging_db_path(self.db_path)
-            index = DatasetFilterIndex(staged_db_path, journal_mode="delete")
+            index = DatasetFilterIndex(
+                staged_db_path,
+                journal_mode="delete",
+                defer_query_indexes=True,
+            )
         else:
             index = DatasetFilterIndex(self.db_path)
         try:
@@ -110,8 +114,23 @@ class DatasetIndexWorker(QtCore.QThread):
                 )
             if result.fatal_error:
                 raise RuntimeError("Dataset index update failed")
-            if not result.cancelled and not index.integrity_check():
-                raise RuntimeError("Dataset index integrity check failed")
+            if not result.cancelled:
+                integrity_started = time.perf_counter()
+                integrity_valid = index.integrity_check()
+                result.performance.integrity_check_seconds = (
+                    time.perf_counter() - integrity_started
+                )
+                if not integrity_valid:
+                    raise RuntimeError("Dataset index integrity check failed")
+                foreign_key_started = time.perf_counter()
+                foreign_keys_valid = index.foreign_key_check()
+                result.performance.foreign_key_check_seconds = (
+                    time.perf_counter() - foreign_key_started
+                )
+                if not foreign_keys_valid:
+                    raise RuntimeError(
+                        "Dataset index foreign-key check failed"
+                    )
             index.close()
             if result.cancelled:
                 remove_database_files(staged_db_path)

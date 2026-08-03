@@ -390,8 +390,8 @@ def apply_edge_coord(
         min_size: Minimum retained dimension used for clamping.
 
     Returns:
-        True when the change was applied, False when the shape is not a
-        usable rectangle (e.g. invalid geometry).
+        True when the shape points changed, False when the shape is not a
+        usable rectangle or the requested edit is a no-op.
     """
     geometry = geometry_from_shape(shape)
     if geometry is None or not geometry.is_valid(min_size, min_size):
@@ -400,7 +400,13 @@ def apply_edge_coord(
     new_geometry = geometry_with_edge_coord(
         geometry, edge_name, coord, min_size=min_size
     )
-    shape.points = points_from_geometry(new_geometry)
+    new_points = points_from_geometry(new_geometry)
+    old_points = [(point.x(), point.y()) for point in shape.points]
+    next_points = [(point.x(), point.y()) for point in new_points]
+    if old_points == next_points:
+        return False
+
+    shape.points = new_points
     # ``shape.points`` is a plain list; mutating it does not invalidate the
     # internal bbox/path caches, so invalidate explicitly.
     shape._invalidate_cache()

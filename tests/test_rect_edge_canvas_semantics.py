@@ -601,6 +601,26 @@ def test_active_edge_drag_is_clamped_to_image_bounds(
     assert getattr(geometry, coord_attr) == expected
 
 
+def test_repeated_clamped_edge_drag_is_noop(canvas, monkeypatch):
+    """Dragging farther past an already-clamped edge emits no redundant work."""
+    shape = _rectangle(width=60.0, height=50.0)
+    canvas.pixmap = QtGui.QPixmap(100, 80)
+    _activate_edge_drag(canvas, shape, "right")
+    canvas._rect_edge_drag_update(QtCore.QPointF(120.0, 40.0))
+    changed = []
+    shown = []
+    updates = []
+    canvas.shape_changed.connect(changed.append)
+    canvas.show_shape.connect(lambda *args: shown.append(args))
+    monkeypatch.setattr(canvas, "update", lambda: updates.append(True))
+
+    canvas._rect_edge_drag_update(QtCore.QPointF(130.0, 40.0))
+
+    assert changed == []
+    assert shown == []
+    assert updates == []
+
+
 def test_focus_loss_rolls_back_an_active_edge_drag(canvas):
     """Losing focus restores the geometry captured at drag start."""
     shape = _rectangle()
@@ -685,6 +705,106 @@ def test_edge_hover_does_not_force_synchronous_repaint(canvas, monkeypatch):
 
     assert canvas.rect_edge_hover_edge is not None
     assert repaint_calls == []
+
+
+def test_selected_rectangle_drag_updates_without_repaint(canvas, monkeypatch):
+    """Whole-rectangle dragging schedules a paint instead of forcing repaint."""
+    shape = _rectangle(width=40.0, height=30.0)
+    canvas.pixmap = QtGui.QPixmap(100, 80)
+    canvas.resize(100, 80)
+    canvas.shapes = [shape]
+    canvas.set_editing(True)
+    canvas.mousePressEvent(_press_event(QtCore.QPointF(20.0, 20.0)))
+    updates = []
+    repaints = []
+    shown = []
+    monkeypatch.setattr(canvas, "_update_crosshair_cursor", lambda _pos: None)
+    monkeypatch.setattr(canvas, "update", lambda: updates.append(True))
+    monkeypatch.setattr(canvas, "repaint", lambda: repaints.append(True))
+    canvas.show_shape.connect(lambda *args: shown.append(args))
+
+    canvas.mouseMoveEvent(
+        _move_event(
+            QtCore.QPointF(25.0, 25.0),
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+        )
+    )
+
+    assert _point_tuples(shape) == [
+        (15.0, 15.0),
+        (55.0, 15.0),
+        (55.0, 45.0),
+        (15.0, 45.0),
+    ]
+    assert updates == [True]
+    assert repaints == []
+    assert canvas.moving_shape is True
+    assert shown
+
+
+def test_selected_rectangle_drag_noop_skips_paint_and_status(
+    canvas, monkeypatch
+):
+    """A blocked whole-rectangle drag does not spend a redundant frame."""
+    shape = _rectangle(x=50.0, y=10.0, width=49.0, height=30.0)
+    canvas.pixmap = QtGui.QPixmap(100, 80)
+    canvas.resize(100, 80)
+    canvas.shapes = [shape]
+    canvas.set_editing(True)
+    canvas.mousePressEvent(_press_event(QtCore.QPointF(70.0, 20.0)))
+    updates = []
+    repaints = []
+    shown = []
+    changed = []
+    monkeypatch.setattr(canvas, "_update_crosshair_cursor", lambda _pos: None)
+    monkeypatch.setattr(canvas, "update", lambda: updates.append(True))
+    monkeypatch.setattr(canvas, "repaint", lambda: repaints.append(True))
+    canvas.show_shape.connect(lambda *args: shown.append(args))
+    canvas.shape_changed.connect(changed.append)
+
+    canvas.mouseMoveEvent(
+        _move_event(
+            QtCore.QPointF(130.0, 20.0),
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+        )
+    )
+
+    assert _point_tuples(shape) == [
+        (50.0, 10.0),
+        (99.0, 10.0),
+        (99.0, 40.0),
+        (50.0, 40.0),
+    ]
+    assert updates == []
+    assert repaints == []
+    assert shown == []
+    assert changed == []
+    assert canvas.moving_shape is False
+
+
+def test_whole_shape_drag_defers_heavy_overlays(canvas):
+    """Only whole-shape dragging uses the lightweight overlay pass."""
+    shape = _rectangle(width=40.0, height=30.0)
+    canvas.shapes = [shape]
+    canvas.selected_shapes = [shape]
+    canvas.moving_shape = True
+
+    assert canvas._should_defer_drag_overlays() is True
+
+    canvas.h_vertex = 0
+    assert canvas._should_defer_drag_overlays() is False
+    canvas.h_vertex = None
+
+    _activate_edge_drag(canvas, shape, "left")
+    assert canvas._should_defer_drag_overlays() is False
+    canvas.rect_edge_dragging = False
+
+    canvas.h_cuboid_face = 0
+    assert canvas._should_defer_drag_overlays() is False
+    canvas.h_cuboid_face = None
+
+    canvas.moving_shape = False
+    assert canvas._should_defer_drag_overlays() is False
 
 
 def test_canvas_commits_selection_before_emitting_signal(canvas):

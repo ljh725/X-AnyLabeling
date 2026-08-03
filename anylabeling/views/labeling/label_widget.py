@@ -6927,9 +6927,11 @@ class LabelingWidget(LabelDialog):
         - shape_width (float): The width of the shape.
         - pos (QPointF): The current mouse coordinates inside the shape.
         """
-        num_images = len(self.image_list)
+        has_indexed_current_file = bool(
+            self.filename and self.filename in self.fn_to_index
+        )
         if shape_height > 0 and shape_width > 0:
-            if num_images and self.filename in self.image_list:
+            if has_indexed_current_file:
                 self.status(
                     str(self.tr("X: %d, Y: %d | H: %d, W: %d"))
                     % (
@@ -6945,7 +6947,7 @@ class LabelingWidget(LabelDialog):
                     % (int(pos.x()), int(pos.y()), shape_height, shape_width)
                 )
         elif self.image_path:
-            if num_images and self.filename in self.image_list:
+            if has_indexed_current_file:
                 self.status(
                     str(self.tr("X: %d, Y: %d"))
                     % (

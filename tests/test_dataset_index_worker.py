@@ -91,6 +91,9 @@ def test_rebuild_worker_stages_before_replacing_live_database(tmp_path):
     result = completed[0]
     assert result.staged_db_path
     assert Path(result.staged_db_path).exists()
+    assert result.performance.index_build_seconds > 0.0
+    assert result.performance.integrity_check_seconds > 0.0
+    assert result.performance.foreign_key_check_seconds > 0.0
 
     unchanged = DatasetFilterIndex(str(db_path), journal_mode="delete")
     unchanged.open()
