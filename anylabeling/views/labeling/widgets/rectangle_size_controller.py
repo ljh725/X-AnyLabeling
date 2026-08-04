@@ -67,7 +67,7 @@ class RectangleSizeFeatureController(QtCore.QObject):
         self.monitor = RectangleSizeMonitor(
             self._rules,
             enabled=self._enabled,
-            is_shape_interactive=self.canvas.is_shape_interactive,
+            is_shape_reviewable=self.canvas.base_visible,
             parent=self,
         )
         self.monitor.issues_changed.connect(self._publish_issues)
@@ -171,7 +171,7 @@ class RectangleSizeFeatureController(QtCore.QObject):
             "shapes",
             "set_rectangle_size_issues",
             "clear_rectangle_size_issues",
-            "is_shape_interactive",
+            "base_visible",
             "update",
         )
         missing = [

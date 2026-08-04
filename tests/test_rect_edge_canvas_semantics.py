@@ -53,28 +53,44 @@ def _activate_edge_drag(canvas, shape, edge_name):
     canvas.rect_edge_dragging = True
 
 
-def test_unselected_rectangle_edge_is_available_as_preselection(canvas):
-    """An unselected rectangle exposes a non-mutating edge preview."""
-    shape = _rectangle()
-    canvas.shapes = [shape]
+def _select(canvas, *shapes):
+    """Mark shapes as formally selected on the canvas."""
+    canvas.selected_shapes = list(shapes)
+    for shape in canvas.shapes:
+        shape.selected = shape in shapes
+
+
+def _enable_edge_hit(canvas, shapes, selected, scale=1.0):
+    """Configure common rectangle-edge hit-test state."""
+    canvas.shapes = list(shapes)
+    _select(canvas, *selected)
+    canvas.scale = scale
     canvas.set_rect_edge_align_enabled(True)
     canvas.set_editing(True)
+    canvas.pixmap = None
+
+
+def _use_identity_pixmap(canvas, width=200, height=200):
+    """Give mouse-event tests a pixmap with no transform offset."""
+    canvas.pixmap = QtGui.QPixmap(width, height)
+    canvas.resize(width, height)
+
+
+def test_unselected_rectangle_edge_is_not_available_as_preselection(canvas):
+    """An unselected rectangle does not expose direct edge editing."""
+    shape = _rectangle()
+    _enable_edge_hit(canvas, [shape], [])
 
     candidate = canvas._rect_edge_hit_candidate(QtCore.QPointF(10.0, 60.0))
 
-    assert candidate is not None
-    assert candidate.shape is shape
-    assert candidate.edge_name == "left"
+    assert candidate is None
     assert canvas.selected_shapes == []
 
 
-def test_edge_hit_is_independent_of_formal_selection(canvas):
-    """Formal object selection does not change rectangle-edge hit testing."""
+def test_only_unique_selected_rectangle_exposes_edge_hit(canvas):
+    """Only the single selected rectangle can expose a mouse edge."""
     shape = _rectangle()
-    canvas.shapes = [shape]
-    canvas.selected_shapes = [shape]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
+    _enable_edge_hit(canvas, [shape], [shape])
 
     candidate = canvas._rect_edge_hit_candidate(QtCore.QPointF(10.0, 60.0))
 
@@ -83,27 +99,22 @@ def test_edge_hit_is_independent_of_formal_selection(canvas):
     assert candidate.edge_name == "left"
 
 
-def test_multiple_selection_does_not_block_edge_preselection(canvas):
-    """A multi-selection does not block an independent edge preview."""
+def test_multiple_selection_blocks_edge_preselection(canvas):
+    """Multi-selection does not provide mouse edge editing."""
     first = _rectangle()
     second = _rectangle(x=150.0)
-    canvas.shapes = [first, second]
-    canvas.selected_shapes = [first, second]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
+    _enable_edge_hit(canvas, [first, second], [first, second])
 
     candidate = canvas._rect_edge_hit_candidate(QtCore.QPointF(10.0, 60.0))
 
-    assert candidate is not None
-    assert candidate.shape is first
-    assert candidate.edge_name == "left"
+    assert candidate is None
 
 
 def test_create_mode_keeps_edge_capability_enabled_but_dormant(canvas):
     """Create mode suppresses edge hits without changing the user setting."""
     shape = _rectangle()
     canvas.shapes = [shape]
-    canvas.selected_shapes = [shape]
+    _select(canvas, shape)
     canvas.set_rect_edge_align_enabled(True)
 
     canvas.set_editing(False)
@@ -120,7 +131,7 @@ def test_entering_create_mode_cancels_an_active_edge_drag(canvas):
         edge for edge in iter_edges(shape) if edge.edge_name == "left"
     )
     canvas.shapes = [shape]
-    canvas.selected_shapes = [shape]
+    _select(canvas, shape)
     canvas.set_rect_edge_align_enabled(True)
     canvas.rect_edge_active_edge = active_edge
     canvas.rect_edge_drag_start_points = list(shape.points)
@@ -145,7 +156,7 @@ def test_disabling_edge_editing_cancels_an_active_drag(canvas):
         edge for edge in iter_edges(shape) if edge.edge_name == "right"
     )
     canvas.shapes = [shape]
-    canvas.selected_shapes = [shape]
+    _select(canvas, shape)
     canvas.set_rect_edge_align_enabled(True)
     canvas.rect_edge_active_edge = active_edge
     canvas.rect_edge_drag_start_points = list(shape.points)
@@ -207,7 +218,11 @@ def test_enabling_edge_editing_enters_edit_mode_without_disabling_it():
     assert mode_switches == [True]
 
 
-def _move_event(point, buttons=QtCore.Qt.MouseButton.NoButton):
+def _move_event(
+    point,
+    buttons=QtCore.Qt.MouseButton.NoButton,
+    modifiers=QtCore.Qt.KeyboardModifier.NoModifier,
+):
     """Build a minimal mouse-move event at ``point``."""
     return QtGui.QMouseEvent(
         QtCore.QEvent.Type.MouseMove,
@@ -215,7 +230,7 @@ def _move_event(point, buttons=QtCore.Qt.MouseButton.NoButton):
         QtCore.QPointF(point),
         buttons,
         buttons,
-        QtCore.Qt.KeyboardModifier.NoModifier,
+        modifiers,
     )
 
 
@@ -249,63 +264,62 @@ def _clear_override_cursor():
         QtWidgets.QApplication.restoreOverrideCursor()
 
 
-def test_hovering_an_unselected_edge_does_not_change_selection(canvas):
-    """Edge preselection is visual only, even with auto-highlight enabled."""
+def test_hovering_an_unselected_edge_does_not_create_edge_feedback(canvas):
+    """Unselected rectangles fall through to the normal hover path."""
     shape = _rectangle()
     canvas.shapes = [shape]
-    canvas.h_shape_is_hovered = True
     canvas.set_rect_edge_align_enabled(True)
     canvas.set_editing(True)
-    canvas.pixmap = None
+    _use_identity_pixmap(canvas)
     emitted = []
     canvas.selection_changed.connect(emitted.append)
     _clear_override_cursor()
 
     canvas.mouseMoveEvent(_move_event(QtCore.QPointF(10.0, 60.0)))
 
-    assert canvas.rect_edge_hover_edge is not None
-    assert canvas.rect_edge_hover_edge.shape is shape
+    assert canvas.rect_edge_hover_edge is None
     assert canvas.selected_shapes == []
     assert emitted == []
-    assert canvas.current_cursor() == canvas_module.CURSOR_POINT
     _clear_override_cursor()
 
 
 def test_hovering_a_selected_rect_edge_shows_pointing_hand_cursor(canvas):
-    """Hovering a selected rectangle edge switches the cursor to pointing hand."""
+    """Hovering a selected vertical edge uses the horizontal resize cursor."""
     shape = _rectangle()
-    canvas.shapes = [shape]
-    canvas.selected_shapes = [shape]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
-    # Neutralize ``offset_to_center`` so widget coordinates map 1:1 onto
-    # image coordinates (the default 640x480 pixmap would otherwise shift
-    # the transformed position away from the edge).
-    canvas.pixmap = None
+    _enable_edge_hit(canvas, [shape], [shape])
     _clear_override_cursor()
 
     canvas.mouseMoveEvent(_move_event(QtCore.QPointF(10.0, 60.0)))
 
     assert canvas.rect_edge_hover_edge is not None
-    assert canvas.current_cursor() == canvas_module.CURSOR_POINT
+    assert canvas.current_cursor() == canvas_module.CURSOR_SIZE_HOR
     _clear_override_cursor()
 
 
-def test_dragging_a_rect_edge_shows_closed_hand_cursor(canvas):
+def test_hovering_a_selected_horizontal_edge_shows_vertical_resize(canvas):
+    """Hovering a selected horizontal edge uses the vertical resize cursor."""
+    shape = _rectangle()
+    _enable_edge_hit(canvas, [shape], [shape])
+    _clear_override_cursor()
+
+    canvas.mouseMoveEvent(_move_event(QtCore.QPointF(60.0, 10.0)))
+
+    assert canvas.rect_edge_hover_edge is not None
+    assert canvas.rect_edge_hover_edge.edge_name == "top"
+    assert canvas.current_cursor() == canvas_module.CURSOR_SIZE_VER
+    _clear_override_cursor()
+
+
+def test_dragging_a_rect_edge_keeps_resize_cursor(canvas):
     """Crossing the drag threshold activates only the pressed edge."""
     shape = _rectangle()
-    canvas.shapes = [shape]
-    canvas.selected_shapes = [shape]
-    shape.selected = True
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
-    canvas.pixmap = None
+    _enable_edge_hit(canvas, [shape], [shape])
     _clear_override_cursor()
 
     canvas.mousePressEvent(_press_event(QtCore.QPointF(10.0, 60.0)))
     assert canvas.rect_edge_pending_edge is not None
     assert canvas.rect_edge_dragging is False
-    assert canvas.selected_shapes == []
+    assert canvas.selected_shapes == [shape]
 
     canvas.mouseMoveEvent(
         _move_event(
@@ -316,19 +330,17 @@ def test_dragging_a_rect_edge_shows_closed_hand_cursor(canvas):
     assert canvas.rect_edge_dragging is True
     assert canvas.rect_edge_active_edge is not None
     assert canvas.rect_edge_active_edge.shape is shape
-    assert canvas.selected_shapes == []
-    assert canvas.current_cursor() == canvas_module.CURSOR_MOVE
+    assert canvas.selected_shapes == [shape]
+    assert shape.selected is True
+    assert canvas.current_cursor() == canvas_module.CURSOR_SIZE_HOR
     _clear_override_cursor()
 
 
-def test_clicking_a_preselected_edge_does_not_select_the_rectangle(canvas):
-    """A plain edge click remains an edge interaction, not object selection."""
+def test_clicking_a_selected_edge_keeps_the_rectangle_selected(canvas):
+    """A plain edge click keeps selection and does not create geometry undo."""
     shape = _rectangle()
     original_points = _point_tuples(shape)
-    canvas.shapes = [shape]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
-    canvas.pixmap = None
+    _enable_edge_hit(canvas, [shape], [shape])
     moved = []
     canvas.shape_moved.connect(lambda: moved.append(True))
 
@@ -336,12 +348,12 @@ def test_clicking_a_preselected_edge_does_not_select_the_rectangle(canvas):
 
     assert canvas.rect_edge_pending_edge is not None
     assert canvas.rect_edge_dragging is False
-    assert canvas.selected_shapes == []
+    assert canvas.selected_shapes == [shape]
 
     canvas.mouseReleaseEvent(_release_event(QtCore.QPointF(10.0, 60.0)))
 
-    assert canvas.selected_shapes == []
-    assert shape.selected is False
+    assert canvas.selected_shapes == [shape]
+    assert shape.selected is True
     assert _point_tuples(shape) == original_points
     assert canvas.rect_edge_pending_edge is None
     assert canvas.rect_edge_dragging is False
@@ -349,29 +361,139 @@ def test_clicking_a_preselected_edge_does_not_select_the_rectangle(canvas):
     assert moved == []
 
 
-def test_preselected_edge_drag_starts_only_after_screen_threshold(canvas):
-    """An edge starts dragging after the threshold without object selection."""
+def test_selected_edge_drag_starts_on_first_nonzero_screen_move(canvas):
+    """An edge starts immediately on its first non-zero move."""
     shape = _rectangle()
     original_points = _point_tuples(shape)
-    canvas.shapes = [shape]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
-    canvas.pixmap = None
+    _enable_edge_hit(canvas, [shape], [shape])
     moved = []
     canvas.shape_moved.connect(lambda: moved.append(True))
 
     canvas.mousePressEvent(_press_event(QtCore.QPointF(10.0, 60.0)))
     canvas.mouseMoveEvent(
         _move_event(
-            QtCore.QPointF(12.0, 60.0),
+            QtCore.QPointF(11.0, 60.0),
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+        )
+    )
+
+    assert canvas.rect_edge_dragging is True
+    assert canvas.selected_shapes == [shape]
+    assert shape.selected is True
+    assert _point_tuples(shape) != original_points
+    assert geometry_from_shape(shape).x_min == 11.0
+
+    canvas.mouseReleaseEvent(_release_event(QtCore.QPointF(11.0, 60.0)))
+
+    assert canvas.rect_edge_dragging is False
+    assert canvas.rect_edge_pending_edge is None
+    assert moved == [True]
+
+
+def test_pending_edge_same_position_move_does_not_start_drag(canvas):
+    """A same-position move remains a no-op pending gesture."""
+    shape = _rectangle()
+    original_points = _point_tuples(shape)
+    _enable_edge_hit(canvas, [shape], [shape])
+    moved = []
+    canvas.shape_moved.connect(lambda: moved.append(True))
+
+    canvas.mousePressEvent(_press_event(QtCore.QPointF(10.0, 60.0)))
+    canvas.mouseMoveEvent(
+        _move_event(
+            QtCore.QPointF(10.0, 60.0),
             buttons=QtCore.Qt.MouseButton.LeftButton,
         )
     )
 
     assert canvas.rect_edge_dragging is False
-    assert canvas.selected_shapes == []
+    assert canvas.rect_edge_pending_edge is not None
     assert _point_tuples(shape) == original_points
 
+    canvas.mouseReleaseEvent(_release_event(QtCore.QPointF(10.0, 60.0)))
+
+    assert canvas.shapes_backups == []
+    assert moved == []
+
+
+def test_fast_edge_drag_updates_on_its_first_move_event(canvas):
+    """A fast drag does not lose its initial movement to a fixed threshold."""
+    shape = _rectangle()
+    _enable_edge_hit(canvas, [shape], [shape])
+
+    canvas.mousePressEvent(_press_event(QtCore.QPointF(10.0, 60.0)))
+    canvas.mouseMoveEvent(
+        _move_event(
+            QtCore.QPointF(42.0, 60.0),
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+        )
+    )
+
+    geometry = geometry_from_shape(shape)
+    assert canvas.rect_edge_dragging is True
+    assert geometry is not None
+    assert geometry.x_min == 42.0
+
+
+@pytest.mark.parametrize("scale", [0.5, 1.0, 2.0, 4.0])
+def test_edge_drag_has_no_fixed_start_delay_at_each_zoom(canvas, scale):
+    """A one-screen-pixel move starts edge dragging at every zoom level."""
+    shape = _rectangle()
+    canvas.shapes = [shape]
+    _select(canvas, shape)
+    canvas.set_rect_edge_align_enabled(True)
+    canvas.set_editing(True)
+    canvas.scale = scale
+    canvas.pixmap = QtGui.QPixmap(200, 200)
+    canvas.resize(int(200 * scale), int(200 * scale))
+    press = QtCore.QPointF(10.0 * scale, 60.0 * scale)
+    move = QtCore.QPointF(press.x() + 1.0, press.y())
+
+    canvas.mousePressEvent(_press_event(press))
+    canvas.mouseMoveEvent(
+        _move_event(move, buttons=QtCore.Qt.MouseButton.LeftButton)
+    )
+
+    geometry = geometry_from_shape(shape)
+    assert canvas.rect_edge_dragging is True
+    assert geometry is not None
+    assert geometry.x_min == pytest.approx(10.0 + 1.0 / scale)
+
+
+@pytest.mark.parametrize("scale", [0.5, 1.0, 2.0, 4.0])
+def test_corner_drag_has_no_fixed_start_delay_at_each_zoom(canvas, scale):
+    """A one-screen-pixel move updates the native corner drag at each zoom."""
+    shape = _rectangle()
+    canvas.shapes = [shape]
+    _select(canvas, shape)
+    canvas.set_editing(True)
+    canvas.scale = scale
+    canvas.pixmap = QtGui.QPixmap(200, 200)
+    canvas.resize(int(200 * scale), int(200 * scale))
+    canvas.h_hape = shape
+    canvas.h_vertex = 0
+
+    canvas.mouseMoveEvent(
+        _move_event(
+            QtCore.QPointF(10.0 * scale + 1.0, 10.0 * scale + 1.0),
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+        )
+    )
+
+    assert shape.points[0].x() == pytest.approx(10.0 + 1.0 / scale)
+    assert shape.points[0].y() == pytest.approx(10.0 + 1.0 / scale)
+
+
+def test_pending_edge_drag_precision_scales_first_move_delta(canvas):
+    """Precision mode scales motion without changing edge hit semantics."""
+    shape = _rectangle()
+    _enable_edge_hit(canvas, [shape], [shape])
+    canvas.set_precision_mode("fixed")
+    canvas.set_precision_factor(4)
+    canvas.precision_mode_locked = True
+
+    assert canvas._rect_edge_hit_candidate(QtCore.QPointF(10.0, 60.0))
+    canvas.mousePressEvent(_press_event(QtCore.QPointF(10.0, 60.0)))
     canvas.mouseMoveEvent(
         _move_event(
             QtCore.QPointF(18.0, 60.0),
@@ -379,34 +501,42 @@ def test_preselected_edge_drag_starts_only_after_screen_threshold(canvas):
         )
     )
 
+    geometry = geometry_from_shape(shape)
     assert canvas.rect_edge_dragging is True
-    assert canvas.selected_shapes == []
-    assert shape.selected is False
-    assert _point_tuples(shape) != original_points
-
-    canvas.mouseReleaseEvent(_release_event(QtCore.QPointF(18.0, 60.0)))
-
-    assert canvas.rect_edge_dragging is False
-    assert canvas.rect_edge_pending_edge is None
-    assert moved == [True]
+    assert geometry is not None
+    assert geometry.x_min == 12.0
 
 
-def test_other_selection_allows_one_gesture_edge_drag(canvas):
-    """Dragging B's edge directly clears A and edits B in one gesture."""
+def test_precision_mode_does_not_change_small_rectangle_edge_hit_zones(canvas):
+    """Precision mode leaves epsilon and the small-box outer-side rule intact."""
+    shape = _rectangle(width=30.0, height=14.0)
+    _enable_edge_hit(canvas, [shape], [shape])
+    canvas.set_precision_mode("fixed")
+    canvas.set_precision_factor(4)
+    canvas.precision_mode_locked = True
+
+    assert canvas._rect_edge_hit_candidate(QtCore.QPointF(25.0, 12.0)) is None
+    candidate = canvas._rect_edge_hit_candidate(QtCore.QPointF(25.0, 8.0))
+
+    assert candidate is not None
+    assert candidate.edge_name == "top"
+
+
+def test_other_selection_falls_back_to_normal_object_selection(canvas):
+    """Unselected rectangle edges do not bypass existing selection logic."""
     target = _rectangle()
     other = _rectangle(x=150.0)
     original_points = _point_tuples(target)
     canvas.shapes = [target, other]
-    canvas.selected_shapes = [other]
-    other.selected = True
+    _select(canvas, other)
     canvas.set_rect_edge_align_enabled(True)
     canvas.set_editing(True)
-    canvas.pixmap = None
+    _use_identity_pixmap(canvas)
 
     canvas.mousePressEvent(_press_event(QtCore.QPointF(10.0, 60.0)))
-    assert canvas.rect_edge_pending_edge is not None
-    assert canvas.rect_edge_pending_edge.shape is target
-    assert canvas.selected_shapes == []
+    assert canvas.rect_edge_pending_edge is None
+    assert canvas.selected_shapes == [target]
+    assert target.selected is True
     assert other.selected is False
 
     canvas.mouseMoveEvent(
@@ -416,22 +546,17 @@ def test_other_selection_allows_one_gesture_edge_drag(canvas):
         )
     )
 
-    assert canvas.rect_edge_dragging is True
-    assert canvas.rect_edge_active_edge is not None
-    assert canvas.rect_edge_active_edge.shape is target
-    assert canvas.selected_shapes == []
+    assert canvas.rect_edge_dragging is False
+    assert canvas.rect_edge_active_edge is None
+    assert canvas.selected_shapes == [target]
     assert _point_tuples(target) != original_points
 
     canvas.mouseReleaseEvent(_release_event(QtCore.QPointF(30.0, 60.0)))
 
-    assert canvas.selected_shapes == []
-    assert target.selected is False
-    assert min(point.x() for point in target.points) == 30.0
+    assert canvas.selected_shapes == [target]
+    assert target.selected is True
     assert canvas.rect_edge_active_edge is None
-    assert canvas.rect_edge_hover_edge is not None
-    assert canvas.rect_edge_hover_edge.shape is target
-    assert canvas.rect_edge_hover_edge.edge_name == "left"
-    assert canvas.current_cursor() == canvas_module.CURSOR_POINT
+    assert canvas.rect_edge_hover_edge is None
 
 
 def test_close_vertical_edges_keep_the_preselected_target_on_press(canvas):
@@ -439,10 +564,7 @@ def test_close_vertical_edges_keep_the_preselected_target_on_press(canvas):
     target = _rectangle(width=90.0)
     neighbor = _rectangle(x=104.0, width=90.0)
     neighbor_points = _point_tuples(neighbor)
-    canvas.shapes = [target, neighbor]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
-    canvas.pixmap = None
+    _enable_edge_hit(canvas, [target, neighbor], [target])
     _clear_override_cursor()
 
     canvas.mouseMoveEvent(_move_event(QtCore.QPointF(101.0, 60.0)))
@@ -475,10 +597,7 @@ def test_close_horizontal_edges_keep_the_preselected_target_on_press(canvas):
     target = _rectangle(height=90.0)
     neighbor = _rectangle(y=104.0, height=90.0)
     neighbor_points = _point_tuples(neighbor)
-    canvas.shapes = [target, neighbor]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
-    canvas.pixmap = None
+    _enable_edge_hit(canvas, [target, neighbor], [target])
     _clear_override_cursor()
 
     canvas.mouseMoveEvent(_move_event(QtCore.QPointF(60.0, 101.0)))
@@ -507,20 +626,17 @@ def test_close_horizontal_edges_keep_the_preselected_target_on_press(canvas):
 
 
 def test_narrow_rectangle_keeps_the_preselected_opposite_edge(canvas):
-    """One narrow rectangle must preserve the exact preselected side."""
+    """A small rectangle can still drag a side from outside that side."""
     shape = _rectangle(width=6.0)
-    canvas.shapes = [shape]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
-    canvas.pixmap = None
+    _enable_edge_hit(canvas, [shape], [shape])
     _clear_override_cursor()
 
-    canvas.mouseMoveEvent(_move_event(QtCore.QPointF(15.5, 60.0)))
+    canvas.mouseMoveEvent(_move_event(QtCore.QPointF(16.5, 60.0)))
 
     assert canvas.rect_edge_hover_edge is not None
     assert canvas.rect_edge_hover_edge.edge_name == "right"
 
-    canvas.mousePressEvent(_press_event(QtCore.QPointF(13.0, 60.0)))
+    canvas.mousePressEvent(_press_event(QtCore.QPointF(16.5, 60.0)))
     canvas.mouseMoveEvent(
         _move_event(
             QtCore.QPointF(25.0, 60.0),
@@ -537,9 +653,7 @@ def test_narrow_rectangle_keeps_the_preselected_opposite_edge(canvas):
 def test_rectangle_corner_keeps_vertex_priority_over_preselected_edge(canvas):
     """A rectangle corner remains a vertex target rather than an edge."""
     shape = _rectangle()
-    canvas.shapes = [shape]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
+    _enable_edge_hit(canvas, [shape], [shape])
 
     candidate = canvas._rect_edge_hit_candidate(QtCore.QPointF(10.0, 10.0))
 
@@ -550,9 +664,7 @@ def test_rectangle_corner_beats_an_overlapping_other_rectangle_edge(canvas):
     """A corner handle outranks another rectangle's overlapping edge."""
     corner_shape = _rectangle()
     crossing_shape = _rectangle(y=-90.0, height=200.0)
-    canvas.shapes = [corner_shape, crossing_shape]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
+    _enable_edge_hit(canvas, [corner_shape, crossing_shape], [corner_shape])
 
     candidate = canvas._rect_edge_hit_candidate(QtCore.QPointF(10.0, 10.0))
 
@@ -560,7 +672,7 @@ def test_rectangle_corner_beats_an_overlapping_other_rectangle_edge(canvas):
 
 
 def test_non_rectangle_vertex_beats_an_overlapping_rectangle_edge(canvas):
-    """A polygon vertex outranks an overlapping rectangle edge."""
+    """Other shape vertices do not steal the selected rectangle's edge."""
     rectangle = _rectangle()
     polygon = Shape(label="hand", shape_type="polygon")
     polygon.points = [
@@ -568,13 +680,140 @@ def test_non_rectangle_vertex_beats_an_overlapping_rectangle_edge(canvas):
         QtCore.QPointF(0.0, 50.0),
         QtCore.QPointF(0.0, 70.0),
     ]
-    canvas.shapes = [rectangle, polygon]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
+    _enable_edge_hit(canvas, [rectangle, polygon], [rectangle])
 
     candidate = canvas._rect_edge_hit_candidate(QtCore.QPointF(10.0, 60.0))
 
+    assert candidate is not None
+    assert candidate.shape is rectangle
+    assert candidate.edge_name == "left"
+
+
+def test_unselected_overlapping_rectangles_keep_small_target_priority(canvas):
+    """Normal object selection still prefers the smaller overlapping target."""
+    big = _rectangle(width=120.0, height=120.0)
+    small = _rectangle(x=40.0, y=40.0, width=20.0, height=20.0)
+    canvas.shapes = [big, small]
+    canvas.set_rect_edge_align_enabled(True)
+    canvas.set_editing(True)
+    canvas.pixmap = None
+
+    candidates = canvas._shape_hit_candidates(QtCore.QPointF(50.0, 50.0))
+
+    assert candidates[:2] == [small, big]
+
+
+def test_selected_rectangle_edge_uses_finite_segment(canvas):
+    """A point near an infinite extension does not hit a finite edge segment."""
+    shape = _rectangle()
+    _enable_edge_hit(canvas, [shape], [shape])
+
+    candidate = canvas._rect_edge_hit_candidate(QtCore.QPointF(10.0, 120.0))
+
     assert candidate is None
+
+
+@pytest.mark.parametrize(
+    ("point", "edge_name"),
+    [
+        (QtCore.QPointF(5.0, 60.0), "left"),
+        (QtCore.QPointF(15.0, 60.0), "left"),
+        (QtCore.QPointF(115.0, 60.0), "right"),
+        (QtCore.QPointF(105.0, 60.0), "right"),
+        (QtCore.QPointF(60.0, 5.0), "top"),
+        (QtCore.QPointF(60.0, 15.0), "top"),
+        (QtCore.QPointF(60.0, 115.0), "bottom"),
+        (QtCore.QPointF(60.0, 105.0), "bottom"),
+    ],
+)
+def test_normal_rectangle_edges_hit_inside_and_outside(
+    canvas, point, edge_name
+):
+    """A normal rectangle allows both inner and outer edge hot zones."""
+    shape = _rectangle(width=100.0, height=100.0)
+    _enable_edge_hit(canvas, [shape], [shape])
+
+    candidate = canvas._rect_edge_hit_candidate(point)
+
+    assert candidate is not None
+    assert candidate.edge_name == edge_name
+
+
+@pytest.mark.parametrize(
+    ("width", "height", "point", "edge_name"),
+    [
+        (14.0, 40.0, QtCore.QPointF(9.0, 30.0), "left"),
+        (14.0, 40.0, QtCore.QPointF(25.0, 30.0), "right"),
+        (40.0, 14.0, QtCore.QPointF(30.0, 9.0), "top"),
+        (40.0, 14.0, QtCore.QPointF(30.0, 25.0), "bottom"),
+    ],
+)
+def test_small_rectangle_edges_hit_only_from_outside(
+    canvas, width, height, point, edge_name
+):
+    """Small rectangle edge hot zones are pushed outside the box."""
+    shape = _rectangle(width=width, height=height)
+    _enable_edge_hit(canvas, [shape], [shape])
+
+    candidate = canvas._rect_edge_hit_candidate(point)
+
+    assert candidate is not None
+    assert candidate.edge_name == edge_name
+
+
+@pytest.mark.parametrize(
+    "point",
+    [
+        QtCore.QPointF(11.0, 17.0),
+        QtCore.QPointF(39.0, 17.0),
+        QtCore.QPointF(25.0, 11.0),
+        QtCore.QPointF(25.0, 23.0),
+    ],
+)
+def test_small_rectangle_inside_does_not_hit_edges(canvas, point):
+    """Inside a small rectangle stays available for normal movement."""
+    shape = _rectangle(width=30.0, height=14.0)
+    _enable_edge_hit(canvas, [shape], [shape])
+
+    candidate = canvas._rect_edge_hit_candidate(point)
+
+    assert candidate is None
+
+
+@pytest.mark.parametrize(
+    ("scale", "point", "edge_name"),
+    [
+        (0.5, QtCore.QPointF(28.0, 20.0), None),
+        (1.0, QtCore.QPointF(28.0, 20.0), None),
+        (2.0, QtCore.QPointF(28.0, 20.0), "right"),
+        (4.0, QtCore.QPointF(28.0, 20.0), "right"),
+    ],
+)
+def test_zoom_changes_small_rectangle_strategy(
+    canvas, scale, point, edge_name
+):
+    """The 3x-epsilon size decision is based on screen-space dimensions."""
+    shape = _rectangle(width=20.0, height=20.0)
+    _enable_edge_hit(canvas, [shape], [shape], scale=scale)
+
+    candidate = canvas._rect_edge_hit_candidate(point)
+
+    if edge_name is None:
+        assert candidate is None
+    else:
+        assert candidate is not None
+        assert candidate.edge_name == edge_name
+
+
+def test_exact_three_epsilon_boundary_uses_normal_strategy(canvas):
+    """A rectangle exactly at 3x epsilon is not classified as small."""
+    shape = _rectangle(width=30.0, height=30.0)
+    _enable_edge_hit(canvas, [shape], [shape])
+
+    candidate = canvas._rect_edge_hit_candidate(QtCore.QPointF(15.0, 25.0))
+
+    assert candidate is not None
+    assert candidate.edge_name == "left"
 
 
 @pytest.mark.parametrize(
@@ -681,9 +920,7 @@ def test_edge_hit_checks_each_shape_vertex_once(canvas, monkeypatch):
         return nearest_vertex(point, epsilon)
 
     monkeypatch.setattr(shape, "nearest_vertex", counted_nearest_vertex)
-    canvas.shapes = [shape]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
+    _enable_edge_hit(canvas, [shape], [shape])
 
     candidate = canvas._rect_edge_hit_candidate(QtCore.QPointF(10.0, 60.0))
 
@@ -694,10 +931,7 @@ def test_edge_hit_checks_each_shape_vertex_once(canvas, monkeypatch):
 def test_edge_hover_does_not_force_synchronous_repaint(canvas, monkeypatch):
     """Edge hover schedules state updates without a synchronous repaint."""
     shape = _rectangle()
-    canvas.shapes = [shape]
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
-    canvas.pixmap = None
+    _enable_edge_hit(canvas, [shape], [shape])
     repaint_calls = []
     monkeypatch.setattr(canvas, "repaint", lambda: repaint_calls.append(True))
 
@@ -782,25 +1016,86 @@ def test_selected_rectangle_drag_noop_skips_paint_and_status(
     assert canvas.moving_shape is False
 
 
-def test_whole_shape_drag_defers_heavy_overlays(canvas):
-    """Only whole-shape dragging uses the lightweight overlay pass."""
+def test_selected_rectangle_vertex_drag_repaints_each_changed_frame(
+    canvas, monkeypatch
+):
+    """Dragging a rectangle corner presents every accepted geometry frame."""
+    shape = _rectangle(width=16.0, height=16.0)
+    _use_identity_pixmap(canvas, width=100, height=100)
+    canvas.shapes = [shape]
+    _select(canvas, shape)
+    canvas.set_editing(True)
+    canvas.h_hape = shape
+    canvas.h_vertex = 0
+    updates = []
+    repaints = []
+    monkeypatch.setattr(canvas, "_update_crosshair_cursor", lambda _pos: None)
+    monkeypatch.setattr(canvas, "update", lambda: updates.append(True))
+    monkeypatch.setattr(canvas, "repaint", lambda: repaints.append(True))
+
+    canvas.mouseMoveEvent(
+        _move_event(
+            QtCore.QPointF(12.0, 12.0),
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+        )
+    )
+
+    assert _point_tuples(shape) == [
+        (12.0, 12.0),
+        (26.0, 12.0),
+        (26.0, 26.0),
+        (12.0, 26.0),
+    ]
+    assert updates == []
+    assert repaints == [True]
+    assert canvas.moving_shape is True
+
+
+def test_rect_edge_drag_repaints_each_changed_frame(canvas, monkeypatch):
+    """Dragging one rectangle edge does not coalesce visible geometry frames."""
+    shape = _rectangle(width=40.0, height=30.0)
+    _use_identity_pixmap(canvas, width=100, height=100)
+    canvas.shapes = [shape]
+    _select(canvas, shape)
+    _activate_edge_drag(canvas, shape, "left")
+    updates = []
+    repaints = []
+    monkeypatch.setattr(canvas, "update", lambda: updates.append(True))
+    monkeypatch.setattr(canvas, "repaint", lambda: repaints.append(True))
+
+    canvas._rect_edge_drag_update(QtCore.QPointF(20.0, 20.0))
+
+    assert _point_tuples(shape) == [
+        (20.0, 10.0),
+        (50.0, 10.0),
+        (50.0, 40.0),
+        (20.0, 40.0),
+    ]
+    assert updates == []
+    assert repaints == [True]
+
+
+def test_live_geometry_drag_defers_heavy_overlays(canvas):
+    """Live geometry dragging uses the lightweight overlay pass."""
     shape = _rectangle(width=40.0, height=30.0)
     canvas.shapes = [shape]
-    canvas.selected_shapes = [shape]
+    _select(canvas, shape)
     canvas.moving_shape = True
 
     assert canvas._should_defer_drag_overlays() is True
 
     canvas.h_vertex = 0
-    assert canvas._should_defer_drag_overlays() is False
+    assert canvas._should_defer_drag_overlays() is True
     canvas.h_vertex = None
 
+    canvas.moving_shape = False
     _activate_edge_drag(canvas, shape, "left")
-    assert canvas._should_defer_drag_overlays() is False
+    assert canvas._should_defer_drag_overlays() is True
     canvas.rect_edge_dragging = False
 
+    canvas.moving_shape = True
     canvas.h_cuboid_face = 0
-    assert canvas._should_defer_drag_overlays() is False
+    assert canvas._should_defer_drag_overlays() is True
     canvas.h_cuboid_face = None
 
     canvas.moving_shape = False
@@ -835,19 +1130,51 @@ def test_canvas_commits_selection_before_emitting_signal(canvas):
     assert observed == [([second], False, True, [second])]
 
 
-def test_edge_press_clears_selection_without_external_signal_writer(canvas):
+def test_selection_change_clears_rect_edge_hover_and_pending(canvas):
+    """Formal selection ownership invalidates stale mouse edge state."""
+    first = _rectangle()
+    second = _rectangle(x=150.0)
+    _enable_edge_hit(canvas, [first, second], [first])
+    canvas.mouseMoveEvent(_move_event(QtCore.QPointF(10.0, 60.0)))
+    canvas.mousePressEvent(_press_event(QtCore.QPointF(10.0, 60.0)))
+    assert canvas.rect_edge_hover_edge is not None
+    assert canvas.rect_edge_pending_edge is not None
+
+    canvas.select_shapes([second])
+
+    assert canvas.selected_shapes == [second]
+    assert canvas.rect_edge_hover_edge is None
+    assert canvas.rect_edge_pending_edge is None
+    assert canvas.rect_edge_active_edge is None
+
+
+def test_edge_press_keeps_selection_without_external_signal_writer(canvas):
     """Direct edge editing does not depend on LabelingWidget state writeback."""
-    target = _rectangle()
-    selected = _rectangle(x=150.0)
-    canvas.shapes = [target, selected]
-    canvas.selected_shapes = [selected]
-    selected.selected = True
-    canvas.set_rect_edge_align_enabled(True)
-    canvas.set_editing(True)
-    canvas.pixmap = None
+    selected = _rectangle()
+    _enable_edge_hit(canvas, [selected], [selected])
 
     canvas.mousePressEvent(_press_event(QtCore.QPointF(10.0, 60.0)))
 
     assert canvas.rect_edge_pending_edge is not None
-    assert canvas.selected_shapes == []
-    assert selected.selected is False
+    assert canvas.selected_shapes == [selected]
+    assert selected.selected is True
+
+
+def test_edge_drag_keeps_selection_derived_observers_stable(canvas):
+    """Edge dragging does not clear or re-emit the formal selection."""
+    shape = _rectangle()
+    _enable_edge_hit(canvas, [shape], [shape])
+    selection_events = []
+    canvas.selection_changed.connect(selection_events.append)
+
+    canvas.mousePressEvent(_press_event(QtCore.QPointF(10.0, 60.0)))
+    canvas.mouseMoveEvent(
+        _move_event(
+            QtCore.QPointF(11.0, 60.0),
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+        )
+    )
+
+    assert canvas.selected_shapes == [shape]
+    assert shape.selected is True
+    assert selection_events == []

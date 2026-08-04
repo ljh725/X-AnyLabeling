@@ -1709,6 +1709,26 @@ Original images backed up to:
   <context>
     <name>LabelingWidget</name>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="1616" />
+      <source>矩形单边调整</source>
+      <translation>矩形の単辺調整</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1619" />
+      <source>启用已选中矩形单边调整</source>
+      <translation>選択中の矩形の単辺調整を有効にする</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="7409" />
+      <source>矩形单边调整已开启</source>
+      <translation>矩形の単辺調整を有効にしました</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="7411" />
+      <source>矩形单边调整已关闭</source>
+      <translation>矩形の単辺調整を無効にしました</translation>
+    </message>
+    <message>
       <source>Using cached dataset index; sync pending</source>
       <translation type="unfinished" />
     </message>

@@ -252,6 +252,21 @@ def test_enabled_violation_feature_uses_monitor_as_warning_authority(
     assert len(requests[0].lines) == 1
 
 
+def test_focus_excluded_issue_remains_paintable(merge_canvas) -> None:
+    """Editing focus must not suppress a base-visible review warning."""
+    focused = _rectangle("halfperson", x=20.0, y=30.0, width=20.0, height=20.0)
+    excluded = _rectangle("person", x=80.0, y=30.0, width=20.0, height=20.0)
+    merge_canvas.load_shapes([focused, excluded], store_backup=False)
+    merge_canvas.set_rectangle_size_issues([_issue(excluded, 1)])
+    merge_canvas.set_main_visibility_predicate(lambda shape: shape is focused)
+
+    assert merge_canvas.is_shape_interactive(excluded) is False
+    requests = merge_canvas._violation_overlay_requests()
+    assert tuple(request.candidate_id for request in requests) == (
+        id(excluded),
+    )
+
+
 def test_stale_hidden_issue_is_filtered_at_paint_boundary(
     merge_canvas,
 ) -> None:

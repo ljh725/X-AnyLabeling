@@ -20,16 +20,17 @@ CandidateBuilder = Callable[
     [object, int, bool],
     Optional[RectangleCandidate],
 ]
-ShapeInteractivePredicate = Callable[[object], bool]
+ShapeReviewPredicate = Callable[[object], bool]
 
 logger = logging.getLogger(__name__)
 
 
-def is_shape_interactive_by_attributes(shape: object) -> bool:
+def is_shape_reviewable_by_attributes(shape: object) -> bool:
     """Return basic visibility state without depending on a Canvas instance.
 
-    Canvas integration should inject ``Canvas.is_shape_interactive`` later so
-    canvas-specific visibility rules remain authoritative.
+    Canvas integration should inject ``Canvas.base_visible`` later so
+    canvas-specific base visibility rules remain authoritative without
+    inheriting temporary editing-focus restrictions.
 
     Args:
         shape: Live shape-like object.
@@ -53,7 +54,8 @@ def build_rectangle_candidate(
         shape: Live shape-like object accepted by the shared rectangle
             geometry adapter.
         shape_index: Current index in the canvas shape snapshot.
-        interactive: Visibility/interactivity state supplied by the monitor.
+        interactive: Review eligibility supplied by the monitor. The name is
+            retained for compatibility with ``RectangleCandidate``.
 
     Returns:
         A normalized candidate, or ``None`` for incompatible geometry.
@@ -100,8 +102,8 @@ class RectangleSizeMonitor(QtCore.QObject):
         enabled: bool = False,
         debounce_ms: int = 32,
         candidate_builder: CandidateBuilder = build_rectangle_candidate,
-        is_shape_interactive: ShapeInteractivePredicate = (
-            is_shape_interactive_by_attributes
+        is_shape_reviewable: ShapeReviewPredicate = (
+            is_shape_reviewable_by_attributes
         ),
         parent: Optional[QtCore.QObject] = None,
     ) -> None:
@@ -112,7 +114,8 @@ class RectangleSizeMonitor(QtCore.QObject):
             enabled: Whether proactive validation starts enabled.
             debounce_ms: Delay used to coalesce geometry invalidations.
             candidate_builder: Adapter from live shapes to pure candidates.
-            is_shape_interactive: Predicate for current canvas visibility.
+            is_shape_reviewable: Predicate for rectangle-size review
+                eligibility.
             parent: Optional Qt object owner.
 
         Raises:
@@ -124,8 +127,8 @@ class RectangleSizeMonitor(QtCore.QObject):
             raise TypeError("enabled must be a bool")
         if not callable(candidate_builder):
             raise TypeError("candidate_builder must be callable")
-        if not callable(is_shape_interactive):
-            raise TypeError("is_shape_interactive must be callable")
+        if not callable(is_shape_reviewable):
+            raise TypeError("is_shape_reviewable must be callable")
         if isinstance(debounce_ms, bool) or not isinstance(debounce_ms, int):
             raise TypeError("debounce_ms must be an integer")
         if debounce_ms < 0:
@@ -135,7 +138,7 @@ class RectangleSizeMonitor(QtCore.QObject):
         self._evaluator = RectangleSizeEvaluator(self._rules)
         self._enabled = enabled
         self._candidate_builder = candidate_builder
-        self._is_shape_interactive = is_shape_interactive
+        self._is_shape_reviewable = is_shape_reviewable
         self._shapes: tuple[object, ...] = ()
         self._shape_by_identity: dict[int, object] = {}
         self._shape_index_by_identity: dict[int, int] = {}
@@ -418,8 +421,8 @@ class RectangleSizeMonitor(QtCore.QObject):
     ) -> Optional[RectangleCandidate]:
         """Build one validated candidate without letting one shape abort a scan."""
         try:
-            interactive = bool(self._is_shape_interactive(shape))
-            candidate = self._candidate_builder(shape, index, interactive)
+            reviewable = bool(self._is_shape_reviewable(shape))
+            candidate = self._candidate_builder(shape, index, reviewable)
         except Exception as error:  # noqa: BLE001 - isolate extension failures
             self._report_candidate_error(shape, index, str(error))
             return None
@@ -501,7 +504,7 @@ class RectangleSizeMonitor(QtCore.QObject):
 __all__ = [
     "CandidateBuilder",
     "RectangleSizeMonitor",
-    "ShapeInteractivePredicate",
+    "ShapeReviewPredicate",
     "build_rectangle_candidate",
-    "is_shape_interactive_by_attributes",
+    "is_shape_reviewable_by_attributes",
 ]

@@ -69,7 +69,7 @@ def test_monitor_isolates_visibility_failure_and_recovers(
         [_rule()],
         enabled=True,
         debounce_ms=5,
-        is_shape_interactive=is_interactive,
+        is_shape_reviewable=is_interactive,
     )
     with caplog.at_level(
         logging.WARNING,

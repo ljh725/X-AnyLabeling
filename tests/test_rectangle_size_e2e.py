@@ -163,6 +163,82 @@ def test_e2e_multi_category_optional_dimensions_and_boundaries(
         _dispose_widget(widget, wrapper, main_window, qapp)
 
 
+def test_focus_keeps_global_issues_during_rule_changes(
+    qapp: QtWidgets.QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Focus membership must not narrow global rectangle-size review."""
+    config = copy.deepcopy(get_default_config())
+    persisted: list[dict[str, Any]] = []
+    widget, wrapper, main_window = _build_widget(
+        config,
+        persisted,
+        monkeypatch,
+    )
+    try:
+        controller = widget.rectangle_size_controller
+        controller.set_rules(
+            tuple(
+                RectangleSizeRule(
+                    label=label,
+                    min_width_px=36.0,
+                    min_height_px=36.0,
+                    trigger_mode="any",
+                )
+                for label in ("person", "halfperson", "head")
+            )
+        )
+        widget.actions.show_rectangle_size_violations.trigger()
+
+        person = _rectangle("person", 20.0, 20.0, x=10.0)
+        halfperson = _rectangle("halfperson", 20.0, 20.0, x=50.0)
+        head = _rectangle("head", 20.0, 20.0, x=90.0)
+        widget.canvas.load_shapes(
+            [person, halfperson, head],
+            replace=True,
+            store_backup=False,
+        )
+        assert _issue_labels(widget) == ["person", "halfperson", "head"]
+
+        widget.canvas.set_main_visibility_predicate(
+            lambda shape: shape is halfperson
+        )
+        assert widget.canvas.is_shape_interactive(person) is False
+        assert widget.canvas.is_shape_interactive(halfperson) is True
+        assert _issue_labels(widget) == ["person", "halfperson", "head"]
+
+        widget.canvas.set_main_visibility_predicate(
+            lambda shape: shape is head
+        )
+        assert _issue_labels(widget) == ["person", "halfperson", "head"]
+
+        controller.set_rules(
+            (
+                RectangleSizeRule(
+                    label="person",
+                    min_width_px=36.0,
+                    trigger_mode="any",
+                ),
+                RectangleSizeRule(
+                    label="halfperson",
+                    min_width_px=10.0,
+                    trigger_mode="any",
+                ),
+                RectangleSizeRule(
+                    label="head",
+                    min_width_px=36.0,
+                    trigger_mode="any",
+                ),
+            )
+        )
+        assert _issue_labels(widget) == ["person", "head"]
+
+        widget.canvas.clear_main_visibility_predicate()
+        assert _issue_labels(widget) == ["person", "head"]
+    finally:
+        _dispose_widget(widget, wrapper, main_window, qapp)
+
+
 def test_e2e_shape_lifecycle_visibility_and_image_switch(
     qapp: QtWidgets.QApplication,
     monkeypatch: pytest.MonkeyPatch,
@@ -225,7 +301,7 @@ def test_e2e_shape_lifecycle_visibility_and_image_switch(
         assert _issue_labels(widget) == ["person"]
 
         widget.canvas.set_main_visibility_predicate(lambda _shape: False)
-        assert widget.canvas.rectangle_size_issues == ()
+        assert _issue_labels(widget) == ["person"]
         widget.canvas.clear_main_visibility_predicate()
         assert _issue_labels(widget) == ["person"]
 

@@ -154,7 +154,7 @@ def test_notification_contract_drives_monitor_without_canvas_coupling(
         ],
         enabled=True,
         debounce_ms=5,
-        is_shape_interactive=canvas.is_shape_interactive,
+        is_shape_reviewable=canvas.base_visible,
     )
     canvas.shapes_changed.connect(monitor.replace_shapes)
     canvas.shape_changed.connect(monitor.invalidate_shape)
@@ -177,4 +177,4 @@ def test_notification_contract_drives_monitor_without_canvas_coupling(
 
     canvas.set_main_visibility_predicate(lambda _shape: False)
 
-    assert monitor.issues == ()
+    assert len(monitor.issues) == 1

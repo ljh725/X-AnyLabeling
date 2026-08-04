@@ -1710,6 +1710,26 @@ Original images backed up to:
   <context>
     <name>LabelingWidget</name>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="1616" />
+      <source>矩形单边调整</source>
+      <translation>사각형 단일 변 조정</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1619" />
+      <source>启用已选中矩形单边调整</source>
+      <translation>선택한 사각형의 단일 변 조정 활성화</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="7409" />
+      <source>矩形单边调整已开启</source>
+      <translation>사각형 단일 변 조정이 활성화되었습니다</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="7411" />
+      <source>矩形单边调整已关闭</source>
+      <translation>사각형 단일 변 조정이 비활성화되었습니다</translation>
+    </message>
+    <message>
       <source>Using cached dataset index; sync pending</source>
       <translation type="unfinished" />
     </message>

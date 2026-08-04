@@ -311,7 +311,7 @@ def test_injected_canvas_policy_is_authoritative(qapp) -> None:
     monitor = RectangleSizeMonitor(
         [_rule()],
         enabled=True,
-        is_shape_interactive=lambda _shape: True,
+        is_shape_reviewable=lambda _shape: True,
     )
 
     monitor.replace_shapes([shape])

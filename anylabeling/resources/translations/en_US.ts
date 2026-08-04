@@ -1701,6 +1701,26 @@ Original images backed up to:
   <context>
     <name>LabelingWidget</name>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="1616" />
+      <source>矩形单边调整</source>
+      <translation>Rectangle Single-Edge Adjustment</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1619" />
+      <source>启用已选中矩形单边调整</source>
+      <translation>Enable single-edge adjustment for the selected rectangle</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="7409" />
+      <source>矩形单边调整已开启</source>
+      <translation>Rectangle single-edge adjustment enabled</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="7411" />
+      <source>矩形单边调整已关闭</source>
+      <translation>Rectangle single-edge adjustment disabled</translation>
+    </message>
+    <message>
       <source>Using cached dataset index; sync pending</source>
       <translation>Using cached dataset index; sync pending</translation>
     </message>

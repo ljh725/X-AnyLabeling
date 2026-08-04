@@ -1613,10 +1613,10 @@ class LabelingWidget(LabelDialog):
             enabled=True,
         )
         toggle_rect_edge_align = action(
-            self.tr("矩形边编辑"),
+            self.tr("矩形单边调整"),
             self.toggle_rect_edge_align,
             shortcut=shortcuts["toggle_rect_edge_align"],
-            tip=self.tr("开启矩形边编辑模式"),
+            tip=self.tr("启用已选中矩形单边调整"),
             icon=None,
             checkable=True,
             checked=False,  # Not persisted; always off at startup (per spec).
@@ -7406,9 +7406,9 @@ class LabelingWidget(LabelDialog):
             self.set_edit_mode()
         self.canvas.set_rect_edge_align_enabled(enabled)
         if enabled:
-            self.status(self.tr("矩形边编辑模式已开启"))
+            self.status(self.tr("矩形单边调整已开启"))
         else:
-            self.status(self.tr("矩形边编辑模式已关闭"))
+            self.status(self.tr("矩形单边调整已关闭"))
 
     def toggle_precision_mode_lock(self, enabled: bool) -> None:
         """Toggle the precision-drag lock (Feature 3, task 5.5/D6).

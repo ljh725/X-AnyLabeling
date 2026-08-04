@@ -57,7 +57,7 @@ class FakeCanvas(QtCore.QObject):
         """Record one repaint request."""
         self.update_count += 1
 
-    def is_shape_interactive(self, shape: object) -> bool:
+    def base_visible(self, shape: object) -> bool:
         """Return the fake canvas visibility state for one shape."""
         return shape not in self.hidden_shapes
 
