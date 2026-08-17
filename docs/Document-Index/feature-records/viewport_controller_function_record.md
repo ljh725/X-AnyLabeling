@@ -14,9 +14,16 @@ Viewport Controller / ViewportState / ViewportController
 1. 标注界面启动时创建 ViewportController 实例。
 2. 用户离开当前图片时，LabelWidget.load_file() 调用 on_file_leaving() 保存当前视图状态。
 3. 新图片加载后，调用 on_file_loaded() 尝试恢复历史视图。
-4. 解析优先级：精确历史记录 → keep_prev_viewport 继承上一张图的视图 → 无记录则回退到默认缩放。
+4. 解析优先级：RESET_PENDING 默认视图 → 精确历史 → keep_prev_viewport 继承完整视口 → keep_prev_scale 继承缩放 → 默认视图。
 5. 关闭文件夹时调用 clear() 清除所有缓存状态。
 6. 支持单张或批量清除指定图片的视图状态。
+
+状态机约定：
+1. `UNKNOWN`：无精确历史、无待重置意图。
+2. `CACHED`：存在该图片自己的不可变视口快照。
+3. `RESET_PENDING`：B 已使状态失效，下次成功加载必须使用默认视图。
+4. A 只控制陌生图片继承，不控制精确历史保存。
+5. B 是状态失效事务，当前、区间、全部是重置范围，不是状态。
 
 依赖锚点：
 1. `anylabeling/views/labeling/widgets/viewport_controller.py`
@@ -34,7 +41,7 @@ Viewport Controller / ViewportState / ViewportController
 1. 打开数据集，缩放并滚动到特定位置，切换到下一张图再切回，确认视图恢复。
 2. 调整窗口大小后切换图片，确认视图中心仍然正确。
 3. 启用 keep_prev_viewport，切换图片时确认继承上一张图的缩放和中心。
-4. 关闭文件夹后重新打开，确认视图缓存已清空。
+4. 关闭文件夹后重新打开，确认视口状态机缓存和 pending 标记已清空。
 5. 验证 FIT_WINDOW / FIT_WIDTH / MANUAL_ZOOM 三种模式均正确保存和恢复。
 
 已知副作用：
@@ -46,5 +53,5 @@ Viewport Controller / ViewportState / ViewportController
 1. 若新增“全局视图锁定”功能，需与 ViewportController 协调。
 2. 若修改 Canvas 的坐标变换逻辑，需同步更新 _capture 和 _apply 中的换算公式。
 3. 若未来支持多窗口/多标签页，需将状态与标签页 ID 关联而非仅文件名。
-4. 可考虑持久化到配置文件，使视图在程序重启后仍可恢复。
+4. 视口状态当前只属于数据集内存会话；若未来要持久化，必须另立规格，不能直接写入标注 JSON。
 ```
