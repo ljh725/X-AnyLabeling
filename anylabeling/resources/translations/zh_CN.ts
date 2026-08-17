@@ -3542,6 +3542,70 @@ This warning will only be shown once. Do you want to continue?</source>
       <source>三框聚焦模式已关闭</source>
       <translation>三框聚焦模式已关闭</translation>
     </message>
+    <message>
+      <source>Reset Current Image View</source>
+      <translation>重置当前图像视图</translation>
+    </message>
+    <message>
+      <source>Reset the current image viewport</source>
+      <translation>重置当前图像的视口状态</translation>
+    </message>
+    <message>
+      <source>Reset Views from Current to End</source>
+      <translation>重置从当前图像到末尾的视图</translation>
+    </message>
+    <message>
+      <source>Reset the current and following image viewports</source>
+      <translation>重置当前图像及其后续图像的视口状态</translation>
+    </message>
+    <message>
+      <source>Reset All Image Views</source>
+      <translation>重置所有图像视图</translation>
+    </message>
+    <message>
+      <source>Reset all image viewports in the current dataset</source>
+      <translation>重置当前数据集中的所有图像视口</translation>
+    </message>
+    <message>
+      <source>Reset Image Views</source>
+      <translation>重置图像视图</translation>
+    </message>
+    <message>
+      <source>No image view targets to reset</source>
+      <translation>没有可重置的图像视图目标</translation>
+    </message>
+    <message>
+      <source>Reset {count} image view(s) in {scope}</source>
+      <translation>已在 {scope} 重置 {count} 个图像视图</translation>
+    </message>
+    <message>
+      <source>the current image</source>
+      <translation>当前图像</translation>
+    </message>
+    <message>
+      <source>the current image to the end</source>
+      <translation>当前图像到末尾</translation>
+    </message>
+    <message>
+      <source>all images</source>
+      <translation>全部图像</translation>
+    </message>
+    <message>
+      <source>Reset This Image View</source>
+      <translation>重置该图像视图</translation>
+    </message>
+    <message>
+      <source>Reset Views from This Image to End</source>
+      <translation>重置从该图像到末尾的视图</translation>
+    </message>
+    <message>
+      <source>this image</source>
+      <translation>该图像</translation>
+    </message>
+    <message>
+      <source>this image to the end</source>
+      <translation>该图像到末尾</translation>
+    </message>
   </context>
   <context>
     <name>Model</name>

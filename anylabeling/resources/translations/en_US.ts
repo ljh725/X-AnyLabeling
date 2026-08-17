@@ -3535,6 +3535,70 @@ This warning will only be shown once. Do you want to continue?</translation>
       <source>三框聚焦模式已关闭</source>
       <translation>Three-box focus mode disabled</translation>
     </message>
+    <message>
+      <source>Reset Current Image View</source>
+      <translation>Reset Current Image View</translation>
+    </message>
+    <message>
+      <source>Reset the current image viewport</source>
+      <translation>Reset the current image viewport</translation>
+    </message>
+    <message>
+      <source>Reset Views from Current to End</source>
+      <translation>Reset Views from Current to End</translation>
+    </message>
+    <message>
+      <source>Reset the current and following image viewports</source>
+      <translation>Reset the current and following image viewports</translation>
+    </message>
+    <message>
+      <source>Reset All Image Views</source>
+      <translation>Reset All Image Views</translation>
+    </message>
+    <message>
+      <source>Reset all image viewports in the current dataset</source>
+      <translation>Reset all image viewports in the current dataset</translation>
+    </message>
+    <message>
+      <source>Reset Image Views</source>
+      <translation>Reset Image Views</translation>
+    </message>
+    <message>
+      <source>No image view targets to reset</source>
+      <translation>No image view targets to reset</translation>
+    </message>
+    <message>
+      <source>Reset {count} image view(s) in {scope}</source>
+      <translation>Reset {count} image view(s) in {scope}</translation>
+    </message>
+    <message>
+      <source>the current image</source>
+      <translation>the current image</translation>
+    </message>
+    <message>
+      <source>the current image to the end</source>
+      <translation>the current image to the end</translation>
+    </message>
+    <message>
+      <source>all images</source>
+      <translation>all images</translation>
+    </message>
+    <message>
+      <source>Reset This Image View</source>
+      <translation>Reset This Image View</translation>
+    </message>
+    <message>
+      <source>Reset Views from This Image to End</source>
+      <translation>Reset Views from This Image to End</translation>
+    </message>
+    <message>
+      <source>this image</source>
+      <translation>this image</translation>
+    </message>
+    <message>
+      <source>this image to the end</source>
+      <translation>this image to the end</translation>
+    </message>
   </context>
   <context>
     <name>Model</name>

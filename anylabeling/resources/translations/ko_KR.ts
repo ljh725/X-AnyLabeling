@@ -3544,6 +3544,70 @@ This warning will only be shown once. Do you want to continue?</source>
       <source>三框聚焦模式已关闭</source>
       <translation>3박스 포커스 모드가 비활성화되었습니다</translation>
     </message>
+    <message>
+      <source>Reset Current Image View</source>
+      <translation>현재 이미지 보기 재설정</translation>
+    </message>
+    <message>
+      <source>Reset the current image viewport</source>
+      <translation>현재 이미지 뷰포트 재설정</translation>
+    </message>
+    <message>
+      <source>Reset Views from Current to End</source>
+      <translation>현재 이미지부터 끝까지 보기 재설정</translation>
+    </message>
+    <message>
+      <source>Reset the current and following image viewports</source>
+      <translation>현재 및 이후 이미지 뷰포트 재설정</translation>
+    </message>
+    <message>
+      <source>Reset All Image Views</source>
+      <translation>모든 이미지 보기 재설정</translation>
+    </message>
+    <message>
+      <source>Reset all image viewports in the current dataset</source>
+      <translation>현재 데이터세트의 모든 이미지 뷰포트 재설정</translation>
+    </message>
+    <message>
+      <source>Reset Image Views</source>
+      <translation>이미지 보기 재설정</translation>
+    </message>
+    <message>
+      <source>No image view targets to reset</source>
+      <translation>재설정할 이미지 보기 대상이 없습니다</translation>
+    </message>
+    <message>
+      <source>Reset {count} image view(s) in {scope}</source>
+      <translation>{scope}에서 이미지 보기 {count}개를 재설정했습니다</translation>
+    </message>
+    <message>
+      <source>the current image</source>
+      <translation>현재 이미지</translation>
+    </message>
+    <message>
+      <source>the current image to the end</source>
+      <translation>현재 이미지부터 끝까지</translation>
+    </message>
+    <message>
+      <source>all images</source>
+      <translation>모든 이미지</translation>
+    </message>
+    <message>
+      <source>Reset This Image View</source>
+      <translation>이 이미지 보기 재설정</translation>
+    </message>
+    <message>
+      <source>Reset Views from This Image to End</source>
+      <translation>이 이미지부터 끝까지 보기 재설정</translation>
+    </message>
+    <message>
+      <source>this image</source>
+      <translation>이 이미지</translation>
+    </message>
+    <message>
+      <source>this image to the end</source>
+      <translation>이 이미지부터 끝까지</translation>
+    </message>
   </context>
   <context>
     <name>Model</name>

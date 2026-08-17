@@ -120,6 +120,7 @@ from .widgets import (
     ToolBar,
     UniqueLabelQListWidget,
     ViewportController,
+    ViewportSource,
     ZoomWidget,
     NavigatorDialog,
     KeypointFillMode,
@@ -1410,21 +1411,21 @@ class LabelingWidget(LabelDialog):
             enabled=True,
         )
         reset_current_image_view = action(
-            self.tr("重置当前图像视图"),
+            self.tr("Reset Current Image View"),
             self.reset_current_image_view,
-            tip=self.tr("重置当前图像的视口状态"),
+            tip=self.tr("Reset the current image viewport"),
             enabled=True,
         )
         reset_views_from_current_to_end = action(
-            self.tr("重置从当前到末尾图像视图"),
+            self.tr("Reset Views from Current to End"),
             self.reset_views_from_current_to_end,
-            tip=self.tr("重置当前图像及其后续图像的视口状态"),
+            tip=self.tr("Reset the current and following image viewports"),
             enabled=True,
         )
         reset_all_image_views = action(
-            self.tr("重置所有图像视图"),
+            self.tr("Reset All Image Views"),
             self.reset_all_image_views,
-            tip=self.tr("重置所有图像的视口状态"),
+            tip=self.tr("Reset all image viewports in the current dataset"),
             enabled=True,
         )
         keep_prev_brightness = action(
@@ -2236,6 +2237,9 @@ class LabelingWidget(LabelDialog):
             zoom_out=zoom_out,
             zoom_org=zoom_org,
             keep_prev_scale=keep_prev_scale,
+            reset_current_image_view=reset_current_image_view,
+            reset_views_from_current_to_end=reset_views_from_current_to_end,
+            reset_all_image_views=reset_all_image_views,
             keep_prev_brightness=keep_prev_brightness,
             keep_prev_contrast=keep_prev_contrast,
             fit_window=fit_window,
@@ -2558,7 +2562,7 @@ class LabelingWidget(LabelDialog):
             ),
         )
         reset_image_views_menu = QtWidgets.QMenu(
-            self.tr("重置图像视图"), self.menus.view
+            self.tr("Reset Image Views"), self.menus.view
         )
         utils.add_actions(
             reset_image_views_menu,
@@ -2630,41 +2634,9 @@ class LabelingWidget(LabelDialog):
         self.menus.file.aboutToShow.connect(self.update_file_menu)
 
         # Custom context menu for the canvas widget:
-        utils.add_actions(self.canvas.menus[0], self.actions.menu)
-        utils.add_actions(
-            self.canvas.menus[1],
-            (
-                action("&Copy here", self.copy_shape),
-                action("&Move here", self.move_shape),
-            ),
-        )
-        self.canvas.menus[0].addSeparator()
-        utils.add_actions(
-            self.canvas.menus[0],
-            (
-                reset_current_image_view,
-                reset_views_from_current_to_end,
-                reset_all_image_views,
-            ),
-        )
-        self.canvas.menus[1].addSeparator()
-        utils.add_actions(
-            self.canvas.menus[1],
-            (
-                reset_current_image_view,
-                reset_views_from_current_to_end,
-                reset_all_image_views,
-            ),
-        )
-        (
-            self.canvas_label_filter_menu_0,
-            self.canvas_gid_filter_menu_0,
-            self.canvas_shape_type_filter_menu_0,
-        ) = self._append_filter_submenus(
-            self.canvas.menus[0],
-            prepend=True,
-            after_filter_actions=(self.actions.toggle_annotation_checked,),
-        )
+        self._canvas_copy_action = action("&Copy here", self.copy_shape)
+        self._canvas_move_action = action("&Move here", self.move_shape)
+        self._rebuild_canvas_context_menus()
         self.canvas.menus[0].aboutToShow.connect(self.refresh_filter_menus)
 
         self.tools = self.toolbar("Tools")
@@ -3072,12 +3044,7 @@ class LabelingWidget(LabelDialog):
         self.other_data = {}
         self.zoom_level = 100
         self.fit_window = False
-        self.zoom_values = {}  # key=filename, value=(zoom_mode, zoom_value)
         self.brightness_contrast_values = {}
-        self.scroll_values = {
-            Qt.Orientation.Horizontal: {},
-            Qt.Orientation.Vertical: {},
-        }  # key=filename, value=scroll_value
         self.viewport_controller = ViewportController()
 
         if filename is not None and osp.isdir(filename):
@@ -3347,14 +3314,21 @@ class LabelingWidget(LabelDialog):
     def no_shape(self):
         return len(self.label_list) == 0
 
-    def populate_mode_actions(self):
-        tool = self.actions.tool
-        menu = self.actions.menu
-        self.tools.clear()
-        utils.add_actions(self.tools, tool)
+    def _rebuild_canvas_context_menus(self):
+        """Rebuild both canvas context menus from the current actions."""
+        for menu in self.canvas.menus:
+            menu.clear()
 
-        self.canvas.menus[0].clear()
-        utils.add_actions(self.canvas.menus[0], menu)
+        utils.add_actions(self.canvas.menus[0], self.actions.menu)
+        self.canvas.menus[0].addSeparator()
+        utils.add_actions(
+            self.canvas.menus[0],
+            (
+                self.actions.reset_current_image_view,
+                self.actions.reset_views_from_current_to_end,
+                self.actions.reset_all_image_views,
+            ),
+        )
         (
             self.canvas_label_filter_menu_0,
             self.canvas_gid_filter_menu_0,
@@ -3364,6 +3338,27 @@ class LabelingWidget(LabelDialog):
             prepend=True,
             after_filter_actions=(self.actions.toggle_annotation_checked,),
         )
+
+        utils.add_actions(
+            self.canvas.menus[1],
+            (self._canvas_copy_action, self._canvas_move_action),
+        )
+        self.canvas.menus[1].addSeparator()
+        utils.add_actions(
+            self.canvas.menus[1],
+            (
+                self.actions.reset_current_image_view,
+                self.actions.reset_views_from_current_to_end,
+                self.actions.reset_all_image_views,
+            ),
+        )
+
+    def populate_mode_actions(self):
+        tool = self.actions.tool
+        self.tools.clear()
+        utils.add_actions(self.tools, tool)
+
+        self._rebuild_canvas_context_menus()
         self.menus.edit.clear()
         actions = (
             self.actions.create_mode,
@@ -4355,23 +4350,27 @@ class LabelingWidget(LabelDialog):
             utils.new_icon("copy", "svg"), self.tr("Copy File Path")
         )
         menu.addSeparator()
-        reset_this_image_view = menu.addAction(self.tr("重置该图像视图"))
-        reset_from_this_to_end = menu.addAction(
-            self.tr("重置从该图像到末尾的视图")
+        reset_this_image_view = menu.addAction(
+            self.tr("Reset This Image View")
         )
-        reset_all_views = menu.addAction(self.tr("重置所有图像视图"))
+        reset_from_this_to_end = menu.addAction(
+            self.tr("Reset Views from This Image to End")
+        )
+        reset_all_views = menu.addAction(self.tr("Reset All Image Views"))
         action = menu.exec(self.file_list_widget.viewport().mapToGlobal(point))
         if action == copy_name_action:
             self.copy_file_path(osp.basename(item.text()))
         elif action == copy_path_action:
             self.copy_file_path(item.text())
         elif action == reset_this_image_view:
-            self._reset_image_views_for_files([item.text()], self.tr("该图像"))
+            self._reset_image_views_for_files(
+                [item.text()], self.tr("this image")
+            )
         elif action == reset_from_this_to_end:
             target_file = item.text()
             filenames = self._get_files_from_target_to_end(target_file)
             self._reset_image_views_for_files(
-                filenames, self.tr("该图像到末尾")
+                filenames, self.tr("this image to the end")
             )
         elif action == reset_all_views:
             self.reset_all_image_views()
@@ -7045,10 +7044,6 @@ class LabelingWidget(LabelDialog):
 
                 self.zoom_widget.setValue(zoom_percentage)
                 self.zoom_mode = self.MANUAL_ZOOM
-                self.zoom_values[self.filename] = (
-                    self.zoom_mode,
-                    zoom_percentage,
-                )
                 self.paint_canvas()
 
                 canvas_width_new = self.canvas.width()
@@ -7102,10 +7097,6 @@ class LabelingWidget(LabelDialog):
 
                         self.zoom_widget.setValue(zoom_percentage)
                         self.zoom_mode = self.MANUAL_ZOOM
-                        self.zoom_values[self.filename] = (
-                            self.zoom_mode,
-                            zoom_percentage,
-                        )
                         self.paint_canvas()
 
                         canvas_width_new = self.canvas.width()
@@ -7139,12 +7130,10 @@ class LabelingWidget(LabelDialog):
 
             self.zoom_widget.setValue(zoom_percentage)
             self.zoom_mode = self.MANUAL_ZOOM
-            self.zoom_values[self.filename] = (self.zoom_mode, zoom_percentage)
             self.paint_canvas()
         else:
             self.zoom_widget.setValue(zoom_percentage)
             self.zoom_mode = self.MANUAL_ZOOM
-            self.zoom_values[self.filename] = (self.zoom_mode, zoom_percentage)
             self.paint_canvas()
 
     def _convert_navigator_pos_to_canvas(
@@ -7217,7 +7206,6 @@ class LabelingWidget(LabelDialog):
 
     def set_scroll(self, orientation, value):
         self.scroll_bars[orientation].setValue(round(value))
-        self.scroll_values[orientation][self.filename] = value
         self.update_navigator_viewport()
 
     def set_zoom(self, value, block_signals=False):
@@ -7229,7 +7217,6 @@ class LabelingWidget(LabelDialog):
         self.zoom_widget.setValue(value)
         if block_signals:
             self.zoom_widget.blockSignals(False)
-        self.zoom_values[self.filename] = (self.zoom_mode, value)
         if hasattr(self, "navigator_dialog"):
             self.navigator_dialog.set_zoom_value(value)
 
@@ -7245,8 +7232,8 @@ class LabelingWidget(LabelDialog):
     def _clamp_scroll_value(scroll_bar, value):
         """Clamp a target scroll value to the scrollbar's valid range.
 
-        Avoids persisting unreachable target values into ``scroll_values``
-        when the image is smaller than the viewport (maximum == 0).
+        Avoids requesting unreachable target values when the image is smaller
+        than the viewport (maximum == 0).
         """
         return max(scroll_bar.minimum(), min(scroll_bar.maximum(), value))
 
@@ -7806,34 +7793,8 @@ class LabelingWidget(LabelDialog):
         self._update_current_file_checked_item()
         self.canvas.setEnabled(True)
 
-        # set zoom / viewport values
-        is_initial_load = not self.zoom_values
-        restored_state = self.viewport_controller.on_file_loaded(
-            filename=self.filename,
-            canvas=self.canvas,
-            zoom_widget=self.zoom_widget,
-            keep_prev_viewport=self._config.get("keep_prev_viewport", False),
-        )
-        if restored_state is not None:
-            self.zoom_mode = restored_state.zoom_mode
-            self.zoom_values[self.filename] = (
-                restored_state.zoom_mode,
-                restored_state.zoom_value,
-            )
-        elif self.filename in self.zoom_values:
-            self.zoom_mode = self.zoom_values[self.filename][0]
-            self.set_zoom(self.zoom_values[self.filename][1])
-        elif is_initial_load or not self._config["keep_prev_scale"]:
-            self.adjust_scale(initial=True)
-
-        # Legacy scroll values (fallback when viewport_controller has no state)
-        if restored_state is None:
-            for orientation in self.scroll_values:
-                if self.filename in self.scroll_values[orientation]:
-                    self.set_scroll(
-                        orientation,
-                        self.scroll_values[orientation][self.filename],
-                    )
+        # Resolve, apply, and commit one deterministic viewport load plan.
+        self._apply_viewport_load_plan(self.filename)
 
         # set brightness contrast values
         brightness, contrast = self.brightness_contrast_values.get(
@@ -8012,11 +7973,95 @@ class LabelingWidget(LabelDialog):
         self.canvas.update()
         self.update_navigator_viewport()
 
+    def _apply_default_image_view(self) -> bool:
+        """Apply the default viewport to the currently loaded image.
+
+        Returns:
+            ``True`` when a valid image was reset; otherwise ``False``.
+        """
+        if self.image.isNull():
+            return False
+
+        self.zoom_mode = self.FIT_WINDOW
+        self.actions.fit_width.setChecked(False)
+        self.actions.fit_window.setChecked(True)
+        self.adjust_scale(initial=True)
+        for orientation in (
+            Qt.Orientation.Horizontal,
+            Qt.Orientation.Vertical,
+        ):
+            scroll_bar = self.scroll_bars[orientation]
+            if scroll_bar is not None:
+                scroll_bar.setValue(scroll_bar.minimum())
+        self.paint_canvas()
+        return True
+
+    def _sync_viewport_ui(self, state) -> None:
+        """Synchronize LabelWidget UI after a complete viewport restore."""
+        self.zoom_mode = state.zoom_mode
+        self.actions.fit_window.setChecked(state.zoom_mode == self.FIT_WINDOW)
+        self.actions.fit_width.setChecked(state.zoom_mode == self.FIT_WIDTH)
+        if hasattr(self, "navigator_dialog"):
+            self.navigator_dialog.set_zoom_value(state.zoom_value)
+
+    def _apply_viewport_load_plan(self, filename):
+        """Resolve and apply one viewport plan, committing only on success."""
+        plan = self.viewport_controller.resolve_load_plan(
+            filename,
+            keep_prev_viewport=self._config.get("keep_prev_viewport", False),
+            keep_prev_scale=self._config.get("keep_prev_scale", False),
+        )
+
+        if plan.source is ViewportSource.FORCE_DEFAULT:
+            applied = self._apply_default_image_view()
+            if applied:
+                self.viewport_controller.commit_loaded(
+                    filename,
+                    plan,
+                    applied_zoom=int(self.zoom_widget.value()),
+                )
+            return applied
+
+        if plan.state is not None:
+            result = self.viewport_controller.apply_result(
+                plan.state,
+                self.canvas,
+                self.zoom_widget,
+            )
+            if result.success:
+                self._sync_viewport_ui(plan.state)
+                self.viewport_controller.commit_loaded(filename, plan)
+                return True
+            if self._apply_default_image_view():
+                self.viewport_controller.commit_default_loaded(
+                    filename,
+                    applied_zoom=int(self.zoom_widget.value()),
+                )
+            return False
+
+        if plan.source is ViewportSource.PREVIOUS_SCALE:
+            self.set_zoom(plan.zoom_value)
+            self.paint_canvas()
+            self.viewport_controller.commit_loaded(
+                filename,
+                plan,
+                applied_zoom=int(self.zoom_widget.value()),
+            )
+            return True
+
+        applied = self._apply_default_image_view()
+        if applied:
+            self.viewport_controller.commit_loaded(
+                filename,
+                plan,
+                applied_zoom=int(self.zoom_widget.value()),
+            )
+        return applied
+
     def adjust_scale(self, initial=False):
         value = self.scalers[self.FIT_WINDOW if initial else self.zoom_mode]()
         value = int(100 * value)
         self.zoom_widget.setValue(value)
-        self.zoom_values[self.filename] = (self.zoom_mode, value)
         if hasattr(self, "navigator_dialog"):
             self.navigator_dialog.set_zoom_value(value)
 
@@ -8041,32 +8086,19 @@ class LabelingWidget(LabelDialog):
     # Viewport state reset helpers
     # ------------------------------------------------------------------ #
 
+    def _clear_viewport_session(self) -> None:
+        """Clear all in-memory viewport state for the current dataset."""
+        self.viewport_controller.clear()
+
     def _clear_view_state_for_files(self, filenames):
         """清除指定文件列表的视图状态。
 
-        同时清理 viewport_controller、zoom_values 和 scroll_values，
-        防止后续从旧缓存恢复。
+        委托状态机完成规范化、去重、精确历史失效和 pending 标记。
 
         Returns:
-            实际清理的文件数量。
+            结构化的视图状态清理结果。
         """
-        count = 0
-        for filename in filenames:
-            removed = self.viewport_controller.clear_state(filename)
-            zoom_removed = self.zoom_values.pop(filename, None) is not None
-            h_removed = (
-                self.scroll_values[Qt.Orientation.Horizontal].pop(
-                    filename, None
-                )
-                is not None
-            )
-            v_removed = (
-                self.scroll_values[Qt.Orientation.Vertical].pop(filename, None)
-                is not None
-            )
-            if removed or zoom_removed or h_removed or v_removed:
-                count += 1
-        return count
+        return self.viewport_controller.reset_states(tuple(filenames or ()))
 
     def _get_files_from_target_to_end(self, target_file):
         """获取从 target_file 到 image_list 末尾的所有文件。"""
@@ -8087,36 +8119,33 @@ class LabelingWidget(LabelDialog):
         如果目标范围包含当前正在显示的图片，则立即恢复默认视图。
         """
         if not filenames:
-            self.status(self.tr("没有可重置的图像视图状态"), 3000)
+            self.status(self.tr("No image view targets to reset"), 3000)
+            return
+
+        try:
+            reset_result = self._clear_view_state_for_files(filenames)
+        except Exception:
+            logger.exception("Failed to reset image viewport state")
+            self.status(self.tr("Could not reset image views"), 3000)
+            return
+        target_count = len(reset_result.filenames)
+        if target_count == 0:
+            self.status(self.tr("No image view targets to reset"), 3000)
             return
 
         should_reset_current = (
-            self.filename in filenames and self.filename is not None
+            self.viewport_controller.normalize_filename(self.filename)
+            in reset_result.filenames
+            and self.filename is not None
         )
-        cleared = self._clear_view_state_for_files(filenames)
-        if cleared == 0 and not should_reset_current:
-            self.status(
-                self.tr("未找到可重置的 {scope} 图像视图状态").format(
-                    scope=scope_label
-                ),
-                3000,
-            )
-            return
 
         if should_reset_current and not self.image.isNull():
-            self.zoom_mode = self.FIT_WINDOW
-            self.adjust_scale(initial=True)
-            h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
-            v_bar = self.scroll_bars[Qt.Orientation.Vertical]
-            if h_bar is not None:
-                h_bar.setValue(h_bar.minimum())
-            if v_bar is not None:
-                v_bar.setValue(v_bar.minimum())
-            self.paint_canvas()
+            if self._apply_default_image_view():
+                self.viewport_controller.consume_force_default(self.filename)
 
         self.status(
-            self.tr("已重置 {scope} 的 {count} 个图像视图状态").format(
-                scope=scope_label, count=cleared
+            self.tr("Reset {count} image view(s) in {scope}").format(
+                scope=scope_label, count=target_count
             ),
             3000,
         )
@@ -8124,19 +8153,23 @@ class LabelingWidget(LabelDialog):
     def reset_current_image_view(self):
         """重置当前图像的视图状态。"""
         if self.filename is None:
-            self.status(self.tr("请先打开一张图片"), 3000)
+            self.status(self.tr("Please open an image first"), 3000)
             return
-        self._reset_image_views_for_files([self.filename], self.tr("当前图像"))
+        self._reset_image_views_for_files(
+            [self.filename], self.tr("the current image")
+        )
 
     def reset_views_from_current_to_end(self):
         """重置从当前图像到末尾的所有图像视图状态。"""
         filenames = self._get_files_from_current_to_end()
-        self._reset_image_views_for_files(filenames, self.tr("从当前到末尾"))
+        self._reset_image_views_for_files(
+            filenames, self.tr("the current image to the end")
+        )
 
     def reset_all_image_views(self):
         """重置所有图像的视图状态。"""
         filenames = list(self.image_list)
-        self._reset_image_views_for_files(filenames, self.tr("全部"))
+        self._reset_image_views_for_files(filenames, self.tr("all images"))
 
     # QT Overload
     def closeEvent(self, event):
@@ -8314,6 +8347,7 @@ class LabelingWidget(LabelDialog):
         if file_dialog.exec():
             filename = file_dialog.selectedFiles()[0]
             if filename:
+                self._clear_viewport_session()
                 self.file_list_widget.clear()
                 self.fn_to_index.clear()
                 self.load_file(filename)
@@ -8420,6 +8454,7 @@ class LabelingWidget(LabelDialog):
         if not self.may_continue():
             return
         self._clear_rect_refine_focus()
+        self._clear_viewport_session()
         self.reset_state()
         self.set_clean()
         self.toggle_actions(False)
@@ -8770,6 +8805,7 @@ class LabelingWidget(LabelDialog):
         if not self.may_continue() or not dirpath:
             return
 
+        self._clear_viewport_session()
         if self.compare_view_manager.is_active():
             self.close_compare_view(confirm=False)
 

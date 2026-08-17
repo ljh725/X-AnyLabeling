@@ -3542,6 +3542,70 @@ This warning will only be shown once. Do you want to continue?</source>
       <source>三框聚焦模式已关闭</source>
       <translation>3ボックスフォーカスモードを無効にしました</translation>
     </message>
+    <message>
+      <source>Reset Current Image View</source>
+      <translation>現在の画像ビューをリセット</translation>
+    </message>
+    <message>
+      <source>Reset the current image viewport</source>
+      <translation>現在の画像のビューポートをリセット</translation>
+    </message>
+    <message>
+      <source>Reset Views from Current to End</source>
+      <translation>現在の画像から末尾までのビューをリセット</translation>
+    </message>
+    <message>
+      <source>Reset the current and following image viewports</source>
+      <translation>現在と後続の画像ビューをリセット</translation>
+    </message>
+    <message>
+      <source>Reset All Image Views</source>
+      <translation>すべての画像ビューをリセット</translation>
+    </message>
+    <message>
+      <source>Reset all image viewports in the current dataset</source>
+      <translation>現在のデータセットのすべての画像ビューをリセット</translation>
+    </message>
+    <message>
+      <source>Reset Image Views</source>
+      <translation>画像ビューをリセット</translation>
+    </message>
+    <message>
+      <source>No image view targets to reset</source>
+      <translation>リセット対象の画像ビューがありません</translation>
+    </message>
+    <message>
+      <source>Reset {count} image view(s) in {scope}</source>
+      <translation>{scope} の {count} 個の画像ビューをリセットしました</translation>
+    </message>
+    <message>
+      <source>the current image</source>
+      <translation>現在の画像</translation>
+    </message>
+    <message>
+      <source>the current image to the end</source>
+      <translation>現在の画像から末尾まで</translation>
+    </message>
+    <message>
+      <source>all images</source>
+      <translation>すべての画像</translation>
+    </message>
+    <message>
+      <source>Reset This Image View</source>
+      <translation>この画像ビューをリセット</translation>
+    </message>
+    <message>
+      <source>Reset Views from This Image to End</source>
+      <translation>この画像から末尾までのビューをリセット</translation>
+    </message>
+    <message>
+      <source>this image</source>
+      <translation>この画像</translation>
+    </message>
+    <message>
+      <source>this image to the end</source>
+      <translation>この画像から末尾まで</translation>
+    </message>
   </context>
   <context>
     <name>Model</name>
