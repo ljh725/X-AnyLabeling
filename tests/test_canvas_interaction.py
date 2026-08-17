@@ -85,3 +85,24 @@ class TestCanvasInteraction(unittest.TestCase):
         self.canvas.pose_config.enabled = False
         self.canvas.show_labels = True
         self.assertFalse(self.canvas._should_draw_standard_label(shape))
+
+    def test_label_on_selection_hides_unselected_shape(self):
+        """Focused label mode hides non-selected, non-hovered shapes."""
+        shape = MockShape()
+        shape.selected = False
+        self.canvas.visible = {shape: True}
+        self.canvas.label_on_selection = True
+        self.canvas.h_hape = object()
+        self.assertFalse(self.canvas._is_standard_label_visible(shape))
+
+    def test_label_on_selection_keeps_selected_and_hovered_shapes(self):
+        """Focused label mode preserves selected and hovered previews."""
+        selected = MockShape()
+        selected.selected = True
+        hovered = MockShape()
+        hovered.selected = False
+        self.canvas.visible = {selected: True, hovered: True}
+        self.canvas.label_on_selection = True
+        self.canvas.h_hape = hovered
+        self.assertTrue(self.canvas._is_standard_label_visible(selected))
+        self.assertTrue(self.canvas._is_standard_label_visible(hovered))

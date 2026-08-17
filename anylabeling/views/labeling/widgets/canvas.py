@@ -33,6 +33,10 @@ from .rectangle_size_overlay import (
     merge_overlay_requests,
     overlay_request_from_issue,
 )
+from .selection.geometry import normalize_selection_rect, shapes_intersecting_rect
+from .selection.gesture import SelectionGesture
+from .selection.policy import add_shapes, toggle_shape
+from .selection.rubber_band_renderer import RubberBandRenderer
 
 PERF_LOG_ENABLED = os.getenv("XANYLABELING_PERF_LOG") == "1"
 
@@ -273,6 +277,10 @@ class Canvas(
         self.selected_shapes = []  # save the selected shapes here
         self._selected_shapes_source = "none"
         self.selected_shapes_copy = []
+        self._selection_gesture = SelectionGesture()
+        self._selection_box_rect = None
+        self._selection_box_preview = []
+        self._rubber_band_renderer = RubberBandRenderer()
         # self.line represents:
         #   - create_mode == 'polygon': edge from last point to current
         #   - create_mode == 'rectangle': diagonal line of the rectangle
@@ -306,6 +314,7 @@ class Canvas(
         self.rotating_shape = False
         self.snapping = True
         self.h_shape_is_selected = False
+        self._pressed_ctrl_selection = False
         self.h_shape_is_hovered = None
         self.allowed_oop_shape_types = ["rotation", "quadrilateral", "cuboid"]
         default_cuboid_depth_vector = self.cuboid_config.get(
@@ -912,6 +921,37 @@ class Canvas(
                 return False
         return True
 
+    def _selection_drag_threshold(self) -> float:
+        """Return the current image-space Ctrl-drag threshold."""
+        return max(
+            2.0,
+            float(QtWidgets.QApplication.startDragDistance())
+            / max(float(self.scale), 1e-6),
+        )
+
+    def _clear_selection_gesture(self) -> None:
+        """Clear transient Ctrl-selection state and repaint if needed."""
+        was_visible = self._selection_box_rect is not None
+        self._selection_gesture.reset()
+        self._selection_box_rect = None
+        self._selection_box_preview = []
+        self._pressed_ctrl_selection = False
+        if was_visible:
+            self.update()
+
+    def _finish_selection_gesture(self) -> bool:
+        """Commit or cancel a pending Ctrl-selection gesture on release."""
+        if not self._selection_gesture.active:
+            return False
+        if self._selection_gesture.rubber_band:
+            selected = add_shapes(
+                self.selected_shapes, self._selection_box_preview
+            )
+            self._set_selected_shapes(selected, source="canvas")
+        self._clear_selection_gesture()
+        self.update()
+        return True
+
     def _standard_label_text_for_shape(self, shape):
         """Return the standard label text, independent of visibility gates."""
         if shape.label in [
@@ -1199,6 +1239,22 @@ class Canvas(
         try:
             pos = self.transform_pos(ev.position())
         except AttributeError:
+            return
+
+        if self._selection_gesture.active:
+            if self._selection_gesture.update(
+                pos, self._selection_drag_threshold()
+            ):
+                self._selection_box_rect = normalize_selection_rect(
+                    self._selection_gesture.origin, pos
+                )
+                self._selection_box_preview = shapes_intersecting_rect(
+                    self.shapes,
+                    self._selection_box_rect,
+                    self.is_shape_interactive,
+                    tolerance=max(1.0, 2.0 / max(self.scale, 1e-6)),
+                )
+            self.update()
             return
 
         prev_hover_shape = self.h_hape
@@ -1715,11 +1771,10 @@ class Canvas(
                 self.setStatusTip(self.toolTip())
                 self.override_cursor(CURSOR_GRAB)
                 # [Feature] Automatically highlight shape when the mouse is moved inside it
-                if self.h_shape_is_hovered:
-                    group_mode = (
-                        ev.modifiers()
-                        == QtCore.Qt.KeyboardModifier.ControlModifier
-                    )
+                if self.h_shape_is_hovered and not (
+                    ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
+                ):
+                    group_mode = False
                     self.select_shape_point(
                         pos, multiple_selection_mode=group_mode
                     )
@@ -1826,6 +1881,9 @@ class Canvas(
         self._reset_virtual_cursor()
 
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._pressed_ctrl_selection = bool(
+                ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
+            )
             # ----------------------------------------------------------
             # Rectangle edge editing.
             # Revalidate at press time so a stale hover reference cannot
@@ -1992,6 +2050,15 @@ class Canvas(
                     self.drawing_polygon.emit(True)
                     self.update()
             elif self.editing():
+                if ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
+                    if not self._shape_hit_candidates(pos):
+                        self._selection_gesture.begin(pos)
+                        self._selection_box_rect = QtCore.QRectF(pos, pos)
+                        self._selection_box_preview = []
+                        self.prev_point = pos
+                        self.prev_pan_point = ev.position()
+                        self.update()
+                        return
                 if self.selected_edge():
                     self.add_point_to_edge()
                 elif (
@@ -2022,9 +2089,8 @@ class Canvas(
                     else:
                         self.override_cursor(CURSOR_POINT)
 
-                group_mode = (
-                    ev.modifiers()
-                    == QtCore.Qt.KeyboardModifier.ControlModifier
+                group_mode = bool(
+                    ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
                 )
                 if getattr(self, "_pending_initial_backup", False):
                     self.store_shapes()
@@ -2038,8 +2104,8 @@ class Canvas(
         elif (
             ev.button() == QtCore.Qt.MouseButton.RightButton and self.editing()
         ):
-            group_mode = (
-                ev.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier
+            group_mode = bool(
+                ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
             )
             if not self.selected_shapes or (
                 self.h_hape is not None
@@ -2068,6 +2134,8 @@ class Canvas(
                 self.selected_shapes_copy = []
                 self.repaint()
         elif ev.button() == QtCore.Qt.MouseButton.LeftButton:
+            if self._finish_selection_gesture():
+                return
             # ----------------------------------------------------------
             # Rectangle edge editing: commit on release.
             # One release forms exactly one undo granularity and only
@@ -2137,12 +2205,14 @@ class Canvas(
                     self.h_hape is not None
                     and self.h_shape_is_selected
                     and not self.moving_shape
+                    and self._pressed_ctrl_selection
                 ):
-                    # 点击已选中对象，取消选中
+                    # Ctrl-clicking an already selected object toggles it off.
                     self._set_selected_shapes(
-                        [x for x in self.selected_shapes if x != self.h_hape]
+                        toggle_shape(self.selected_shapes, self.h_hape)
                     )
 
+        self._pressed_ctrl_selection = False
         self.store_moving_shape()
 
     def end_move(self, copy):
@@ -2271,6 +2341,7 @@ class Canvas(
         self._selected_shapes_source = "canvas"
         if self.selected_vertex():  # A vertex is marked for selection.
             index, shape = self.h_vertex, self.h_hape
+            self.h_hape = shape
             if shape.shape_type == "cuboid":
                 self.set_hiding()
                 if shape not in self.selected_shapes:
@@ -2303,6 +2374,7 @@ class Canvas(
         elif self.selected_cuboid_face():
             # [修复] 处理立方体面选择
             shape = self.h_hape
+            self.h_hape = shape
             self.set_hiding()
             if shape not in self.selected_shapes:
                 if multiple_selection_mode:
@@ -2319,6 +2391,7 @@ class Canvas(
             # 用 _shape_hit_candidates 的优先级排序取代 reversed+首次contains命中,
             # 使重叠/嵌套场景下优先选中最近的顶点/边/小面积对象。
             for shape in self._shape_hit_candidates(point):
+                self.h_hape = shape
                 self.set_hiding()
                 if shape not in self.selected_shapes:
                     if multiple_selection_mode:
@@ -2329,10 +2402,7 @@ class Canvas(
                         self._set_selected_shapes([shape])
                     self.h_shape_is_selected = False
                 else:
-                    if getattr(self, "label_on_selection", False):
-                        self.h_shape_is_selected = False
-                    else:
-                        self.h_shape_is_selected = True
+                    self.h_shape_is_selected = True
                 self.calculate_offsets(point)
                 return
         self.deselect_shape()
@@ -3792,6 +3862,8 @@ class Canvas(
                     handle_y + 2,
                 )
                 p.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, False)
+
+        self._rubber_band_renderer.draw(p, self._selection_box_rect)
 
         p.end()
         _dt = time.perf_counter() - _t0
@@ -5294,6 +5366,9 @@ class Canvas(
         # Rectangle-edge interaction consumes Esc first. Otherwise notify
         # observers, then continue through the native Canvas key handling.
         if key == QtCore.Qt.Key.Key_Escape:
+            if self._selection_gesture.active:
+                self._clear_selection_gesture()
+                return
             if (
                 self.rect_edge_align_enabled
                 and self._handle_rect_edge_escape()
