@@ -1,7 +1,10 @@
 import os
+import os.path as osp
 import re
 import json
+import copy
 import concurrent.futures
+import threading
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtGui import QFont, QColor, QIntValidator
@@ -29,6 +32,14 @@ from anylabeling.views.labeling.utils.style import (
     get_table_item_disabled_bg_color,
 )
 from anylabeling.views.labeling.utils.theme import get_theme
+from anylabeling.views.labeling.widgets.label_batch import (
+    BatchMigrationEngine,
+    LabelMetadataDraft,
+    build_label_change_plan,
+    collect_candidate_json_paths,
+    find_merge_conflicts,
+)
+from anylabeling.views.labeling.widgets.appearance import save_project_palette
 
 # TODO(unknown):
 # - Calculate optimal position so as not to go out of screen area.
@@ -1132,6 +1143,89 @@ class LabelInfoScanThread(QtCore.QThread):
         return classes
 
 
+class LabelBatchMigrationThread(QtCore.QThread):
+    """Run label migration discovery, staging and commit off the GUI thread."""
+
+    progress = QtCore.pyqtSignal(str, int, int, str)
+    preflight_required = QtCore.pyqtSignal(int, int)
+    finished_result = QtCore.pyqtSignal(object)
+    error = QtCore.pyqtSignal(str)
+
+    def __init__(
+        self, image_paths, output_dir, plan, transaction_root, parent=None
+    ):
+        """Initialize a cancellable migration worker."""
+        super().__init__(parent)
+        self.image_paths = tuple(image_paths)
+        self.output_dir = output_dir
+        self.plan = plan
+        self.engine = BatchMigrationEngine(transaction_root)
+        self._cancelled = False
+        self._preflight_decision = threading.Event()
+        self._preflight_allowed = False
+
+    def cancel(self):
+        """Request cancellation during discovery or staging."""
+        self._cancelled = True
+        self._preflight_decision.set()
+
+    def allow_preflight(self, allowed):
+        """Release the worker after the destructive preflight decision."""
+        self._preflight_allowed = bool(allowed)
+        self._preflight_decision.set()
+
+    def _is_cancelled(self):
+        return self._cancelled
+
+    def _report(self, phase, current, total, path):
+        self.progress.emit(phase, current, total, path)
+
+    def run(self):
+        """Execute the non-Qt migration protocol."""
+        try:
+            labels = frozenset(self.plan.rename_map) | frozenset(
+                self.plan.delete_labels
+            )
+            paths = collect_candidate_json_paths(
+                self.image_paths,
+                labels,
+                self.output_dir,
+                cancel_check=self._is_cancelled,
+                progress=self._report,
+            )
+            if self._cancelled:
+                self.finished_result.emit(None)
+                return
+            preflight = self.engine.preflight(
+                paths, self.plan, self._is_cancelled, self._report
+            )
+            if self.plan.delete_labels:
+                self._report(
+                    "preflight-summary",
+                    preflight.candidate_files,
+                    preflight.matching_shapes,
+                    "",
+                )
+                self.preflight_required.emit(
+                    preflight.candidate_files, preflight.matching_shapes
+                )
+                self._preflight_decision.wait()
+                if self._cancelled or not self._preflight_allowed:
+                    self.finished_result.emit(None)
+                    return
+            staged = self.engine.stage(
+                paths, self.plan, self._is_cancelled, self._report
+            )
+            if staged.cancelled:
+                self.finished_result.emit(staged)
+                return
+            root = self.output_dir or (osp.dirname(paths[0]) if paths else ".")
+            self.finished_result.emit(self.engine.commit(staged, root))
+        except Exception as exc:
+            self.error.emit(str(exc))
+            self.finished_result.emit(None)
+
+
 class LabelModifyDialog(QtWidgets.QDialog):
     """A dialog for modifying labels across multiple files.
 
@@ -1158,6 +1252,10 @@ class LabelModifyDialog(QtWidgets.QDialog):
         self._label_scan_thread = None
         self._label_scan_finished = False
         self._label_scan_cancelled = False
+        self._draft_label_info = {}
+        self._original_label_info = {}
+        self._batch_thread = None
+        self._batch_cancelled = False
         self.init_ui()
         self.start_label_info_scan()
 
@@ -1329,7 +1427,7 @@ class LabelModifyDialog(QtWidgets.QDialog):
 
     def populate_table(self):
         sorted_labels = sorted(
-            self.parent.label_info.items(),
+            self._draft_label_info.items(),
             key=lambda x: natural_sort_key(x[0]),
         )
         for i, (label, info) in enumerate(sorted_labels):
@@ -1408,15 +1506,15 @@ class LabelModifyDialog(QtWidgets.QDialog):
 
     def change_color(self, button):
         row = self.table_widget.indexAt(button.pos()).row()
-        current_color = self.parent.label_info[
+        current_color = self._draft_label_info[
             self.table_widget.item(row, 0).text()
         ]["color"]
         color = QColorDialog.getColor(QColor(*current_color), self)
         if color.isValid():
-            self.parent.label_info[self.table_widget.item(row, 0).text()][
+            self._draft_label_info[self.table_widget.item(row, 0).text()][
                 "color"
             ] = [color.red(), color.green(), color.blue()]
-            self.parent.label_info[self.table_widget.item(row, 0).text()][
+            self._draft_label_info[self.table_widget.item(row, 0).text()][
                 "opacity"
             ] = color.alpha()
             button.set_color(color)
@@ -1509,97 +1607,271 @@ class LabelModifyDialog(QtWidgets.QDialog):
             self.reject()
             return
 
-        # Temporary dictionary to handle changes
-        updated_label_info = {}
-
-        for i in range(total_num):
-            label = self.table_widget.item(i, 0).text()
-            delete_checkbox = self.table_widget.cellWidget(i, 1)
-            value_edit = self._get_value_edit(i)
-
-            is_delete = delete_checkbox.isChecked()
-            new_value = value_edit.text()
-
-            visible_container = self.table_widget.cellWidget(i, 3)
+        if start_index == -1:
+            start_index = self.start_index
+        if end_index == -1:
+            end_index = self.end_index
+        original = {
+            label: LabelMetadataDraft(
+                label=label,
+                color=tuple(info.get("color", (0, 114, 178))),
+                opacity=int(info.get("opacity", self.opacity)),
+                visible=bool(info.get("visible", True)),
+            )
+            for label, info in self._original_label_info.items()
+        }
+        edited = {}
+        for row in range(total_num):
+            label = self.table_widget.item(row, 0).text()
+            info = self._draft_label_info[label]
+            delete_checkbox = self.table_widget.cellWidget(row, 1)
+            value_edit = self._get_value_edit(row)
+            visible_container = self.table_widget.cellWidget(row, 3)
             visible_checkbox = visible_container.layout().itemAt(0).widget()
-            is_visible = visible_checkbox.isChecked()
-
-            # Update the label info in the temporary dictionary
-            self.parent.label_info[label]["delete"] = is_delete
-            self.parent.label_info[label]["value"] = new_value
-            self.parent.label_info[label]["visible"] = is_visible
-
-            # Update the color
-            color = self.parent.label_info[label]["color"]
-            self.parent.unique_label_list.update_item_color(
-                label, color, self.opacity
+            edited[label] = LabelMetadataDraft(
+                label=label,
+                color=tuple(info.get("color", (0, 114, 178))),
+                opacity=int(info.get("opacity", self.opacity)),
+                visible=visible_checkbox.isChecked(),
+                value=value_edit.text().strip() or None,
+                delete=delete_checkbox.isChecked(),
             )
-
-            # Handle delete and change of labels
-            if is_delete:
-                self.parent.unique_label_list.remove_items_by_label(label)
-                self.parent.label_dialog.remove_label_history(label)
-                continue
-            elif new_value:
-                self.parent.unique_label_list.remove_items_by_label(label)
-                self.parent.label_dialog.remove_label_history(label)
-                self.parent.label_dialog.add_label_history(new_value)
-                updated_label_info[new_value] = self.parent.label_info[label]
-            else:
-                updated_label_info[label] = self.parent.label_info[label]
-
-        if self.modify_label(start_index, end_index):
-            self.parent.label_info = updated_label_info
-            if hasattr(self.parent, "apply_label_visibility"):
-                self.parent.apply_label_visibility()
-            popup = Popup(
-                self.tr("Labels modified successfully!"),
-                self.parent,
-                icon=new_icon_path("copy-green", "svg"),
+        plan = build_label_change_plan(original, edited)
+        conflicts = find_merge_conflicts(plan.rename_map, original)
+        if conflicts:
+            details = "\n".join(
+                f"{conflict.source} → {conflict.target}"
+                for conflict in conflicts
             )
-            popup.show_popup(self.parent)
+            answer = QtWidgets.QMessageBox.question(
+                self,
+                self.tr("Confirm label merge"),
+                self.tr(
+                    "The following labels will be merged:\n{}\nContinue?"
+                ).format(details),
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if answer != QtWidgets.QMessageBox.StandardButton.Yes:
+                return
+        if plan.is_noop:
             self.accept()
-        else:
-            popup = Popup(
-                self.tr("An error occurred while updating the labels."),
-                self.parent,
-                icon=new_icon_path("error", "svg"),
+            return
+        if plan.has_visual_changes and not plan.has_dataset_changes:
+            self._apply_visual_changes(plan, edited)
+            return
+        if getattr(self.parent, "dirty", False):
+            answer = QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("Unsaved changes"),
+                self.tr("Save the current image before batch migration?"),
+                QtWidgets.QMessageBox.StandardButton.Save
+                | QtWidgets.QMessageBox.StandardButton.Discard
+                | QtWidgets.QMessageBox.StandardButton.Cancel,
             )
-            popup.show_popup(self.parent)
+            if answer == QtWidgets.QMessageBox.StandardButton.Cancel:
+                return
+            if answer == QtWidgets.QMessageBox.StandardButton.Save:
+                self.parent.save_file()
+            elif answer == QtWidgets.QMessageBox.StandardButton.Discard:
+                self.parent.load_file(self.parent.filename)
+        self._start_batch(plan, start_index, end_index)
+
+    def _apply_visual_changes(self, plan, edited):
+        """Apply visual metadata in memory and persist only the project palette."""
+        for label, draft in edited.items():
+            if label not in self.parent.label_info:
+                continue
+            info = self.parent.label_info[label]
+            info["color"] = list(draft.color)
+            info["opacity"] = draft.opacity
+            info["visible"] = draft.visible
+            self.parent.unique_label_list.update_item_color(
+                label, list(draft.color), draft.opacity
+            )
+        root = getattr(self.parent, "output_dir", None)
+        if not root and getattr(self.parent, "label_file", None):
+            root = osp.dirname(self.parent.label_file.filename)
+        if root:
+            palette = {
+                label: tuple(info.get("color", (0, 114, 178)))
+                for label, info in self.parent.label_info.items()
+            }
+            try:
+                save_project_palette(root, palette)
+                self.parent.appearance_label_colors = palette
+                self.parent.canvas.set_appearance_label_colors(palette)
+            except OSError as exc:
+                logger.warning(
+                    "Unable to save project appearance palette: %s", exc
+                )
+        if hasattr(self.parent, "apply_label_visibility"):
+            self.parent.apply_label_visibility()
+        self.parent.canvas.update()
+        self.accept()
+
+    def _start_batch(self, plan, start_index, end_index):
+        """Start background candidate discovery and transactional migration."""
+        image_paths = self.image_file_list[start_index - 1 : end_index]
+        labels = frozenset(plan.rename_map) | frozenset(plan.delete_labels)
+        controller = getattr(self.parent, "_dataset_index_controller", None)
+        index = getattr(controller, "index", None)
+        if (
+            index is not None
+            and getattr(index, "snapshot_state", lambda: "")() == "ready"
+        ):
+            try:
+                indexed = set(index.query_label_files(labels))
+                if indexed:
+                    image_paths = [
+                        path for path in image_paths if path in indexed
+                    ]
+            except Exception:
+                # The index is an optimization only; the worker scans all
+                # selected files when it cannot serve a trustworthy query.
+                pass
+        transaction_root = getattr(self.parent, "output_dir", None)
+        if not transaction_root:
+            transaction_root = (
+                osp.dirname(image_paths[0]) if image_paths else "."
+            )
+        self._batch_cancelled = False
+        self.set_controls_enabled(False)
+        self.loading_label.show()
+        self.progress_bar.show()
+        self.loading_label.setText(self.tr("Preparing label migration..."))
+        self._batch_thread = LabelBatchMigrationThread(
+            image_paths,
+            getattr(self.parent, "output_dir", None),
+            plan,
+            transaction_root,
+            self,
+        )
+        self._batch_thread.progress.connect(self.on_batch_progress)
+        self._batch_thread.preflight_required.connect(
+            self.on_batch_preflight_required
+        )
+        self._batch_thread.finished_result.connect(self.on_batch_finished)
+        self._batch_thread.error.connect(self.on_batch_error)
+        self._batch_thread.finished.connect(self.on_batch_thread_finished)
+        self._batch_thread.start()
+
+    def on_batch_progress(self, phase, current, total, path):
+        """Update bounded progress without touching annotation widgets."""
+        self.progress_bar.setRange(0, max(total, 1))
+        self.progress_bar.setValue(current)
+        self.loading_label.setText(
+            self.tr("{}: {}/{}").format(phase, current, total)
+        )
+
+    def on_batch_preflight_required(self, file_count, shape_count):
+        """Ask for explicit confirmation before destructive label deletion."""
+        answer = QtWidgets.QMessageBox.warning(
+            self,
+            self.tr("Confirm label deletion"),
+            self.tr(
+                "This deletion affects {files} files and {shapes} shapes. "
+                "Continue?"
+            ).format(files=file_count, shapes=shape_count),
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if self._batch_thread is not None:
+            self._batch_thread.allow_preflight(
+                answer == QtWidgets.QMessageBox.StandardButton.Yes
+            )
+
+    def on_batch_error(self, message):
+        """Surface a worker error without falsely claiming success."""
+        logger.error("Label migration failed: %s", message)
+
+    def on_batch_finished(self, result):
+        """Commit UI state only after the worker reports disk results."""
+        if result is None:
+            self.set_controls_enabled(True)
+            self.loading_label.hide()
+            self.progress_bar.hide()
+            return
+        if result.cancelled:
+            self.set_controls_enabled(True)
+            self.loading_label.hide()
+            self.progress_bar.hide()
+            self.loading_label.setText(self.tr("Migration cancelled"))
+            return
+        counts = result.counts
+        if counts.get("failed"):
+            text = self.tr(
+                "Migration partially completed: {succeeded} succeeded, "
+                "{failed} failed, {skipped} skipped, {cancelled} cancelled. "
+                "Recovery: {manifest}"
+            ).format(manifest=result.manifest_path, **counts)
+            QtWidgets.QMessageBox.warning(
+                self, self.tr("Batch migration"), text
+            )
+            self.set_controls_enabled(True)
+            self.loading_label.hide()
+            self.progress_bar.hide()
+            return
+        QtWidgets.QMessageBox.information(
+            self,
+            self.tr("Batch migration"),
+            self.tr(
+                "Migration completed: {succeeded} succeeded, "
+                "{skipped} skipped. Recovery manifest: {manifest}"
+            ).format(manifest=result.manifest_path, **counts),
+        )
+        self.parent.load_file(self.parent.filename)
+        self.accept()
+
+    def on_batch_thread_finished(self):
+        """Release the worker reference after its terminal signal."""
+        self._batch_thread = None
 
     def modify_label(self, start_index: int = -1, end_index: int = -1):
+        """Run the legacy API through the transactional migration engine."""
         try:
             if start_index == -1:
                 start_index = self.start_index
             if end_index == -1:
                 end_index = self.end_index
-            for i, image_file in enumerate(self.image_file_list):
-                if i < start_index - 1 or i > end_index - 1:
-                    continue
-                label_dir, filename = os.path.split(image_file)
-                if self.parent.output_dir:
-                    label_dir = self.parent.output_dir
-                label_file = os.path.join(
-                    label_dir, os.path.splitext(filename)[0] + ".json"
+            original = {
+                label: LabelMetadataDraft(
+                    label=label,
+                    color=tuple(info.get("color", (0, 114, 178))),
+                    opacity=int(info.get("opacity", self.opacity)),
+                    visible=bool(info.get("visible", True)),
                 )
-                if not os.path.exists(label_file):
-                    continue
-                with open(label_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                src_shapes, dst_shapes = data["shapes"], []
-                for shape in src_shapes:
-                    label = shape["label"]
-                    if self.parent.label_info[label]["delete"]:
-                        continue
-                    if self.parent.label_info[label]["value"]:
-                        shape["label"] = self.parent.label_info[label]["value"]
-                    dst_shapes.append(shape)
-                data["shapes"] = dst_shapes
-                with open(label_file, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2, ensure_ascii=False)
-            return True
-        except Exception as e:
-            logger.error(f"Error occurred while updating labels: {e}")
+                for label, info in self._original_label_info.items()
+            }
+            edited = {
+                label: LabelMetadataDraft(
+                    label=label,
+                    color=tuple(info.get("color", (0, 114, 178))),
+                    opacity=int(info.get("opacity", self.opacity)),
+                    visible=bool(info.get("visible", True)),
+                    value=info.get("value"),
+                    delete=bool(info.get("delete", False)),
+                )
+                for label, info in self._draft_label_info.items()
+            }
+            plan = build_label_change_plan(original, edited)
+            image_paths = self.image_file_list[start_index - 1 : end_index]
+            json_paths = collect_candidate_json_paths(
+                image_paths,
+                frozenset(plan.rename_map) | frozenset(plan.delete_labels),
+                getattr(self.parent, "output_dir", None),
+            )
+            root = getattr(self.parent, "output_dir", None) or (
+                osp.dirname(json_paths[0]) if json_paths else "."
+            )
+            engine = BatchMigrationEngine(root)
+            staged = engine.stage(json_paths, plan)
+            if staged.cancelled:
+                return False
+            result = engine.commit(staged, root)
+            return not result.counts.get("failed")
+        except (OSError, ValueError, TypeError) as exc:
+            logger.error("Error occurred while updating labels: %s", exc)
             return False
 
     def init_label_info(self, classes):
@@ -1640,6 +1912,8 @@ class LabelModifyDialog(QtWidgets.QDialog):
                 visible=visible,
             )
         self.parent.label_info = scanned_label_info
+        self._original_label_info = copy.deepcopy(scanned_label_info)
+        self._draft_label_info = copy.deepcopy(scanned_label_info)
 
     def update_range(self):
         if not self._label_scan_finished:
@@ -1679,6 +1953,10 @@ class LabelModifyDialog(QtWidgets.QDialog):
             self._label_scan_thread.cancel()
             self._label_scan_thread.wait()
             self._label_scan_thread = None
+        if self._batch_thread is not None:
+            self._batch_thread.cancel()
+            self._batch_thread.wait()
+            self._batch_thread = None
         super().reject()
 
 
@@ -1938,7 +2216,7 @@ class LabelDialog(QtWidgets.QDialog):
             label, QtCore.Qt.MatchFlag.MatchExactly
         )
         if not items:
-            logger.warning(f"Skipping empty items.")
+            logger.warning("Skipping empty items.")
             return
 
         for item in items:

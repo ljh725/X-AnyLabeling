@@ -4,6 +4,7 @@ from PyQt6 import QtCore, QtGui
 
 from . import utils
 from ..labeling.logger import logger
+from .widgets.appearance_qt import QtAppearanceAdapter
 
 DEFAULT_LINE_COLOR = QtGui.QColor(0, 255, 0, 128)  # bf hovering
 DEFAULT_FILL_COLOR = QtGui.QColor(100, 100, 100, 100)  # hovering
@@ -418,15 +419,35 @@ class Shape:
         return QtCore.QRectF(x1, y1, x2 - x1, y2 - y1)
 
     def paint(  # noqa: C901
-        self, painter: QtGui.QPainter, force_unselected: bool = False
+        self,
+        painter: QtGui.QPainter,
+        force_unselected: bool = False,
+        visual_style=None,
     ):
         """Paint shape using QPainter without mutating model state."""
         if self.points:
             selected = self.selected and not force_unselected
-            color = self.select_line_color if selected else self.line_color
-            pen = QtGui.QPen(color)
-            # Try using integer sizes for smoother drawing(?)
-            pen.setWidth(max(1, int(round(self.line_width / self.scale))))
+            if visual_style is not None:
+                color = (
+                    self.select_line_color
+                    if selected
+                    else QtAppearanceAdapter.color(
+                        visual_style.base_color,
+                        round(visual_style.object_opacity * 255),
+                    )
+                )
+                style_width = visual_style.semantic_width
+            else:
+                color = self.select_line_color if selected else self.line_color
+                style_width = self.line_width
+            if visual_style is not None and not selected:
+                pen = QtAppearanceAdapter.semantic_pen(
+                    visual_style, self.scale
+                )
+            else:
+                pen = QtGui.QPen(color)
+                # Try using integer sizes for smoother drawing(?)
+                pen.setWidth(max(1, int(round(style_width / self.scale))))
             if self.difficult and self.shape_type != "point":
                 pen.setStyle(QtCore.Qt.PenStyle.DashLine)
             painter.setPen(pen)
@@ -592,6 +613,13 @@ class Shape:
                 if self.is_closed():
                     line_path.lineTo(self.points[0])
 
+            if visual_style is not None and self.shape_type == "rectangle":
+                outer_pen = QtAppearanceAdapter.contrast_pen(
+                    visual_style, self.scale
+                )
+                painter.setPen(outer_pen)
+                painter.drawPath(line_path)
+                painter.setPen(pen)
             painter.drawPath(line_path)
             painter.drawPath(vrtx_path)
             if self._vertex_fill_color is not None:
@@ -615,7 +643,12 @@ class Shape:
                     QtCore.QPointF(p0.x(), p0.y()), d / 2.0, d / 2.0
                 )
             if self.fill:
-                color = self.select_fill_color if selected else self.fill_color
+                if visual_style is not None:
+                    color = QtAppearanceAdapter.fill_brush(visual_style)
+                else:
+                    color = (
+                        self.select_fill_color if selected else self.fill_color
+                    )
                 painter.fillPath(line_path, color)
 
             if (
