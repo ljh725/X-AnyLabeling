@@ -96,6 +96,8 @@ class SettingsRuntimeApplier:
             "shortcuts.edit_digit_shortcut": self._widget.actions.digit_shortcut_manager,
             "shortcuts.edit_digit_relabel": self._widget.actions.digit_relabel_manager,
             "shortcuts.switch_digit_page": self._widget.actions.switch_digit_page,
+            "shortcuts.virtual_review_next": self._widget.actions.virtual_review_next,
+            "shortcuts.virtual_review_prev": self._widget.actions.virtual_review_prev,
             "shortcuts.edit_group_id": self._widget.actions.gid_manager,
             "shortcuts.edit_labels": self._widget.actions.label_manager,
             "shortcuts.edit_shapes": self._widget.actions.shape_manager,
@@ -217,6 +219,7 @@ class SettingsRuntimeApplier:
         }:
             self.apply_canvas_basic()
             return
+
         if key.startswith("canvas.wheel_rectangle_editing."):
             self.apply_canvas_wheel_edit()
             return
@@ -247,6 +250,9 @@ class SettingsRuntimeApplier:
         if key == "canvas_precision_factor":
             self._widget.canvas.set_precision_factor(value)
             return
+        if key.startswith("rectangle_review_refinement."):
+            self.apply_rectangle_review_refinement()
+            return
         if key == "shift_auto_shape_color":
             self._widget._runtime_shape_color_shift = int(
                 self._widget._config.get("shift_auto_shape_color", 0)
@@ -257,6 +263,9 @@ class SettingsRuntimeApplier:
             "default_shape_color",
         }:
             self.apply_shape_style(key)
+            return
+        if key.startswith("annotation_appearance."):
+            self.apply_annotation_appearance()
             return
         if (
             key.startswith("flag_dock.")
@@ -304,6 +313,14 @@ class SettingsRuntimeApplier:
         if key.startswith("shortcuts."):
             self.apply_shortcuts(key, value)
 
+    def apply_annotation_appearance(self) -> None:
+        """Apply display-only appearance preferences without dirtying data."""
+        from ..widgets.appearance import load_user_appearance
+
+        settings = load_user_appearance(self._widget._config)
+        self._widget.appearance_settings = settings
+        self._widget.canvas.set_appearance_settings(settings)
+
     def apply_canvas_basic(self) -> None:
         self._widget.canvas.epsilon = float(
             self._widget._config["canvas"]["epsilon"]
@@ -331,6 +348,15 @@ class SettingsRuntimeApplier:
             wheel_config["adjust_step"]
         )
         self._widget.canvas.rect_scale_step = float(wheel_config["scale_step"])
+
+    def apply_rectangle_review_refinement(self) -> None:
+        """Apply rectangle review refinement settings to the canvas."""
+        config = self._widget._config.get("rectangle_review_refinement", {})
+        canvas = self._widget.canvas
+        if hasattr(canvas, "set_rectangle_review_refinement_config"):
+            canvas.set_rectangle_review_refinement_config(
+                config, self._widget._config
+            )
 
     def apply_canvas_crosshair(self) -> None:
         crosshair = self._widget._config["canvas"]["crosshair"]

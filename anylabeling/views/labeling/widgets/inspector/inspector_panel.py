@@ -56,6 +56,8 @@ from .quality.threshold_suggestion import (
     SuggestionContext,
     generate_threshold_suggestion,
 )
+from .virtual_review_widget import VirtualReviewWidget
+from .dataset_review_widget import DatasetReviewWidget
 
 logger = logging.getLogger(__name__)
 
@@ -214,6 +216,11 @@ class InspectorPanel(QtWidgets.QDockWidget):
     shape_edit_requested = QtCore.pyqtSignal(str, int, str, object)
     scan_started = QtCore.pyqtSignal()
     scan_finished = QtCore.pyqtSignal(object)
+    virtual_review_start_requested = QtCore.pyqtSignal(object)
+    virtual_review_stop_requested = QtCore.pyqtSignal()
+    virtual_review_previous_requested = QtCore.pyqtSignal()
+    virtual_review_next_requested = QtCore.pyqtSignal()
+    virtual_review_overview_requested = QtCore.pyqtSignal()
 
     COCO_KEYPOINTS: Set[str] = {
         "nose",
@@ -262,6 +269,22 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._tab_widget.insertTab(
             1, self._quality_review, self.tr("质检复核")
         )
+
+        self._virtual_review = VirtualReviewWidget()
+        self._tab_widget.insertTab(
+            2, self._virtual_review, self.tr("目标复核")
+        )
+
+        # Dataset queue section lives inside the same target-review
+        # tab, clearly separated below the image-local review controls.
+        self._dataset_review = DatasetReviewWidget()
+        separator = QtWidgets.QFrame()
+        separator.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        separator.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        virtual_layout = self._virtual_review.layout()
+        insert_at = max(0, virtual_layout.count() - 1)
+        virtual_layout.insertWidget(insert_at, separator)
+        virtual_layout.insertWidget(insert_at + 1, self._dataset_review)
 
         self._table_widget = EditableTableWidget()
         self._tab_widget.addTab(self._table_widget, self.tr("数据表格"))
@@ -316,6 +339,22 @@ class InspectorPanel(QtWidgets.QDockWidget):
             self._on_quality_review_changed
         )
 
+        self._virtual_review.start_requested.connect(
+            self.virtual_review_start_requested.emit
+        )
+        self._virtual_review.stop_requested.connect(
+            self.virtual_review_stop_requested.emit
+        )
+        self._virtual_review.previous_requested.connect(
+            self.virtual_review_previous_requested.emit
+        )
+        self._virtual_review.next_requested.connect(
+            self.virtual_review_next_requested.emit
+        )
+        self._virtual_review.overview_requested.connect(
+            self.virtual_review_overview_requested.emit
+        )
+
         # ── state ────────────────────────────────────────────────
         self._last_report: Optional[ValidationReport] = None
         self._file_list: List[str] = []
@@ -339,6 +378,20 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._rule_config.populate(self._engine.rules)
 
         logger.debug("InspectorPanel initialized")
+
+    @property
+    def virtual_review_widget(self) -> VirtualReviewWidget:
+        """Return the virtual review criteria/navigation widget."""
+        return self._virtual_review
+
+    @property
+    def dataset_review_widget(self) -> DatasetReviewWidget:
+        """Return the dataset review queue controls."""
+        return self._dataset_review
+
+    def set_virtual_review_labels(self, labels: Set[str]) -> None:
+        """Update virtual-review label choices from the active label set."""
+        self._virtual_review.set_labels(labels)
 
     # ── Rule config handler ──────────────────────────────────────
 

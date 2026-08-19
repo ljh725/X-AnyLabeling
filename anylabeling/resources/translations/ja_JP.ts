@@ -3606,6 +3606,10 @@ This warning will only be shown once. Do you want to continue?</source>
       <source>this image to the end</source>
       <translation>この画像から末尾まで</translation>
     </message>
+    <message><source>Next Virtual Review Task</source><translation>次のターゲット確認タスク</translation></message>
+    <message><source>Focus the next virtual review task</source><translation>次のターゲット確認タスクにフォーカス</translation></message>
+    <message><source>Previous Virtual Review Task</source><translation>前のターゲット確認タスク</translation></message>
+    <message><source>Focus the previous virtual review task</source><translation>前のターゲット確認タスクにフォーカス</translation></message>
   </context>
   <context>
     <name>Model</name>
@@ -6340,6 +6344,200 @@ Do you want to continue?</source>
       <location filename="../../views/labeling/widgets/zoom_widget.py" line="15" />
       <source>Zoom Level</source>
       <translation>ズームレベル</translation>
+    </message>
+  </context>
+  <context>
+    <name>VirtualReviewWidget</name>
+    <message><source>全部标签</source><translation>すべてのラベル</translation></message>
+    <message><source>锚点标签</source><translation>アンカーラベル</translation></message>
+    <message><source>全部形状</source><translation>すべての形状</translation></message>
+    <message><source>形状类型</source><translation>形状タイプ</translation></message>
+    <message><source>任意</source><translation>任意</translation></message>
+    <message><source>有效 group_id</source><translation>有効な group_id</translation></message>
+    <message><source>缺少 group_id</source><translation>group_id なし</translation></message>
+    <message><source>指定 group_id</source><translation>指定 group_id</translation></message>
+    <message><source>指定值</source><translation>指定値</translation></message>
+    <message><source>不限</source><translation>制限なし</translation></message>
+    <message><source>宽度像素</source><translation>幅（ピクセル）</translation></message>
+    <message><source>高度像素</source><translation>高さ（ピクセル）</translation></message>
+    <message><source>生成任务</source><translation>タスクを生成</translation></message>
+    <message><source>退出</source><translation>終了</translation></message>
+    <message><source>上一个</source><translation>前へ</translation></message>
+    <message><source>下一个</source><translation>次へ</translation></message>
+    <message><source>查看全图</source><translation>全体を表示</translation></message>
+    <message><source>未生成任务</source><translation>タスク未生成</translation></message>
+    <message><source>条件无效：%s</source><translation>無効な条件：%s</translation></message>
+    <message><source>显示模式</source><translation>表示モード</translation></message>
+    <message><source>单任务</source><translation>単一タスク</translation></message>
+    <message><source>均衡</source><translation>バランス</translation></message>
+    <message><source>高密度</source><translation>高密度</translation></message>
+    <message><source>单页任务上限</source><translation>1ページのタスク上限</translation></message>
+    <message><source>单页最多同时显示的原子任务数</source><translation>1ページに同時表示する原子タスクの最大数</translation></message>
+    <message><source>最小投影尺寸</source><translation>最小投影サイズ</translation></message>
+    <message><source>适配视口后锚点最短边的最小投影像素</source><translation>ビューポート適合後のアンカー短辺の最小投影ピクセル</translation></message>
+    <message><source>最小投影间距</source><translation>最小投影間隔</translation></message>
+    <message><source>适配视口后同页任务包围盒之间的最小投影间距</source><translation>ビューポート適合後の同ページタスク境界ボックス間の最小投影間隔</translation></message>
+    <message><source> px</source><translation> px</translation></message>
+    <message><source>当前页面：%d/%d（本页任务 %d）</source><translation>現在のページ：%d/%d（ページ内タスク %d）</translation></message>
+    <message><source>任务 %d → 页面 %d（减少 %d 次翻页）· 单页兜底 %d</source><translation>タスク %d → ページ %d（%d 回のページ送り削減）· 単一フォールバック %d</translation></message>
+  </context>
+  <context>
+    <name>InspectorPanel</name>
+    <message><source>目标复核</source><translation>ターゲット確認</translation></message>
+  </context>
+  <context>
+    <name>DatasetReviewWidget</name>
+    <message>
+      <source>æ°æ®éå¤æ ¸éå</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>åå»ºéå</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>æå¼éå</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>å³é­éå</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>åæ¶æ«æ</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>éå»ºéå</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>è°åéå</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>å¤ä»½</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>æé¤å¹¶åå¸</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>åæ¶</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>æªæå¼éå</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>å®æ</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>è¿å·¥</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>è·³è¿</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>éç½®</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>å®æå¹¶ä¸ä¸é¡µ</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>æå¨ç»å®æé</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>è¿æ»¤</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>ç¡®è®¤æ¥ç®¡ç§çº¦</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>åªè¯»è¯æ­</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>éè¯åå¥</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>å¦å­å¯æ¬</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>ééæ ¹ç®å½è°å</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>éæ©éåæä»¶</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>XReview éå (*.xreview.sqlite3)</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>æå¼éåæä»¶</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>å¤ä»½éå</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>éæ©æ°çæ°æ®éæ ¹ç®å½</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>è¯·åéæ©ä¸ä¸ªä»»å¡åæå¨ç»å®</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>åå¥ç§çº¦çä¼¼è¿æï¼å®ä¾ %sï¼PID %sï¼ï¼è¯·ç¡®è®¤æ¥ç®¡æåªè¯»æå¼</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>æ«æ %d/%dï¼%s</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>æ«æå®æï¼%d æä»¶ï¼%d ä»»å¡ï¼%d é¡µé¢</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>ä»¥ä¸æä»¶å°è¢«æé¤ï¼%s</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>æ¥æºï¼%s Â· é¡µé¢ %d/%d</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>éåä¸ºç©º</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>ä»»å¡ %d Â· å¾å¤ç %d Â· å®æ %d Â· è¿å·¥ %d Â· è·³è¿ %d</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>é¡µé¢ %d Â· å¯æä½ %d Â· è¿æ %d Â· æªè§£æ %d</source>
+      <translation type="unfinished"></translation>
+    </message>
+    <message>
+      <source>é»è®¤è§å¾ä¸æ²¡æå©ä½å¯å¤çå·¥ä½</source>
+      <translation type="unfinished"></translation>
     </message>
   </context>
 </TS>

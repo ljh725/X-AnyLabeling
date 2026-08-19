@@ -59,6 +59,19 @@ shape_color: auto  # null, 'auto', 'manual'
 shift_auto_shape_color: 0
 label_colors: null
 
+# Display-only annotation appearance.  These values never enter shape JSON.
+annotation_appearance:
+  color_mode: focus  # focus, label, group, instance, uniform
+  high_contrast_outline: true
+  normal_fill_opacity: 0
+  selected_fill_opacity: 28
+  hover_fill_opacity: 18
+  unrelated_opacity: 0.28
+  show_labels: true
+  show_gid: focus  # always, focus, never
+  outline_width: 1.0
+  semantic_width: 1.0
+
 training:
   ultralytics:
     project_readonly: true
@@ -196,6 +209,8 @@ shortcuts:
   edit_digit_shortcut: Alt+D
   edit_digit_relabel: Alt+R
   switch_digit_page: F1
+  virtual_review_next: F2
+  virtual_review_prev: Shift+F2
   edit_group_id: Alt+G
   edit_labels: Alt+L
   enter_keypoint_fill_mode: K
@@ -253,6 +268,25 @@ auto_person_instance: false  # auto-create new group_id when drawing person rect
 canvas_precision_mode: zoom  # fixed | zoom
 canvas_precision_max_factor: 2.0  # max slowdown factor for zoom precision mode
 canvas_precision_factor: 4  # mouse drag slowdown factor in precision mode
+
+# Low-fatigue rectangle review refinement (rollout flags are intentionally off).
+rectangle_review_refinement:
+  enabled: false
+  target_gain: 0.5  # maximum image pixels moved per screen pixel in edge refine
+  edge_drag_precision_default: true
+  nudge_step_px: 1
+  coarse_step_px: 5
+  feedback_enabled: true
+  persist_across_images: true
+  assistance:
+    loupe_enabled: false
+    candidate_enabled: false
+  telemetry:
+    enabled: false
+    idle_timeout_ms: 30000
+    zoom_burst_ms: 300
+    reversal_deadband_px: 0.5
+    reversal_confirm_px: 1.0
 
 # Pose keypoint label display
 pose_view:

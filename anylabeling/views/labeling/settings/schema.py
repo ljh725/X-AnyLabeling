@@ -111,6 +111,41 @@ def _settings_translation_markers() -> None:
     QCoreApplication.translate("SettingsDialog", "Model Hub")
     QCoreApplication.translate("SettingsDialog", "Model download source.")
     QCoreApplication.translate("SettingsDialog", "Logger Level")
+    QCoreApplication.translate("SettingsDialog", "Appearance Color Mode")
+    QCoreApplication.translate("SettingsDialog", "High Contrast Outline")
+    QCoreApplication.translate("SettingsDialog", "Normal Fill Opacity")
+    QCoreApplication.translate("SettingsDialog", "Selected Fill Opacity")
+    QCoreApplication.translate(
+        "SettingsDialog", "Unrelated Object Opacity"
+    )
+    QCoreApplication.translate("SettingsDialog", "Show Appearance Labels")
+    QCoreApplication.translate("SettingsDialog", "Show Group ID")
+    QCoreApplication.translate(
+        "SettingsDialog", "Enable Rectangle Review Refinement"
+    )
+    QCoreApplication.translate(
+        "SettingsDialog", "Rectangle Refinement Target Gain"
+    )
+    QCoreApplication.translate("SettingsDialog", "Default Edge Drag Precision")
+    QCoreApplication.translate("SettingsDialog", "Rectangle Nudge Step")
+    QCoreApplication.translate("SettingsDialog", "Rectangle Coarse Step")
+    QCoreApplication.translate(
+        "SettingsDialog", "Rectangle Refinement Feedback"
+    )
+    QCoreApplication.translate(
+        "SettingsDialog", "Persist Refinement Across Images"
+    )
+    QCoreApplication.translate("SettingsDialog", "Enable Refinement Telemetry")
+    QCoreApplication.translate("SettingsDialog", "Telemetry Idle Timeout")
+    QCoreApplication.translate("SettingsDialog", "Telemetry Zoom Burst")
+    QCoreApplication.translate("SettingsDialog", "Telemetry Reversal Deadband")
+    QCoreApplication.translate(
+        "SettingsDialog", "Telemetry Reversal Confirmation"
+    )
+    QCoreApplication.translate("SettingsDialog", "Enable Refinement Loupe")
+    QCoreApplication.translate(
+        "SettingsDialog", "Enable Edge Candidate Assistance"
+    )
 
 
 SETTINGS_GENERAL_KEYS = (
@@ -292,6 +327,14 @@ def _shortcut_label(short_key: str) -> str:
         "switch_digit_page": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT,
             "Switch Digit Shortcut Page",
+        ),
+        "virtual_review_next": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Next Virtual Review Task",
+        ),
+        "virtual_review_prev": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Previous Virtual Review Task",
         ),
         "toggle_precision_mode_lock": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT,
@@ -547,6 +590,83 @@ def _non_shortcut_fields() -> list[SettingField]:
             "Mode",
             options=(None, "auto", "manual"),
             allow_none=True,
+        ),
+        SettingField(
+            "annotation_appearance.color_mode",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Appearance Color Mode"
+            ),
+            "enum",
+            "Appearance",
+            "Annotation Appearance",
+            "Mode",
+            options=("focus", "label", "group", "instance", "uniform"),
+        ),
+        SettingField(
+            "annotation_appearance.high_contrast_outline",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "High Contrast Outline"
+            ),
+            "bool",
+            "Appearance",
+            "Annotation Appearance",
+            "Rendering",
+        ),
+        SettingField(
+            "annotation_appearance.normal_fill_opacity",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Normal Fill Opacity"
+            ),
+            "int",
+            "Appearance",
+            "Annotation Appearance",
+            "Rendering",
+            minimum=0,
+            maximum=255,
+        ),
+        SettingField(
+            "annotation_appearance.selected_fill_opacity",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Selected Fill Opacity"
+            ),
+            "int",
+            "Appearance",
+            "Annotation Appearance",
+            "Rendering",
+            minimum=0,
+            maximum=255,
+        ),
+        SettingField(
+            "annotation_appearance.unrelated_opacity",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Unrelated Object Opacity"
+            ),
+            "float",
+            "Appearance",
+            "Annotation Appearance",
+            "Focus",
+            minimum=0.0,
+            maximum=1.0,
+            decimals=2,
+        ),
+        SettingField(
+            "annotation_appearance.show_labels",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Show Appearance Labels"
+            ),
+            "bool",
+            "Appearance",
+            "Annotation Appearance",
+            "Identity",
+        ),
+        SettingField(
+            "annotation_appearance.show_gid",
+            QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Show Group ID"),
+            "enum",
+            "Appearance",
+            "Annotation Appearance",
+            "Identity",
+            options=("always", "focus", "never"),
         ),
         SettingField(
             "default_shape_color",
@@ -842,6 +962,168 @@ def _non_shortcut_fields() -> list[SettingField]:
             ),
         ),
         SettingField(
+            "rectangle_review_refinement.enabled",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Enable Rectangle Review Refinement",
+            ),
+            "bool",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Rollout",
+        ),
+        SettingField(
+            "rectangle_review_refinement.target_gain",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Rectangle Refinement Target Gain",
+            ),
+            "float",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Control",
+            minimum=0.05,
+            maximum=2.0,
+            decimals=2,
+        ),
+        SettingField(
+            "rectangle_review_refinement.edge_drag_precision_default",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Default Edge Drag Precision"
+            ),
+            "bool",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Control",
+        ),
+        SettingField(
+            "rectangle_review_refinement.nudge_step_px",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Rectangle Nudge Step"
+            ),
+            "int",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Control",
+            minimum=1,
+            maximum=20,
+        ),
+        SettingField(
+            "rectangle_review_refinement.coarse_step_px",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Rectangle Coarse Step"
+            ),
+            "int",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Control",
+            minimum=1,
+            maximum=100,
+        ),
+        SettingField(
+            "rectangle_review_refinement.feedback_enabled",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Rectangle Refinement Feedback"
+            ),
+            "bool",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Feedback",
+        ),
+        SettingField(
+            "rectangle_review_refinement.persist_across_images",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Persist Refinement Across Images",
+            ),
+            "bool",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Session",
+        ),
+        SettingField(
+            "rectangle_review_refinement.telemetry.enabled",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Enable Refinement Telemetry"
+            ),
+            "bool",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Telemetry",
+        ),
+        SettingField(
+            "rectangle_review_refinement.telemetry.idle_timeout_ms",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Telemetry Idle Timeout"
+            ),
+            "int",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Telemetry",
+            minimum=1000,
+            maximum=300000,
+        ),
+        SettingField(
+            "rectangle_review_refinement.telemetry.zoom_burst_ms",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Telemetry Zoom Burst"
+            ),
+            "int",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Telemetry",
+            minimum=50,
+            maximum=5000,
+        ),
+        SettingField(
+            "rectangle_review_refinement.telemetry.reversal_deadband_px",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Telemetry Reversal Deadband"
+            ),
+            "float",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Telemetry",
+            minimum=0.0,
+            maximum=10.0,
+            decimals=2,
+        ),
+        SettingField(
+            "rectangle_review_refinement.telemetry.reversal_confirm_px",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Telemetry Reversal Confirmation",
+            ),
+            "float",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Telemetry",
+            minimum=0.1,
+            maximum=20.0,
+            decimals=2,
+        ),
+        SettingField(
+            "rectangle_review_refinement.assistance.loupe_enabled",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Enable Refinement Loupe"
+            ),
+            "bool",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Assistance",
+        ),
+        SettingField(
+            "rectangle_review_refinement.assistance.candidate_enabled",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Enable Edge Candidate Assistance",
+            ),
+            "bool",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Assistance",
+        ),
+        SettingField(
             "canvas.crosshair.show",
             QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Show Crosshair"),
             "bool",
@@ -1079,6 +1361,8 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "edit_digit_shortcut",
             "edit_digit_relabel",
             "switch_digit_page",
+            "virtual_review_next",
+            "virtual_review_prev",
             "edit_group_id",
             "edit_labels",
             "edit_shapes",

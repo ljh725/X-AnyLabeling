@@ -7,6 +7,8 @@ import os.path as osp
 import re
 import shutil
 import time
+import uuid
+from pathlib import Path
 from typing import Callable, Optional
 
 import cv2
@@ -79,6 +81,22 @@ from .dataset_index.controller import (
 from .settings import SettingsController, SettingsDialog
 from .settings.runtime_applier import SettingsRuntimeApplier
 from .shape import Shape
+from .widgets.appearance import (
+    load_project_palette,
+    load_user_appearance,
+    resolve_base_color,
+)
+from .review_refinement.metrics import (
+    DEFAULT_IDLE_TIMEOUT_SECONDS,
+    DEFAULT_REVERSAL_CONFIRM_PX,
+    DEFAULT_REVERSAL_DEADBAND_PX,
+    DEFAULT_ZOOM_BURST_SECONDS,
+    EpisodeEndReason,
+    FeatureStage,
+    JsonlMetricsWriter,
+    ReviewEpisodeCollector,
+)
+from .review_refinement.session import RefinementSessionController
 from .utils.file_search import (
     parse_search_pattern,
     matches_filename,
@@ -133,6 +151,17 @@ from .widgets.pose_label import (
 )
 
 from .rect_refine_focus import RectRefineFocusController  # noqa: E402
+from .widgets.inspector.virtual_review_controller import (  # noqa: E402
+    VirtualReviewController,
+)
+from .widgets.inspector.dataset_review_controller import (  # noqa: E402
+    DatasetReviewController,
+)
+from .virtual_review import (  # noqa: E402
+    VirtualPackingOptions,
+    VirtualTaskCriteria,
+    descriptors_from_lists,
+)
 from .rect_refine_types import (  # noqa: E402
     ShapeRefineView,
     parse_rect_refine_label_roles,
@@ -250,6 +279,7 @@ class LabelingWidget(LabelDialog):
 
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = 0, 1, 2
     next_files_changed = QtCore.pyqtSignal(list)
+    dataset_review_load_finished = QtCore.pyqtSignal(str, bool, int, bool)
 
     def __init__(  # noqa: C901
         self,
@@ -289,6 +319,8 @@ class LabelingWidget(LabelDialog):
         if config is None:
             config = get_config()
         self._config = config
+        self.appearance_settings = load_user_appearance(self._config)
+        self.appearance_label_colors = {}
         self.label_flags = self._config["label_flags"]
         self.label_loop_count = -1
         self.select_loop_count = -1
@@ -316,6 +348,7 @@ class LabelingWidget(LabelDialog):
         )
         self.keypoint_tool_window = None
         self.inspector_panel = InspectorPanel()
+        self._virtual_review_active = False
         self.inspector_panel.issue_navigate_requested.connect(
             self._on_inspector_navigate
         )
@@ -326,6 +359,9 @@ class LabelingWidget(LabelDialog):
         labels_from_config = self._config.get("labels", [])
         if labels_from_config:
             self.inspector_panel.set_allowed_labels(set(labels_from_config))
+            self.inspector_panel.set_virtual_review_labels(
+                set(labels_from_config)
+            )
         self._settings_controller = None
         self._settings_dialog = None
         self._label_modify_dialog = None
@@ -582,6 +618,21 @@ class LabelingWidget(LabelDialog):
                 "double_click_edit_label", True
             ),
         )
+        self.canvas.set_appearance_settings(self.appearance_settings)
+        self.canvas.set_appearance_label_colors(self.appearance_label_colors)
+        self._review_target_tokens = {}
+        self._review_metrics = self._create_review_metrics_collector()
+        refinement_config = self._config.get(
+            "rectangle_review_refinement", {}
+        )
+        refinement_config = (
+            refinement_config if isinstance(refinement_config, dict) else {}
+        )
+        self._review_session = RefinementSessionController(
+            persist_across_images=bool(
+                refinement_config.get("persist_across_images", True)
+            )
+        )
         self.canvas.zoom_request.connect(self.zoom_request)
 
         # Compare view support
@@ -626,6 +677,22 @@ class LabelingWidget(LabelDialog):
         self.canvas.shape_rotated.connect(self.set_dirty)
         self.canvas.escape_pressed.connect(self._on_canvas_escape_pressed)
         self.canvas.selection_changed.connect(self.shape_selection_changed)
+        self.canvas.selection_changed.connect(
+            self._review_metrics_selection_changed
+        )
+        self.canvas.rectangle_review_feedback_changed.connect(
+            self._review_feedback_changed
+        )
+        if self._review_metrics is not None:
+            self.canvas.rectangle_review_edge_drag_started.connect(
+                self._review_metrics.edge_drag_started
+            )
+            self.canvas.rectangle_review_edge_drag_delta.connect(
+                self._review_metrics.edge_drag_sample
+            )
+            self.canvas.rectangle_review_edge_drag_finished.connect(
+                self._review_metrics.edge_drag_finished
+            )
         # Inspector table refresh (debounced)
         self.canvas.new_shape.connect(self._schedule_inspector_table_refresh)
         self.canvas.shape_moved.connect(self._schedule_inspector_table_refresh)
@@ -674,6 +741,15 @@ class LabelingWidget(LabelDialog):
         )
 
         self._central_widget = scroll_area
+        self.virtual_review_controller = VirtualReviewController(
+            self,
+            self.inspector_panel.virtual_review_widget,
+        )
+        self.dataset_review_controller = DatasetReviewController(
+            self,
+            self.virtual_review_controller,
+        )
+        self._wire_dataset_review_ui()
 
         features = QtWidgets.QDockWidget.DockWidgetFeature(0)
         for dock in [
@@ -1233,6 +1309,22 @@ class LabelingWidget(LabelDialog):
             self.switch_digit_shortcut_page,
             shortcuts["switch_digit_page"],
             tip=self.tr("Switch to the next digit shortcut page"),
+        )
+        virtual_review_next = action(
+            self.tr("Next Virtual Review Task"),
+            lambda _checked=False: (
+                self._dispatch_virtual_review_navigation(1)
+            ),
+            shortcuts.get("virtual_review_next", "F2"),
+            tip=self.tr("Focus the next virtual review task"),
+        )
+        virtual_review_prev = action(
+            self.tr("Previous Virtual Review Task"),
+            lambda _checked=False: (
+                self._dispatch_virtual_review_navigation(-1)
+            ),
+            shortcuts.get("virtual_review_prev", "Shift+F2"),
+            tip=self.tr("Focus the previous virtual review task"),
         )
         label_manager = action(
             self.tr("Label Manager"),
@@ -2283,6 +2375,8 @@ class LabelingWidget(LabelDialog):
             digit_shortcut_manager=digit_shortcut_manager,
             digit_relabel_manager=digit_relabel_manager,
             switch_digit_page=switch_digit_page,
+            virtual_review_next=virtual_review_next,
+            virtual_review_prev=virtual_review_prev,
             label_manager=label_manager,
             gid_manager=gid_manager,
             shape_manager=shape_manager,
@@ -2399,6 +2493,8 @@ class LabelingWidget(LabelDialog):
         ):
             self.addAction(digit_action)
         self.addAction(self.actions.switch_digit_page)
+        self.addAction(self.actions.virtual_review_next)
+        self.addAction(self.actions.virtual_review_prev)
         self.addAction(self.actions.enter_keypoint_fill_mode)
         self.addAction(self.actions.toggle_keypoint_tool_window)
         self.addAction(self.actions.switch_to_prev_person)
@@ -3608,7 +3704,165 @@ class LabelingWidget(LabelDialog):
         self.recent_files.insert(0, filename)
 
     # Callbacks
+    def _create_review_metrics_collector(
+        self,
+    ) -> ReviewEpisodeCollector | None:
+        """Create the opt-in rectangle-review telemetry collector."""
+        config = self._config.get("rectangle_review_refinement", {})
+        config = config if isinstance(config, dict) else {}
+        telemetry = config.get("telemetry", {})
+        telemetry = telemetry if isinstance(telemetry, dict) else {}
+        if not bool(telemetry.get("enabled", False)):
+            return None
+        configured_path = telemetry.get("path")
+        if configured_path:
+            metrics_path = Path(str(configured_path))
+        else:
+            app_data = QtCore.QStandardPaths.writableLocation(
+                QtCore.QStandardPaths.StandardLocation.AppDataLocation
+            )
+            root = app_data or osp.join(osp.expanduser("~"), ".xanylabeling")
+            metrics_path = Path(root) / "metrics" / "rectangle_review_v1.jsonl"
+        writer = JsonlMetricsWriter(
+            metrics_path,
+            warning_callback=lambda message: self.status(message),
+        )
+        return ReviewEpisodeCollector(
+            writer,
+            app_version=__version__,
+            enabled=True,
+            idle_timeout_seconds=float(
+                telemetry.get(
+                    "idle_timeout_ms", DEFAULT_IDLE_TIMEOUT_SECONDS * 1000
+                )
+            )
+            / 1000.0,
+            zoom_burst_seconds=float(
+                telemetry.get(
+                    "zoom_burst_ms", DEFAULT_ZOOM_BURST_SECONDS * 1000
+                )
+            )
+            / 1000.0,
+            reversal_deadband_px=float(
+                telemetry.get(
+                    "reversal_deadband_px", DEFAULT_REVERSAL_DEADBAND_PX
+                )
+            ),
+            reversal_confirm_px=float(
+                telemetry.get(
+                    "reversal_confirm_px", DEFAULT_REVERSAL_CONFIRM_PX
+                )
+            ),
+        )
+
+    def _review_metrics_selection_changed(
+        self, selected_shapes: list[Shape]
+    ) -> None:
+        """Start or finish one privacy-minimized rectangle episode."""
+        collector = self._review_metrics
+        rectangles = [
+            shape
+            for shape in selected_shapes
+            if getattr(shape, "shape_type", None) == "rectangle"
+        ]
+        if len(rectangles) != 1:
+            self._review_session.select_target(None)
+            if collector is not None:
+                collector.target_cleared(EpisodeEndReason.TARGET_CLEARED)
+            return
+        shape = rectangles[0]
+        key = id(shape)
+        token = self._review_target_tokens.setdefault(key, uuid.uuid4().hex)
+        if self._review_session.image_token is None:
+            self._review_session.start(
+                str(self._rect_refine_image_token or "current")
+            )
+        self._review_session.select_target(token)
+        if collector is None:
+            return
+        refinement = self._config.get("rectangle_review_refinement", {})
+        enabled = bool(
+            isinstance(refinement, dict) and refinement.get("enabled", False)
+        )
+        assistance = (
+            refinement.get("assistance", {})
+            if isinstance(refinement, dict)
+            else {}
+        )
+        assistance = assistance if isinstance(assistance, dict) else {}
+        if not enabled:
+            stage = FeatureStage.BASELINE
+        elif assistance.get("loupe_enabled") or assistance.get(
+            "candidate_enabled"
+        ):
+            stage = FeatureStage.P2_ASSISTANCE
+        elif refinement.get("persist_across_images", True):
+            stage = FeatureStage.P1_CONTINUITY
+        elif refinement.get("feedback_enabled", True):
+            stage = FeatureStage.P1_FEEDBACK
+        else:
+            stage = FeatureStage.P0_GAIN
+        collector.target_selected(
+            token,
+            stage,
+            {
+                "refinement_enabled": enabled,
+                "edge_precision_default": bool(
+                    isinstance(refinement, dict)
+                    and refinement.get("edge_drag_precision_default", True)
+                ),
+                "feedback_enabled": bool(
+                    isinstance(refinement, dict)
+                    and refinement.get("feedback_enabled", True)
+                ),
+                "persist_across_images": bool(
+                    isinstance(refinement, dict)
+                    and refinement.get("persist_across_images", True)
+                ),
+                "assistance_enabled": bool(
+                    assistance.get("loupe_enabled")
+                    or assistance.get("candidate_enabled")
+                ),
+            },
+        )
+
+    def _review_feedback_changed(self, snapshot: object) -> None:
+        """Route transient edge feedback to the existing status bar."""
+        if snapshot is None:
+            return
+        if snapshot.phase == "rejected":
+            reason = snapshot.rejection_reason or "constraint"
+            self.status(self.tr("Edge adjustment rejected: %s") % reason)
+        elif snapshot.phase == "committed":
+            self.status(self.tr("Edge adjustment committed"))
+        elif snapshot.phase == "canceled":
+            self.status(self.tr("Edge adjustment canceled"))
+
+    def _teardown_review_transients(self) -> None:
+        """Clear uncommitted edge state before a target/image transition."""
+        if getattr(self.canvas, "rect_edge_dragging", False):
+            self.canvas.cancel_rect_edge_drag()
+        self.canvas.clear_rect_edge_alignment()
+        self.canvas._reset_virtual_cursor()
+        self.canvas._rectangle_review_wheel.reset()
+
     def undo_shape_edit(self):
+        collector = self._review_metrics
+        target = self.canvas.selected_shapes[0] if len(
+            self.canvas.selected_shapes
+        ) == 1 else None
+        target_token = self._review_target_tokens.get(id(target), "")
+        was_restorable = bool(self.canvas.is_shape_restorable)
+        target_index = (
+            self.canvas.shapes.index(target)
+            if target is not None and target in self.canvas.shapes
+            else None
+        )
+        before_points = (
+            tuple((point.x(), point.y()) for point in target.points)
+            if target is not None
+            else None
+        )
         # Drop any pending bind-draw context (task 3.14): the source
         # shape's group_id was never written (lazy backfill), so there
         # is nothing to revert on the source — only clear the intent.
@@ -3619,6 +3873,27 @@ class LabelingWidget(LabelDialog):
         self.load_shapes(self.canvas.shapes, update_last_label=False)
         self.actions.undo.setEnabled(self.canvas.is_shape_restorable)
         self.set_dirty()
+        if collector is not None:
+            restored_target = (
+                self.canvas.shapes[target_index]
+                if target_index is not None
+                and target_index < len(self.canvas.shapes)
+                else None
+            )
+            after_points = (
+                tuple(
+                    (point.x(), point.y())
+                    for point in restored_target.points
+                )
+                if restored_target is not None
+                else None
+            )
+            geometry_changed = (
+                was_restorable
+                and before_points is not None
+                and after_points != before_points
+            )
+            collector.undo_applied(target_token, geometry_changed)
         # Refresh keypoint fill mode after undo
         if (
             hasattr(self, "keypoint_fill_mode")
@@ -5397,9 +5672,15 @@ class LabelingWidget(LabelDialog):
 
         current_index = self.fn_to_index[str(item.text())]
         if current_index < len(self.image_list):
-            filename = self.image_list[current_index]
-            if filename:
-                self.load_file(filename)
+                filename = self.image_list[current_index]
+                if filename:
+                    if self._review_metrics is not None:
+                        self._review_metrics.target_cleared(
+                            EpisodeEndReason.IMAGE_CHANGED
+                        )
+                    self._teardown_review_transients()
+                    self._review_session.image_changed(str(current_index))
+                    self.load_file(filename)
 
     def _on_inspector_navigate(self, file_path: str, shape_index: int):
         """Navigate to a file and select a specific shape (inspector click)."""
@@ -6266,15 +6547,16 @@ class LabelingWidget(LabelDialog):
         else:
             self.hide_attributes_panel()
 
-        if (
-            self.canvas.pose_config.enabled
-            and self.canvas.pose_config.pose_click_to_focus
-            and not getattr(self, "_list_selecting", False)
-        ):
-            self._pose_focus_by_filter(selected_shapes)
+        if not self._virtual_review_active:
+            if (
+                self.canvas.pose_config.enabled
+                and self.canvas.pose_config.pose_click_to_focus
+                and not getattr(self, "_list_selecting", False)
+            ):
+                self._pose_focus_by_filter(selected_shapes)
 
-        # A valid single three-box rectangle selection updates focus.
-        self._rect_refine_forward_selection(selected_shapes)
+            # A valid single three-box rectangle selection updates focus.
+            self._rect_refine_forward_selection(selected_shapes)
 
     def add_label(self, shape, update_last_label=True, refresh_filters=True):
         if shape.group_id is None:
@@ -6357,36 +6639,24 @@ class LabelingWidget(LabelDialog):
         shape.select_fill_color = QtGui.QColor(r, g, b, 155)
 
     def _get_rgb_by_label(self, label, group_id=None, skip_label_info=False):
-        # 如果 shape 有 group_id，按实例分配颜色
-        if group_id is not None and group_id >= 0:
-            instance_id = int(group_id)
-            # 跳过索引0（黑色），使用1-based索引循环
-            color_idx = (instance_id % (len(LABEL_COLORMAP) - 1)) + 1
-            return LABEL_COLORMAP[color_idx]
-
         if label == "AUTOLABEL_ADD":
             return (144, 238, 144)
         if label == "AUTOLABEL_REMOVE":
             return (255, 182, 193)
+        label_colors = dict(self.appearance_label_colors)
         if label in self.label_info and not skip_label_info:
-            return tuple(self.label_info[label]["color"])
-        if self._config["shape_color"] == "auto":
-            if not self.unique_label_list.find_items_by_label(label):
-                item = self.unique_label_list.create_item_from_label(label)
-                self.unique_label_list.addItem(item)
-            item = self.unique_label_list.find_items_by_label(label)[0]
-            label_id = self.unique_label_list.indexFromItem(item).row() + 1
-            label_id += self._runtime_shape_color_shift
-            return LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)]
-        if (
-            self._config["shape_color"] == "manual"
-            and self._config["label_colors"]
-            and label in self._config["label_colors"]
-        ):
-            return self._config["label_colors"][label]
-        if self._config["default_shape_color"]:
-            return self._config["default_shape_color"]
-        return (0, 255, 0)
+            label_colors[label] = tuple(self.label_info[label]["color"])
+        if self.appearance_settings.color_mode.value == "uniform":
+            configured = self._config.get("default_shape_color")
+            if configured:
+                return tuple(configured[:3])
+        return resolve_base_color(
+            self.appearance_settings.color_mode,
+            label,
+            group_id,
+            label,
+            label_colors,
+        )
 
     def remove_labels(self, shapes):
         for shape in shapes:
@@ -7295,6 +7565,9 @@ class LabelingWidget(LabelDialog):
         if delta < 0:
             units = 0.9
 
+        if self._review_metrics is not None:
+            self._review_metrics.zoom_applied(1 if delta > 0 else -1)
+
         self._zoom_around_canvas_pos(
             pos,
             lambda: self.add_zoom(units),
@@ -7613,6 +7886,8 @@ class LabelingWidget(LabelDialog):
         self._sync_file_list_current_row(filename)
 
         # ① Save viewport of the image we are leaving
+        if hasattr(self, "virtual_review_controller"):
+            self.virtual_review_controller.prepare_image_change()
         self.viewport_controller.on_file_leaving(
             filename=self.viewport_controller.last_loaded,
             canvas=self.canvas,
@@ -7646,6 +7921,11 @@ class LabelingWidget(LabelDialog):
             image_dir = osp.dirname(filename)
             label_file_without_path = osp.basename(label_file)
             label_file = self.output_dir + "/" + label_file_without_path
+
+        appearance_root = osp.dirname(label_file)
+        self.appearance_label_colors = load_project_palette(appearance_root)
+        self.canvas.set_appearance_label_colors(self.appearance_label_colors)
+        self.canvas.set_appearance_image_token(filename)
 
         if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(
             label_file
@@ -7860,6 +8140,8 @@ class LabelingWidget(LabelDialog):
             self._rect_refine_image_token
         )
         self.canvas.clear_main_visibility_predicate()
+        if hasattr(self, "virtual_review_controller"):
+            self.virtual_review_controller.on_image_loaded()
 
         return True
 
@@ -7968,6 +8250,10 @@ class LabelingWidget(LabelDialog):
         )
         self.canvas.set_precision_factor(
             self._config.get("canvas_precision_factor", 4)
+        )
+        self.canvas.set_rectangle_review_refinement_config(
+            self._config.get("rectangle_review_refinement", {}),
+            self._config,
         )
         self.canvas.adjustSize()
         self.canvas.update()
@@ -8172,10 +8458,31 @@ class LabelingWidget(LabelDialog):
         self._reset_image_views_for_files(filenames, self.tr("all images"))
 
     # QT Overload
+    def changeEvent(self, event: QtCore.QEvent) -> None:
+        """Pause review active-time accounting on window deactivation."""
+        if (
+            event.type() == QtCore.QEvent.Type.ActivationChange
+            and getattr(self, "_review_metrics", None) is not None
+        ):
+            self._review_metrics.focus_changed(self.isActiveWindow())
+        if (
+            event.type() == QtCore.QEvent.Type.ActivationChange
+            and hasattr(self, "_review_session")
+        ):
+            self._review_session.focus_changed(self.isActiveWindow())
+        super().changeEvent(event)
+
     def closeEvent(self, event):
         if not self.may_continue():
             event.ignore()
             return
+        if self._review_metrics is not None:
+            self._review_metrics.target_cleared(
+                EpisodeEndReason.APPLICATION_CLOSED
+            )
+        self._teardown_review_transients()
+        self._review_session.stop()
+        self._shutdown_dataset_review()
         self.settings.setValue(
             "filename", self.filename if self.filename else ""
         )
@@ -8372,6 +8679,14 @@ class LabelingWidget(LabelDialog):
             return
 
         self.output_dir = output_dir
+        controller = getattr(self, "dataset_review_controller", None)
+        if controller is not None and controller.session_active:
+            controller.close_queue()
+            self.status(
+                self.tr(
+                    "Output directory changed: dataset review queue " "closed"
+                )
+            )
         self._prepare_dataset_index_for_directory(
             self.last_open_dir, force=True
         )
@@ -8672,6 +8987,278 @@ class LabelingWidget(LabelDialog):
             return True
         # answer == mb.Cancel
         return False
+
+    # ── dataset review queue host API ─────────────────────────
+
+    def dataset_review_dataset_root(self):
+        """Return the root used for queue-relative dataset paths."""
+
+        if self.image_list:
+            return osp.dirname(str(self.image_list[0]))
+        if self.filename:
+            return osp.dirname(str(self.filename))
+        return ""
+
+    def dataset_review_descriptors(self):
+        """Return ordered dataset descriptors for queue scans.
+
+        The effective label path mirrors ``load_file``: sibling JSON
+        unless an output directory is configured.
+        """
+
+        files = list(self.image_list or [])
+        if not files:
+            return ()
+        image_paths, label_paths = [], []
+        for filename in files:
+            label_path = osp.splitext(str(filename))[0] + ".json"
+            if self.output_dir:
+                label_path = (
+                    str(self.output_dir) + "/" + osp.basename(label_path)
+                )
+            image_paths.append(str(filename))
+            label_paths.append(label_path)
+        try:
+            return descriptors_from_lists(
+                self.dataset_review_dataset_root(),
+                image_paths,
+                label_paths,
+            )
+        except ValueError as exc:
+            self.status(f"数据集描述无效：{exc}")
+            return ()
+
+    def dataset_review_current_image(self):
+        """Return the currently loaded image path, if any."""
+
+        return str(self.filename) if self.filename else None
+
+    def dataset_review_edit_guard_active(self):
+        """Return whether a transient edit blocks queue navigation."""
+
+        return bool(
+            self.canvas.drawing()
+            or getattr(self.canvas, "rect_edge_dragging", False)
+            or getattr(self.canvas, "moving_shape", False)
+            or QtWidgets.QApplication.activeModalWidget() is not None
+        )
+
+    def dataset_review_resolve_dirty(self):
+        """Resolve unsaved edits: save, discard, cancel, or failure."""
+
+        if not self.dirty:
+            return "save"
+        mb = QtWidgets.QMessageBox
+        answer = mb.question(
+            self,
+            self.tr("Save annotations?"),
+            self.tr(
+                f'Save annotations to "{self.filename!r}" '
+                "before switching files?"
+            ),
+            mb.StandardButton.Save
+            | mb.StandardButton.Discard
+            | mb.StandardButton.Cancel,
+            mb.StandardButton.Save,
+        )
+        if answer == mb.StandardButton.Discard:
+            return "discard"
+        if answer == mb.StandardButton.Save:
+            return (
+                "save" if self.dataset_review_save_current() else "save_failed"
+            )
+        return "cancel"
+
+    def dataset_review_save_current(self):
+        """Save the current annotation file; report honest success."""
+
+        if not self.dirty:
+            return True
+        try:
+            self.save_file()
+        except Exception:  # noqa: BLE001 - save failure returns False
+            return False
+        return not self.dirty
+
+    def dataset_review_request_load(self, image_path, token):
+        """Load one dataset image; the dirty guard already ran."""
+
+        ok = False
+        try:
+            ok = bool(self.load_file(str(image_path)))
+        except Exception:  # noqa: BLE001 - load failures emit signal
+            ok = False
+        self.dataset_review_load_finished.emit(
+            str(image_path), ok, int(token), False
+        )
+
+    # ── dataset review queue wiring ───────────────────────────
+
+    def _wire_dataset_review_ui(self):
+        """Connect the queue widget and controller bidirectionally."""
+
+        widget = self.inspector_panel.dataset_review_widget
+        controller = self.dataset_review_controller
+        widget.create_requested.connect(self._dataset_review_create)
+        widget.open_requested.connect(self._dataset_review_open)
+        widget.open_readonly_requested.connect(controller.open_readonly)
+        widget.close_requested.connect(controller.close_queue)
+        widget.rebuild_requested.connect(self._dataset_review_rebuild)
+        widget.reconcile_requested.connect(controller.reconcile)
+        widget.backup_requested.connect(controller.backup_to)
+        widget.cancel_scan_requested.connect(controller.cancel_scan)
+        widget.outcome_requested.connect(controller.apply_outcome)
+        widget.complete_next_requested.connect(controller.complete_and_next)
+        widget.filter_changed.connect(controller.set_filter)
+        widget.manual_bind_requested.connect(controller.manual_bind_selected)
+        widget.takeover_confirmed.connect(
+            lambda path: controller.open_queue(str(path), takeover=True)
+        )
+        widget.retry_persistence_requested.connect(
+            controller.retry_persistence
+        )
+        widget.save_as_requested.connect(controller.save_as)
+        widget.set_draft_handlers(
+            controller.confirm_draft, controller.cancel_draft
+        )
+        controller.state_changed.connect(self._dataset_review_state_changed)
+        controller.session_changed.connect(self._refresh_dataset_review_view)
+        controller.status_changed.connect(
+            lambda message: self.status(str(message))
+        )
+        controller.scan_progress.connect(widget.set_scan_progress)
+        controller.draft_ready.connect(widget.show_draft)
+        controller.error_reported.connect(
+            lambda kind, message: widget.set_warning(f"[{kind}] {message}")
+        )
+        controller.takeover_prompt.connect(
+            lambda holder: widget.show_takeover_prompt(
+                holder, controller.pending_open_path
+            )
+        )
+
+    def _dispatch_virtual_review_navigation(self, delta):
+        """Route F2/Shift+F2 to the dataset queue when it owns review."""
+
+        controller = getattr(self, "dataset_review_controller", None)
+        if controller is not None and controller.session_active:
+            if delta > 0:
+                controller.next_page()
+            else:
+                controller.previous_page()
+            return
+        if delta > 0:
+            self.virtual_review_controller.next()
+        else:
+            self.virtual_review_controller.previous()
+
+    def _dataset_review_form_options(self):
+        """Validate the shared review form into queue build options."""
+
+        form = self.inspector_panel.virtual_review_widget
+        try:
+            criteria = VirtualTaskCriteria(**form.criteria_payload())
+            packing = VirtualPackingOptions(**form.packing_payload())
+        except (TypeError, ValueError) as exc:
+            self.status(f"条件无效：{exc}")
+            return None
+        return criteria, packing
+
+    def _dataset_review_create(self, sidecar_path, *_ignored):
+        """Start queue creation after resolving a dirty current file."""
+
+        decision = self.dataset_review_resolve_dirty()
+        if decision == "cancel":
+            self.status("已取消：未创建数据集复核队列")
+            return
+        if decision == "save_failed":
+            self.status("保存失败：未创建数据集复核队列")
+            return
+        options = self._dataset_review_form_options()
+        if options is None:
+            return
+        criteria, packing = options
+        self.dataset_review_controller.create_queue(
+            str(sidecar_path),
+            criteria,
+            packing,
+            self.virtual_review_controller.review_viewport_size(),
+        )
+
+    def _dataset_review_open(self, path):
+        """Open a queue sidecar with failure diagnostics surfaced."""
+
+        self.dataset_review_controller.open_queue(str(path))
+
+    def _dataset_review_rebuild(self):
+        """Rebuild the active queue after resolving dirty state."""
+
+        decision = self.dataset_review_resolve_dirty()
+        if decision == "cancel":
+            self.status("已取消：队列保持不变")
+            return
+        if decision == "save_failed":
+            self.status("保存失败：队列保持不变")
+            return
+        options = self._dataset_review_form_options()
+        if options is None:
+            return
+        criteria, packing = options
+        self.dataset_review_controller.rebuild_queue(
+            criteria,
+            packing,
+            self.virtual_review_controller.review_viewport_size(),
+        )
+
+    def _dataset_review_state_changed(self, state_name):
+        """Mirror controller state into the queue widget."""
+
+        widget = self.inspector_panel.dataset_review_widget
+        widget.set_state(str(state_name))
+        controller = self.dataset_review_controller
+        if state_name == "persistence_blocked":
+            widget.set_warning(controller.blocked_reason or "进度写入受阻")
+        elif state_name == "active":
+            widget.clear_warning()
+        self._refresh_dataset_review_view()
+
+    def _refresh_dataset_review_view(self):
+        """Push current page, tasks, and counters into the widget."""
+
+        controller = self.dataset_review_controller
+        widget = self.inspector_panel.dataset_review_widget
+        widget.set_readonly(
+            controller.session_active and not controller.editable_session
+        )
+        summary = controller.queue_summary()
+        if summary is not None:
+            widget.set_summary(summary, controller.current_filter.value)
+        snapshot = controller.snapshot
+        if snapshot is None or controller.current_page_id is None:
+            return
+        page = snapshot.page_by_id.get(controller.current_page_id)
+        if page is None:
+            return
+        file_record = snapshot.file_by_id.get(page.file_id)
+        index = 0
+        for position, candidate in enumerate(snapshot.pages):
+            if candidate.page_id == page.page_id:
+                index = position
+                break
+        widget.set_current_page(
+            file_record.label_rel_path if file_record else "?",
+            index,
+            len(snapshot.pages),
+            controller.current_page_tasks(),
+            controller.runtime_bindings(),
+        )
+
+    def _shutdown_dataset_review(self):
+        """Tear down the queue session on close or dataset changes."""
+
+        controller = getattr(self, "dataset_review_controller", None)
+        if controller is not None:
+            controller.shutdown()
 
     def error_message(self, title, message):
         return QtWidgets.QMessageBox.critical(

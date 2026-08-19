@@ -670,6 +670,32 @@ class DatasetFilterIndex:
             logger.warning(f"DatasetFilterIndex shape query failed: {exc}")
             return {}
 
+    def query_label_files(self, labels: Set[str]) -> List[str]:
+        """Return indexed image paths containing any requested label.
+
+        The result is only a candidate optimization. Callers must still read
+        and validate each JSON file before applying a destructive migration.
+        An empty result means the index is unavailable or no label matched.
+        """
+        if self._conn is None or not labels:
+            return []
+        placeholders = ",".join("?" for _ in labels)
+        try:
+            cursor = self._conn.execute(
+                f"""
+                SELECT DISTINCT f.image_path
+                FROM shapes s
+                JOIN files f ON s.file_id = f.id
+                WHERE s.label IN ({placeholders})
+                ORDER BY f.sort_order, f.image_path
+                """,
+                tuple(labels),
+            )
+            return [row[0] for row in cursor.fetchall()]
+        except sqlite3.Error as exc:
+            logger.warning("DatasetFilterIndex label query failed: %s", exc)
+            return []
+
     # ------------------------------------------------------------------
     # Schema 管理（内部）
     # ------------------------------------------------------------------

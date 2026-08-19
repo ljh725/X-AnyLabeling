@@ -25,7 +25,36 @@ from .. import rect_edge_alignment as rea
 from ..logger import logger
 from ..rect_edge_interaction import RectEdgeInteractionController
 from ..rectangle_size import RectangleSizeIssue, pick_overlay_anchor
+from ..review_refinement.gain import (
+    DEFAULT_TARGET_GAIN,
+    effective_gain,
+    image_delta_multiplier,
+    resolve_target_gain,
+)
+from ..review_refinement.feedback import (
+    ReviewFeedbackSnapshot,
+    make_feedback_snapshot,
+)
+from ..review_refinement.assistance import (
+    CandidatePreviewController,
+    EdgeCandidate,
+    EdgeCandidateService,
+    build_loupe_roi,
+)
+from ..review_refinement.nudge import (
+    NudgeBurstTracker,
+    WheelAccumulator,
+    valid_edge_nudge,
+)
 from ..shape import Shape
+from .appearance import (
+    AppearanceSettings,
+    ColorMode,
+    GroupFocusController,
+    ShapeVisualContext,
+    VisualStyle,
+    resolve_base_color,
+)
 from .rectangle_size_overlay import (
     RectangleSizeOverlayRenderer,
     RectangleSizeOverlayRequest,
@@ -33,7 +62,10 @@ from .rectangle_size_overlay import (
     merge_overlay_requests,
     overlay_request_from_issue,
 )
-from .selection.geometry import normalize_selection_rect, shapes_intersecting_rect
+from .selection.geometry import (
+    normalize_selection_rect,
+    shapes_intersecting_rect,
+)
 from .selection.gesture import SelectionGesture
 from .selection.policy import add_shapes, toggle_shape
 from .selection.rubber_band_renderer import RubberBandRenderer
@@ -48,6 +80,15 @@ PERF_LOG_ENABLED = os.getenv("XANYLABELING_PERF_LOG") == "1"
 # without a YAML dependency. See
 # ``docs/小目标Person矩形实时尺寸显示功能设计.md``.
 DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX = 36.0
+
+
+def _safe_positive_int(value: object, fallback: int) -> int:
+    """Return a positive integer setting or a safe fallback."""
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return fallback
+    return max(1, number)
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +234,11 @@ class Canvas(
     shape_rotated = QtCore.pyqtSignal()
     shape_changed = QtCore.pyqtSignal(object)
     shapes_changed = QtCore.pyqtSignal(tuple)
+    rectangle_review_edge_drag_started = QtCore.pyqtSignal(str)
+    rectangle_review_edge_drag_delta = QtCore.pyqtSignal(float)
+    rectangle_review_edge_drag_finished = QtCore.pyqtSignal(bool)
+    rectangle_review_feedback_changed = QtCore.pyqtSignal(object)
+    rectangle_review_candidate_changed = QtCore.pyqtSignal(object)
     drawing_polygon = QtCore.pyqtSignal(bool)
     drawing_canceled = QtCore.pyqtSignal()
     vertex_selected = QtCore.pyqtSignal(bool)
@@ -298,6 +344,14 @@ class Canvas(
         # ``_main_visibility_predicate`` is an optional Callable[[Shape], bool]
         # consulted by ``main_visible``. None means no focus filter.
         self._main_visibility_predicate = None
+        # Temporary virtual-review focus. Unlike ``hidden_by_filter`` this is
+        # a session-only layer and must never change base visibility state.
+        self._virtual_review_visibility_predicate = None
+        self.appearance_settings = AppearanceSettings()
+        self.appearance_label_colors = {}
+        self.appearance_image_token = ""
+        self.group_focus_controller = GroupFocusController()
+        self._appearance_base_color_cache = {}
         self._hide_backround = False
         self.hide_backround = False
         self.h_hape = None
@@ -446,6 +500,28 @@ class Canvas(
         self.precision_mode_locked = False
         self._virtual_prev_point = None
         self._precision_raw_prev_point = None
+
+        # Low-fatigue rectangle review refinement. These values are inert
+        # until the explicit rollout flag is enabled by settings.
+        self.rectangle_review_refinement_enabled = False
+        self.rectangle_review_target_gain = DEFAULT_TARGET_GAIN
+        self.rectangle_review_edge_precision_default = True
+        self.rectangle_review_migration_needed = False
+        self.rectangle_review_nudge_step_px = 1
+        self.rectangle_review_coarse_step_px = 5
+        self.rectangle_review_feedback_enabled = True
+        self.rectangle_review_persist_across_images = True
+        self.rectangle_review_loupe_enabled = False
+        self.rectangle_review_candidate_enabled = False
+        self.rectangle_review_telemetry_enabled = False
+        self.rectangle_review_telemetry_config = {}
+        self._rectangle_review_wheel = WheelAccumulator()
+        self._rectangle_review_nudge_burst = NudgeBurstTracker()
+        self._rectangle_review_candidate_service = EdgeCandidateService()
+        self._rectangle_review_candidate_preview = CandidatePreviewController()
+        self.rectangle_review_feedback_snapshot: (
+            ReviewFeedbackSnapshot | None
+        ) = None
 
     @property
     def rect_edge_dragging(self) -> bool:
@@ -705,10 +781,36 @@ class Canvas(
         if not self.base_visible(shape):
             return False
         predicate = self._main_visibility_predicate
+        if predicate is not None:
+            try:
+                if not bool(predicate(shape)):
+                    return False
+            except Exception:  # noqa: BLE001 - fail closed
+                return False
+        predicate = self._virtual_review_visibility_predicate
         if predicate is None:
             return True
         try:
             return bool(predicate(shape))
+        except Exception:  # noqa: BLE001 - fail closed
+            return False
+
+    def _virtual_review_context_visible(self, shape) -> bool:
+        """Return whether a shape belongs to the dim virtual context pass."""
+        if not self.base_visible(shape):
+            return False
+        predicate = self._main_visibility_predicate
+        if predicate is not None:
+            try:
+                if not bool(predicate(shape)):
+                    return False
+            except Exception:  # noqa: BLE001 - fail closed
+                return False
+        predicate = self._virtual_review_visibility_predicate
+        if predicate is None:
+            return False
+        try:
+            return not bool(predicate(shape))
         except Exception:  # noqa: BLE001 - fail closed
             return False
 
@@ -730,6 +832,21 @@ class Canvas(
 
     def clear_main_visibility_predicate(self) -> None:
         self.set_main_visibility_predicate(None)
+
+    def set_virtual_review_visibility_predicate(self, predicate) -> None:
+        """Install a repaint-only virtual review focus predicate.
+
+        The predicate is deliberately separate from the base visibility and
+        existing three-box focus layers. Installing it never publishes a
+        shape-change notification, because changing review pages is not a
+        geometry or data mutation.
+        """
+        self._virtual_review_visibility_predicate = predicate
+        self.update()
+
+    def clear_virtual_review_visibility_predicate(self) -> None:
+        """Clear the temporary virtual review focus layer."""
+        self.set_virtual_review_visibility_predicate(None)
 
     def is_shape_interactive(self, shape: Shape) -> bool:
         """Return whether a shape can be hovered, selected, or edited.
@@ -960,6 +1077,8 @@ class Canvas(
             "AUTOLABEL_REMOVE",
         ]:
             return None
+        if not self.show_labels or not self.appearance_settings.show_labels:
+            return None
         display_mode = self.label_display_mode
         if display_mode == "none":
             return None
@@ -978,6 +1097,17 @@ class Canvas(
             label_text = shape.label
         if not label_text:
             return None
+        if (
+            self.appearance_settings.show_gid != "never"
+            and isinstance(shape.group_id, int)
+            and not isinstance(shape.group_id, bool)
+            and (
+                self.appearance_settings.show_gid == "always"
+                or self.group_focus_controller.state.active
+            )
+            and f"#{shape.group_id}" not in label_text
+        ):
+            label_text = f"{label_text} #{shape.group_id}"
         if shape.score is not None and self.show_scores:
             label_text += f" {float(shape.score):.2f}"
         if shape.shape_type == "rectangle":
@@ -1893,6 +2023,10 @@ class Canvas(
             hover = self._rect_edge_press_candidate(pos)
             self.rect_edge_state.set_hover(hover)
             if hover is not None:
+                if self.rect_edge_active_edge is not None:
+                    self.rectangle_review_edge_drag_finished.emit(False)
+                    self.clear_rect_edge_alignment()
+                    self.rect_edge_state.set_hover(hover)
                 self.prev_point = pos
                 self.prev_pan_point = ev.position()
                 self.rect_edge_state.begin_pending(hover, ev.position(), pos)
@@ -2162,6 +2296,18 @@ class Canvas(
                 if changed:
                     self.store_shapes()
                     self.shape_moved.emit()
+                if active is not None:
+                    original_coord = (
+                        self.rectangle_review_feedback_snapshot.original_coord
+                        if self.rectangle_review_feedback_snapshot is not None
+                        else active.coord
+                    )
+                    self._set_rectangle_review_feedback(
+                        active,
+                        "committed" if changed else "canceled",
+                        original_coord,
+                    )
+                self.rectangle_review_edge_drag_finished.emit(changed)
                 self.clear_rect_edge_alignment()
                 hover = (
                     confirmed[0]
@@ -2181,6 +2327,7 @@ class Canvas(
                 pending = self.rect_edge_pending_edge
                 valid = self._rect_edge_pending_is_valid()
                 release_pos = self.transform_pos(ev.position())
+                moved = self._rect_edge_pending_has_moved(ev.position())
                 confirmed = (
                     self._rect_edge_specific_hit(pending, release_pos)
                     if valid
@@ -2189,6 +2336,8 @@ class Canvas(
                 self._clear_rect_edge_pending()
                 if confirmed is not None:
                     hover = confirmed[0]
+                    if not moved and self.rectangle_review_refinement_enabled:
+                        self._activate_rect_edge_for_nudge(hover)
                 else:
                     hover = self._rect_edge_hit_candidate(release_pos)
                 self.rect_edge_state.set_hover(hover)
@@ -2333,6 +2482,11 @@ class Canvas(
         for shape in self.selected_shapes:
             shape.selected = True
         self.set_hiding(bool(selected))
+        self.group_focus_controller.update(
+            self.appearance_image_token,
+            self.selected_shapes,
+            self.appearance_settings.color_mode.value,
+        )
 
         self.selection_changed.emit(list(self.selected_shapes))
 
@@ -3042,6 +3196,81 @@ class Canvas(
             self.bounded_move_shapes(shapes, point + offset)
 
     # QT Overload
+    def set_appearance_settings(self, settings: AppearanceSettings) -> None:
+        """Apply display-only appearance settings and repaint once."""
+        self.appearance_settings = settings
+        self._appearance_base_color_cache.clear()
+        self.group_focus_controller.update(
+            self.appearance_image_token,
+            self.selected_shapes,
+            settings.color_mode.value,
+        )
+        self.update()
+
+    def set_appearance_label_colors(self, label_colors: Mapping) -> None:
+        """Replace the project palette used by label appearance resolution."""
+        self.appearance_label_colors = dict(label_colors)
+        self._appearance_base_color_cache.clear()
+        self.update()
+
+    def set_appearance_image_token(self, image_token: str) -> None:
+        """Reset transient group focus when the displayed image changes."""
+        self.appearance_image_token = str(image_token)
+        self.group_focus_controller.reset_image(self.appearance_image_token)
+        self.update()
+
+    def _visual_style_for_shape(self, shape: Shape) -> VisualStyle:
+        """Resolve toolkit-neutral style after existing visibility gates."""
+        settings = self.appearance_settings
+        mode = settings.color_mode
+        shape_token = str(id(shape))
+        cache_key = (
+            mode.value,
+            shape.label or "",
+            repr(shape.group_id),
+            shape_token if mode is ColorMode.INSTANCE else "",
+        )
+        base_color = self._appearance_base_color_cache.get(cache_key)
+        if base_color is None:
+            base_color = resolve_base_color(
+                mode,
+                shape.label or "",
+                shape.group_id,
+                shape_token,
+                self.appearance_label_colors,
+            )
+            self._appearance_base_color_cache[cache_key] = base_color
+        opacity = self.group_focus_controller.emphasis(shape)
+        fill_opacity = (
+            settings.selected_fill_opacity
+            if shape.selected
+            else settings.hover_fill_opacity
+            if shape.hovered
+            else settings.normal_fill_opacity
+        )
+        gid_badge = None
+        if settings.show_gid == "always" or (
+            settings.show_gid == "focus"
+            and self.group_focus_controller.state.active
+        ):
+            if shape.group_id is not None:
+                gid_badge = str(shape.group_id)
+        return VisualStyle(
+            base_color=base_color,
+            outer_color=(18, 18, 18)
+            if settings.high_contrast_outline
+            else base_color,
+            outline_width=settings.outline_width,
+            semantic_width=settings.semantic_width,
+            fill_opacity=fill_opacity,
+            object_opacity=opacity,
+            label_badge=shape.label if settings.show_labels else None,
+            gid_badge=gid_badge,
+            selected=shape.selected,
+            hovered=shape.hovered,
+            editing=self._is_shape_under_edge_edit(shape),
+        )
+
     def paintEvent(self, event):  # noqa: C901
         """Paint event for canvas"""
         _t0 = time.perf_counter()
@@ -3126,6 +3355,20 @@ class Canvas(
             self.update()
             return
 
+        # Virtual review keeps unrelated base-visible shapes as dim context.
+        # The normal shape pass below is restricted by ``main_visible`` to the
+        # current task, while hit-testing uses the same effective predicate.
+        if self._virtual_review_visibility_predicate is not None:
+            p.save()
+            p.setOpacity(0.22)
+            for shape in self.shapes:
+                if not self._virtual_review_context_visible(shape):
+                    continue
+                if not viewport_rect.intersects(shape.bounding_rect()):
+                    continue
+                shape.paint(p, force_unselected=True)
+            p.restore()
+
         # Draw groups
         if self.show_groups and not defer_drag_overlays:
             pen = QtGui.QPen(QtGui.QColor("#AAAAAA"), 2, Qt.PenStyle.SolidLine)
@@ -3159,9 +3402,9 @@ class Canvas(
                         min_y = min(min_y, rect.y())
                         max_x = max(max_x, rect.x() + rect.width())
                         max_y = max(max_y, rect.y() + rect.height())
-                    group_color = LABEL_COLORMAP[
-                        int(group_id) % len(LABEL_COLORMAP)
-                    ]
+                    group_color = resolve_base_color(
+                        ColorMode.GROUP, "", group_id
+                    )
                     pen.setStyle(Qt.PenStyle.SolidLine)
                     pen.setWidth(max(1, int(round(4.0 / Shape.scale))))
                     pen.setColor(QtGui.QColor(*group_color))
@@ -3376,7 +3619,12 @@ class Canvas(
                     and not (self.selected_vertex() and self.moving_shape)
                 )
                 edge_editing = self._is_shape_under_edge_edit(shape)
-                shape.paint(p, force_unselected=edge_editing)
+                style = self._visual_style_for_shape(shape)
+                shape.paint(
+                    p,
+                    force_unselected=edge_editing,
+                    visual_style=style,
+                )
 
             if (
                 shape.shape_type == "rotation"
@@ -3637,6 +3885,8 @@ class Canvas(
         # space, matching the convention used by the cross-line below.
         if self.rect_edge_align_enabled:
             self._draw_rect_edge_alignment_overlay(p)
+        self._draw_rectangle_review_feedback_hud(p)
+        self._draw_rectangle_review_loupe(p)
 
         # Live W/H size overlay for the in-progress or single-selected
         # rectangle (person small-target warning). Pure transient drawing;
@@ -3965,8 +4215,85 @@ class Canvas(
         """Allow label_widget to push the config value at zoom changes."""
         self._precision_factor_cfg = max(1, int(value))
 
+    def set_rectangle_review_refinement_config(
+        self, config, legacy_config=None
+    ):
+        """Apply low-fatigue rectangle review refinement settings.
+
+        Args:
+            config: Nested rectangle-review refinement settings.
+            legacy_config: Optional root settings mapping used for migration
+                when the nested target gain is absent.
+        """
+        config = config if isinstance(config, dict) else {}
+        self.rectangle_review_refinement_enabled = bool(
+            config.get("enabled", False)
+        )
+        target_gain, migrated = resolve_target_gain(config, legacy_config)
+        self.rectangle_review_target_gain = target_gain
+        self.rectangle_review_migration_needed = migrated
+        self.rectangle_review_edge_precision_default = bool(
+            config.get("edge_drag_precision_default", True)
+        )
+        self.rectangle_review_nudge_step_px = _safe_positive_int(
+            config.get("nudge_step_px", 1), 1
+        )
+        self.rectangle_review_coarse_step_px = _safe_positive_int(
+            config.get("coarse_step_px", 5), 5
+        )
+        self.rectangle_review_feedback_enabled = bool(
+            config.get("feedback_enabled", True)
+        )
+        self.rectangle_review_persist_across_images = bool(
+            config.get("persist_across_images", True)
+        )
+        assistance = config.get("assistance", {})
+        assistance = assistance if isinstance(assistance, dict) else {}
+        self.rectangle_review_loupe_enabled = bool(
+            assistance.get("loupe_enabled", False)
+        )
+        self.rectangle_review_candidate_enabled = bool(
+            assistance.get("candidate_enabled", False)
+        )
+        telemetry = config.get("telemetry", {})
+        telemetry = telemetry if isinstance(telemetry, dict) else {}
+        self.rectangle_review_telemetry_enabled = bool(
+            telemetry.get("enabled", False)
+        )
+        self.rectangle_review_telemetry_config = dict(telemetry)
+
+    def _rectangle_review_precision_active(self, ev=None):
+        """Return whether an active edge should use target-gain precision."""
+        if not (
+            self.rectangle_review_refinement_enabled
+            and self.rectangle_review_edge_precision_default
+            and self.rect_edge_dragging
+        ):
+            return False
+        if ev is not None and (
+            ev.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier
+        ):
+            return False
+        return True
+
+    def _effective_drag_gain(self, ev=None):
+        """Return image-pixel gain for the current drag context."""
+        if self._rectangle_review_precision_active(ev):
+            return effective_gain(
+                self.scale, self.rectangle_review_target_gain
+            )
+        return 1.0 / max(float(self.precision_factor), 1.0)
+
     def _precision_active(self, ev=None):
         """Return True if precision drag is active (D6: Ctrl held or locked)."""
+        # The new review workflow owns active-edge gain selection, including
+        # Shift coarse mode. Do not let the legacy lock override that choice.
+        if (
+            self.rect_edge_dragging
+            and self.rectangle_review_refinement_enabled
+            and self.rectangle_review_edge_precision_default
+        ):
+            return False
         if self.precision_mode_locked:
             return True
         if ev is not None:
@@ -3988,15 +4315,21 @@ class Canvas(
         Hit-test, epsilon, and transform_pos are unaffected: they still
         use the raw ``pos``.
         """
-        if not self._precision_active(ev):
+        precision_active = self._precision_active(ev)
+        edge_precision = self._rectangle_review_precision_active(ev)
+        if not precision_active and not edge_precision:
             self._reset_virtual_cursor()
             return pos
         if self._virtual_prev_point is None:
             self._virtual_prev_point = QtCore.QPointF(self.prev_point)
             self._precision_raw_prev_point = QtCore.QPointF(self.prev_point)
-        factor = self.precision_factor
         delta = pos - self._precision_raw_prev_point
-        scaled = QtCore.QPointF(delta.x() / factor, delta.y() / factor)
+        gain = self._effective_drag_gain(ev)
+        if edge_precision:
+            gain = image_delta_multiplier(
+                self.scale, self.rectangle_review_target_gain
+            )
+        scaled = QtCore.QPointF(delta.x() * gain, delta.y() * gain)
         eff = self._virtual_prev_point + scaled
         self._virtual_prev_point = eff
         self._precision_raw_prev_point = QtCore.QPointF(pos)
@@ -4206,6 +4539,9 @@ class Canvas(
         mods = ev.modifiers()
         delta = ev.angleDelta()
 
+        if self._rectangle_review_nudge_wheel(ev):
+            return
+
         if (
             self.editing()
             and self.enable_wheel_rectangle_editing
@@ -4265,6 +4601,79 @@ class Canvas(
                 delta.y(), QtCore.Qt.Orientation.Vertical, 0
             )
         ev.accept()
+
+    def _rectangle_review_nudge_wheel(self, ev: QWheelEvent) -> bool:
+        """Apply a discrete wheel nudge to the active rectangle edge."""
+        if not (
+            self.rectangle_review_refinement_enabled
+            and self.rect_edge_active_edge is not None
+            and not (
+                ev.modifiers()
+                & QtCore.Qt.KeyboardModifier.ControlModifier
+            )
+        ):
+            return False
+        angle_y = ev.angleDelta().y()
+        pixel_y = ev.pixelDelta().y()
+        notches = self._rectangle_review_wheel.add(angle_y, pixel_y)
+        if notches == 0:
+            ev.accept()
+            return True
+        active = self.rect_edge_active_edge
+        geometry = rea.geometry_from_shape(active.shape)
+        if geometry is None or self.pixmap is None:
+            return False
+        step = (
+            self.rectangle_review_coarse_step_px
+            if ev.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier
+            else self.rectangle_review_nudge_step_px
+        )
+        direction = 1 if notches > 0 else -1
+        candidate = active.coord + direction * step * abs(notches)
+        valid = valid_edge_nudge(
+            (
+                geometry.x_min,
+                geometry.y_min,
+                geometry.x_max,
+                geometry.y_max,
+            ),
+            active.edge_name,
+            direction,
+            step * abs(notches),
+            (self.pixmap.width(), self.pixmap.height()),
+        )
+        if valid and rea.apply_edge_coord(active.shape, active.edge_name, candidate):
+            refreshed = rea.geometry_from_shape(active.shape)
+            if refreshed is not None:
+                refreshed_edge = rea.edge_from_geometry(
+                    active.shape, refreshed, active.edge_name
+                )
+                self.rect_edge_state.refresh_active(refreshed_edge)
+                original_coord = (
+                    self.rectangle_review_feedback_snapshot.original_coord
+                    if self.rectangle_review_feedback_snapshot is not None
+                    else refreshed_edge.coord
+                )
+                self._set_rectangle_review_feedback(
+                    refreshed_edge, "nudge", original_coord
+                )
+            if self._rectangle_review_nudge_burst.begin(
+                (id(active.shape), active.edge_name, direction, "wheel"),
+                time.monotonic(),
+            ):
+                self.store_shapes()
+            self.notify_shape_changed(active.shape)
+            self.shape_moved.emit()
+            self.update()
+        elif self.rectangle_review_feedback_snapshot is not None:
+            self._set_rectangle_review_feedback(
+                active,
+                "rejected",
+                self.rectangle_review_feedback_snapshot.original_coord,
+                "boundary_or_min_size",
+            )
+        ev.accept()
+        return True
 
     def _scale_rectangle(self, shape, scale_up):
         """Scale rectangle from center while keeping within image boundaries"""
@@ -4460,16 +4869,34 @@ class Canvas(
         # points are preserved so Esc can restore them.
         changed = rea.apply_edge_coord(active.shape, active.edge_name, coord)
         if not changed:
+            if self.rectangle_review_feedback_snapshot is not None:
+                self._set_rectangle_review_feedback(
+                    active,
+                    "rejected",
+                    self.rectangle_review_feedback_snapshot.original_coord,
+                    "boundary_or_min_size",
+                )
             return
+        previous_coord = active.coord
         self.notify_shape_changed(active.shape)
         # Refresh the active edge from the just-mutated geometry so the
         # overlay follows the live position instead of the original edge.
         updated_geom = rea.geometry_from_shape(active.shape)
         if updated_geom is not None:
-            self.rect_edge_state.refresh_active(
-                rea.edge_from_geometry(
-                    active.shape, updated_geom, active.edge_name
+            refreshed = rea.edge_from_geometry(
+                active.shape, updated_geom, active.edge_name
+            )
+            self.rect_edge_state.refresh_active(refreshed)
+            self.rectangle_review_edge_drag_delta.emit(
+                float(refreshed.coord - previous_coord)
+            )
+            original_coord = previous_coord
+            if self.rectangle_review_feedback_snapshot is not None:
+                original_coord = (
+                    self.rectangle_review_feedback_snapshot.original_coord
                 )
+            self._set_rectangle_review_feedback(
+                refreshed, "dragging", original_coord
             )
         # Drive the status bar from the SAME metrics as the overlay (design
         # rev.1 §3.2): previously this path only called update(), leaving the
@@ -4510,6 +4937,9 @@ class Canvas(
         """
         self.prev_point = QtCore.QPointF(press_pos)
         self.rect_edge_state.start_drag(edge, edge.shape.points)
+        self._rectangle_review_nudge_burst.reset()
+        self.rectangle_review_edge_drag_started.emit(edge.edge_name)
+        self._set_rectangle_review_feedback(edge, "dragging", edge.coord)
         self.override_cursor(CURSOR_MOVE)
 
     def _is_shape_under_edge_edit(self, shape):
@@ -4538,6 +4968,9 @@ class Canvas(
     def clear_rect_edge_alignment(self):
         """Clear transient edge-editing interaction state."""
         self.rect_edge_state.clear_mouse()
+        self.rectangle_review_feedback_snapshot = None
+        self._rectangle_review_nudge_burst.reset()
+        self.rectangle_review_feedback_changed.emit(None)
 
     def cancel_rect_edge_drag(self):
         """Cancel an in-progress edge drag and restore the pre-drag points.
@@ -4548,6 +4981,7 @@ class Canvas(
         if not self.rect_edge_dragging:
             return False
 
+        active_edge_name = self.rect_edge_active_edge.edge_name
         restore = self.rect_edge_state.cancel_drag()
         if restore is not None:
             shape, start_points = restore
@@ -4556,7 +4990,25 @@ class Canvas(
             shape.points = list(start_points)
             shape._invalidate_cache()
             self.notify_shape_changed(shape)
+            restored_geometry = rea.geometry_from_shape(shape)
+            restored_edge = (
+                rea.edge_from_geometry(shape, restored_geometry, active_edge_name)
+                if restored_geometry is not None
+                else None
+            )
+            if restored_edge is not None:
+                original_coord = (
+                    self.rectangle_review_feedback_snapshot.original_coord
+                    if self.rectangle_review_feedback_snapshot is not None
+                    else restored_edge.coord
+                )
+                self._set_rectangle_review_feedback(
+                    restored_edge, "canceled", original_coord
+                )
 
+        self.rectangle_review_edge_drag_finished.emit(False)
+        self.rectangle_review_feedback_snapshot = None
+        self.rectangle_review_feedback_changed.emit(None)
         self.override_cursor(CURSOR_DEFAULT)
         self.update()
         return True
@@ -4832,6 +5284,242 @@ class Canvas(
                 self._draw_edge(
                     painter, hover, QtGui.QColor(255, 255, 255), width=1.5
                 )
+
+    def _draw_rectangle_review_feedback_hud(
+        self, painter: QtGui.QPainter
+    ) -> None:
+        """Draw a transient, fixed-screen-size edge refinement HUD."""
+        snapshot = self.rectangle_review_feedback_snapshot
+        active = self.rect_edge_active_edge
+        if snapshot is None or active is None:
+            return
+        if not (
+            self.rectangle_review_refinement_enabled
+            and self.rectangle_review_feedback_enabled
+        ):
+            return
+        geometry = rea.geometry_from_shape(active.shape)
+        if geometry is None:
+            return
+        painter.save()
+        try:
+            start_points = self.rect_edge_drag_start_points or []
+            if len(start_points) >= 2:
+                start_x = [point.x() for point in start_points]
+                start_y = [point.y() for point in start_points]
+                original_pen = QtGui.QPen(QtGui.QColor(255, 220, 80))
+                original_pen.setStyle(QtCore.Qt.PenStyle.DashLine)
+                original_pen.setWidthF(1.0 / max(self.scale, 1e-6))
+                painter.setPen(original_pen)
+                if active.axis == rea.RECT_EDGE_AXIS_X:
+                    original_x = (
+                        min(start_x)
+                        if active.edge_name == rea.RECT_EDGE_LEFT
+                        else max(start_x)
+                    )
+                    painter.drawLine(
+                        QtCore.QPointF(original_x, min(start_y)),
+                        QtCore.QPointF(original_x, max(start_y)),
+                    )
+                else:
+                    original_y = (
+                        min(start_y)
+                        if active.edge_name == rea.RECT_EDGE_TOP
+                        else max(start_y)
+                    )
+                    painter.drawLine(
+                        QtCore.QPointF(min(start_x), original_y),
+                        QtCore.QPointF(max(start_x), original_y),
+                    )
+            font_size = max(8, int(round(12.0 / max(self.scale, 1e-6))))
+            font = QtGui.QFont("Arial", font_size)
+            painter.setFont(font)
+            metrics = QtGui.QFontMetricsF(font)
+            line = (
+                f"{snapshot.phase}  Δ {snapshot.signed_delta:+.1f}px  "
+                f"W×H {snapshot.width:.1f}×{snapshot.height:.1f}"
+            )
+            padding = 5.0 / max(self.scale, 1e-6)
+            text_width = metrics.horizontalAdvance(line)
+            text_height = metrics.height()
+            x = geometry.x_min
+            y = geometry.y_min - text_height - padding * 2.0
+            if y < 0:
+                y = geometry.y_max + padding
+            if x + text_width + padding * 2.0 > self.pixmap.width():
+                x = max(0.0, self.pixmap.width() - text_width - padding * 2.0)
+            rect = QtCore.QRectF(
+                x,
+                y,
+                text_width + padding * 2.0,
+                text_height + padding * 2.0,
+            )
+            painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255)))
+            painter.setBrush(QtGui.QColor(0, 0, 0, 180))
+            painter.drawRoundedRect(rect, 3.0 / max(self.scale, 1e-6), 3.0)
+            painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255)))
+            painter.drawText(
+                rect.adjusted(padding, padding, -padding, -padding),
+                QtCore.Qt.AlignmentFlag.AlignLeft
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                line,
+            )
+        finally:
+            painter.restore()
+
+    def _draw_rectangle_review_loupe(self, painter: QtGui.QPainter) -> None:
+        """Draw an optional read-only, fixed-screen-size edge loupe."""
+        if not (
+            self.rectangle_review_refinement_enabled
+            and self.rectangle_review_loupe_enabled
+            and self.rect_edge_active_edge is not None
+            and self.pixmap is not None
+        ):
+            return
+        active = self.rect_edge_active_edge
+        geometry = rea.geometry_from_shape(active.shape)
+        if geometry is None:
+            return
+        if active.axis == rea.RECT_EDGE_AXIS_X:
+            center = (active.coord, (geometry.y_min + geometry.y_max) / 2.0)
+        else:
+            center = ((geometry.x_min + geometry.x_max) / 2.0, active.coord)
+        roi = build_loupe_roi(
+            center,
+            (self.pixmap.width(), self.pixmap.height()),
+            radius_px=16,
+        )
+        roi_pixmap = self.pixmap.copy(
+            roi.x, roi.y, roi.width, roi.height
+        )
+        screen_width = 160.0
+        screen_height = 120.0
+        image_width = screen_width / max(self.scale, 1e-6)
+        image_height = screen_height / max(self.scale, 1e-6)
+        gap = 8.0 / max(self.scale, 1e-6)
+        x = geometry.x_max + gap
+        if x + image_width > self.pixmap.width():
+            x = geometry.x_min - gap - image_width
+        x = max(0.0, min(x, self.pixmap.width() - image_width))
+        y = center[1] - image_height / 2.0
+        y = max(0.0, min(y, self.pixmap.height() - image_height))
+        target = QtCore.QRectF(x, y, image_width, image_height)
+        painter.save()
+        try:
+            painter.setOpacity(0.96)
+            painter.drawPixmap(
+                target,
+                roi_pixmap,
+                QtCore.QRectF(0, 0, roi.width, roi.height),
+            )
+            painter.setOpacity(1.0)
+            pen = QtGui.QPen(QtGui.QColor(255, 255, 255))
+            pen.setWidthF(2.0 / max(self.scale, 1e-6))
+            painter.setPen(pen)
+            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+            painter.drawRect(target)
+        finally:
+            painter.restore()
+
+    def request_rectangle_review_candidate(
+        self, samples: list[float]
+    ) -> EdgeCandidate | None:
+        """Explicitly request an edge candidate without mutating geometry."""
+        if not (
+            self.rectangle_review_refinement_enabled
+            and self.rectangle_review_candidate_enabled
+            and self.rect_edge_active_edge is not None
+        ):
+            return None
+        active = self.rect_edge_active_edge
+        candidate = self._rectangle_review_candidate_service.request(
+            active.edge_name, samples, active.coord
+        )
+        if candidate is not None:
+            self._rectangle_review_candidate_preview.show(candidate)
+            self.rectangle_review_candidate_changed.emit(candidate)
+            self.update()
+        return candidate
+
+    def reject_rectangle_review_candidate(self) -> None:
+        """Discard a candidate preview without changing the active shape."""
+        self._rectangle_review_candidate_preview.reject()
+        self.rectangle_review_candidate_changed.emit(None)
+        self.update()
+
+    def accept_rectangle_review_candidate(self) -> bool:
+        """Validate and commit the current candidate as one undo unit."""
+        candidate = self._rectangle_review_candidate_preview.preview
+        active = self.rect_edge_active_edge
+        if candidate is None or active is None:
+            return False
+        if candidate.edge != active.edge_name:
+            self.reject_rectangle_review_candidate()
+            return False
+        proposed = active.shape.copy()
+        if not rea.apply_edge_coord(
+            proposed, candidate.edge, candidate.coordinate
+        ):
+            self.reject_rectangle_review_candidate()
+            return False
+        geometry = rea.geometry_from_shape(proposed)
+        if geometry is None or not geometry.is_valid():
+            self.reject_rectangle_review_candidate()
+            return False
+        if self.pixmap is not None and (
+            geometry.x_min < 0
+            or geometry.y_min < 0
+            or geometry.x_max >= self.pixmap.width()
+            or geometry.y_max >= self.pixmap.height()
+        ):
+            self.reject_rectangle_review_candidate()
+            return False
+        if not rea.apply_edge_coord(
+            active.shape, candidate.edge, candidate.coordinate
+        ):
+            self.reject_rectangle_review_candidate()
+            return False
+        self.store_shapes()
+        refreshed = rea.geometry_from_shape(active.shape)
+        if refreshed is not None:
+            self.rect_edge_state.refresh_active(
+                rea.edge_from_geometry(active.shape, refreshed, active.edge_name)
+            )
+        self.notify_shape_changed(active.shape)
+        self.shape_moved.emit()
+        self._rectangle_review_candidate_preview.reject()
+        self.rectangle_review_candidate_changed.emit(None)
+        self.update()
+        return True
+
+    def _set_rectangle_review_feedback(
+        self,
+        edge: rea.RectEdgeRef,
+        phase: str,
+        original_coord: float,
+        rejection_reason: str | None = None,
+    ) -> None:
+        """Update the shared feedback model from current edge geometry."""
+        if not (
+            self.rectangle_review_refinement_enabled
+            and self.rectangle_review_feedback_enabled
+        ):
+            return
+        geometry = rea.geometry_from_shape(edge.shape)
+        if geometry is None:
+            return
+        self.rectangle_review_feedback_snapshot = make_feedback_snapshot(
+            edge.edge_name,
+            phase,
+            original_coord,
+            edge.coord,
+            geometry.width,
+            geometry.height,
+            rejection_reason,
+        )
+        self.rectangle_review_feedback_changed.emit(
+            self.rectangle_review_feedback_snapshot
+        )
 
     def _rectangle_metrics(self, shape=None, p0=None, p1=None, source=""):
         """Build a unified RectangleMetrics tuple from image-space geometry.
@@ -5363,6 +6051,14 @@ class Canvas(
     def keyPressEvent(self, ev):
         """Key press event"""
         key = ev.key()
+        if key == QtCore.Qt.Key.Key_Tab and self._cycle_rect_edge(
+            bool(
+                ev.modifiers()
+                & QtCore.Qt.KeyboardModifier.ShiftModifier
+            )
+        ):
+            ev.accept()
+            return
         # Rectangle-edge interaction consumes Esc first. Otherwise notify
         # observers, then continue through the native Canvas key handling.
         if key == QtCore.Qt.Key.Key_Escape:
@@ -5439,6 +6135,8 @@ class Canvas(
             QtCore.Qt.Key.Key_Right,
         ):
             return False
+        if self._rectangle_review_nudge_key(key, modifiers):
+            return True
         step = (
             MOVE_SPEED
             if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier
@@ -5452,6 +6150,129 @@ class Canvas(
             self.move_by_keyboard(QtCore.QPointF(-step, 0.0))
         elif key == QtCore.Qt.Key.Key_Right:
             self.move_by_keyboard(QtCore.QPointF(step, 0.0))
+        return True
+
+    def _activate_rect_edge_for_nudge(self, edge: rea.RectEdgeRef) -> None:
+        """Promote a clicked edge to the keyboard/wheel nudge target."""
+        self._rectangle_review_nudge_burst.reset()
+        self.rect_edge_state.active_edge = edge
+        self.rect_edge_state.drag_start_points = [
+            QtCore.QPointF(point) for point in edge.shape.points
+        ]
+        self.rect_edge_state.set_hover(edge)
+        self.rectangle_review_edge_drag_started.emit(edge.edge_name)
+        self._set_rectangle_review_feedback(edge, "nudge", edge.coord)
+        self.override_cursor(self._rect_edge_cursor(edge))
+
+    def _cycle_rect_edge(self, reverse: bool = False) -> bool:
+        """Cycle the active edge for Tab/Shift+Tab keyboard handoff."""
+        if not (
+            self.rectangle_review_refinement_enabled
+            and self.rect_edge_align_enabled
+        ):
+            return False
+        shape = self._selected_rect_edge_shape()
+        if shape is None:
+            return False
+        geometry = rea.geometry_from_shape(shape)
+        if geometry is None:
+            return False
+        edge_names = [
+            rea.RECT_EDGE_TOP,
+            rea.RECT_EDGE_RIGHT,
+            rea.RECT_EDGE_BOTTOM,
+            rea.RECT_EDGE_LEFT,
+        ]
+        current = self.rect_edge_active_edge or self.rect_edge_hover_edge
+        current_name = current.edge_name if current is not None else None
+        index = edge_names.index(current_name) if current_name in edge_names else -1
+        step = -1 if reverse else 1
+        edge_name = edge_names[(index + step) % len(edge_names)]
+        if current is not None:
+            self.clear_rect_edge_alignment()
+        edge = rea.edge_from_geometry(shape, geometry, edge_name)
+        self._activate_rect_edge_for_nudge(edge)
+        self.update()
+        return True
+
+    def _rectangle_review_nudge_key(
+        self, key: int, modifiers: QtCore.Qt.KeyboardModifier
+    ) -> bool:
+        """Apply one keyboard nudge when a rectangle edge is active/hovered."""
+        if not (
+            self.rectangle_review_refinement_enabled
+            and self.rect_edge_align_enabled
+            and self.pixmap is not None
+        ):
+            return False
+        active = self.rect_edge_active_edge or self.rect_edge_hover_edge
+        if active is None or active.shape not in self.selected_shapes:
+            return False
+        if self.rect_edge_active_edge is None:
+            self.rect_edge_state.active_edge = active
+            self.rect_edge_state.drag_start_points = [
+                QtCore.QPointF(point) for point in active.shape.points
+            ]
+            self.rectangle_review_edge_drag_started.emit(active.edge_name)
+            self._set_rectangle_review_feedback(
+                active, "nudge", active.coord
+            )
+        direction = 1
+        if key in (QtCore.Qt.Key.Key_Left, QtCore.Qt.Key.Key_Up):
+            direction = -1
+        step = (
+            self.rectangle_review_coarse_step_px
+            if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier
+            else self.rectangle_review_nudge_step_px
+        )
+        geometry = rea.geometry_from_shape(active.shape)
+        if geometry is None:
+            return True
+        candidate = active.coord + direction * step
+        if not valid_edge_nudge(
+            (
+                geometry.x_min,
+                geometry.y_min,
+                geometry.x_max,
+                geometry.y_max,
+            ),
+            active.edge_name,
+            direction,
+            step,
+            (self.pixmap.width(), self.pixmap.height()),
+        ):
+            self._set_rectangle_review_feedback(
+                active,
+                "rejected",
+                self.rectangle_review_feedback_snapshot.original_coord
+                if self.rectangle_review_feedback_snapshot is not None
+                else active.coord,
+                "boundary_or_min_size",
+            )
+            return True
+        if not rea.apply_edge_coord(active.shape, active.edge_name, candidate):
+            return True
+        refreshed = rea.geometry_from_shape(active.shape)
+        if refreshed is not None:
+            refreshed_edge = rea.edge_from_geometry(
+                active.shape, refreshed, active.edge_name
+            )
+            self.rect_edge_state.refresh_active(refreshed_edge)
+            self._set_rectangle_review_feedback(
+                refreshed_edge,
+                "nudge",
+                self.rectangle_review_feedback_snapshot.original_coord
+                if self.rectangle_review_feedback_snapshot is not None
+                else refreshed_edge.coord,
+            )
+        if self._rectangle_review_nudge_burst.begin(
+            (id(active.shape), active.edge_name, direction, "keyboard"),
+            time.monotonic(),
+        ):
+            self.store_shapes()
+        self.notify_shape_changed(active.shape)
+        self.shape_moved.emit()
+        self.update()
         return True
 
     # QT Overload
