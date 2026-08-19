@@ -5161,6 +5161,11 @@ Changes will not be saved until you click Save.</source>
     </message>
     <message>
       <location filename="../../views/labeling/settings/schema.py" line="46" />
+      <source>Appearance</source>
+      <translation>外观</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="47" />
       <source>Canvas</source>
       <translation>画布</translation>
     </message>
@@ -5413,6 +5418,46 @@ Changes will not be saved until you click Save.</source>
       <location filename="../../views/labeling/settings/schema.py" line="113" />
       <source>Logger Level</source>
       <translation>日志级别</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="116" />
+      <source>Annotation Appearance</source>
+      <translation>标注外观</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="117" />
+      <source>Appearance Color Mode</source>
+      <translation>外观颜色模式</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="119" />
+      <source>High Contrast Outline</source>
+      <translation>高对比度轮廓</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="121" />
+      <source>Normal Fill Opacity</source>
+      <translation>普通填充透明度</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="123" />
+      <source>Selected Fill Opacity</source>
+      <translation>选中填充透明度</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="125" />
+      <source>Unrelated Object Opacity</source>
+      <translation>无关对象透明度</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="128" />
+      <source>Show Appearance Labels</source>
+      <translation>显示外观标签</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="129" />
+      <source>Show Group ID</source>
+      <translation>显示组 ID</translation>
     </message>
   </context>
   <context>

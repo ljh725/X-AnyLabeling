@@ -5147,6 +5147,11 @@ Changes will not be saved until you click Save.</translation>
     </message>
     <message>
       <location filename="../../views/labeling/settings/schema.py" line="46" />
+      <source>Appearance</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="47" />
       <source>Canvas</source>
       <translation type="unfinished" />
     </message>
@@ -5398,6 +5403,46 @@ Changes will not be saved until you click Save.</translation>
     <message>
       <location filename="../../views/labeling/settings/schema.py" line="113" />
       <source>Logger Level</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="116" />
+      <source>Annotation Appearance</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="117" />
+      <source>Appearance Color Mode</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="119" />
+      <source>High Contrast Outline</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="121" />
+      <source>Normal Fill Opacity</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="123" />
+      <source>Selected Fill Opacity</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="125" />
+      <source>Unrelated Object Opacity</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="128" />
+      <source>Show Appearance Labels</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="129" />
+      <source>Show Group ID</source>
       <translation type="unfinished" />
     </message>
   </context>

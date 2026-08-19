@@ -881,7 +881,7 @@ class SettingsDialog(QtWidgets.QDialog):
             )
 
         fields = fields_for_primary(primary)
-        if primary in {"General", "Shape", "Canvas"}:
+        if primary in {"General", "Shape", "Appearance", "Canvas"}:
             strip_prefix = "canvas." if primary == "Canvas" else None
             self._render_form_fields(fields, strip_prefix=strip_prefix)
             self._set_bottom_controls_visible(True)

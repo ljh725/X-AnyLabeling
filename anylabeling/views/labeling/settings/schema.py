@@ -28,6 +28,7 @@ SETTINGS_PRIMARY_ORDER = (
     QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Shortcuts"),
     QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "General"),
     QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Shape"),
+    QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Appearance"),
     QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Canvas"),
 )
 SETTINGS_SHORTCUT_SECTIONS = (
@@ -43,6 +44,8 @@ def _settings_translation_markers() -> None:
     QCoreApplication.translate("SettingsDialog", "Shortcuts")
     QCoreApplication.translate("SettingsDialog", "General")
     QCoreApplication.translate("SettingsDialog", "Shape")
+    QCoreApplication.translate("SettingsDialog", "Appearance")
+    QCoreApplication.translate("SettingsDialog", "Annotation Appearance")
     QCoreApplication.translate("SettingsDialog", "Canvas")
     QCoreApplication.translate("SettingsDialog", "AI")
     QCoreApplication.translate("SettingsDialog", "Dialog")
@@ -1508,6 +1511,12 @@ def fields_for_primary(primary: str) -> list[SettingField]:
         ]
     if primary == "Canvas":
         return [field for field in SETTING_FIELDS if field.primary == "Canvas"]
+    if primary == "Appearance":
+        return [
+            field
+            for field in SETTING_FIELDS
+            if field.primary == "Appearance"
+        ]
     return []
 
 

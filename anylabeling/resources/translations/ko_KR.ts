@@ -5148,6 +5148,11 @@ Changes will not be saved until you click Save.</source>
     </message>
     <message>
       <location filename="../../views/labeling/settings/schema.py" line="46" />
+      <source>Appearance</source>
+      <translation>외관</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="47" />
       <source>Canvas</source>
       <translation>캔버스</translation>
     </message>
@@ -5400,6 +5405,46 @@ Changes will not be saved until you click Save.</source>
       <location filename="../../views/labeling/settings/schema.py" line="113" />
       <source>Logger Level</source>
       <translation>로그 레벨</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="116" />
+      <source>Annotation Appearance</source>
+      <translation>주석 모양</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="117" />
+      <source>Appearance Color Mode</source>
+      <translation>외관 색상 모드</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="119" />
+      <source>High Contrast Outline</source>
+      <translation>고대비 외곽선</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="121" />
+      <source>Normal Fill Opacity</source>
+      <translation>일반 채우기 불투명도</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="123" />
+      <source>Selected Fill Opacity</source>
+      <translation>선택 채우기 불투명도</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="125" />
+      <source>Unrelated Object Opacity</source>
+      <translation>관련 없는 객체 불투명도</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="128" />
+      <source>Show Appearance Labels</source>
+      <translation>외관 라벨 표시</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/settings/schema.py" line="129" />
+      <source>Show Group ID</source>
+      <translation>그룹 ID 표시</translation>
     </message>
   </context>
   <context>
