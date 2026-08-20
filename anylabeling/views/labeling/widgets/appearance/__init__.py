@@ -2,6 +2,7 @@
 
 from .config import (
     DEFAULT_APPEARANCE_SETTINGS,
+    clear_project_palette_cache,
     load_project_palette,
     load_user_appearance,
     migrate_legacy_appearance,
@@ -31,6 +32,7 @@ __all__ = [
     "ShapeVisualContext",
     "VisualStyle",
     "color_for_key",
+    "clear_project_palette_cache",
     "is_valid_group_id",
     "load_project_palette",
     "load_user_appearance",

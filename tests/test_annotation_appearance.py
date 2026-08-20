@@ -1,5 +1,8 @@
 """Pure appearance and group-focus behavior tests."""
 
+import logging
+from unittest.mock import patch
+
 from anylabeling.views.labeling.widgets.appearance import (
     ACCESSIBLE_PALETTE,
     AppearanceSettings,
@@ -10,6 +13,7 @@ from anylabeling.views.labeling.widgets.appearance import (
     resolve_base_color,
 )
 from anylabeling.views.labeling.widgets.appearance.config import (
+    clear_project_palette_cache,
     load_project_palette,
     load_user_appearance,
     save_project_palette,
@@ -98,7 +102,97 @@ def test_legacy_config_and_project_sidecar_round_trip(tmp_path):
     assert settings.color_mode is ColorMode.LABEL
     path = save_project_palette(str(tmp_path), {"person": (1, 2, 3)})
     assert path.endswith("appearance.yaml")
+    clear_project_palette_cache()
     assert load_project_palette(str(tmp_path))["person"] == (1, 2, 3)
+
+
+def test_missing_project_sidecar_is_silent_and_cached(tmp_path, caplog):
+    """An optional sidecar may be absent without warning or repeated I/O."""
+    clear_project_palette_cache()
+    path = str(tmp_path)
+    with patch(
+        "builtins.open",
+        side_effect=FileNotFoundError(2, "No such file or directory"),
+    ) as mocked_open:
+        with caplog.at_level(
+            logging.WARNING,
+            logger="anylabeling.views.labeling.widgets.appearance.config",
+        ):
+            assert load_project_palette(path) == {}
+            assert load_project_palette(path) == {}
+    assert mocked_open.call_count == 1
+    assert not caplog.records
+
+
+def test_unc_missing_project_sidecar_is_non_blocking(caplog):
+    """A missing UNC sidecar follows the same optional-file fallback."""
+    clear_project_palette_cache()
+    root = r"\\server\share\dataset\images"
+    with patch(
+        "builtins.open",
+        side_effect=FileNotFoundError(2, "No such file or directory"),
+    ):
+        with caplog.at_level(
+            logging.WARNING,
+            logger="anylabeling.views.labeling.widgets.appearance.config",
+        ):
+            assert load_project_palette(root) == {}
+    assert not caplog.records
+
+
+def test_invalid_project_sidecar_payload_warns_and_falls_back(
+    tmp_path, caplog
+):
+    """Malformed versions and channels never escape the loader."""
+    sidecar = tmp_path / ".xanylabeling" / "appearance.yaml"
+    sidecar.parent.mkdir()
+    sidecar.write_text(
+        "schema_version: 99\nlabel_colors:\n  person: [1, 2, 3]\n",
+        encoding="utf-8",
+    )
+    clear_project_palette_cache()
+    with caplog.at_level(
+        logging.WARNING,
+        logger="anylabeling.views.labeling.widgets.appearance.config",
+    ):
+        assert load_project_palette(str(tmp_path)) == {}
+    assert "unsupported schema_version" in caplog.text
+
+    sidecar.write_text(
+        "schema_version: 1\nlabel_colors: [bad]\n",
+        encoding="utf-8",
+    )
+    clear_project_palette_cache()
+    with caplog.at_level(
+        logging.WARNING,
+        logger="anylabeling.views.labeling.widgets.appearance.config",
+    ):
+        assert load_project_palette(str(tmp_path)) == {}
+    assert "label_colors must be a mapping" in caplog.text
+
+    sidecar.write_text(
+        "schema_version: 1\n"
+        "label_colors:\n"
+        "  person: [1, 2, 3]\n"
+        "  invalid: [true, 2, 3]\n",
+        encoding="utf-8",
+    )
+    clear_project_palette_cache()
+    assert load_project_palette(str(tmp_path)) == {"person": (1, 2, 3)}
+
+
+def test_saving_project_palette_refreshes_cached_values(tmp_path):
+    """A successful save makes the new palette visible immediately."""
+    clear_project_palette_cache()
+    sidecar = tmp_path / ".xanylabeling" / "appearance.yaml"
+    sidecar.parent.mkdir()
+    sidecar.write_text(
+        "schema_version: 1\nlabel_colors:\n  old: [1, 2, 3]\n",
+        encoding="utf-8",
+    )
+    assert load_project_palette(str(tmp_path)) == {"old": (1, 2, 3)}
+    save_project_palette(str(tmp_path), {"new": (4, 5, 6)})
+    assert load_project_palette(str(tmp_path)) == {"new": (4, 5, 6)}
 
 
 def test_ten_group_review_has_one_focus_and_neutral_unrelated_emphasis():
