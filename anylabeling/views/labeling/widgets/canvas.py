@@ -3175,7 +3175,7 @@ class Canvas(
         """Duplicate selected shapes"""
         if self.selected_shapes:
             self.selected_shapes_copy = [
-                s.copy() for s in self.selected_shapes
+                s.copy_for_new_object() for s in self.selected_shapes
             ]
             self.bounded_shift_shapes(self.selected_shapes_copy)
             self.end_move(copy=True)

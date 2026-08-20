@@ -6906,7 +6906,11 @@ class LabelingWidget(LabelDialog):
             try:
                 shapeDicts = json.loads(json_str)
                 for shapeDict in shapeDicts:
-                    shapes.append(Shape().load_from_dict(shapeDict))
+                    shapes.append(
+                        Shape().load_from_dict(
+                            shapeDict, preserve_shape_id=False
+                        )
+                    )
             except json.JSONDecodeError as e:
                 self.error_message(
                     self.tr("Error pasting shapes"),
@@ -6932,7 +6936,7 @@ class LabelingWidget(LabelDialog):
             )
         else:
             self._copied_shapes = [
-                s.copy() for s in self.canvas.selected_shapes
+                s.copy_for_new_object() for s in self.canvas.selected_shapes
             ]
             self.actions.paste.setEnabled(len(self._copied_shapes) > 0)
 

@@ -47,6 +47,17 @@ system_clipboard: false
 switch_to_checked: false
 file_list_checkbox_editable: false
 
+# Local annotation behavior analytics. Disabled by default and never uploaded.
+behavior_analytics:
+  enabled: false
+  retention_days: 90
+  idle_threshold_ms: 120000
+  burst_silence_ms: 300
+  queue_max_events: 2048
+  max_event_bytes: 16384
+  representative_trace_limit: 24
+  max_bundle_bytes: 5242880
+
 flags: null
 label_flags: null
 labels: null
