@@ -11,6 +11,13 @@ from .feature_state import (
     FeatureStateTracker,
 )
 from .identifiers import IdentifierHasher, new_session_id
+from .analysis import (
+    AnalysisFilter,
+    ReadQuality,
+    calculate_statistics,
+    read_events,
+)
+from .bundle import export_analysis_bundle
 from .recorder import LocalEventRecorder, RecorderHealth
 from .schema import (
     ANALYTICS_ALGORITHM_VERSION,
@@ -28,6 +35,8 @@ __all__ = [
     "ANALYTICS_ALGORITHM_VERSION",
     "ActivityTracker",
     "ActivityTransition",
+    "AnalysisFilter",
+    "ReadQuality",
     "DEFAULT_FEATURE_KEYS",
     "EVENT_CATALOG",
     "EVENT_SCHEMA_VERSION",
@@ -53,4 +62,7 @@ __all__ = [
     "RecorderHealth",
     "new_session_id",
     "sanitize_payload",
+    "calculate_statistics",
+    "read_events",
+    "export_analysis_bundle",
 ]
