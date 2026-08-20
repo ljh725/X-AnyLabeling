@@ -56,6 +56,12 @@ from .utils.style import (
     get_settings_button_style,
 )
 from ...config import get_config, save_config
+from ...config import get_work_directory
+from anylabeling.services.behavior_analytics import (
+    BehaviorTelemetry,
+    FeatureState,
+    LocalEventRecorder,
+)
 from .label_file import LabelFile, LabelFileError
 from .logger import logger
 from .person_instance import INSTANCE_SHAPE_TYPE, POSE_SUBJECT_LABEL
@@ -319,6 +325,7 @@ class LabelingWidget(LabelDialog):
         if config is None:
             config = get_config()
         self._config = config
+        self._behavior_telemetry = None
         self.appearance_settings = load_user_appearance(self._config)
         self.appearance_label_colors = {}
         self.label_flags = self._config["label_flags"]
@@ -6535,6 +6542,13 @@ class LabelingWidget(LabelDialog):
         )
         self.set_text_editing(True)
 
+        telemetry = self._behavior_telemetry
+        if telemetry is not None and self.canvas.current is None:
+            for shape in selected_shapes:
+                shape_id = getattr(shape, "xanylabeling_shape_id", None)
+                if shape_id:
+                    telemetry.select_shape(shape_id)
+
         selected_count = len(selected_shapes)
         is_drawing_mode = (
             hasattr(self.canvas, "current") and self.canvas.current is not None
@@ -7867,6 +7881,47 @@ class LabelingWidget(LabelDialog):
         if next_files:
             self.next_files_changed.emit(next_files)
 
+    def _ensure_behavior_telemetry(self, project_root):
+        """Create the opt-in local telemetry coordinator for a project."""
+        analytics_config = self._config.get("behavior_analytics", {})
+        if not isinstance(analytics_config, dict) or not analytics_config.get(
+            "enabled", False
+        ):
+            return
+        project_root = osp.abspath(project_root)
+        current = self._behavior_telemetry
+        if current is not None and getattr(
+            current.tracker, "_project_root", None
+        ) == project_root:
+            return
+        if current is not None:
+            current.shutdown()
+        storage_root = osp.join(
+            get_work_directory(), ".xanylabeling", "behavior_analytics"
+        )
+        recorder = LocalEventRecorder(
+            storage_root,
+            enabled=True,
+            queue_max_events=int(
+                analytics_config.get("queue_max_events", 2048)
+            ),
+            max_event_bytes=int(
+                analytics_config.get("max_event_bytes", 16_384)
+            ),
+        )
+        telemetry = BehaviorTelemetry(project_root, recorder)
+        auto_save = bool(self._config.get("auto_save", False))
+        telemetry.start_project(
+            {
+                "auto_save": FeatureState(
+                    configured=auto_save,
+                    active=auto_save,
+                    value=auto_save,
+                )
+            }
+        )
+        self._behavior_telemetry = telemetry
+
     def load_file(self, filename=None):  # noqa: C901
         """Load the specified file, or the last opened file if None."""
         _t_load = time.perf_counter()
@@ -8008,6 +8063,10 @@ class LabelingWidget(LabelDialog):
             return False
         self.image = image
         self.filename = filename
+
+        self._ensure_behavior_telemetry(osp.dirname(label_file))
+        if self._behavior_telemetry is not None:
+            self._behavior_telemetry.enter_image(filename)
 
         if (
             hasattr(self, "navigator_dialog")
@@ -8484,6 +8543,9 @@ class LabelingWidget(LabelDialog):
             self._review_metrics.target_cleared(
                 EpisodeEndReason.APPLICATION_CLOSED
             )
+        if self._behavior_telemetry is not None:
+            self._behavior_telemetry.shutdown()
+            self._behavior_telemetry = None
         self._teardown_review_transients()
         self._review_session.stop()
         self._shutdown_dataset_review()

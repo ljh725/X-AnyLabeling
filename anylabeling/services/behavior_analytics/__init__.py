@@ -22,6 +22,7 @@ from .schema import (
     InputSource,
 )
 from .session import ImageVisit, ObjectEpisode, ProjectSession, SessionTracker
+from .telemetry import BehaviorTelemetry
 
 __all__ = [
     "ANALYTICS_ALGORITHM_VERSION",
@@ -40,6 +41,7 @@ __all__ = [
     "FeatureRegistry",
     "FeatureStateTracker",
     "ClockReading",
+    "BehaviorTelemetry",
     "IdentifierHasher",
     "ImageVisit",
     "InputSource",
