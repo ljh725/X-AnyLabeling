@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from .burst import BurstAggregator, CompletedBurst
 from .catalog import sanitize_payload, validate_payload
 from .feature_state import FeatureState, FeatureStateTracker
 from .identifiers import new_session_id
@@ -22,11 +23,13 @@ class BehaviorTelemetry:
         *,
         tracker: SessionTracker | None = None,
         feature_state: FeatureStateTracker | None = None,
+        burst_silence_ms: int = 300,
     ) -> None:
         """Initialize telemetry for one project root."""
         self.recorder = recorder
         self.tracker = tracker or SessionTracker(project_root)
         self.feature_state = feature_state or FeatureStateTracker()
+        self.bursts = BurstAggregator(burst_silence_ms)
 
     def start_project(
         self, features: Mapping[str, FeatureState] | None = None
@@ -66,6 +69,8 @@ class BehaviorTelemetry:
 
     def enter_image(self, image_path: str) -> None:
         """Start an image visit in the current project session."""
+        self.flush_bursts()
+        self.close_image()
         visit = self.tracker.enter_image(image_path)
         self._emit(
             "image_visit_started",
@@ -73,6 +78,72 @@ class BehaviorTelemetry:
             result="success",
             image_id=visit.image_id,
             payload={},
+        )
+
+    def close_image(self) -> None:
+        """Close the current image visit, if one is active."""
+        self.flush_bursts()
+        visit = self.tracker.image_visit
+        if visit is None:
+            return
+        reading = self.tracker.clock.read()
+        duration_ms = max(
+            0, reading.monotonic_ms - visit.started_at.monotonic_ms
+        )
+        self._emit(
+            "image_visit_ended",
+            input_source="system",
+            result="success",
+            image_id=visit.image_id,
+            duration_ms=duration_ms,
+        )
+        self.tracker.image_visit = None
+        self.tracker.object_episode = None
+
+    def record_burst(
+        self,
+        action: str,
+        *,
+        input_source: str,
+        monotonic_ms: int | None = None,
+    ) -> None:
+        """Aggregate one high-frequency input without storing samples."""
+        reading = self.tracker.clock.read()
+        completed = self.bursts.add(
+            action,
+            input_source,
+            reading.monotonic_ms if monotonic_ms is None else monotonic_ms,
+        )
+        for burst in completed:
+            self._emit_completed_burst(burst)
+
+    def flush_bursts(self) -> None:
+        """Emit any open high-frequency burst at a lifecycle boundary."""
+        for burst in self.bursts.flush():
+            self._emit_completed_burst(burst)
+
+    def _emit_completed_burst(self, burst: CompletedBurst) -> None:
+        """Write one summarized burst as a regular action span."""
+        self._emit(
+            "action_span",
+            input_source=burst.input_source,
+            result="success",
+            duration_ms=burst.duration_ms,
+            payload={
+                "action": burst.action,
+                "input_count": burst.input_count,
+                "start_summary": {"monotonic_ms": burst.started_ms},
+                "end_summary": {"monotonic_ms": burst.ended_ms},
+            },
+        )
+
+    def focus_changed(self, focused: bool) -> bool:
+        """Record a window activation change for active-time boundaries."""
+        return self._emit(
+            "focus_changed",
+            input_source="system",
+            result="success",
+            payload={"focused": bool(focused)},
         )
 
     def select_shape(self, shape_id: str) -> str:
@@ -96,6 +167,7 @@ class BehaviorTelemetry:
         result: str,
         payload: Mapping[str, Any] | None = None,
         duration_ms: int | None = None,
+        correlation_id: str | None = None,
     ) -> bool:
         """Emit one semantic action using the current session context."""
         episode = self.tracker.object_episode
@@ -105,6 +177,7 @@ class BehaviorTelemetry:
             result=result,
             payload=payload,
             duration_ms=duration_ms,
+            correlation_id=correlation_id,
             image_id=episode.image_id if episode else None,
             shape_id=episode.shape_id if episode else None,
             object_episode_id=(episode.object_episode_id if episode else None),
@@ -114,6 +187,7 @@ class BehaviorTelemetry:
         """Emit project closure and release nested session state."""
         if self.tracker.project_session is None:
             return
+        self.close_image()
         self._emit(
             "project_session_ended",
             input_source="system",
@@ -123,6 +197,7 @@ class BehaviorTelemetry:
 
     def shutdown(self) -> bool:
         """Close the project and flush the recorder before application exit."""
+        self.flush_bursts()
         self.close_project()
         return self.recorder.close(timeout=1.0)
 
@@ -139,6 +214,7 @@ class BehaviorTelemetry:
         image_id: str | None = None,
         shape_id: str | None = None,
         object_episode_id: str | None = None,
+        correlation_id: str | None = None,
     ) -> bool:
         """Build and submit one validated event envelope."""
         project = self.tracker.project_session
@@ -168,6 +244,7 @@ class BehaviorTelemetry:
             image_id=image_id or (visit.image_id if visit else None),
             shape_id=shape_id,
             object_episode_id=object_episode_id,
+            correlation_id=correlation_id,
             duration_ms=duration_ms,
             payload=payload_dict or None,
         )

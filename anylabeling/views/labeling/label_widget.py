@@ -58,9 +58,13 @@ from .utils.style import (
 from ...config import get_config, save_config
 from ...config import get_work_directory
 from anylabeling.services.behavior_analytics import (
+    AnalysisFilter,
     BehaviorTelemetry,
+    export_analysis_bundle,
     FeatureState,
     LocalEventRecorder,
+    cleanup_event_logs,
+    read_events,
 )
 from .label_file import LabelFile, LabelFileError
 from .logger import logger
@@ -151,6 +155,7 @@ from .widgets import (
     KeypointToolWindow,
     InspectorPanel,
 )
+from .widgets.behavior_analytics_dialog import BehaviorAnalyticsDialog
 from .widgets.canvas import DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
 from .widgets.pose_label import (
     PoseViewPanel,
@@ -326,6 +331,7 @@ class LabelingWidget(LabelDialog):
             config = get_config()
         self._config = config
         self._behavior_telemetry = None
+        self._behavior_geometry_spans = {}
         self.appearance_settings = load_user_appearance(self._config)
         self.appearance_label_colors = {}
         self.label_flags = self._config["label_flags"]
@@ -359,8 +365,18 @@ class LabelingWidget(LabelDialog):
         self.inspector_panel.issue_navigate_requested.connect(
             self._on_inspector_navigate
         )
+        self.inspector_panel.issue_navigate_requested.connect(
+            lambda *_: self._behavior_action(
+                "inspector_navigate", input_source="mouse"
+            )
+        )
         self.inspector_panel.shape_edit_requested.connect(
             self._on_inspector_shape_edit
+        )
+        self.inspector_panel.shape_edit_requested.connect(
+            lambda *_: self._behavior_action(
+                "inspector_edit", input_source="mouse"
+            )
         )
         # Feed the initial label config to the shared label set
         labels_from_config = self._config.get("labels", [])
@@ -675,13 +691,22 @@ class LabelingWidget(LabelDialog):
             lambda: self.update_navigator_viewport()
         )
         self.canvas.scroll_request.connect(self.scroll_request)
+        self.canvas.zoom_request.connect(self._behavior_zoom_requested)
+        self.canvas.scroll_request.connect(self._behavior_scroll_requested)
+        self.canvas.input_burst_requested.connect(
+            self._behavior_burst_requested
+        )
         self.canvas.new_shape.connect(self.new_shape)
         self.canvas.drawing_canceled.connect(
             self.digit_bind_draw_manager.clear_pending
         )
         self.canvas.show_shape.connect(self.show_shape)
         self.canvas.shape_moved.connect(self.set_dirty)
+        self.canvas.shape_moved.connect(self._behavior_shape_moved)
         self.canvas.shape_rotated.connect(self.set_dirty)
+        self.canvas.mode_changed.connect(
+            lambda: self._behavior_action("mode_changed", input_source="menu")
+        )
         self.canvas.escape_pressed.connect(self._on_canvas_escape_pressed)
         self.canvas.selection_changed.connect(self.shape_selection_changed)
         self.canvas.selection_changed.connect(
@@ -700,6 +725,12 @@ class LabelingWidget(LabelDialog):
             self.canvas.rectangle_review_edge_drag_finished.connect(
                 self._review_metrics.edge_drag_finished
             )
+        self.canvas.rectangle_review_edge_drag_started.connect(
+            self._behavior_geometry_started
+        )
+        self.canvas.rectangle_review_edge_drag_finished.connect(
+            self._behavior_geometry_finished
+        )
         # Inspector table refresh (debounced)
         self.canvas.new_shape.connect(self._schedule_inspector_table_refresh)
         self.canvas.shape_moved.connect(self._schedule_inspector_table_refresh)
@@ -2151,6 +2182,15 @@ class LabelingWidget(LabelDialog):
             enabled=True,
         )
 
+        behavior_analytics = action(
+            self.tr("Local Behavior Analytics"),
+            self.open_behavior_analytics,
+            None,
+            "statistics",
+            self.tr("Record locally and export deterministic behavior statistics"),
+            enabled=True,
+        )
+
         toggle_global_filter_keep = action(
             self.tr("Enable Global Filter"),
             self.toggle_global_filter_keep,
@@ -2362,6 +2402,7 @@ class LabelingWidget(LabelDialog):
             toggle_rect_refine_mode=toggle_rect_refine_mode,
             show_navigator=show_navigator,
             toggle_inspector=toggle_inspector,
+            behavior_analytics=behavior_analytics,
             toggle_global_filter_keep=toggle_global_filter_keep,
             toggle_filter_navigation=toggle_filter_navigation,
             refresh_filter_navigation=refresh_filter_navigation,
@@ -2680,6 +2721,7 @@ class LabelingWidget(LabelDialog):
             (
                 show_navigator,
                 toggle_inspector,
+                behavior_analytics,
                 toggle_global_filter_keep,
                 toggle_filter_navigation,
                 refresh_filter_navigation,
@@ -2844,8 +2886,14 @@ class LabelingWidget(LabelDialog):
         self.auto_labeling_widget.model_manager.prediction_started.connect(
             lambda: self.canvas.set_loading(True, self.tr("Please wait..."))
         )
+        self.auto_labeling_widget.model_manager.prediction_started.connect(
+            lambda: self._behavior_action("ai_prediction", input_source="ai")
+        )
         self.auto_labeling_widget.model_manager.prediction_finished.connect(
             lambda: self.canvas.set_loading(False)
+        )
+        self.auto_labeling_widget.model_manager.prediction_finished.connect(
+            lambda: self._behavior_action("ai_prediction", input_source="ai")
         )
         self.auto_labeling_widget.model_manager.prediction_finished.connect(
             self.update_thumbnail_display
@@ -3762,6 +3810,35 @@ class LabelingWidget(LabelDialog):
             ),
         )
 
+    def _behavior_shape_moved(self) -> None:
+        """Record ordinary geometry commits not owned by review spans."""
+        if self._behavior_geometry_spans:
+            return
+        self._behavior_action("geometry_edit", input_source="mouse")
+
+    def _behavior_geometry_started(self, edge_name: str) -> None:
+        """Start one rectangle-edge action span shared with review metrics."""
+        correlation_id = uuid.uuid4().hex
+        self._behavior_geometry_spans[correlation_id] = time.monotonic()
+
+    def _behavior_geometry_finished(self, changed: bool) -> None:
+        """Commit or cancel the current rectangle-edge action span once."""
+        if not self._behavior_geometry_spans:
+            return
+        correlation_id, started = next(
+            iter(self._behavior_geometry_spans.items())
+        )
+        del self._behavior_geometry_spans[correlation_id]
+        duration_ms = max(0, int((time.monotonic() - started) * 1000))
+        self._behavior_action(
+            "action_span",
+            input_source="mouse",
+            result="success" if changed else "cancelled",
+            duration_ms=duration_ms,
+            correlation_id=correlation_id,
+            payload={"action": "rectangle_edge_drag"},
+        )
+
     def _review_metrics_selection_changed(
         self, selected_shapes: list[Shape]
     ) -> None:
@@ -3901,6 +3978,7 @@ class LabelingWidget(LabelDialog):
                 and after_points != before_points
             )
             collector.undo_applied(target_token, geometry_changed)
+        self._behavior_action("undo", input_source="keyboard")
         # Refresh keypoint fill mode after undo
         if (
             hasattr(self, "keypoint_fill_mode")
@@ -5879,6 +5957,117 @@ class LabelingWidget(LabelDialog):
                 self.actions, "toggle_inspector"
             ):
                 self.actions.toggle_inspector.setChecked(visible)
+            self._behavior_action("inspector_visibility", input_source="menu")
+
+    def open_behavior_analytics(self):
+        """Open the internal, opt-in local behavior analytics entry point."""
+        config = self._config.setdefault("behavior_analytics", {})
+        if self._settings_dialog is not None:
+            self._settings_dialog.close()
+        dialog = BehaviorAnalyticsDialog(
+            bool(config.get("enabled", False)), parent=self
+        )
+        dialog.enabled_changed.connect(self._set_behavior_analytics_enabled)
+        dialog.export_requested.connect(self._export_behavior_analysis)
+        dialog.cleanup_requested.connect(
+            lambda: self._cleanup_behavior_logs(dialog)
+        )
+        self._behavior_analytics_dialog = dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+
+    def _set_behavior_analytics_enabled(self, enabled: bool) -> None:
+        """Persist the explicit local recording switch and apply it safely."""
+        config = self._config.setdefault("behavior_analytics", {})
+        config["enabled"] = bool(enabled)
+        save_config(self._config)
+        if not enabled and self._behavior_telemetry is not None:
+            self._behavior_telemetry.shutdown()
+            self._behavior_telemetry = None
+        elif enabled and self.filename:
+            self._ensure_behavior_telemetry(osp.dirname(self.filename))
+
+    def _behavior_storage_root(self) -> Path:
+        """Return the local analytics storage root."""
+        return Path(get_work_directory()) / ".xanylabeling" / "behavior_analytics"
+
+    def _export_behavior_analysis(self, range_key: str, output_dir: str) -> None:
+        """Read local events and publish one deterministic analysis bundle."""
+        dialog = getattr(self, "_behavior_analytics_dialog", None)
+        if dialog is None:
+            return
+        if dialog is not None:
+            dialog.set_status("Reading local events...")
+        event_filter = AnalysisFilter()
+        if range_key == "project" and self._behavior_telemetry is not None:
+            project = self._behavior_telemetry.tracker.project_session
+            if project is not None:
+                event_filter = AnalysisFilter(
+                    project_session_ids=frozenset(
+                        {project.project_session_id}
+                    )
+                )
+        progress = QtWidgets.QProgressDialog(
+            "Reading local behavior events...",
+            "Cancel",
+            0,
+            1,
+            self,
+        )
+        progress.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
+        progress.show()
+        QtWidgets.QApplication.processEvents()
+        if progress.wasCanceled():
+            return
+        try:
+            events, quality = read_events(
+                [self._behavior_storage_root() / "events"],
+                event_filter=event_filter,
+            )
+            if progress.wasCanceled():
+                return
+            bundle = export_analysis_bundle(
+                output_dir,
+                events,
+                quality=quality,
+                event_filter=event_filter,
+                representative_trace_limit=int(
+                    self._config.get("behavior_analytics", {}).get(
+                        "representative_trace_limit", 24
+                    )
+                ),
+                max_bundle_bytes=int(
+                    self._config.get("behavior_analytics", {}).get(
+                        "max_bundle_bytes", 5_242_880
+                    )
+                ),
+            )
+            dialog.set_status(f"Analysis bundle created: {bundle}")
+        except (FileExistsError, OSError, ValueError) as exc:
+            dialog.set_status(f"Analysis failed: {exc}")
+        finally:
+            progress.close()
+
+    def _cleanup_behavior_logs(self, dialog) -> None:
+        """Apply the configured retention period to local event logs only."""
+        retention_days = int(
+            self._config.get("behavior_analytics", {}).get(
+                "retention_days", 90
+            )
+        )
+        try:
+            summary = cleanup_event_logs(
+                self._behavior_storage_root(),
+                retention_days=retention_days,
+            )
+            dialog.set_status(
+                "Cleaned "
+                f"{summary.events_removed} events from "
+                f"{summary.files_changed} shards."
+            )
+        except (OSError, ValueError) as exc:
+            dialog.set_status(f"Cleanup failed: {exc}")
 
     def attribute_selection_changed(self, i, property, combo):
         if self._building_attributes_panel:
@@ -6892,8 +7081,12 @@ class LabelingWidget(LabelDialog):
             # retried later; it must never turn a successful label save into a
             # failed save operation.
             self._dataset_index_controller.label_saved(self.image_path)
+            self._behavior_action("labels_saved", input_source="keyboard")
             return True
         except LabelFileError as e:
+            self._behavior_action(
+                "labels_saved", input_source="keyboard", result="failed"
+            )
             self.error_message(
                 self.tr("Error saving label data"), self.tr("<b>%s</b>") % e
             )
@@ -6910,9 +7103,14 @@ class LabelingWidget(LabelDialog):
             self.label_list.setUpdatesEnabled(True)
         if added_shapes:
             self._refresh_shape_filters()
+            for _shape in added_shapes:
+                self._behavior_action(
+                    "shape_created", input_source="keyboard"
+                )
         self.set_dirty()
 
     def paste_selected_shape(self):
+        created_count = 0
         if self._config["system_clipboard"]:
             clipboard = QtWidgets.QApplication.clipboard()
             json_str = clipboard.text()
@@ -6932,8 +7130,12 @@ class LabelingWidget(LabelDialog):
                 )
                 return
             self.load_shapes(shapes, replace=False)
+            created_count = len(shapes)
         else:
             self.load_shapes(self._copied_shapes, replace=False)
+            created_count = len(self._copied_shapes)
+        for _ in range(created_count):
+            self._behavior_action("shape_created", input_source="keyboard")
         self.set_dirty()
 
     def toggle_system_clipboard(self, system_clipboard):
@@ -7004,6 +7206,7 @@ class LabelingWidget(LabelDialog):
             and self.navigator_dialog.isVisible()
         ):
             self.update_navigator_shapes()
+        self._behavior_action("shape_edited", input_source="mouse")
 
     def label_order_changed(self):
         self.set_dirty()
@@ -7070,6 +7273,9 @@ class LabelingWidget(LabelDialog):
                     self.canvas.store_shapes()
                     self.keypoint_fill_mode.advance()
                     self.set_dirty()
+                    self._behavior_action(
+                        "shape_created", input_source="mouse"
+                    )
                     return
 
         items = self.unique_label_list.selectedItems()
@@ -7182,6 +7388,7 @@ class LabelingWidget(LabelDialog):
             shape.difficult = difficult
             shape.kie_linking = kie_linking
             self.add_label(shape)
+            self._behavior_action("shape_created", input_source="mouse")
             self.actions.edit_mode.setEnabled(True)
             self.actions.undo_last_point.setEnabled(False)
             self.actions.undo.setEnabled(True)
@@ -7909,7 +8116,13 @@ class LabelingWidget(LabelDialog):
                 analytics_config.get("max_event_bytes", 16_384)
             ),
         )
-        telemetry = BehaviorTelemetry(project_root, recorder)
+        telemetry = BehaviorTelemetry(
+            project_root,
+            recorder,
+            burst_silence_ms=int(
+                analytics_config.get("burst_silence_ms", 300)
+            ),
+        )
         auto_save = bool(self._config.get("auto_save", False))
         telemetry.start_project(
             {
@@ -7921,6 +8134,50 @@ class LabelingWidget(LabelDialog):
             }
         )
         self._behavior_telemetry = telemetry
+
+    def _behavior_zoom_requested(self, _delta, _point) -> None:
+        """Aggregate canvas zoom input into one local action burst."""
+        if self._behavior_telemetry is not None:
+            self._behavior_telemetry.record_burst(
+                "zoom", input_source="wheel"
+            )
+
+    def _behavior_scroll_requested(self, _delta, orientation, _value) -> None:
+        """Aggregate canvas pan/scroll input into one local action burst."""
+        if self._behavior_telemetry is not None:
+            self._behavior_telemetry.record_burst(
+                "pan", input_source="wheel"
+            )
+
+    def _behavior_burst_requested(self, action, input_source) -> None:
+        """Forward a canvas high-frequency input to the local aggregator."""
+        if self._behavior_telemetry is not None:
+            self._behavior_telemetry.record_burst(
+                action, input_source=input_source
+            )
+
+    def _behavior_action(
+        self,
+        event_type,
+        *,
+        input_source="system",
+        result="success",
+        duration_ms=None,
+        correlation_id=None,
+        payload=None,
+    ):
+        """Record one best-effort semantic UI action when enabled."""
+        telemetry = self._behavior_telemetry
+        if telemetry is None:
+            return False
+        return telemetry.action(
+            event_type,
+            input_source=input_source,
+            result=result,
+            duration_ms=duration_ms,
+            correlation_id=correlation_id,
+            payload=payload,
+        )
 
     def load_file(self, filename=None):  # noqa: C901
         """Load the specified file, or the last opened file if None."""
@@ -8533,6 +8790,10 @@ class LabelingWidget(LabelDialog):
             and hasattr(self, "_review_session")
         ):
             self._review_session.focus_changed(self.isActiveWindow())
+        if event.type() == QtCore.QEvent.Type.ActivationChange:
+            telemetry = self._behavior_telemetry
+            if telemetry is not None:
+                telemetry.focus_changed(self.isActiveWindow())
         super().changeEvent(event)
 
     def closeEvent(self, event):
@@ -9360,7 +9621,10 @@ class LabelingWidget(LabelDialog):
                     action.setEnabled(False)
 
     def delete_selected_shape(self):
-        self.remove_labels(self.canvas.delete_selected())
+        deleted_shapes = self.canvas.delete_selected()
+        self.remove_labels(deleted_shapes)
+        for _shape in deleted_shapes:
+            self._behavior_action("shape_deleted", input_source="keyboard")
         self.set_dirty()
         if self.no_shape():
             for action in self.actions.on_shapes_present:
@@ -9668,6 +9932,8 @@ class LabelingWidget(LabelDialog):
             self.shape_text_edit.setDisabled(False)
 
         self.set_dirty()
+        for _shape in getattr(auto_labeling_result, "shapes", []) or []:
+            self._behavior_action("shape_created", input_source="ai")
 
     def clear_auto_labeling_marks(self):
         """Clear auto labeling marks from the current image."""

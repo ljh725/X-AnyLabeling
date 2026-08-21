@@ -11,6 +11,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .catalog import sanitize_payload, validate_payload
+from .retention import CleanupSummary, cleanup_event_logs
 from .schema import EventEnvelope
 
 
@@ -85,6 +86,24 @@ class LocalEventRecorder:
                 privacy_fields_removed=self._privacy_fields_removed,
                 last_error=self._last_error,
             )
+
+    @staticmethod
+    def cleanup(
+        root_dir: str | Path,
+        *,
+        retention_days: int | None = None,
+        project_ids: set[str] | frozenset[str] | None = None,
+        start_utc: str | None = None,
+        end_utc: str | None = None,
+    ) -> CleanupSummary:
+        """Clean local event shards without touching annotation assets."""
+        return cleanup_event_logs(
+            root_dir,
+            retention_days=retention_days,
+            project_ids=project_ids,
+            start_utc=start_utc,
+            end_utc=end_utc,
+        )
 
     def emit(self, event: EventEnvelope) -> bool:
         """Validate, sanitize and enqueue an event without blocking.

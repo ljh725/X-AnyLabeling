@@ -2,6 +2,7 @@
 
 from .catalog import EVENT_CATALOG, EventDefinition, sanitize_payload
 from .activity import ActivityTracker, ActivityTransition
+from .burst import BurstAggregator, CompletedBurst
 from .clock import ClockReading, SystemClock
 from .feature_state import (
     DEFAULT_FEATURE_KEYS,
@@ -19,6 +20,8 @@ from .analysis import (
 )
 from .bundle import export_analysis_bundle
 from .recorder import LocalEventRecorder, RecorderHealth
+from .retention import CleanupSummary, cleanup_event_logs
+from .replay import replay_events
 from .schema import (
     ANALYTICS_ALGORITHM_VERSION,
     EVENT_SCHEMA_VERSION,
@@ -35,6 +38,8 @@ __all__ = [
     "ANALYTICS_ALGORITHM_VERSION",
     "ActivityTracker",
     "ActivityTransition",
+    "BurstAggregator",
+    "CompletedBurst",
     "AnalysisFilter",
     "ReadQuality",
     "DEFAULT_FEATURE_KEYS",
@@ -60,6 +65,9 @@ __all__ = [
     "SessionTracker",
     "SystemClock",
     "RecorderHealth",
+    "CleanupSummary",
+    "cleanup_event_logs",
+    "replay_events",
     "new_session_id",
     "sanitize_payload",
     "calculate_statistics",

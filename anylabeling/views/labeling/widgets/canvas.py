@@ -234,6 +234,7 @@ class Canvas(
     shape_rotated = QtCore.pyqtSignal()
     shape_changed = QtCore.pyqtSignal(object)
     shapes_changed = QtCore.pyqtSignal(tuple)
+    input_burst_requested = QtCore.pyqtSignal(str, str)
     rectangle_review_edge_drag_started = QtCore.pyqtSignal(str)
     rectangle_review_edge_drag_delta = QtCore.pyqtSignal(float)
     rectangle_review_edge_drag_finished = QtCore.pyqtSignal(bool)
@@ -6150,6 +6151,7 @@ class Canvas(
             self.move_by_keyboard(QtCore.QPointF(-step, 0.0))
         elif key == QtCore.Qt.Key.Key_Right:
             self.move_by_keyboard(QtCore.QPointF(step, 0.0))
+        self.input_burst_requested.emit("micro_adjust", "keyboard")
         return True
 
     def _activate_rect_edge_for_nudge(self, edge: rea.RectEdgeRef) -> None:

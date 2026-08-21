@@ -15,6 +15,7 @@ from .schema import (
     EventEnvelope,
     EventValidationError,
 )
+from .replay import replay_events
 
 
 @dataclass(frozen=True)
@@ -60,6 +61,10 @@ class ReadQuality:
     filtered_count: int = 0
     corrupt_count: int = 0
     unknown_schema_count: int = 0
+    incomplete_count: int = 0
+    incomplete_span_count: int = 0
+    missing_reference_count: int = 0
+    unknown_field_count: int = 0
     invalid_count: int = 0
     reason_counts: Counter[str] = field(default_factory=Counter)
     metadata: dict[str, object] = field(default_factory=dict)
@@ -72,6 +77,10 @@ class ReadQuality:
             "filtered_count": self.filtered_count,
             "corrupt_count": self.corrupt_count,
             "unknown_schema_count": self.unknown_schema_count,
+            "incomplete_count": self.incomplete_count,
+            "incomplete_span_count": self.incomplete_span_count,
+            "missing_reference_count": self.missing_reference_count,
+            "unknown_field_count": self.unknown_field_count,
             "invalid_count": self.invalid_count,
             "reason_counts": dict(sorted(self.reason_counts.items())),
             "metadata": self.metadata,
@@ -88,7 +97,7 @@ def iter_event_files(source: str | Path) -> Iterator[Path]:
         yield from sorted(path.rglob("*.jsonl"))
 
 
-def read_events(
+def read_events(  # noqa: C901
     sources: Iterable[str | Path],
     *,
     event_filter: AnalysisFilter | None = None,
@@ -101,6 +110,27 @@ def read_events(
     event_filter = event_filter or AnalysisFilter()
     quality = ReadQuality()
     events: list[EventEnvelope] = []
+    known_fields = {
+        "schema_version",
+        "event_id",
+        "event_type",
+        "occurred_at_utc",
+        "local_date",
+        "timezone_offset",
+        "monotonic_ms",
+        "app_session_id",
+        "project_session_id",
+        "project_id",
+        "feature_state_version",
+        "input_source",
+        "result",
+        "image_id",
+        "shape_id",
+        "object_episode_id",
+        "correlation_id",
+        "duration_ms",
+        "payload",
+    }
     for source in sources:
         for path in iter_event_files(source):
             try:
@@ -117,6 +147,10 @@ def read_events(
                     quality.read_count += 1
                     try:
                         data = json.loads(line)
+                        if isinstance(data, dict):
+                            quality.unknown_field_count += len(
+                                set(data) - known_fields
+                            )
                         if (
                             isinstance(data, dict)
                             and data.get("schema_version")
@@ -128,8 +162,12 @@ def read_events(
                         event = EventEnvelope.from_mapping(data)
                         validate_payload(event.event_type, event.payload)
                     except json.JSONDecodeError:
-                        quality.corrupt_count += 1
-                        quality.reason_counts["json_parse"] += 1
+                        if not line.endswith(("\n", "\r")):
+                            quality.incomplete_count += 1
+                            quality.reason_counts["incomplete_tail"] += 1
+                        else:
+                            quality.corrupt_count += 1
+                            quality.reason_counts["json_parse"] += 1
                         continue
                     except EventValidationError as exc:
                         text = str(exc)
@@ -168,6 +206,40 @@ def read_events(
             {event.schema_version for event in events}
         ),
     }
+    project_sessions = {
+        event.project_session_id
+        for event in events
+        if event.event_type == "project_session_started"
+    }
+    image_ids = {
+        event.image_id
+        for event in events
+        if event.event_type == "image_visit_started" and event.image_id
+    }
+    episode_ids = {
+        event.object_episode_id
+        for event in events
+        if event.event_type == "shape_selected" and event.object_episode_id
+    }
+    missing_references = 0
+    for event in events:
+        if event.project_session_id not in project_sessions:
+            missing_references += 1
+        if event.image_id and event.image_id not in image_ids:
+            missing_references += 1
+        if (
+            event.object_episode_id
+            and event.object_episode_id not in episode_ids
+        ):
+            missing_references += 1
+    quality.missing_reference_count = missing_references
+    quality.metadata["missing_reference_count"] = missing_references
+    quality.incomplete_span_count = sum(
+        1
+        for event in events
+        if event.event_type == "action_span" and event.result == "incomplete"
+    )
+    quality.metadata["incomplete_span_count"] = quality.incomplete_span_count
     return events, quality
 
 
@@ -236,12 +308,27 @@ def calculate_statistics(events: Iterable[EventEnvelope]) -> dict[str, object]:
     durations: defaultdict[str, list[int]] = defaultdict(list)
     contexts: defaultdict[tuple[str, str, str], list[str]] = defaultdict(list)
     transitions: Counter[tuple[str, str]] = Counter()
+    dimension_rows: Counter[tuple[str, str, str, str, str, str]] = Counter()
+    context_last_ms: dict[tuple[str, str, str], int] = {}
+    composite_objects: defaultdict[tuple[str, str, str], dict[str, object]] = (
+        defaultdict(dict)
+    )
     episode_rows: defaultdict[tuple[str, str, str], dict[str, object]] = (
         defaultdict(dict)
     )
     for event in ordered:
         action = _action_name(event)
         action_counts[(action, event.result)] += 1
+        dimension_rows[
+            (
+                action,
+                event.input_source,
+                event.result,
+                event.project_id,
+                event.local_date,
+                event.image_id or "",
+            )
+        ] += 1
         if event.duration_ms is not None:
             durations[action].append(event.duration_ms)
         if event.image_id and event.object_episode_id:
@@ -262,12 +349,38 @@ def calculate_statistics(events: Iterable[EventEnvelope]) -> dict[str, object]:
             if event.duration_ms is not None:
                 row["duration_ms"].append(event.duration_ms)
             row["actions"][action] += 1
+            object_key = (key[0], key[1], key[2])
+            object_row = composite_objects.setdefault(
+                object_key,
+                {
+                    "project_id": key[0],
+                    "image_id": key[1],
+                    "shape_id": key[2],
+                    "edit_count": 0,
+                    "return_count": 0,
+                    "duration_ms": [],
+                    "actions": Counter(),
+                    "episodes": set(),
+                },
+            )
+            object_row["edit_count"] += 1
+            object_row["episodes"].add(event.object_episode_id)
+            object_row["actions"][action] += 1
+            if event.duration_ms is not None:
+                object_row["duration_ms"].append(event.duration_ms)
         context = _context_key(event)
+        previous_ms = context_last_ms.get(context)
+        if (
+            previous_ms is not None
+            and event.monotonic_ms - previous_ms > 120_000
+        ):
+            contexts[context].clear()
         previous = contexts[context][-1] if contexts[context] else None
         if event.image_id and previous:
             transitions[(previous, action)] += 1
         if event.image_id:
             contexts[context].append(action)
+            context_last_ms[context] = event.monotonic_ms
 
     sequence_counts: Counter[tuple[str, ...]] = Counter()
     for actions in contexts.values():
@@ -313,6 +426,49 @@ def calculate_statistics(events: Iterable[EventEnvelope]) -> dict[str, object]:
                 "actions": dict(sorted(actions_for_episode.items())),
             }
         )
+    object_summary_rows = []
+    for row in sorted(
+        composite_objects.values(),
+        key=lambda item: (
+            item["project_id"],
+            item["image_id"],
+            item["shape_id"],
+        ),
+    ):
+        durations_for_object = row.pop("duration_ms")
+        actions_for_object = row.pop("actions")
+        episodes_for_object = row.pop("episodes")
+        object_summary_rows.append(
+            {
+                **row,
+                "episode_count": len(episodes_for_object),
+                "return_count": max(0, len(episodes_for_object) - 1),
+                "duration": _duration_summary(durations_for_object),
+                "actions": dict(sorted(actions_for_object.items())),
+            }
+        )
+    replay = replay_events(ordered)
+    feature_comparisons = _feature_comparisons(ordered, replay)
+    dimension_count_rows = [
+        {
+            "action": action,
+            "input_source": source,
+            "result": result,
+            "project_id": project_id,
+            "local_date": local_date,
+            "image_id": image_id,
+            "count": count,
+        }
+        for (
+            action,
+            source,
+            result,
+            project_id,
+            local_date,
+            image_id,
+        ), count in sorted(dimension_rows.items())
+    ]
+    loop_counts = _loop_counts(contexts)
     return {
         "event_count": len(ordered),
         "action_counts": action_count_rows,
@@ -320,4 +476,74 @@ def calculate_statistics(events: Iterable[EventEnvelope]) -> dict[str, object]:
         "transitions": transition_rows,
         "common_sequences": sequence_rows,
         "object_episodes": object_rows,
+        "object_summaries": object_summary_rows,
+        "dimension_counts": dimension_count_rows,
+        "loop_counts": loop_counts,
+        "time_metrics": replay["sessions"],
+        "action_spans": replay["action_spans"],
+        "feature_comparisons": feature_comparisons,
     }
+
+
+def _loop_counts(
+    contexts: defaultdict[tuple[str, str, str], list[str]],
+) -> list[dict[str, object]]:
+    """Count explicit repeats, reversals and cancellation outcomes."""
+    counts: Counter[tuple[str, str]] = Counter()
+    for actions in contexts.values():
+        for index, action in enumerate(actions):
+            if index and action == actions[index - 1]:
+                counts[("repeat", action)] += 1
+            if index >= 2 and action == actions[index - 2]:
+                counts[("reversal", action)] += 1
+            if action in {"undo", "cancel", "cancelled", "failed"}:
+                counts[("outcome", action)] += 1
+    return [
+        {"loop_type": kind, "action": action, "count": count}
+        for (kind, action), count in sorted(counts.items())
+    ]
+
+
+def _feature_comparisons(
+    events: list[EventEnvelope], replay: dict[str, object]
+) -> list[dict[str, object]]:
+    """Compare action duration samples by observed feature state values."""
+    state_map = {
+        int(version): state
+        for version, state in replay["feature_states"].items()
+    }
+    samples: defaultdict[tuple[str, str, str], list[int]] = defaultdict(list)
+    for event in events:
+        if event.duration_ms is None:
+            continue
+        state = state_map.get(event.feature_state_version)
+        if not isinstance(state, dict):
+            continue
+        for key, value in state.items():
+            if not isinstance(value, dict):
+                continue
+            for dimension in ("configured", "active", "used"):
+                if dimension in value:
+                    group = str(bool(value[dimension])).lower()
+                    samples[(key, dimension, group)].append(event.duration_ms)
+    rows = []
+    for (key, dimension, group), values in sorted(samples.items()):
+        opposite = samples.get(
+            (key, dimension, "false" if group == "true" else "true"), []
+        )
+        current_mean = sum(values) / len(values)
+        opposite_mean = sum(opposite) / len(opposite) if opposite else None
+        rows.append(
+            {
+                "feature_key": key,
+                "state_dimension": dimension,
+                "group": group,
+                "sample_count": len(values),
+                "difference": (
+                    current_mean - opposite_mean
+                    if opposite_mean is not None
+                    else None
+                ),
+            }
+        )
+    return rows

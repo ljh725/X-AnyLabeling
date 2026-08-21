@@ -97,9 +97,9 @@ def _write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> None:
 
 
 def _representative_traces(
-    events: Iterable[EventEnvelope], limit: int
+    events: Iterable[EventEnvelope], limit: int, max_bytes: int
 ) -> list[dict[str, object]]:
-    """Select bounded, deterministic object traces for external analysis."""
+    """Select categorized, bounded and deterministic object traces."""
     grouped: dict[str, list[EventEnvelope]] = {}
     for event in events:
         if event.object_episode_id:
@@ -115,26 +115,104 @@ def _representative_traces(
             ),
         )
         duration = sum(event.duration_ms or 0 for event in ordered)
-        candidates.append((duration, len(ordered), episode_id, ordered))
-    candidates.sort(key=lambda item: (-item[0], -item[1], item[2]))
-    selected = []
-    for index, (duration, count, episode_id, episode_events) in enumerate(
-        candidates[: max(0, limit)]
-    ):
-        selected.append(
+        actions = tuple(_action_name(event) for event in ordered)
+        candidates.append(
             {
-                "selection_reason": (
-                    "longest_valid_episode"
-                    if index == 0
-                    else "deterministic_episode_sample"
-                ),
+                "duration": duration,
+                "count": len(ordered),
                 "episode_id": episode_id,
-                "event_count": count,
-                "duration_ms": duration,
-                "events": [event.to_dict() for event in episode_events],
+                "events": ordered,
+                "actions": actions,
+                "failed": any(
+                    event.result in {"failed", "cancelled", "incomplete"}
+                    for event in ordered
+                ),
+                "loop": any(
+                    index >= 2 and actions[index] == actions[index - 2]
+                    for index in range(len(actions))
+                ),
             }
         )
+    if not candidates or limit <= 0 or max_bytes <= 0:
+        return []
+    durations = sorted(item["duration"] for item in candidates)
+    median = durations[(len(durations) - 1) // 2]
+    p75 = durations[min(len(durations) - 1, int(len(durations) * 0.75))]
+    signature_counts = {}
+    for item in candidates:
+        signature_counts[item["actions"]] = (
+            signature_counts.get(item["actions"], 0) + 1
+        )
+    common_signature = sorted(
+        signature_counts.items(), key=lambda item: (-item[1], item[0])
+    )[0][0]
+    selectors = [
+        (
+            "common",
+            lambda item: item["actions"] == common_signature,
+            lambda item: (-item["count"], item["episode_id"]),
+        ),
+        (
+            "median",
+            lambda item: True,
+            lambda item: (abs(item["duration"] - median), item["episode_id"]),
+        ),
+        (
+            "p75",
+            lambda item: True,
+            lambda item: (abs(item["duration"] - p75), item["episode_id"]),
+        ),
+        (
+            "longest",
+            lambda item: True,
+            lambda item: (
+                -item["duration"],
+                -item["count"],
+                item["episode_id"],
+            ),
+        ),
+        (
+            "failure_or_loop",
+            lambda item: item["failed"] or item["loop"],
+            lambda item: (-item["duration"], item["episode_id"]),
+        ),
+    ]
+    selected = []
+    used = set()
+    per_category = max(1, limit // len(selectors))
+    for reason, predicate, sort_key in selectors:
+        options = sorted(
+            [item for item in candidates if predicate(item)], key=sort_key
+        )
+        for item in options[:per_category]:
+            if item["episode_id"] in used:
+                continue
+            trace = {
+                "selection_reason": reason,
+                "episode_id": item["episode_id"],
+                "event_count": item["count"],
+                "duration_ms": item["duration"],
+                "events": [event.to_dict() for event in item["events"]],
+            }
+            encoded = json.dumps(trace, ensure_ascii=False, sort_keys=True)
+            current_bytes = sum(
+                len(json.dumps(row, ensure_ascii=False, sort_keys=True)) + 1
+                for row in selected
+            )
+            if current_bytes + len(encoded) + 1 > max_bytes:
+                return selected
+            selected.append(trace)
+            used.add(item["episode_id"])
+            if len(selected) >= limit:
+                return selected
     return selected
+
+
+def _action_name(event: EventEnvelope) -> str:
+    """Return the action name used for trace signatures."""
+    if event.payload and event.payload.get("action"):
+        return str(event.payload["action"])
+    return event.event_type
 
 
 def export_analysis_bundle(
@@ -144,6 +222,7 @@ def export_analysis_bundle(
     quality: ReadQuality | None = None,
     event_filter: AnalysisFilter | None = None,
     representative_trace_limit: int = 24,
+    max_bundle_bytes: int = 5_242_880,
 ) -> Path:
     """Export a fixed analysis bundle using an atomic directory publish.
 
@@ -187,12 +266,12 @@ def export_analysis_bundle(
             "transitions.csv": statistics["transitions"],
             "common_sequences.csv": statistics["common_sequences"],
             "object_episodes.csv": statistics["object_episodes"],
-            "feature_comparisons.csv": [],
+            "feature_comparisons.csv": statistics["feature_comparisons"],
         }
         for filename, rows in rows_by_file.items():
             _write_csv(temporary / filename, _CSV_FIELDS[filename], rows)
         traces = _representative_traces(
-            selected_events, representative_trace_limit
+            selected_events, representative_trace_limit, max_bundle_bytes
         )
         trace_path = temporary / "representative_traces.jsonl"
         with trace_path.open("w", encoding="utf-8") as stream:
@@ -220,6 +299,8 @@ def export_analysis_bundle(
             "quality": quality.to_dict(),
             "privacy_fields_removed": privacy_fields_removed,
             "representative_trace_limit": representative_trace_limit,
+            "representative_trace_count": len(traces),
+            "max_bundle_bytes": max_bundle_bytes,
             "files": file_hashes,
         }
         _write_json(temporary / "manifest.json", manifest)

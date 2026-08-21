@@ -8,6 +8,7 @@ from anylabeling.services.behavior_analytics import (
     EventType,
     calculate_statistics,
     read_events,
+    replay_events,
 )
 
 
@@ -66,6 +67,26 @@ def test_read_events_filters_and_reports_invalid_lines(tmp_path):
     assert quality.unknown_schema_count == 1
     assert quality.metadata["actual_local_dates"] == ["2026-08-20"]
     assert quality.metadata["input_schema_versions"] == [1]
+
+
+def test_reader_classifies_incomplete_tail_unknown_fields_and_references(
+    tmp_path,
+):
+    """Tail damage is isolated while optional future fields remain readable."""
+    path = tmp_path / "events.jsonl"
+    valid = _event("1", EventType.ACTION_SPAN.value, action="select")
+    data = valid.to_dict()
+    data["future_optional_field"] = "ignored"
+    path.write_text(
+        json.dumps(data) + "\n{" + '"event_id":"incomplete"',
+        encoding="utf-8",
+    )
+    events, quality = read_events([path])
+    assert [event.event_id for event in events] == ["1"]
+    assert quality.incomplete_count == 1
+    assert quality.unknown_field_count == 1
+    assert quality.reason_counts["incomplete_tail"] == 1
+    assert quality.missing_reference_count > 0
 
 
 def test_statistics_are_deterministic_and_include_sequences():
@@ -127,3 +148,60 @@ def test_statistics_separate_object_episode_contexts():
     result = calculate_statistics(events)
     assert result["common_sequences"] == []
     assert len(result["object_episodes"]) == 2
+
+
+def test_replay_integrates_wall_focused_active_time_and_feature_versions():
+    """Replay keeps focus/idle boundaries and state versions deterministic."""
+    events = [
+        _event(
+            "1",
+            EventType.PROJECT_SESSION_STARTED.value,
+            image_id=None,
+            shape_id=None,
+            object_episode_id=None,
+        ),
+        _event(
+            "2",
+            EventType.FEATURE_STATE_SNAPSHOT.value,
+            image_id=None,
+            shape_id=None,
+            object_episode_id=None,
+            payload={
+                "features": {
+                    "rectangle_refinement": {
+                        "configured": True,
+                        "active": True,
+                        "used": False,
+                    }
+                }
+            },
+        ),
+        _event(
+            "3",
+            EventType.FOCUS_CHANGED.value,
+            image_id=None,
+            shape_id=None,
+            object_episode_id=None,
+            payload={"focused": False},
+        ),
+        _event(
+            "4",
+            EventType.FOCUS_CHANGED.value,
+            image_id=None,
+            shape_id=None,
+            object_episode_id=None,
+            payload={"focused": True},
+        ),
+        _event(
+            "5",
+            EventType.ACTION_SPAN.value,
+            action="adjust",
+            duration_ms=100,
+        ),
+    ]
+    replay = replay_events(events)
+    session = replay["sessions"][0]
+    assert session["wall_ms"] == 4000
+    assert session["focused_ms"] == 3000
+    assert session["active_ms"] == 3000
+    assert "1" in replay["feature_states"]
