@@ -146,8 +146,10 @@ class BehaviorTelemetry:
             payload={"focused": bool(focused)},
         )
 
-    def select_shape(self, shape_id: str) -> str:
-        """Start or continue an object episode and emit selection."""
+    def select_shape(self, shape_id: str) -> str | None:
+        """Start an object episode when an image visit is available."""
+        if self.tracker.image_visit is None:
+            return None
         episode = self.tracker.select_shape(shape_id)
         self._emit(
             "shape_selected",

@@ -43,3 +43,20 @@ def test_telemetry_emits_snapshot_state_and_a_b_a_events(tmp_path):
     assert rows[1]["event_type"] == "feature_state_snapshot"
     assert rows[1]["feature_state_version"] == 1
     assert any(row["event_type"] == "project_session_ended" for row in rows)
+
+
+def test_select_shape_without_image_visit_does_not_interrupt_work(tmp_path):
+    """A missing UI lifecycle event must not raise into annotation work."""
+    recorder = LocalEventRecorder(tmp_path, enabled=True)
+    telemetry = BehaviorTelemetry(str(tmp_path), recorder)
+    telemetry.start_project()
+
+    assert telemetry.select_shape("shape-a") is None
+
+    telemetry.shutdown()
+    path = tmp_path / "events" / "events-2026-08.jsonl"
+    rows = [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert not any(row["event_type"] == "shape_selected" for row in rows)

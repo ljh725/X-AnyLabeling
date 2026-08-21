@@ -5987,6 +5987,9 @@ class LabelingWidget(LabelDialog):
             self._behavior_telemetry = None
         elif enabled and self.filename:
             self._ensure_behavior_telemetry(osp.dirname(self.filename))
+            telemetry = self._behavior_telemetry
+            if telemetry is not None and telemetry.tracker.image_visit is None:
+                telemetry.enter_image(self.filename)
 
     def _behavior_storage_root(self) -> Path:
         """Return the local analytics storage root."""
