@@ -28,7 +28,7 @@ from typing import Any, Callable, Dict, List, Optional
 from .l1_rules import run_l1
 from .l2_rules import run_l2
 from .matching import MatchingCfg, matching_cfg_from_profile
-from .quality_issue import QualityIssue, QualityReport, QcShapeLoader
+from .quality_issue import QcFile, QualityIssue, QualityReport, QcShapeLoader
 from .threshold_profile import (
     ThresholdProfile,
     load_threshold_profile,
@@ -41,6 +41,7 @@ REVIEW_TSV_COLUMNS = [
     "issue_id",
     "file_path",
     "shape_index",
+    "shape_id",
     "rule_name",
     "severity",
     "message",
@@ -92,9 +93,11 @@ def run_quality_check(
     all_issues: List[QualityIssue] = []
     for qc_file in loader.files:
         for issue in run_l1(qc_file, profile):
+            _attach_shape_identity(issue, qc_file)
             issue.run_id = run_id
             all_issues.append(issue)
         for issue in run_l2(qc_file, profile, cfg):
+            _attach_shape_identity(issue, qc_file)
             issue.run_id = run_id
             all_issues.append(issue)
 
@@ -130,7 +133,7 @@ def run_quality_check(
 
 
 def write_review_tsv(report: QualityReport, path: str) -> str:
-    """Write the Inspector-importable ``review.tsv`` (8 columns)."""
+    """Write the Inspector-importable ``review.tsv``."""
     os.makedirs(osp.dirname(osp.abspath(path)), exist_ok=True)
     with open(path, "w", encoding="utf-8", newline="") as fh:
         writer = csv.writer(fh, delimiter="\t")
@@ -141,6 +144,7 @@ def write_review_tsv(report: QualityReport, path: str) -> str:
                     issue.issue_id(),
                     issue.file_path,
                     issue.shape_index,
+                    issue.shape_id,
                     issue.rule_name,
                     issue.severity,
                     issue.message,
@@ -189,6 +193,12 @@ def write_report_json(report: QualityReport, path: str) -> str:
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
+
+
+def _attach_shape_identity(issue: QualityIssue, qc_file: QcFile) -> None:
+    """Attach the persistent Shape identity matching an issue's index."""
+    if 0 <= issue.shape_index < len(qc_file.shapes):
+        issue.shape_id = qc_file.shapes[issue.shape_index].shape_id
 
 
 def _make_run_id(

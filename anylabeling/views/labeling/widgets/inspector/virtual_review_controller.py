@@ -50,13 +50,20 @@ class VirtualReviewController(QtCore.QObject):
         """Return whether a virtual session has active pages."""
         return self._session.active
 
-    def _shape_runtime_id(self, shape, index: int) -> str:
-        """Return a non-serialized id that survives Shape deepcopy."""
+    def _shape_runtime_id(self, shape: Any, index: int) -> str:
+        """Return a fallback runtime identity for non-persistent Shapes."""
         value = getattr(shape, "_virtual_review_id", None)
         if not value:
             value = f"vr:{index}:{uuid.uuid4().hex}"
             shape._virtual_review_id = value
         return str(value)
+
+    def _shape_tracking_id(self, shape: Any, index: int) -> str:
+        """Prefer the persistent Shape identity for review tracking."""
+        value = getattr(shape, "xanylabeling_shape_id", None)
+        if isinstance(value, str) and value:
+            return value
+        return self._shape_runtime_id(shape, index)
 
     def _shape_views(self) -> tuple[VirtualShapeView, ...]:
         """Adapt current Canvas shapes to pure task-builder views."""
@@ -64,10 +71,11 @@ class VirtualReviewController(QtCore.QObject):
         claimed_ids: set[str] = set()
         views = []
         for index, shape in enumerate(self._canvas.shapes):
-            shape_id = self._shape_runtime_id(shape, index)
+            shape_id = self._shape_tracking_id(shape, index)
             if shape_id in claimed_ids:
                 shape._virtual_review_id = None
                 shape_id = self._shape_runtime_id(shape, index)
+            shape._virtual_review_tracking_id = shape_id
             claimed_ids.add(shape_id)
             self._shape_map[shape_id] = shape
             try:
@@ -249,7 +257,7 @@ class VirtualReviewController(QtCore.QObject):
         self._activate_current()
 
     def _current_shape_map(self) -> dict[str, Any]:
-        """Return current shapes keyed by their preserved runtime ids."""
+        """Return current shapes keyed by persistent-or-fallback identities."""
         self._shape_views()
         return self._shape_map
 
@@ -292,7 +300,9 @@ class VirtualReviewController(QtCore.QObject):
         )
         if member_ids:
             self._canvas.set_virtual_review_visibility_predicate(
-                lambda shape: getattr(shape, "_virtual_review_id", None)
+                lambda shape: getattr(
+                    shape, "_virtual_review_tracking_id", None
+                )
                 in member_ids
             )
         anchor_id = next(

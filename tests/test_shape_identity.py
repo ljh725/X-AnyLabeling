@@ -1,5 +1,8 @@
 """Shape identity lifecycle tests."""
 
+import pytest
+from PyQt6 import QtGui
+
 from anylabeling.views.labeling.widgets.canvas import Canvas  # noqa: F401
 from anylabeling.views.labeling.shape import Shape
 
@@ -72,3 +75,94 @@ def test_shape_identity_is_not_stored_in_reserved_fields():
     assert serialized["attributes"] == {}
     assert serialized["kie_linking"] == []
     assert "xanylabeling_shape_id" not in serialized["flags"]
+
+
+@pytest.mark.parametrize(
+    "shape_type",
+    [
+        "point",
+        "line",
+        "polygon",
+        "rectangle",
+        "rotation",
+        "circle",
+        "quadrilateral",
+        "cuboid",
+    ],
+)
+def test_every_persisted_shape_type_gets_identity(shape_type):
+    """Persistent identity belongs to Shape, not one geometry subtype."""
+    shape = Shape(shape_type=shape_type)
+
+    assert shape.xanylabeling_shape_id
+    assert shape.to_dict()["xanylabeling_shape_id"] == (
+        shape.xanylabeling_shape_id
+    )
+
+
+def test_canvas_load_repairs_duplicate_ids_across_shape_types(qapp):
+    """Canvas establishes one identity invariant for points and polygons."""
+    point_data = _shape_data("shared")
+    point_data["shape_type"] = "point"
+    point_data["points"] = [[2.0, 3.0]]
+    point = Shape().load_from_dict(point_data)
+    polygon = Shape().load_from_dict(_shape_data("shared"))
+    polygon.shape_type = "polygon"
+    canvas = Canvas()
+
+    canvas.load_shapes([point, polygon])
+
+    assert point.xanylabeling_shape_id == "shared"
+    assert polygon.xanylabeling_shape_id != "shared"
+    assert len({shape.xanylabeling_shape_id for shape in canvas.shapes}) == 2
+
+
+def test_canvas_extend_rekeys_identity_reserved_by_existing_shape(qapp):
+    """Merged or AI Shapes cannot reuse an identity already on the Canvas."""
+    existing = Shape().load_from_dict(_shape_data("reserved"))
+    incoming = Shape().load_from_dict(_shape_data("reserved"))
+    canvas = Canvas()
+    canvas.load_shapes([existing])
+
+    canvas.load_shapes([incoming], replace=False)
+
+    assert existing.xanylabeling_shape_id == "reserved"
+    assert incoming.xanylabeling_shape_id != "reserved"
+
+
+def test_canvas_multi_duplicate_allocates_distinct_new_ids(qapp):
+    """Duplicating multiple selected Shapes creates independent identities."""
+    shapes = [
+        Shape().load_from_dict(_shape_data("shape-a")),
+        Shape().load_from_dict(_shape_data("shape-b")),
+    ]
+    canvas = Canvas()
+    canvas.pixmap = QtGui.QPixmap(200, 200)
+    canvas.load_shapes(shapes)
+    canvas.selected_shapes = list(shapes)
+
+    duplicated = canvas.duplicate_selected_shapes()
+
+    original_ids = {"shape-a", "shape-b"}
+    duplicate_ids = {shape.xanylabeling_shape_id for shape in duplicated}
+    assert len(canvas.shapes) == 4
+    assert len(duplicate_ids) == 2
+    assert duplicate_ids.isdisjoint(original_ids)
+
+
+def test_canvas_undo_edit_and_delete_restore_original_identity(qapp):
+    """Undo snapshots restore state without turning it into a new object."""
+    shape = Shape().load_from_dict(_shape_data("stable"))
+    canvas = Canvas()
+    canvas.load_shapes([shape])
+    shape.label = "head"
+    canvas.store_shapes()
+
+    canvas.restore_shape()
+
+    assert canvas.shapes[0].xanylabeling_shape_id == "stable"
+    canvas.store_shapes()
+    canvas.selected_shapes = [canvas.shapes[0]]
+    canvas.delete_selected()
+    canvas.restore_shape()
+    assert canvas.shapes[0].xanylabeling_shape_id == "stable"

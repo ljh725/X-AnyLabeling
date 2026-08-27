@@ -4,6 +4,8 @@ import json
 import ast
 from pathlib import Path
 
+from anylabeling.views.labeling import utils as _labeling_utils  # noqa: F401
+from anylabeling.views.labeling.label_converter import LabelConverter
 from tools.label_converter import RectLabelConverter
 
 
@@ -76,3 +78,27 @@ def test_active_coco_converter_has_no_private_shape_id_boundary_access():
     assert "xanylabeling_shape_id" not in coco_source
     assert "group_id" in coco_source
     assert "difficult" in coco_source
+
+
+def test_active_coco_export_omits_private_id_and_preserves_source(tmp_path):
+    """The live COCO conversion writes only target-format annotation fields."""
+    label_path = tmp_path / "sample.json"
+    original = _write_xlabel(label_path)
+    output_dir = tmp_path / "coco"
+    output_dir.mkdir()
+    converter = LabelConverter()
+    converter.classes = ["head"]
+
+    converter.custom_to_coco(
+        [str(tmp_path / "sample.png")],
+        str(tmp_path),
+        str(output_dir),
+        "rectangle",
+    )
+
+    output = json.loads(
+        (output_dir / "coco_detection.json").read_text(encoding="utf-8")
+    )
+    assert output["annotations"]
+    assert "xanylabeling_shape_id" not in json.dumps(output)
+    assert json.loads(label_path.read_text(encoding="utf-8")) == original

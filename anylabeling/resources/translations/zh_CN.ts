@@ -3625,6 +3625,19 @@ This warning will only be shown once. Do you want to continue?</source>
     <message><source>Focus the next virtual review task</source><translation>聚焦下一个目标复核任务</translation></message>
     <message><source>Previous Virtual Review Task</source><translation>上一个目标复核任务</translation></message>
     <message><source>Focus the previous virtual review task</source><translation>聚焦上一个目标复核任务</translation></message>
+    <message><source>Batch Edit Marked Objects...</source><translation>批量编辑已标记对象……</translation></message>
+    <message><source>Batch Edit Marked Objects (%d objects, %d files)...</source><translation>批量编辑已标记对象（%d 个对象，%d 个文件）……</translation></message>
+    <message><source>Missing selected fields will be created; unselected fields are not completed. Field completion is not a prerequisite.</source><translation>缺失的所选字段将新增；未选字段不会补全。字段补全不是前置条件。</translation></message>
+    <message><source>Add field</source><translation>添加字段</translation></message>
+    <message><source>Invalid field assignment</source><translation>字段设置无效</translation></message>
+    <message><source>Preflighting field assignments...</source><translation>正在预检字段设置……</translation></message>
+    <message><source>Confirm field edit</source><translation>确认字段编辑</translation></message>
+    <message><source>Committing atomically — cannot cancel.</source><translation>正在原子提交，无法取消。</translation></message>
+    <message><source>key</source><translation>键</translation></message>
+    <message><source>value</source><translation>值</translation></message>
+    <message><source>Remove field</source><translation>移除字段</translation></message>
+    <message><source>true</source><translation>true</translation></message>
+    <message><source>false</source><translation>false</translation></message>
   </context>
   <context>
     <name>Model</name>

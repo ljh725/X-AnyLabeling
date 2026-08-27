@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -48,6 +49,26 @@ def cleanup_event_logs(
     project_ids = set(project_ids or ())
     summary = CleanupSummary(0, 0, 0, 0)
     for path in sorted((root / "events").glob("*.jsonl")):
+        if (
+            retention_days is not None
+            and not project_ids
+            and start_utc is None
+            and end_utc is None
+            and _is_complete_expired_hour(path, cutoff)
+        ):
+            manifest = path.with_name(f"{path.stem}.manifest.json")
+            bytes_removed = path.stat().st_size
+            path.unlink()
+            if manifest.exists():
+                bytes_removed += manifest.stat().st_size
+                manifest.unlink()
+            summary = CleanupSummary(
+                summary.files_scanned + 1,
+                summary.files_changed + 1,
+                summary.events_removed,
+                summary.bytes_removed + bytes_removed,
+            )
+            continue
         summary = CleanupSummary(
             summary.files_scanned + 1,
             summary.files_changed,
@@ -79,6 +100,28 @@ def cleanup_event_logs(
             summary.bytes_removed + len(original) - len(updated),
         )
     return summary
+
+
+def _is_complete_expired_hour(path: Path, cutoff: datetime | None) -> bool:
+    """Return whether a complete hourly shard is wholly before retention cutoff."""
+    if cutoff is None or not re.match(
+        r"^events-\d{4}-\d{2}-\d{2}-\d{2}\.jsonl$", path.name
+    ):
+        return False
+    manifest = path.with_name(f"{path.stem}.manifest.json")
+    if not manifest.exists():
+        return False
+    try:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+        last_utc = data.get("last_utc") or data.get("last_occurred_at_utc")
+        if not data.get("manifest_complete") or not last_utc:
+            return False
+        occurred = datetime.fromisoformat(str(last_utc).replace("Z", "+00:00"))
+        if occurred.tzinfo is None:
+            occurred = occurred.replace(tzinfo=timezone.utc)
+        return occurred < cutoff
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
+        return False
 
 
 def _line_matches(

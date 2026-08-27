@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPalette
@@ -118,6 +120,7 @@ class LabelListWidget(QtWidgets.QListView):
     def __init__(self):
         super().__init__()
         self._selected_items = []
+        self._programmatic_update_depth = 0
 
         self.setWindowFlags(Qt.WindowType.Window)
         self.setModel(StandardItemModel())
@@ -153,6 +156,27 @@ class LabelListWidget(QtWidgets.QListView):
     @property
     def item_changed(self):
         return self.model().itemChanged
+
+    @property
+    def is_programmatic_update(self):
+        """Whether a guarded internal list synchronization is in progress."""
+        return self._programmatic_update_depth > 0
+
+    @contextmanager
+    def programmatic_update(self):
+        """Suppress semantic user-edit handling for internal list updates."""
+        self._programmatic_update_depth += 1
+        try:
+            yield
+        finally:
+            self._programmatic_update_depth = max(
+                0, self._programmatic_update_depth - 1
+            )
+
+    def set_item_check_state(self, item, state):
+        """Set one check state under the smallest possible update guard."""
+        with self.programmatic_update():
+            item.setCheckState(state)
 
     def item_selection_changed_event(self, selected, deselected):
         selected = [self.model().itemFromIndex(i) for i in selected.indexes()]

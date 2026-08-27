@@ -34,6 +34,7 @@ from anylabeling.views.labeling.utils.style import (
 from anylabeling.views.labeling.utils.theme import get_theme
 from anylabeling.views.labeling.widgets.label_batch import (
     BatchMigrationEngine,
+    BatchWriteGate,
     LabelMetadataDraft,
     build_label_change_plan,
     collect_candidate_json_paths,
@@ -1730,11 +1731,25 @@ class LabelModifyDialog(QtWidgets.QDialog):
                 # The index is an optimization only; the worker scans all
                 # selected files when it cannot serve a trustworthy query.
                 pass
-        transaction_root = getattr(self.parent, "output_dir", None)
+        root_resolver = getattr(self.parent, "_batch_write_root", None)
+        transaction_root = root_resolver() if callable(root_resolver) else None
+        if not transaction_root:
+            transaction_root = getattr(self.parent, "output_dir", None)
         if not transaction_root:
             transaction_root = (
                 osp.dirname(image_paths[0]) if image_paths else "."
             )
+        if not BatchWriteGate.try_acquire(transaction_root, "label-batch"):
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("Label Manager"),
+                self.tr(
+                    "Another batch write is already running for this "
+                    "dataset."
+                ),
+            )
+            return
+        self._batch_gate_root = transaction_root
         self._batch_cancelled = False
         self.set_controls_enabled(False)
         self.loading_label.show()
@@ -1825,6 +1840,10 @@ class LabelModifyDialog(QtWidgets.QDialog):
 
     def on_batch_thread_finished(self):
         """Release the worker reference after its terminal signal."""
+        gate_root = getattr(self, "_batch_gate_root", None)
+        if gate_root is not None:
+            BatchWriteGate.release(gate_root, "label-batch")
+            self._batch_gate_root = None
         self._batch_thread = None
 
     def modify_label(self, start_index: int = -1, end_index: int = -1):

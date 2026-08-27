@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any, Mapping
 
 
 @dataclass(frozen=True)
@@ -14,6 +15,13 @@ class CompletedBurst:
     input_count: int
     started_ms: int
     ended_ms: int
+    image_id: str | None = None
+    shape_id: str | None = None
+    object_episode_id: str | None = None
+    edit_target: str | None = None
+    start_summary: dict[str, Any] = field(default_factory=dict)
+    end_summary: dict[str, Any] = field(default_factory=dict)
+    net_change: dict[str, Any] = field(default_factory=dict)
 
     @property
     def duration_ms(self) -> int:
@@ -30,6 +38,13 @@ class _OpenBurst:
     input_count: int
     started_ms: int
     last_ms: int
+    image_id: str | None = None
+    shape_id: str | None = None
+    object_episode_id: str | None = None
+    edit_target: str | None = None
+    start_summary: dict[str, Any] = field(default_factory=dict)
+    end_summary: dict[str, Any] = field(default_factory=dict)
+    net_change: dict[str, Any] = field(default_factory=dict)
 
 
 class BurstAggregator:
@@ -43,7 +58,16 @@ class BurstAggregator:
         self._open: _OpenBurst | None = None
 
     def add(
-        self, action: str, input_source: str, monotonic_ms: int
+        self,
+        action: str,
+        input_source: str,
+        monotonic_ms: int,
+        *,
+        identity: Mapping[str, Any] | None = None,
+        start_summary: Mapping[str, Any] | None = None,
+        end_summary: Mapping[str, Any] | None = None,
+        net_change: Mapping[str, Any] | None = None,
+        edit_target: str | None = None,
     ) -> list[CompletedBurst]:
         """Add one input and return bursts closed before it."""
         if monotonic_ms < 0:
@@ -58,16 +82,28 @@ class BurstAggregator:
             completed.append(self._finish())
             current = None
         if current is None:
+            identity = identity or {}
             self._open = _OpenBurst(
                 action=action,
                 input_source=input_source,
                 input_count=1,
                 started_ms=monotonic_ms,
                 last_ms=monotonic_ms,
+                image_id=identity.get("image_id"),
+                shape_id=identity.get("shape_id"),
+                object_episode_id=identity.get("object_episode_id"),
+                edit_target=edit_target,
+                start_summary=dict(start_summary or {}),
+                end_summary=dict(end_summary or {}),
+                net_change=dict(net_change or {}),
             )
         else:
             current.input_count += 1
             current.last_ms = monotonic_ms
+            if end_summary:
+                current.end_summary = dict(end_summary)
+            if net_change:
+                current.net_change = dict(net_change)
         return completed
 
     def flush(self) -> list[CompletedBurst]:
@@ -90,4 +126,11 @@ class BurstAggregator:
             input_count=current.input_count,
             started_ms=current.started_ms,
             ended_ms=current.last_ms,
+            image_id=current.image_id,
+            shape_id=current.shape_id,
+            object_episode_id=current.object_episode_id,
+            edit_target=current.edit_target,
+            start_summary=dict(current.start_summary),
+            end_summary=dict(current.end_summary),
+            net_change=dict(current.net_change),
         )

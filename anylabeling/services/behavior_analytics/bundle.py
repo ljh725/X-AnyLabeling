@@ -11,15 +11,45 @@ import tempfile
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable, Mapping
 
 from .analysis import AnalysisFilter, ReadQuality, calculate_statistics
-from .catalog import sanitize_payload, validate_payload
+from .catalog import sanitize_event, validate_payload
 from .schema import EventEnvelope
+from .statistics_v3 import compare_ranges
+from .traces import (
+    collect_trace_candidates,
+    extract_trace_events,
+    select_trace_candidates,
+)
+from .versions import (
+    ANALYTICS_ALGORITHM_VERSION,
+    BUNDLE_SCHEMA_VERSION,
+    STATISTICAL_EXPORT_VERSION,
+    OBJECT_WORKFLOW_EXPORT_VERSION,
+    TIME_DECOMPOSITION_VERSION,
+    SEQUENCE_RULE_VERSION,
+    WORKFLOW_TIMELINE_VERSION,
+)
+from .workflow import (
+    build_workflow_timeline,
+    object_workflow_summary,
+    project_bottlenecks,
+    sequence_metrics as workflow_sequence_metrics,
+)
 
-ANALYSIS_BUNDLE_VERSION = "1.0"
+ANALYSIS_BUNDLE_VERSION = BUNDLE_SCHEMA_VERSION
 _CSV_FIELDS = {
-    "action_counts.csv": ["action", "result", "count"],
+    "action_counts.csv": [
+        "action",
+        "result",
+        "count",
+        "edit_target",
+        "input_source",
+        "shape_context",
+        "result_rate",
+        "duration_coverage",
+    ],
     "action_durations.csv": [
         "action",
         "sample_count",
@@ -27,10 +57,23 @@ _CSV_FIELDS = {
         "mean_ms",
         "median_ms",
         "p75_ms",
+        "p90_ms",
         "p95_ms",
+        "edit_target",
+        "input_source",
+        "shape_context",
+        "result",
+        "duration_coverage",
     ],
     "transitions.csv": ["from_action", "to_action", "count"],
-    "common_sequences.csv": ["sequence", "length", "count"],
+    "common_sequences.csv": [
+        "sequence",
+        "length",
+        "count",
+        "object_count",
+        "episode_count",
+        "active_ms",
+    ],
     "object_episodes.csv": [
         "project_id",
         "image_id",
@@ -39,6 +82,18 @@ _CSV_FIELDS = {
         "event_count",
         "duration",
         "actions",
+        "started_monotonic_ms",
+        "ended_monotonic_ms",
+        "wall_ms",
+        "focused_ms",
+        "active_ms",
+        "action_duration_ms",
+        "action_count",
+        "changed",
+        "saved_after_change",
+        "completion",
+        "end_reason",
+        "terminal_integrity",
     ],
     "feature_comparisons.csv": [
         "feature_key",
@@ -46,6 +101,156 @@ _CSV_FIELDS = {
         "group",
         "sample_count",
         "difference",
+        "comparison_unavailable",
+        "minimum_samples",
+        "observational",
+        "groups",
+    ],
+    "image_metrics.csv": [
+        "row_type",
+        "image_id",
+        "image_visit_count",
+        "object_count",
+        "created_count",
+        "edited_count",
+        "deleted_count",
+        "rework_object_count",
+        "active_ms",
+        "objects_per_active_hour",
+    ],
+    "rework_metrics.csv": [
+        "metric",
+        "rule_version",
+        "time_window",
+        "numerator",
+        "denominator",
+        "rate",
+        "not_applicable",
+        "rework_active_ms",
+    ],
+    "action_metrics.csv": [
+        "action",
+        "edit_target",
+        "input_source",
+        "result",
+        "shape_context",
+        "count",
+        "result_rate",
+        "duration_coverage",
+        "sample_count",
+        "total_ms",
+        "mean_ms",
+        "median_ms",
+        "p75_ms",
+        "p90_ms",
+        "p95_ms",
+    ],
+    "workflow_stage_metrics.csv": [
+        "workflow_stage",
+        "workflow_stage_version",
+        "count",
+        "object_coverage",
+        "success_count",
+        "result_rate",
+        "duration_coverage",
+        "sample_count",
+        "total_ms",
+        "mean_ms",
+        "median_ms",
+        "p75_ms",
+        "p95_ms",
+        "percentile_rule_version",
+    ],
+    "time_contribution.csv": [
+        "action",
+        "workflow_stage",
+        "count",
+        "total_ms",
+        "time_share",
+        "cumulative_time_share",
+        "percentile_rule_version",
+    ],
+    "episode_metrics.csv": [
+        "row_type",
+        "object_episode_id",
+        "project_session_id",
+        "image_id",
+        "shape_id",
+        "event_count",
+        "active_ms",
+        "action_duration_ms",
+        "changed",
+        "saved_after_change",
+        "end_reason",
+        "terminal_integrity",
+    ],
+    "object_metrics.csv": [
+        "row_type",
+        "project_id",
+        "image_id",
+        "shape_id",
+        "episode_count",
+        "edit_count",
+        "return_count",
+        "active_ms",
+        "rework_count",
+    ],
+    "range_comparison.csv": [
+        "dimension",
+        "baseline",
+        "comparison",
+        "comparison_unavailable",
+        "absolute_difference_ms",
+        "relative_change",
+        "observational",
+        "algorithm_version",
+        "workflow_stage_version",
+        "percentile_rule_version",
+    ],
+    "object_workflow_summary.csv": [
+        "project_id",
+        "image_id",
+        "shape_id",
+        "object_episode_id",
+        "workflow_type",
+        "creation_mode",
+        "shape_type",
+        "size_bucket",
+        "started_ms",
+        "ended_ms",
+        "wall_ms",
+        "focused_ms",
+        "active_ms",
+        "action_union_ms",
+        "action_count",
+        "action_duration_ms",
+        "zoom_count",
+        "zoom_start",
+        "zoom_end",
+        "stage_times_ms",
+        "rework_ms",
+        "save_count",
+        "integrity",
+        "exclusion_reason",
+        "conservation_ok",
+    ],
+    "project_bottlenecks.csv": [
+        "ranking",
+        "stage",
+        "action",
+        "total_ms",
+        "share",
+        "cumulative_share",
+        "count",
+        "object_coverage",
+        "median_ms",
+        "p75_ms",
+        "p90_ms",
+        "p95_ms",
+        "rework_ms",
+        "duration_coverage",
+        "project_active_ms",
+        "algorithm_version",
     ],
 }
 
@@ -72,6 +277,24 @@ def _write_json(path: Path, payload: object) -> None:
     )
 
 
+def _write_jsonl(path: Path, rows: Iterable[Mapping[str, object]]) -> int:
+    """Write deterministic one-record-per-line JSON and return row count."""
+    count = 0
+    with path.open("w", encoding="utf-8", newline="\n") as stream:
+        for row in rows:
+            stream.write(
+                json.dumps(
+                    row,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            )
+            count += 1
+    return count
+
+
 def _write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> None:
     """Write a deterministic UTF-8 CSV table."""
     with path.open("w", encoding="utf-8", newline="") as stream:
@@ -93,119 +316,27 @@ def _write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> None:
                 normalized["actions"] = json.dumps(
                     normalized["actions"], sort_keys=True
                 )
+            for key, value in list(normalized.items()):
+                if isinstance(value, (dict, list)):
+                    normalized[key] = json.dumps(value, sort_keys=True)
             writer.writerow(normalized)
 
 
 def _representative_traces(
     events: Iterable[EventEnvelope], limit: int, max_bytes: int
 ) -> list[dict[str, object]]:
-    """Select categorized, bounded and deterministic object traces."""
-    grouped: dict[str, list[EventEnvelope]] = {}
-    for event in events:
-        if event.object_episode_id:
-            grouped.setdefault(event.object_episode_id, []).append(event)
-    candidates = []
-    for episode_id, episode_events in grouped.items():
-        ordered = sorted(
-            episode_events,
-            key=lambda event: (
-                event.occurred_at_utc,
-                event.monotonic_ms,
-                event.event_id,
-            ),
-        )
-        duration = sum(event.duration_ms or 0 for event in ordered)
-        actions = tuple(_action_name(event) for event in ordered)
-        candidates.append(
-            {
-                "duration": duration,
-                "count": len(ordered),
-                "episode_id": episode_id,
-                "events": ordered,
-                "actions": actions,
-                "failed": any(
-                    event.result in {"failed", "cancelled", "incomplete"}
-                    for event in ordered
-                ),
-                "loop": any(
-                    index >= 2 and actions[index] == actions[index - 2]
-                    for index in range(len(actions))
-                ),
-            }
-        )
-    if not candidates or limit <= 0 or max_bytes <= 0:
+    """Select traces in a summary pass and extract them in a second pass."""
+    if limit <= 0 or max_bytes <= 0:
         return []
-    durations = sorted(item["duration"] for item in candidates)
-    median = durations[(len(durations) - 1) // 2]
-    p75 = durations[min(len(durations) - 1, int(len(durations) * 0.75))]
-    signature_counts = {}
-    for item in candidates:
-        signature_counts[item["actions"]] = (
-            signature_counts.get(item["actions"], 0) + 1
-        )
-    common_signature = sorted(
-        signature_counts.items(), key=lambda item: (-item[1], item[0])
-    )[0][0]
-    selectors = [
-        (
-            "common",
-            lambda item: item["actions"] == common_signature,
-            lambda item: (-item["count"], item["episode_id"]),
-        ),
-        (
-            "median",
-            lambda item: True,
-            lambda item: (abs(item["duration"] - median), item["episode_id"]),
-        ),
-        (
-            "p75",
-            lambda item: True,
-            lambda item: (abs(item["duration"] - p75), item["episode_id"]),
-        ),
-        (
-            "longest",
-            lambda item: True,
-            lambda item: (
-                -item["duration"],
-                -item["count"],
-                item["episode_id"],
-            ),
-        ),
-        (
-            "failure_or_loop",
-            lambda item: item["failed"] or item["loop"],
-            lambda item: (-item["duration"], item["episode_id"]),
-        ),
-    ]
-    selected = []
-    used = set()
-    per_category = max(1, limit // len(selectors))
-    for reason, predicate, sort_key in selectors:
-        options = sorted(
-            [item for item in candidates if predicate(item)], key=sort_key
-        )
-        for item in options[:per_category]:
-            if item["episode_id"] in used:
-                continue
-            trace = {
-                "selection_reason": reason,
-                "episode_id": item["episode_id"],
-                "event_count": item["count"],
-                "duration_ms": item["duration"],
-                "events": [event.to_dict() for event in item["events"]],
-            }
-            encoded = json.dumps(trace, ensure_ascii=False, sort_keys=True)
-            current_bytes = sum(
-                len(json.dumps(row, ensure_ascii=False, sort_keys=True)) + 1
-                for row in selected
-            )
-            if current_bytes + len(encoded) + 1 > max_bytes:
-                return selected
-            selected.append(trace)
-            used.add(item["episode_id"])
-            if len(selected) >= limit:
-                return selected
-    return selected
+    events = list(events)
+    candidates = collect_trace_candidates(events)
+    selected = select_trace_candidates(candidates, limit=limit)
+    return extract_trace_events(
+        events,
+        selected,
+        max_events=256,
+        max_bytes=max_bytes,
+    )
 
 
 def _action_name(event: EventEnvelope) -> str:
@@ -213,6 +344,50 @@ def _action_name(event: EventEnvelope) -> str:
     if event.payload and event.payload.get("action"):
         return str(event.payload["action"])
     return event.event_type
+
+
+def _bound_rows(
+    rows: Iterable[dict], *, row_limit: int, byte_limit: int
+) -> tuple[list[dict], int]:
+    """Select deterministic compact rows under count and byte limits."""
+    ordered = sorted(
+        (dict(row) for row in rows),
+        key=lambda row: json.dumps(row, ensure_ascii=False, sort_keys=True),
+    )
+    selected: list[dict] = []
+    used = 0
+    for row in ordered:
+        if len(selected) >= max(0, row_limit):
+            break
+        encoded = json.dumps(row, ensure_ascii=False, sort_keys=True)
+        if used + len(encoded.encode("utf-8")) + 1 > max(0, byte_limit):
+            break
+        selected.append(row)
+        used += len(encoded.encode("utf-8")) + 1
+    return selected, max(0, len(ordered) - len(selected))
+
+
+def _other_row(
+    fieldnames: list[str], *, omitted: int, total: int
+) -> dict[str, object]:
+    """Return an explicit, schema-safe aggregate for omitted entities."""
+    row = {field: None for field in fieldnames}
+    row["row_type"] = "other"
+    if "image_id" in row:
+        row["image_id"] = "other"
+    if "object_episode_id" in row:
+        row["object_episode_id"] = "other"
+    if "shape_id" in row:
+        row["shape_id"] = "other"
+    if "count" in row:
+        row["count"] = omitted
+    if "event_count" in row:
+        row["event_count"] = omitted
+    if "episode_count" in row:
+        row["episode_count"] = omitted
+    row["omitted_rows"] = omitted
+    row["total_rows"] = total
+    return row
 
 
 def export_analysis_bundle(
@@ -223,6 +398,11 @@ def export_analysis_bundle(
     event_filter: AnalysisFilter | None = None,
     representative_trace_limit: int = 24,
     max_bundle_bytes: int = 5_242_880,
+    comparison_events: Iterable[EventEnvelope] | None = None,
+    range_selection: object | None = None,
+    compact_table_row_limit: int = 5000,
+    compact_table_bytes_limit: int = 1_048_576,
+    cancel_check: Callable[[], bool] | None = None,
 ) -> Path:
     """Export a fixed analysis bundle using an atomic directory publish.
 
@@ -234,12 +414,24 @@ def export_analysis_bundle(
         raise FileExistsError(f"analysis bundle already exists: {target}")
     selected_events = []
     privacy_fields_removed = 0
+    has_v2 = False
+    has_v4 = False
     for event in events:
-        payload, removed = sanitize_payload(event.event_type, event.payload)
-        validate_payload(event.event_type, payload)
-        selected_events.append(replace(event, payload=payload or None))
+        if cancel_check and cancel_check():
+            raise RuntimeError("behavior analytics export cancelled")
+        sanitized, removed = sanitize_event(event)
+        validate_payload(event.event_type, sanitized.payload)
+        has_v2 = has_v2 or event.schema_version >= 2
+        has_v4 = has_v4 or event.schema_version >= 4
+        selected_events.append(sanitized)
         privacy_fields_removed += removed
-    statistics = calculate_statistics(selected_events)
+    statistics = calculate_statistics(
+        selected_events,
+        cancel_check=cancel_check,
+    )
+    workflow_timeline = (
+        build_workflow_timeline(selected_events) if has_v4 else None
+    )
     quality = quality or ReadQuality(
         read_count=len(selected_events), accepted_count=len(selected_events)
     )
@@ -250,12 +442,24 @@ def export_analysis_bundle(
         tempfile.mkdtemp(prefix=".behavior-bundle-", dir=str(parent))
     )
     try:
+        summary_statistics = {
+            key: value
+            for key, value in statistics.items()
+            if key
+            not in {
+                "action_spans",
+                "semantic_actions",
+                "dimension_counts",
+            }
+        }
         _write_json(
             temporary / "summary.json",
             {
-                "analysis_bundle_version": ANALYSIS_BUNDLE_VERSION,
+                "analysis_bundle_version": (
+                    ANALYSIS_BUNDLE_VERSION if has_v2 else "1.0"
+                ),
                 "event_count": len(selected_events),
-                "statistics": statistics,
+                "statistics": summary_statistics,
                 "quality": quality.to_dict(),
                 "privacy_fields_removed": privacy_fields_removed,
             },
@@ -268,11 +472,183 @@ def export_analysis_bundle(
             "object_episodes.csv": statistics["object_episodes"],
             "feature_comparisons.csv": statistics["feature_comparisons"],
         }
+        if has_v2:
+            rows_by_file["action_counts.csv"] = statistics["action_metrics"]
+            rows_by_file["action_durations.csv"] = statistics["action_metrics"]
+            rows_by_file["common_sequences.csv"] = statistics[
+                "sequence_metrics"
+            ]
+            rows_by_file["object_episodes.csv"] = statistics["episode_metrics"]
+            rows_by_file["feature_comparisons.csv"] = statistics[
+                "feature_comparisons_v2"
+            ]
+            rows_by_file["image_metrics.csv"] = statistics["image_metrics"]
+            rows_by_file["rework_metrics.csv"] = statistics["rework_metrics"]
+            rows_by_file["action_metrics.csv"] = statistics["action_metrics"]
+            rows_by_file["workflow_stage_metrics.csv"] = statistics[
+                "workflow_stage_metrics"
+            ]
+            rows_by_file["time_contribution.csv"] = statistics[
+                "time_contribution"
+            ]
+            rows_by_file["episode_metrics.csv"] = statistics["episode_metrics"]
+            rows_by_file["object_metrics.csv"] = statistics["object_metrics"]
+            rows_by_file["range_comparison.csv"] = (
+                compare_ranges(
+                    selected_events,
+                    list(comparison_events or []),
+                )
+                if comparison_events is not None
+                else []
+            )
+            _write_json(
+                temporary / "measurement_quality.json",
+                statistics["measurement_quality"],
+            )
+            _write_json(
+                temporary / "episode_cycle_metrics.json",
+                statistics["episode_cycle_metrics"],
+            )
+        workflow_summary_rows = []
+        workflow_bottleneck_rows = []
+        workflow_sequence_rows = []
+        if workflow_timeline is not None:
+            workflow_summary_rows = object_workflow_summary(workflow_timeline)
+            workflow_bottleneck_rows = project_bottlenecks(workflow_timeline)
+            workflow_sequence_rows = workflow_sequence_metrics(
+                workflow_timeline
+            )
+            _write_jsonl(
+                temporary / "object_workflow_timeline.jsonl",
+                (record.to_dict() for record in workflow_timeline.records),
+            )
+            _write_csv(
+                temporary / "object_workflow_summary.csv",
+                _CSV_FIELDS["object_workflow_summary.csv"],
+                workflow_summary_rows,
+            )
+            _write_csv(
+                temporary / "project_bottlenecks.csv",
+                _CSV_FIELDS["project_bottlenecks.csv"],
+                workflow_bottleneck_rows,
+            )
+            _write_json(
+                temporary / "object_workflow_sequences.json",
+                {
+                    "sequence_rule_version": SEQUENCE_RULE_VERSION,
+                    "rows": workflow_sequence_rows,
+                },
+            )
+            _write_json(
+                temporary / "object_workflow_quality.json",
+                {
+                    "timeline_schema_version": WORKFLOW_TIMELINE_VERSION,
+                    "time_decomposition_version": TIME_DECOMPOSITION_VERSION,
+                    "record_count": len(workflow_timeline.records),
+                    "excluded_count": len(workflow_timeline.excluded),
+                    "sequence_gap_count": workflow_timeline.sequence_gap_count,
+                    "excluded": list(workflow_timeline.excluded),
+                },
+            )
+        row_limits = {}
         for filename, rows in rows_by_file.items():
-            _write_csv(temporary / filename, _CSV_FIELDS[filename], rows)
+            if filename in {
+                "object_episodes.csv",
+                "episode_metrics.csv",
+                "object_metrics.csv",
+                "image_metrics.csv",
+            }:
+                rows = [{"row_type": "entity", **dict(row)} for row in rows]
+            bounded, omitted = _bound_rows(
+                rows,
+                row_limit=compact_table_row_limit,
+                byte_limit=compact_table_bytes_limit,
+            )
+            row_limits[filename] = {
+                "total_rows": len(rows),
+                "exported_rows": len(bounded)
+                + int(
+                    bool(
+                        omitted
+                        and filename
+                        in {
+                            "object_episodes.csv",
+                            "episode_metrics.csv",
+                            "object_metrics.csv",
+                            "image_metrics.csv",
+                        }
+                    )
+                ),
+                "omitted_rows": omitted,
+                "other_summary": {
+                    "row_bucket": "other",
+                    "omitted_rows": omitted,
+                },
+            }
+            if omitted and filename in {
+                "object_episodes.csv",
+                "episode_metrics.csv",
+                "object_metrics.csv",
+                "image_metrics.csv",
+            }:
+                bounded.append(
+                    _other_row(
+                        _CSV_FIELDS[filename],
+                        omitted=omitted,
+                        total=len(rows),
+                    )
+                )
+            _write_csv(temporary / filename, _CSV_FIELDS[filename], bounded)
+        statistics["measurement_quality"]["metrics"][
+            "manifest_completeness"
+        ] = {
+            "numerator": max(
+                0,
+                len(selected_events) - quality.manifest_error_count,
+            ),
+            "denominator": len(selected_events),
+            "value": (
+                1.0
+                if not selected_events
+                else max(
+                    0,
+                    len(selected_events) - quality.manifest_error_count,
+                )
+                / len(selected_events)
+            ),
+            "threshold": 1.0,
+            "status": (
+                "pass" if quality.manifest_error_count == 0 else "fail"
+            ),
+            "affected_event_types": ["manifest"],
+            "exclusion_reason": (
+                "manifest_error" if quality.manifest_error_count else None
+            ),
+        }
+        statistics["measurement_quality"]["metrics"]["export_completeness"] = (
+            dict(
+                statistics["measurement_quality"]["metrics"][
+                    "manifest_completeness"
+                ]
+            )
+        )
+        statistics["measurement_quality"]["metrics"]["export_completeness"][
+            "affected_event_types"
+        ] = ["manifest", "export_tables"]
+        if has_v2:
+            _write_json(
+                temporary / "measurement_quality.json",
+                statistics["measurement_quality"],
+            )
+            _write_json(
+                temporary / "episode_cycle_metrics.json",
+                statistics["episode_cycle_metrics"],
+            )
         traces = _representative_traces(
             selected_events, representative_trace_limit, max_bundle_bytes
         )
+        if cancel_check and cancel_check():
+            raise RuntimeError("behavior analytics export cancelled")
         trace_path = temporary / "representative_traces.jsonl"
         with trace_path.open("w", encoding="utf-8") as stream:
             for trace in traces:
@@ -288,7 +664,17 @@ def export_analysis_bundle(
                 "sha256": digest,
             }
         manifest = {
-            "analysis_bundle_version": ANALYSIS_BUNDLE_VERSION,
+            "analysis_bundle_version": (
+                ANALYSIS_BUNDLE_VERSION if has_v2 else "1.0"
+            ),
+            "bundle_schema_version": (
+                BUNDLE_SCHEMA_VERSION
+                if has_v4
+                else ("2.0" if has_v2 else "1.0")
+            ),
+            "statistical_export_version": (
+                STATISTICAL_EXPORT_VERSION if has_v2 else None
+            ),
             "generated_at_utc": datetime.now(timezone.utc)
             .isoformat(timespec="milliseconds")
             .replace("+00:00", "Z"),
@@ -296,13 +682,71 @@ def export_analysis_bundle(
             "input_event_schema_versions": quality.metadata.get(
                 "input_schema_versions", [1]
             ),
+            "event_version_distribution": {
+                str(version): sum(
+                    event.schema_version == version
+                    for event in selected_events
+                )
+                for version in sorted(
+                    {event.schema_version for event in selected_events}
+                )
+            },
+            "analytics_algorithm_version": (
+                ANALYTICS_ALGORITHM_VERSION if has_v2 else "1.0"
+            ),
+            "context_schema_version": "1.0" if has_v2 else None,
+            "rework_rule_version": "1.0" if has_v2 else None,
+            "measurement_quality": statistics.get("measurement_quality"),
+            "thresholds": {
+                "duration_coverage_min": 0.95,
+                "episode_closure_min": 0.99,
+                "duplicate_rate_max": 0.05,
+                "anomaly_episode_event_count": 100,
+                "anomaly_episode_active_ms": 600000,
+            },
             "quality": quality.to_dict(),
             "privacy_fields_removed": privacy_fields_removed,
             "representative_trace_limit": representative_trace_limit,
             "representative_trace_count": len(traces),
             "max_bundle_bytes": max_bundle_bytes,
+            "range_selection": (
+                range_selection.to_dict()
+                if hasattr(range_selection, "to_dict")
+                else range_selection
+            ),
+            "table_limits": {
+                "row_limit": compact_table_row_limit,
+                "bytes_limit": compact_table_bytes_limit,
+                "tables": row_limits,
+            },
             "files": file_hashes,
         }
+        if workflow_timeline is not None:
+            manifest["object_workflow"] = {
+                "export_version": OBJECT_WORKFLOW_EXPORT_VERSION,
+                "timeline_schema_version": WORKFLOW_TIMELINE_VERSION,
+                "time_decomposition_version": TIME_DECOMPOSITION_VERSION,
+                "sequence_rule_version": SEQUENCE_RULE_VERSION,
+                "record_count": len(workflow_timeline.records),
+                "excluded_count": len(workflow_timeline.excluded),
+                "timeline_rows": len(workflow_timeline.records),
+                "timeline_truncated": False,
+                "timeline_shard_count": 1,
+                "representative_traces_are_supplemental": True,
+                "local_deterministic": True,
+                "external_model_required": False,
+                "files": {
+                    name: file_hashes[name]
+                    for name in (
+                        "object_workflow_timeline.jsonl",
+                        "object_workflow_summary.csv",
+                        "project_bottlenecks.csv",
+                        "object_workflow_sequences.json",
+                        "object_workflow_quality.json",
+                    )
+                    if name in file_hashes
+                },
+            }
         _write_json(temporary / "manifest.json", manifest)
         os.replace(temporary, target)
     except Exception:

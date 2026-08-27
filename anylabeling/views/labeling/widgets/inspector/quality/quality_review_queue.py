@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from .feedback import (
+    FEEDBACK_TEMPLATE_COLUMNS,
     VALID_DECISIONS,
     VALID_FINAL_ACTIONS,
     _load_existing_feedback,
@@ -118,6 +119,7 @@ class QualityReviewItem:
     rule_name: str
     severity: str
     message: str
+    shape_id: str = ""
     label: str = ""
     group_id: Optional[int] = None
     primary_metric_name: str = ""
@@ -144,6 +146,7 @@ class QualityReviewItem:
             "run_id": self.run_id,
             "file_path": self.file_path,
             "shape_index": self.shape_index,
+            "shape_id": self.shape_id,
             "rule_name": self.rule_name,
             "original_severity": self.original_severity or self.severity,
             "decision": self.decision,
@@ -664,6 +667,7 @@ def _item_from_report_issue(
         run_id=str(raw.get("run_id", run_id) or run_id),
         file_path=str(raw.get("file_path", "") or ""),
         shape_index=shape_index,
+        shape_id=str(raw.get("shape_id", "") or ""),
         rule_id=str(raw.get("rule_id", "") or ""),
         rule_name=str(raw.get("rule_name", "") or ""),
         severity=str(raw.get("severity", "warning") or "warning"),
@@ -701,6 +705,7 @@ def _item_from_review_row(row: Dict[str, str]) -> Optional[QualityReviewItem]:
         run_id=(row.get("run_id") or "").strip(),
         file_path=(row.get("file_path") or "").strip(),
         shape_index=shape_index,
+        shape_id=(row.get("shape_id") or "").strip(),
         rule_id="",
         rule_name=(row.get("rule_name") or "").strip(),
         severity=(row.get("severity") or "warning").strip() or "warning",
@@ -766,6 +771,7 @@ def _merge_evidence(
     leaving review state (decision/status/note/...) untouched."""
     existing.message = new.message
     existing.severity = new.severity
+    existing.shape_id = new.shape_id or existing.shape_id
     existing.label = new.label
     existing.group_id = new.group_id
     existing.primary_metric_name = new.primary_metric_name
@@ -802,22 +808,5 @@ def _now_iso() -> str:
     return datetime.datetime.now().isoformat(timespec="seconds")
 
 
-# template columns reused for writing feedback (mirrors feedback.py)
-_FEEDBACK_TEMPLATE_COLUMNS = [
-    "issue_id",
-    "run_id",
-    "file_path",
-    "shape_index",
-    "rule_name",
-    "original_severity",
-    "decision",
-    "final_action",
-    "reviewer",
-    "reviewed_at",
-    "note",
-    "message",
-    "label",
-    "group_id",
-    "primary_metric_name",
-    "primary_metric_value",
-]
+# Keep queue output byte-compatible with the shared feedback template.
+_FEEDBACK_TEMPLATE_COLUMNS = list(FEEDBACK_TEMPLATE_COLUMNS)

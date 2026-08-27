@@ -128,3 +128,58 @@ def test_default_behavior_analytics_config_is_disabled():
     assert analytics["enabled"] is False
     assert analytics["retention_days"] > 0
     assert analytics["queue_max_events"] > 0
+
+
+def test_v3_interruption_and_recording_gap_fields_round_trip():
+    """V3 keeps terminal interruption facts and gap payloads serializable."""
+    data = _event_data(
+        schema_version=3,
+        event_id="v3-interrupted",
+        result="interrupted",
+        interruption_reason="image_changed",
+        sequence_no=7,
+        action_id="action-v3",
+        action_phase="interrupted",
+        action_type="geometry_adjust",
+        started_monotonic_ms=10,
+        ended_monotonic_ms=20,
+    )
+    event = EventEnvelope.from_mapping(data)
+    assert EventEnvelope.from_mapping(event.to_dict()) == event
+    gap = _event_data(
+        schema_version=3,
+        event_id="v3-gap",
+        event_type=EventType.RECORDING_GAP.value,
+        result="failed",
+        sequence_no=8,
+        image_id=None,
+        shape_id=None,
+        object_episode_id=None,
+        payload={
+            "gap_start_sequence_no": 3,
+            "gap_end_sequence_no": 6,
+            "gap_reason": "queue_full",
+        },
+    )
+    EventEnvelope.from_mapping(gap)
+
+
+def test_v3_strict_contract_rejects_missing_action_and_gap_fields():
+    """V3 rejects incomplete event-type contracts while legacy remains readable."""
+    action = _event_data(schema_version=3, sequence_no=1)
+    with pytest.raises(EventValidationError, match="v3 action_span"):
+        EventEnvelope.from_mapping(action)
+    gap = _event_data(
+        schema_version=3,
+        sequence_no=1,
+        event_type=EventType.RECORDING_GAP.value,
+        result="failed",
+        image_id=None,
+        shape_id=None,
+        object_episode_id=None,
+        payload={"gap_reason": "queue_full"},
+    )
+    with pytest.raises(EventValidationError, match="recording_gap"):
+        EventEnvelope.from_mapping(gap)
+    legacy = _event_data(schema_version=2, sequence_no=None)
+    assert EventEnvelope.from_mapping(legacy).schema_version == 2

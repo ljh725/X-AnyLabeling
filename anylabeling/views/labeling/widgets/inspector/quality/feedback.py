@@ -53,6 +53,7 @@ FEEDBACK_COLUMNS = [
 ]
 
 FEEDBACK_CONTEXT_COLUMNS = [
+    "shape_id",
     "message",
     "label",
     "group_id",
@@ -75,6 +76,7 @@ class FeedbackRow:
     original_severity: str
     decision: str
     final_action: str
+    shape_id: str = ""
     reviewer: str = ""
     reviewed_at: str = ""
     note: str = ""
@@ -213,6 +215,7 @@ def _parse_row(
         original_severity=(raw.get("original_severity") or "").strip(),
         decision=decision,
         final_action=final_action or "none",
+        shape_id=(raw.get("shape_id") or "").strip(),
         reviewer=(raw.get("reviewer") or "").strip(),
         reviewed_at=(raw.get("reviewed_at") or "").strip(),
         note=(raw.get("note") or "").strip(),
@@ -256,6 +259,7 @@ def write_review_feedback_template(
             "run_id": run_id,
             "file_path": str(issue.get("file_path", "") or ""),
             "shape_index": issue.get("shape_index", -1),
+            "shape_id": str(issue.get("shape_id", "") or ""),
             "rule_name": str(issue.get("rule_name", "") or ""),
             "original_severity": str(issue.get("severity", "") or ""),
             "decision": decision,

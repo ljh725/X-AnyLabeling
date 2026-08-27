@@ -57,6 +57,24 @@ behavior_analytics:
   max_event_bytes: 16384
   representative_trace_limit: 24
   max_bundle_bytes: 5242880
+  action_schema_version: 2
+  analytics_algorithm_version: "2.0"
+  bundle_schema_version: "2.0"
+  action_silence_ms: 300
+  feature_comparison_min_samples: 30
+  anomaly_episode_event_count: 100
+  anomaly_episode_active_ms: 600000
+  measurement_duration_coverage_min: 0.95
+  measurement_episode_closure_min: 0.99
+  measurement_duplicate_rate_max: 0.05
+  recording_flush_interval_ms: 500
+  recording_batch_size: 64
+  transition_gap_threshold_ms: 2000
+  compact_table_row_limit: 5000
+  compact_table_bytes_limit: 1048576
+  comparison_min_samples: 30
+  workflow_stage_version: '1.0'
+  percentile_rule_version: '1.0'
 
 flags: null
 label_flags: null
@@ -340,3 +358,4 @@ rect_refine:
       - head
     face:
       - face
+

@@ -18,6 +18,10 @@ from PyQt6.QtGui import QImage
 
 from anylabeling.views.labeling.logger import logger
 from anylabeling.views.labeling.shape import Shape
+from anylabeling.views.labeling.shape_identity import (
+    SHAPE_ID_FIELD,
+    normalize_shape_identities,
+)
 from anylabeling.views.labeling.utils.qt import new_icon_path
 from anylabeling.views.labeling.utils.style import (
     get_dialog_style,
@@ -598,7 +602,19 @@ class ShapeModifyDialog(QDialog):
                             break
 
                     if not already_exists:
-                        data["shapes"].append(selected_shape.to_dict())
+                        new_shape = selected_shape.copy_for_new_object()
+                        identity_result = normalize_shape_identities(
+                            [new_shape.xanylabeling_shape_id],
+                            reserved_ids=(
+                                shape_data.get(SHAPE_ID_FIELD)
+                                for shape_data in data["shapes"]
+                                if isinstance(shape_data, dict)
+                            ),
+                        )
+                        new_shape.xanylabeling_shape_id = (
+                            identity_result.identities[0]
+                        )
+                        data["shapes"].append(new_shape.to_dict())
                         added_count += 1
 
                 with open(label_file, "w", encoding="utf-8") as f:

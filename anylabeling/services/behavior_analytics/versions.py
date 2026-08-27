@@ -1,0 +1,21 @@
+"""Independent version identifiers for behavior analytics contracts."""
+
+from __future__ import annotations
+
+ACTION_SCHEMA_VERSION = "3.0"
+CONTEXT_SCHEMA_VERSION = "1.0"
+REWORK_RULE_VERSION = "1.0"
+ANALYTICS_ALGORITHM_VERSION = "3.0"
+BUNDLE_SCHEMA_VERSION = "3.0"
+
+# Independently versioned contracts for the two-stage workflow pipeline.
+EVENT_ENVELOPE_VERSION = 4
+WORKFLOW_STAGE_VERSION = "1.0"
+PERCENTILE_RULE_VERSION = "1.0"
+PAUSE_RULE_VERSION = "1.0"
+RECORDING_STORAGE_VERSION = "hourly-jsonl.v1"
+STATISTICAL_EXPORT_VERSION = "4.0"
+WORKFLOW_TIMELINE_VERSION = "1.0"
+TIME_DECOMPOSITION_VERSION = "1.0"
+SEQUENCE_RULE_VERSION = "1.0"
+OBJECT_WORKFLOW_EXPORT_VERSION = "1.0"

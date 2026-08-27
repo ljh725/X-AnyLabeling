@@ -1,10 +1,10 @@
 import copy
 import math
-import uuid
 from PyQt6 import QtCore, QtGui
 
 from . import utils
 from ..labeling.logger import logger
+from .shape_identity import new_shape_id as _new_shape_id
 from .widgets.appearance_qt import QtAppearanceAdapter
 
 DEFAULT_LINE_COLOR = QtGui.QColor(0, 255, 0, 128)  # bf hovering
@@ -154,7 +154,7 @@ class Shape:
     @staticmethod
     def new_shape_id():
         """Return a new identity for a newly created annotation shape."""
-        return uuid.uuid4().hex
+        return _new_shape_id()
 
     def load_from_dict(self, data: dict, close=True, preserve_shape_id=True):
         """Load serialized shape data and optionally preserve its identity.

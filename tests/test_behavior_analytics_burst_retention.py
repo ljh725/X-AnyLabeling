@@ -27,7 +27,7 @@ def test_cleanup_supports_project_scope_without_touching_other_files(tmp_path):
     """Explicit cleanup removes matching events and leaves annotation files."""
     event_dir = tmp_path / "events"
     event_dir.mkdir()
-    event_path = event_dir / "events-2026-08.jsonl"
+    event_path = event_dir / "events-2026-08-20-01.jsonl"
     rows = [
         {
             "project_id": "project-a",
@@ -65,3 +65,34 @@ def test_recorder_exposes_explicit_cleanup_api(tmp_path):
         ).files_scanned,
         int,
     )
+
+def test_retention_deletes_only_complete_expired_hourly_shards(tmp_path):
+    """Retention removes whole old hours and leaves boundary assets untouched."""
+    event_dir = tmp_path / "events"
+    event_dir.mkdir()
+    event_path = event_dir / "events-2020-01-01-01.jsonl"
+    event_path.write_text(
+        json.dumps({"occurred_at_utc": "2020-01-01T01:00:00.000Z"}) + "\n",
+        encoding="utf-8",
+    )
+    manifest_path = event_dir / "events-2020-01-01-01.manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "manifest_complete": True,
+                "last_utc": "2020-01-01T01:00:00.000Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+    annotation = tmp_path / "annotation.json"
+    annotation.write_text("keep", encoding="utf-8")
+
+    summary = cleanup_event_logs(tmp_path, retention_days=1)
+    assert summary.files_changed == 1
+    assert not event_path.exists()
+    assert not manifest_path.exists()
+    assert annotation.read_text(encoding="utf-8") == "keep"
+
+
+

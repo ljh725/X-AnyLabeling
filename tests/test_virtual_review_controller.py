@@ -57,12 +57,13 @@ class _Canvas:
 class _Shape:
     """Small mutable shape double used without production import ordering."""
 
-    def __init__(self, label, x, group_id=None):
+    def __init__(self, label, x, group_id=None, shape_id=None):
         """Initialize the controller-facing shape attributes."""
         self.label = label
         self.x = x
         self.shape_type = "rectangle"
         self.group_id = group_id
+        self.xanylabeling_shape_id = shape_id or f"shape:{label}:{x}"
         self.visible = True
         self.selected = False
 
@@ -71,8 +72,8 @@ class _Shape:
         return QtCore.QRectF(self.x, 10, 20, 20)
 
 
-def _shape(label, x, group_id=None):
-    return _Shape(label, x, group_id)
+def _shape(label, x, group_id=None, shape_id=None):
+    return _Shape(label, x, group_id, shape_id)
 
 
 def _payload(labels="person", **packing):
@@ -208,17 +209,18 @@ def test_partial_deletion_retains_surviving_members(qapp):
 
 
 def test_duplicate_shape_receives_new_runtime_identity(qapp):
-    original = _shape("person", 10)
+    original = _shape("person", 10, shape_id="persistent-person")
     host, review, controller = _controller(qapp, [original])
     controller.start(_payload())
-    original_id = original._virtual_review_id
+    original_id = original._virtual_review_tracking_id
 
     duplicate = copy.deepcopy(original)
     duplicate.x = 100
     host.canvas.shapes.append(duplicate)
     controller._activate_current()
 
-    assert duplicate._virtual_review_id != original_id
+    assert original_id == "persistent-person"
+    assert duplicate._virtual_review_tracking_id != original_id
     assert host.canvas.predicate(original)
     assert not host.canvas.predicate(duplicate)
     review.deleteLater()

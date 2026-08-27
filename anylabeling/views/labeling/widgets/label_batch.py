@@ -272,6 +272,21 @@ def _fingerprint(path: str) -> dict[str, Any]:
     return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns}
 
 
+@dataclass(frozen=True)
+class StagedTransform:
+    """Outcome of one pure per-file transformation.
+
+    ``metadata`` carries serializable domain data (for example per-object
+    stage statuses) that is persisted into the transaction manifest.
+    """
+
+    data: Mapping[str, Any]
+    changed: bool
+    matched_shapes: int = 0
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+    skip_reason: str = "no matching change"
+
+
 class DatasetWriteCoordinator:
     """Process-local coordinator preventing concurrent dataset commits."""
 
@@ -286,12 +301,320 @@ class DatasetWriteCoordinator:
             return cls._locks.setdefault(key, threading.Lock())
 
 
-class BatchMigrationEngine:
-    """Preflight, stage, atomically commit, and restore label migrations."""
+class BatchWriteGate:
+    """Process-local registry preventing overlapping batch writers.
+
+    Any feature that starts a dataset-wide batch write (label migration,
+    object relabeling) must acquire the gate for its annotation root
+    before staging and release it after its terminal signal.
+    """
+
+    _active: dict[str, str] = {}
+    _guard = threading.Lock()
+
+    @classmethod
+    def try_acquire(cls, root: str, owner: str) -> bool:
+        """Claim the root for one owner; False if already claimed."""
+        key = osp.normcase(osp.abspath(root))
+        with cls._guard:
+            if key in cls._active:
+                return False
+            cls._active[key] = owner
+            return True
+
+    @classmethod
+    def release(cls, root: str, owner: str) -> None:
+        """Release the root only when still owned by ``owner``."""
+        key = osp.normcase(osp.abspath(root))
+        with cls._guard:
+            if cls._active.get(key) == owner:
+                del cls._active[key]
+
+
+class JsonTransactionEngine:
+    """Generic staged JSON transactions shared by every batch writer.
+
+    The engine owns transaction directories, same-volume temporary files,
+    JSON re-parsing, backups, source fingerprints, the dataset write lock,
+    atomic replacement, manifest persistence, and restore. Domain flows
+    supply a pure per-file transform and serializable metadata.
+    """
 
     def __init__(self, transaction_root: str) -> None:
         """Initialize a transaction engine under a project-owned directory."""
         self.transaction_root = osp.abspath(transaction_root)
+
+    def stage_files(
+        self,
+        sources: Sequence[str],
+        transform: Callable[[str, Mapping[str, Any]], StagedTransform],
+        cancel_check: Optional[CancelCheck] = None,
+        progress: Optional[ProgressCallback] = None,
+        domain: Optional[Mapping[str, Any]] = None,
+    ) -> OperationResult:
+        """Stage and validate transformed JSON without replacing sources."""
+        transaction_id = uuid.uuid4().hex
+        transaction_dir = osp.join(self.transaction_root, transaction_id)
+        staged_dir = osp.join(transaction_dir, "staged")
+        backups_dir = osp.join(transaction_dir, "backups")
+        os.makedirs(staged_dir, exist_ok=True)
+        os.makedirs(backups_dir, exist_ok=True)
+        entries: list[dict[str, Any]] = []
+        results: list[FileOperationResult] = []
+        for index, source in enumerate(sources, 1):
+            if cancel_check and cancel_check():
+                manifest_path = self._write_manifest(
+                    transaction_dir, transaction_id, entries, domain
+                )
+                return OperationResult(
+                    transaction_id,
+                    "staged",
+                    tuple(results),
+                    True,
+                    manifest_path,
+                )
+            try:
+                with open(source, "r", encoding="utf-8") as stream:
+                    original = json.load(stream)
+                outcome = transform(source, original)
+                if not outcome.changed:
+                    results.append(
+                        FileOperationResult(
+                            source, "skipped", outcome.skip_reason
+                        )
+                    )
+                    continue
+                token = hashlib.sha256(
+                    osp.abspath(source).encode("utf-8")
+                ).hexdigest()[:20]
+                staged = osp.join(staged_dir, f"{token}.json")
+                backup = osp.join(backups_dir, f"{token}.json")
+                fd, temporary = tempfile.mkstemp(
+                    prefix="stage-", suffix=".json", dir=staged_dir
+                )
+                os.close(fd)
+                try:
+                    with open(temporary, "w", encoding="utf-8") as stream:
+                        json.dump(
+                            outcome.data,
+                            stream,
+                            indent=2,
+                            ensure_ascii=False,
+                        )
+                        stream.write("\n")
+                    with open(temporary, "r", encoding="utf-8") as stream:
+                        json.load(stream)
+                    os.replace(temporary, staged)
+                finally:
+                    if osp.exists(temporary):
+                        os.remove(temporary)
+                shutil.copy2(source, backup)
+                entry = {
+                    "source_path": osp.abspath(source),
+                    "staged_path": staged,
+                    "backup_path": backup,
+                    "original_fingerprint": _fingerprint(source),
+                    "status": "staged",
+                    "matched_shapes": outcome.matched_shapes,
+                    "domain_metadata": dict(outcome.metadata),
+                }
+                entries.append(entry)
+                results.append(
+                    FileOperationResult(
+                        source,
+                        "staged",
+                        matched_shapes=outcome.matched_shapes,
+                        backup_path=backup,
+                    )
+                )
+            except (OSError, ValueError, TypeError) as exc:
+                results.append(FileOperationResult(source, "failed", str(exc)))
+            if progress:
+                progress("staging", index, len(sources), source)
+        manifest_path = self._write_manifest(
+            transaction_dir, transaction_id, entries, domain
+        )
+        return OperationResult(
+            transaction_id, "staged", tuple(results), False, manifest_path
+        )
+
+    def commit(self, staged: OperationResult, root: str) -> OperationResult:
+        """Atomically replace staged files; this phase deliberately ignores cancel."""
+        lock = DatasetWriteCoordinator.lock_for(root)
+        results: list[FileOperationResult] = []
+        manifest_path = staged.manifest_path
+        payload = self._read_manifest_payload(manifest_path)
+        domain = payload.get("domain")
+        entries = self._entries_from_payload(payload)
+        with lock:
+            for entry in entries:
+                source = entry["source_path"]
+                try:
+                    if _fingerprint(source) != entry["original_fingerprint"]:
+                        raise RuntimeError("source changed after preflight")
+                    os.replace(entry["staged_path"], source)
+                    entry["status"] = "succeeded"
+                    results.append(
+                        FileOperationResult(
+                            source,
+                            "succeeded",
+                            matched_shapes=entry.get("matched_shapes", 0),
+                            backup_path=entry.get("backup_path"),
+                        )
+                    )
+                except (OSError, RuntimeError) as exc:
+                    entry["status"] = "failed"
+                    entry["message"] = str(exc)
+                    results.append(
+                        FileOperationResult(
+                            source,
+                            "failed",
+                            str(exc),
+                            backup_path=entry.get("backup_path"),
+                        )
+                    )
+            if manifest_path:
+                self._write_manifest(
+                    osp.dirname(manifest_path),
+                    staged.transaction_id,
+                    entries,
+                    domain,
+                )
+        for item in staged.files:
+            if item.status == "skipped" or item.status == "failed":
+                results.append(item)
+        return OperationResult(
+            staged.transaction_id,
+            "committed",
+            tuple(results),
+            False,
+            manifest_path,
+        )
+
+    def restore(
+        self, manifest_path: str, root: Optional[str] = None
+    ) -> OperationResult:
+        """Restore every committed source under the dataset write lock."""
+        payload = self._read_manifest_payload(manifest_path)
+        domain = payload.get("domain")
+        entries = self._entries_from_payload(payload)
+        results: list[FileOperationResult] = []
+        lock_root = osp.abspath(root) if root else self._restore_root(entries)
+        lock = DatasetWriteCoordinator.lock_for(lock_root)
+        with lock:
+            for entry in entries:
+                try:
+                    fd, temporary = tempfile.mkstemp(
+                        prefix="restore-",
+                        suffix=".json",
+                        dir=osp.dirname(entry["source_path"]),
+                    )
+                    os.close(fd)
+                    shutil.copy2(entry["backup_path"], temporary)
+                    with open(temporary, "r", encoding="utf-8") as stream:
+                        json.load(stream)
+                    os.replace(temporary, entry["source_path"])
+                    entry["status"] = "restored"
+                    results.append(
+                        FileOperationResult(entry["source_path"], "succeeded")
+                    )
+                except (OSError, ValueError) as exc:
+                    results.append(
+                        FileOperationResult(
+                            entry["source_path"], "failed", str(exc)
+                        )
+                    )
+            transaction_id = (
+                payload.get("transaction_id")
+                or (
+                    entries[0].get("transaction_id", "restore")
+                    if entries
+                    else ""
+                )
+                or "restore"
+            )
+            self._write_manifest(
+                osp.dirname(manifest_path), transaction_id, entries, domain
+            )
+        return OperationResult(
+            osp.basename(osp.dirname(manifest_path)),
+            "restored",
+            tuple(results),
+            False,
+            manifest_path,
+        )
+
+    @staticmethod
+    def _restore_root(entries: Sequence[Mapping[str, Any]]) -> str:
+        """Return a stable dataset root for a manifest restore lock."""
+        directories = [
+            osp.dirname(osp.abspath(str(entry["source_path"])))
+            for entry in entries
+            if entry.get("source_path")
+        ]
+        if not directories:
+            return "."
+        try:
+            return osp.commonpath(directories)
+        except ValueError:
+            return directories[0]
+
+    @staticmethod
+    def _write_manifest(
+        transaction_dir: str,
+        transaction_id: str,
+        entries: list[dict[str, Any]],
+        domain: Optional[Mapping[str, Any]] = None,
+    ) -> str:
+        """Write a versioned transaction manifest atomically."""
+        path = osp.join(transaction_dir, "manifest.json")
+        payload: dict[str, Any] = {
+            "schema_version": 2,
+            "transaction_id": transaction_id,
+            "entries": entries,
+        }
+        if domain is not None:
+            payload["domain"] = dict(domain)
+        temporary = f"{path}.tmp"
+        with open(temporary, "w", encoding="utf-8") as stream:
+            json.dump(payload, stream, indent=2, ensure_ascii=False)
+        os.replace(temporary, path)
+        return path
+
+    @staticmethod
+    def _read_manifest_payload(
+        path: Optional[str],
+    ) -> dict[str, Any]:
+        """Read the full manifest payload defensively."""
+        if not path:
+            return {"transaction_id": "", "entries": []}
+        with open(path, "r", encoding="utf-8") as stream:
+            payload = json.load(stream)
+        if not isinstance(payload, dict):
+            raise ValueError("manifest payload must be an object")
+        return payload
+
+    @staticmethod
+    def _entries_from_payload(payload: Mapping[str, Any]) -> list:
+        """Return manifest entries with per-entry transaction ids filled."""
+        entries = payload.get("entries", [])
+        transaction_id = payload.get("transaction_id", "")
+        for entry in entries:
+            entry.setdefault("transaction_id", transaction_id)
+        return entries
+
+
+class BatchMigrationEngine:
+    """Preflight, stage, atomically commit, and restore label migrations.
+
+    Compatibility facade over :class:`JsonTransactionEngine`; the public
+    preflight/stage/commit/restore API and the global rename/delete
+    semantics are preserved for existing callers.
+    """
+
+    def __init__(self, transaction_root: str) -> None:
+        """Initialize a transaction engine under a project-owned directory."""
+        self._engine = JsonTransactionEngine(transaction_root)
 
     def preflight(
         self,
@@ -334,211 +657,27 @@ class BatchMigrationEngine:
         progress: Optional[ProgressCallback] = None,
     ) -> OperationResult:
         """Stage and validate changed JSON files without replacing sources."""
-        transaction_id = uuid.uuid4().hex
-        transaction_dir = osp.join(self.transaction_root, transaction_id)
-        staged_dir = osp.join(transaction_dir, "staged")
-        backups_dir = osp.join(transaction_dir, "backups")
-        os.makedirs(staged_dir, exist_ok=True)
-        os.makedirs(backups_dir, exist_ok=True)
-        entries: list[dict[str, Any]] = []
-        results: list[FileOperationResult] = []
-        for index, source in enumerate(paths, 1):
-            if cancel_check and cancel_check():
-                manifest_path = self._write_manifest(
-                    transaction_dir, transaction_id, entries
-                )
-                return OperationResult(
-                    transaction_id,
-                    "staged",
-                    tuple(results),
-                    True,
-                    manifest_path,
-                )
-            try:
-                with open(source, "r", encoding="utf-8") as stream:
-                    original = json.load(stream)
-                transformed = transform_annotation_data(
-                    original, plan.rename_map, plan.delete_labels
-                )
-                if not transformed.changed:
-                    results.append(
-                        FileOperationResult(
-                            source, "skipped", "no matching change"
-                        )
-                    )
-                    continue
-                token = hashlib.sha256(
-                    osp.abspath(source).encode("utf-8")
-                ).hexdigest()[:20]
-                staged = osp.join(staged_dir, f"{token}.json")
-                backup = osp.join(backups_dir, f"{token}.json")
-                fd, temporary = tempfile.mkstemp(
-                    prefix="stage-", suffix=".json", dir=staged_dir
-                )
-                os.close(fd)
-                try:
-                    with open(temporary, "w", encoding="utf-8") as stream:
-                        json.dump(
-                            transformed.data,
-                            stream,
-                            indent=2,
-                            ensure_ascii=False,
-                        )
-                        stream.write("\n")
-                    with open(temporary, "r", encoding="utf-8") as stream:
-                        json.load(stream)
-                    os.replace(temporary, staged)
-                finally:
-                    if osp.exists(temporary):
-                        os.remove(temporary)
-                shutil.copy2(source, backup)
-                entry = {
-                    "source_path": osp.abspath(source),
-                    "staged_path": staged,
-                    "backup_path": backup,
-                    "original_fingerprint": _fingerprint(source),
-                    "status": "staged",
-                    "matched_shapes": transformed.matched_shapes,
-                }
-                entries.append(entry)
-                results.append(
-                    FileOperationResult(
-                        source,
-                        "staged",
-                        matched_shapes=transformed.matched_shapes,
-                        backup_path=backup,
-                    )
-                )
-            except (OSError, ValueError, TypeError) as exc:
-                results.append(FileOperationResult(source, "failed", str(exc)))
-            if progress:
-                progress("staging", index, len(paths), source)
-        manifest_path = self._write_manifest(
-            transaction_dir, transaction_id, entries
-        )
-        return OperationResult(
-            transaction_id, "staged", tuple(results), False, manifest_path
+
+        def transform(
+            _source: str, original: Mapping[str, Any]
+        ) -> StagedTransform:
+            outcome = transform_annotation_data(
+                original, plan.rename_map, plan.delete_labels
+            )
+            return StagedTransform(
+                data=outcome.data,
+                changed=outcome.changed,
+                matched_shapes=outcome.matched_shapes,
+            )
+
+        return self._engine.stage_files(
+            paths, transform, cancel_check, progress
         )
 
     def commit(self, staged: OperationResult, root: str) -> OperationResult:
         """Atomically replace staged files; this phase deliberately ignores cancel."""
-        lock = DatasetWriteCoordinator.lock_for(root)
-        results: list[FileOperationResult] = []
-        manifest_path = staged.manifest_path
-        entries = self._read_manifest(manifest_path) if manifest_path else []
-        with lock:
-            for entry in entries:
-                source = entry["source_path"]
-                try:
-                    if _fingerprint(source) != entry["original_fingerprint"]:
-                        raise RuntimeError("source changed after preflight")
-                    os.replace(entry["staged_path"], source)
-                    entry["status"] = "succeeded"
-                    results.append(
-                        FileOperationResult(
-                            source,
-                            "succeeded",
-                            matched_shapes=entry["matched_shapes"],
-                            backup_path=entry["backup_path"],
-                        )
-                    )
-                except (OSError, RuntimeError) as exc:
-                    entry["status"] = "failed"
-                    entry["message"] = str(exc)
-                    results.append(
-                        FileOperationResult(
-                            source,
-                            "failed",
-                            str(exc),
-                            backup_path=entry["backup_path"],
-                        )
-                    )
-            if manifest_path:
-                self._write_manifest(
-                    osp.dirname(manifest_path), staged.transaction_id, entries
-                )
-        for item in staged.files:
-            if item.status == "skipped" or item.status == "failed":
-                results.append(item)
-        return OperationResult(
-            staged.transaction_id,
-            "committed",
-            tuple(results),
-            False,
-            manifest_path,
-        )
+        return self._engine.commit(staged, root)
 
     def restore(self, manifest_path: str) -> OperationResult:
         """Restore every committed source from its retained backup atomically."""
-        entries = self._read_manifest(manifest_path)
-        results: list[FileOperationResult] = []
-        for entry in entries:
-            try:
-                fd, temporary = tempfile.mkstemp(
-                    prefix="restore-",
-                    suffix=".json",
-                    dir=osp.dirname(entry["source_path"]),
-                )
-                os.close(fd)
-                shutil.copy2(entry["backup_path"], temporary)
-                with open(temporary, "r", encoding="utf-8") as stream:
-                    json.load(stream)
-                os.replace(temporary, entry["source_path"])
-                entry["status"] = "restored"
-                results.append(
-                    FileOperationResult(entry["source_path"], "succeeded")
-                )
-            except (OSError, ValueError) as exc:
-                results.append(
-                    FileOperationResult(
-                        entry["source_path"], "failed", str(exc)
-                    )
-                )
-        self._write_manifest(
-            osp.dirname(manifest_path),
-            (
-                entries[0].get("transaction_id", "restore")
-                if entries
-                else "restore"
-            ),
-            entries,
-        )
-        return OperationResult(
-            osp.basename(osp.dirname(manifest_path)),
-            "restored",
-            tuple(results),
-            False,
-            manifest_path,
-        )
-
-    @staticmethod
-    def _write_manifest(
-        transaction_dir: str,
-        transaction_id: str,
-        entries: list[dict[str, Any]],
-    ) -> str:
-        """Write a versioned transaction manifest atomically."""
-        path = osp.join(transaction_dir, "manifest.json")
-        payload = {
-            "schema_version": 1,
-            "transaction_id": transaction_id,
-            "entries": entries,
-        }
-        temporary = f"{path}.tmp"
-        with open(temporary, "w", encoding="utf-8") as stream:
-            json.dump(payload, stream, indent=2, ensure_ascii=False)
-        os.replace(temporary, path)
-        return path
-
-    @staticmethod
-    def _read_manifest(path: Optional[str]) -> list[dict[str, Any]]:
-        """Read manifest entries defensively."""
-        if not path:
-            return []
-        with open(path, "r", encoding="utf-8") as stream:
-            payload = json.load(stream)
-        transaction_id = payload.get("transaction_id", "")
-        entries = payload.get("entries", [])
-        for entry in entries:
-            entry.setdefault("transaction_id", transaction_id)
-        return entries
+        return self._engine.restore(manifest_path)

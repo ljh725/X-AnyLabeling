@@ -385,6 +385,11 @@ class InspectorPanel(QtWidgets.QDockWidget):
         return self._virtual_review
 
     @property
+    def quality_review_widget(self) -> QualityReviewWidget:
+        """Return the L1/L2 quality review queue widget."""
+        return self._quality_review
+
+    @property
     def dataset_review_widget(self) -> DatasetReviewWidget:
         """Return the dataset review queue controls."""
         return self._dataset_review
@@ -1268,3 +1273,4 @@ class InspectorPanel(QtWidgets.QDockWidget):
     @property
     def rule_config_widget(self) -> RuleConfigWidget:
         return self._rule_config
+

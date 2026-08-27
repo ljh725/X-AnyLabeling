@@ -60,11 +60,10 @@ from ...config import get_work_directory
 from anylabeling.services.behavior_analytics import (
     AnalysisFilter,
     BehaviorTelemetry,
-    export_analysis_bundle,
     FeatureState,
     LocalEventRecorder,
+    build_range_selection,
     cleanup_event_logs,
-    read_events,
 )
 from .label_file import LabelFile, LabelFileError
 from .logger import logger
@@ -91,6 +90,8 @@ from .dataset_index.controller import (
 from .settings import SettingsController, SettingsDialog
 from .settings.runtime_applier import SettingsRuntimeApplier
 from .shape import Shape
+from .shape_identity_project import ProjectShapeIdentityResult
+from .shape_identity_worker import ProjectShapeIdentityWorker
 from .widgets.appearance import (
     load_project_palette,
     load_user_appearance,
@@ -156,7 +157,24 @@ from .widgets import (
     InspectorPanel,
 )
 from .widgets.behavior_analytics_dialog import BehaviorAnalyticsDialog
+from .widgets.behavior_analytics_worker import BehaviorAnalyticsExportWorker
 from .widgets.canvas import DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
+from .widgets.label_batch import BatchWriteGate, JsonTransactionEngine
+from .widgets.object_relabel import (
+    MarkedObjectRef,
+    MarkedObjectStore,
+    ObjectRelabelPlanError,
+    build_object_relabel_plan,
+)
+from .widgets.object_relabel_dialog import run_object_relabel_flow
+from .widgets.object_field_edit import (
+    ObjectFieldEditPlanError,
+    build_object_field_edit_plan,
+)
+from .widgets.object_field_edit_dialog import (
+    ObjectFieldEditDialog,
+    run_object_field_edit_flow,
+)
 from .widgets.pose_label import (
     PoseViewPanel,
 )
@@ -331,7 +349,10 @@ class LabelingWidget(LabelDialog):
             config = get_config()
         self._config = config
         self._behavior_telemetry = None
+        self._behavior_activity_timer = None
         self._behavior_geometry_spans = {}
+        self._behavior_creation_token = None
+        self._behavior_creation_mode = None
         self.appearance_settings = load_user_appearance(self._config)
         self.appearance_label_colors = {}
         self.label_flags = self._config["label_flags"]
@@ -367,15 +388,19 @@ class LabelingWidget(LabelDialog):
         )
         self.inspector_panel.issue_navigate_requested.connect(
             lambda *_: self._behavior_action(
-                "inspector_navigate", input_source="mouse"
+                "inspector_review",
+                input_source="mouse",
+                payload={"issue_rule": "navigation"},
             )
         )
         self.inspector_panel.shape_edit_requested.connect(
             self._on_inspector_shape_edit
         )
-        self.inspector_panel.shape_edit_requested.connect(
-            lambda *_: self._behavior_action(
-                "inspector_edit", input_source="mouse"
+        self.inspector_panel.quality_review_widget.review_changed.connect(
+            lambda: self._behavior_action(
+                "quality_review",
+                input_source="mouse",
+                payload={"quality_rule": "review_decision"},
             )
         )
         # Feed the initial label config to the shared label set
@@ -388,6 +413,13 @@ class LabelingWidget(LabelDialog):
         self._settings_controller = None
         self._settings_dialog = None
         self._label_modify_dialog = None
+        # Cross-image object marking: one session store owns the marks;
+        # the canvas only reports toggle gestures and paints the overlay.
+        self.marked_object_store = MarkedObjectStore()
+        self._object_relabel_thread = None
+        self._object_relabel_running = False
+        self._object_field_edit_thread = None
+        self._object_field_edit_running = False
         self._settings_runtime_applier = SettingsRuntimeApplier(self)
         self._auto_switch_signal_connected = False
 
@@ -439,6 +471,7 @@ class LabelingWidget(LabelDialog):
         self._no_selection_slot = False
         self._copied_shapes = None
         self._batch_edit_warning_shown = False
+        self._shape_identity_worker = None
 
         self.brightness_contrast_dialog = BrightnessContrastDialog(
             self.on_new_brightness_contrast, parent=self
@@ -645,9 +678,7 @@ class LabelingWidget(LabelDialog):
         self.canvas.set_appearance_label_colors(self.appearance_label_colors)
         self._review_target_tokens = {}
         self._review_metrics = self._create_review_metrics_collector()
-        refinement_config = self._config.get(
-            "rectangle_review_refinement", {}
-        )
+        refinement_config = self._config.get("rectangle_review_refinement", {})
         refinement_config = (
             refinement_config if isinstance(refinement_config, dict) else {}
         )
@@ -696,18 +727,26 @@ class LabelingWidget(LabelDialog):
         self.canvas.input_burst_requested.connect(
             self._behavior_burst_requested
         )
+        self.canvas.semantic_burst_requested.connect(
+            self._behavior_semantic_burst_requested
+        )
         self.canvas.new_shape.connect(self.new_shape)
         self.canvas.drawing_canceled.connect(
             self.digit_bind_draw_manager.clear_pending
         )
+        self.canvas.drawing_canceled.connect(self._behavior_creation_cancelled)
         self.canvas.show_shape.connect(self.show_shape)
         self.canvas.shape_moved.connect(self.set_dirty)
-        self.canvas.shape_moved.connect(self._behavior_shape_moved)
+        self.canvas.shape_edit_started.connect(self._behavior_edit_started)
+        self.canvas.shape_edit_finished.connect(self._behavior_edit_finished)
         self.canvas.shape_rotated.connect(self.set_dirty)
         self.canvas.mode_changed.connect(
             lambda: self._behavior_action("mode_changed", input_source="menu")
         )
         self.canvas.escape_pressed.connect(self._on_canvas_escape_pressed)
+        self.canvas.batch_mark_toggle_requested.connect(
+            self.toggle_marked_object
+        )
         self.canvas.selection_changed.connect(self.shape_selection_changed)
         self.canvas.selection_changed.connect(
             self._review_metrics_selection_changed
@@ -1388,6 +1427,53 @@ class LabelingWidget(LabelDialog):
             tip=self.tr("Manage Shapes: Add, Delete, Remove"),
             enabled=False,
         )
+        batch_mark_mode = action(
+            self.tr("Cross-Image Object Marking"),
+            self.toggle_batch_mark_mode,
+            checkable=True,
+            icon="edit",
+            tip=self.tr(
+                "Toggle cross-image object marking mode; marking alone "
+                "never modifies annotation files"
+            ),
+        )
+        clear_batch_marks = action(
+            self.tr("Clear Cross-Image Marks"),
+            self.clear_marked_objects,
+            icon="cancel",
+            tip=self.tr("Remove all active cross-image object marks"),
+        )
+        relabel_marked_objects = action(
+            self.tr("Relabel Marked Objects..."),
+            self.relabel_marked_objects,
+            icon="edit",
+            tip=self.tr(
+                "Change the label of every cross-image marked object "
+                "after a strict preflight"
+            ),
+        )
+        edit_marked_object_fields = action(
+            self.tr("Batch Edit Marked Objects..."),
+            self.edit_marked_object_fields,
+            icon="edit",
+            tip=self.tr(
+                "Edit selected fields on every cross-image marked object "
+                "after a strict preflight"
+            ),
+        )
+        restore_object_relabel = action(
+            self.tr("Restore Object Relabel from Manifest..."),
+            self.restore_object_relabel_from_manifest,
+            icon="undo",
+            tip=self.tr("Roll back a committed object relabel transaction"),
+        )
+        self.object_mark_actions = utils.Struct(
+            batch_mark_mode=batch_mark_mode,
+            clear_batch_marks=clear_batch_marks,
+            relabel_marked_objects=relabel_marked_objects,
+            edit_marked_object_fields=edit_marked_object_fields,
+            restore_object_relabel=restore_object_relabel,
+        )
         copy_coordinates = action(
             self.tr("Copy Coordinates"),
             self.copy_shape_coordinates,
@@ -1408,6 +1494,14 @@ class LabelingWidget(LabelDialog):
             lambda: utils.open_shape_converter(self),
             icon="convert",
             tip=self.tr("Open shape converter"),
+        )
+        assign_shape_ids = action(
+            self.tr("Assign Shape IDs to Project"),
+            self.assign_project_shape_ids,
+            tip=self.tr(
+                "Assign persistent unique IDs to every Shape in this project"
+            ),
+            enabled=False,
         )
         open_chatbot = action(
             self.tr("ChatBot"),
@@ -2187,7 +2281,9 @@ class LabelingWidget(LabelDialog):
             self.open_behavior_analytics,
             None,
             "statistics",
-            self.tr("Record locally and export deterministic behavior statistics"),
+            self.tr(
+                "Record locally and export deterministic behavior statistics"
+            ),
             enabled=True,
         )
 
@@ -2428,6 +2524,7 @@ class LabelingWidget(LabelDialog):
             label_manager=label_manager,
             gid_manager=gid_manager,
             shape_manager=shape_manager,
+            assign_shape_ids=assign_shape_ids,
             loop_thru_labels=loop_thru_labels,
             loop_select_labels=loop_select_labels,
             select_toggle_shapes=select_toggle_shapes,
@@ -2519,6 +2616,7 @@ class LabelingWidget(LabelDialog):
                 loop_thru_labels,
                 loop_select_labels,
                 select_toggle_shapes,
+                assign_shape_ids,
             ),
             on_shapes_present=(save_as, delete),
             hide_selected_polygons=hide_selected_polygons,
@@ -2623,8 +2721,14 @@ class LabelingWidget(LabelDialog):
                 label_manager,
                 gid_manager,
                 shape_manager,
+                batch_mark_mode,
+                clear_batch_marks,
+                relabel_marked_objects,
+                edit_marked_object_fields,
+                restore_object_relabel,
                 None,
                 shape_converter,
+                assign_shape_ids,
             ),
         )
         utils.add_actions(
@@ -3811,33 +3915,80 @@ class LabelingWidget(LabelDialog):
         )
 
     def _behavior_shape_moved(self) -> None:
-        """Record ordinary geometry commits not owned by review spans."""
-        if self._behavior_geometry_spans:
+        """Keep legacy shape-moved notifications out of v3 action timing.
+
+        Precise geometry spans are emitted by the edit-start/edit-finish
+        signals.  The canvas movement signal remains available for UI dirty
+        state updates, but it must not create a second low-granularity event.
+        """
+        return
+
+    def _behavior_edit_started(self, edit_target: str) -> None:
+        """Begin one ordinary geometry action at the mouse press boundary."""
+        telemetry = self._behavior_telemetry
+        if telemetry is None or getattr(
+            self, "_behavior_edit_action_id", None
+        ):
             return
-        self._behavior_action("geometry_edit", input_source="mouse")
+        self._behavior_edit_action_id = telemetry.begin_action(
+            "geometry_adjust",
+            input_source="mouse",
+            edit_target=edit_target,
+        )
+
+    def _behavior_edit_finished(
+        self, _edit_target: str, changed: bool
+    ) -> None:
+        """Commit or classify one ordinary geometry action at release."""
+        action_id = getattr(self, "_behavior_edit_action_id", None)
+        telemetry = self._behavior_telemetry
+        self._behavior_edit_action_id = None
+        if telemetry is None or action_id is None:
+            return
+        telemetry.finish_action(
+            action_id,
+            result="success" if changed else "no_change",
+            net_change={"changed": changed},
+        )
+
+    def _behavior_creation_cancelled(self) -> None:
+        """Close a provisional creation token without a success fact."""
+        telemetry = self._behavior_telemetry
+        token = self._behavior_creation_token
+        if telemetry is not None and token:
+            telemetry.cancel_creation(token, reason="drawing_cancelled")
+        self._behavior_creation_token = None
+        self._behavior_creation_mode = None
 
     def _behavior_geometry_started(self, edge_name: str) -> None:
         """Start one rectangle-edge action span shared with review metrics."""
         correlation_id = uuid.uuid4().hex
-        self._behavior_geometry_spans[correlation_id] = time.monotonic()
+        telemetry = self._behavior_telemetry
+        if telemetry is None:
+            return
+        self._behavior_geometry_spans[correlation_id] = telemetry.begin_action(
+            "rectangle_adjust",
+            input_source="mouse",
+            edit_target=edge_name,
+            action_id=correlation_id,
+            participating_features=("rectangle_refinement",),
+        )
 
     def _behavior_geometry_finished(self, changed: bool) -> None:
         """Commit or cancel the current rectangle-edge action span once."""
         if not self._behavior_geometry_spans:
             return
-        correlation_id, started = next(
+        correlation_id, action_id = next(
             iter(self._behavior_geometry_spans.items())
         )
         del self._behavior_geometry_spans[correlation_id]
-        duration_ms = max(0, int((time.monotonic() - started) * 1000))
-        self._behavior_action(
-            "action_span",
-            input_source="mouse",
-            result="success" if changed else "cancelled",
-            duration_ms=duration_ms,
-            correlation_id=correlation_id,
-            payload={"action": "rectangle_edge_drag"},
-        )
+        telemetry = self._behavior_telemetry
+        if telemetry is not None and action_id is not None:
+            telemetry.finish_action(
+                action_id,
+                result="success" if changed else "no_change",
+                net_change={"changed": changed},
+            )
 
     def _review_metrics_selection_changed(
         self, selected_shapes: list[Shape]
@@ -3932,9 +4083,11 @@ class LabelingWidget(LabelDialog):
 
     def undo_shape_edit(self):
         collector = self._review_metrics
-        target = self.canvas.selected_shapes[0] if len(
-            self.canvas.selected_shapes
-        ) == 1 else None
+        target = (
+            self.canvas.selected_shapes[0]
+            if len(self.canvas.selected_shapes) == 1
+            else None
+        )
         target_token = self._review_target_tokens.get(id(target), "")
         was_restorable = bool(self.canvas.is_shape_restorable)
         target_index = (
@@ -3966,8 +4119,7 @@ class LabelingWidget(LabelDialog):
             )
             after_points = (
                 tuple(
-                    (point.x(), point.y())
-                    for point in restored_target.points
+                    (point.x(), point.y()) for point in restored_target.points
                 )
                 if restored_target is not None
                 else None
@@ -3978,6 +4130,11 @@ class LabelingWidget(LabelDialog):
                 and after_points != before_points
             )
             collector.undo_applied(target_token, geometry_changed)
+        if was_restorable:
+            self._behavior_action(
+                "shape_restored",
+                input_source="keyboard",
+            )
         self._behavior_action("undo", input_source="keyboard")
         # Refresh keypoint fill mode after undo
         if (
@@ -4047,7 +4204,7 @@ class LabelingWidget(LabelDialog):
             else:
                 polygon_shapes.append([(p.x(), p.y()) for p in points])
 
-        union_shape = shape.copy()
+        union_shape = shape.copy_for_new_object()
 
         if len(rectangle_shapes) > 0:
             min_x = min([bbox[0] for bbox in rectangle_shapes])
@@ -4103,7 +4260,9 @@ class LabelingWidget(LabelDialog):
 
         # Append merged shape and remove selected shapes
         self.add_label(union_shape)
-        self.remove_labels(self.canvas.delete_selected())
+        deleted_shapes = self.canvas.delete_selected()
+        self._remove_marks_for_shapes(deleted_shapes)
+        self.remove_labels(deleted_shapes)
         self.set_dirty()
 
         # Update UI state
@@ -4170,6 +4329,481 @@ class LabelingWidget(LabelDialog):
             if self.filename:
                 self.load_file(self.filename)
 
+    def toggle_batch_mark_mode(self, checked):
+        """Enable or pause the cross-image marking gesture on the canvas."""
+        self.canvas.set_batch_mark_mode(bool(checked))
+
+    def toggle_marked_object(self, shape):
+        """Toggle one cross-image mark from a canvas click request."""
+        if shape is None or not self.filename:
+            return
+        shape_id = getattr(shape, "xanylabeling_shape_id", "")
+        if not shape_id:
+            return
+        ref = MarkedObjectRef(
+            project_id=self._marked_project_id(),
+            image_id=osp.abspath(self.filename),
+            shape_id=shape_id,
+            display_summary=shape.label or "",
+        )
+        self.marked_object_store.toggle(ref)
+        self._sync_marked_object_ui()
+
+    def clear_marked_objects(self):
+        """Clear every active cross-image mark without touching files."""
+        count = self.marked_object_store.clear()
+        self._sync_marked_object_ui()
+        self.status(self.tr("Cleared %d cross-image mark(s)") % count)
+
+    def relabel_marked_objects(self):
+        """Unified entry for the object-level relabel command.
+
+        Any future menu, context-menu, or digit-shortcut entry point
+        must call this method instead of implementing its own write path.
+        """
+        if self._object_relabel_running:
+            return
+        project_id = self._marked_project_id()
+        counts = self.marked_object_store.counts_for_project(project_id)
+        if counts["objects"] == 0:
+            QtWidgets.QMessageBox.information(
+                self,
+                self.tr("Relabel Marked Objects"),
+                self.tr(
+                    "No marked objects yet. Enable cross-image object "
+                    "marking and click objects to mark them first."
+                ),
+            )
+            return
+        if not self.filename:
+            return
+        resolution = self.dataset_review_resolve_dirty()
+        if resolution in ("cancel", "save_failed"):
+            if resolution == "save_failed":
+                self.error_message(
+                    self.tr("Relabel Marked Objects"),
+                    self.tr(
+                        "Failed to save the current file. Relabeling "
+                        "aborted; all marks are kept."
+                    ),
+                )
+            return
+        if resolution == "discard":
+            self.load_file(self.filename)
+        snapshot = self.marked_object_store.snapshot_for_project(project_id)
+        target, ok = QtWidgets.QInputDialog.getItem(
+            self,
+            self.tr("Relabel Marked Objects"),
+            self.tr(
+                "Target label for {objects} marked object(s) in {files} "
+                "file(s):"
+            ).format(objects=counts["objects"], files=counts["files"]),
+            self._candidate_target_labels(),
+            0,
+            editable=True,
+        )
+        if not ok or not target.strip():
+            return
+        try:
+            plan = build_object_relabel_plan(
+                snapshot,
+                project_id,
+                target,
+                self._batch_write_root(),
+                self._annotation_path_for_image,
+            )
+        except ObjectRelabelPlanError as exc:
+            self.error_message(self.tr("Relabel Marked Objects"), str(exc))
+            return
+        batch_root = self._batch_write_root()
+        action = self.object_mark_actions.relabel_marked_objects
+        self._object_relabel_running = True
+        action.setEnabled(False)
+
+        def on_finished(result):
+            self._object_relabel_running = False
+            action.setEnabled(True)
+            self._apply_object_relabel_result(result)
+
+        def on_flow_failed(message):
+            self._object_relabel_running = False
+            action.setEnabled(True)
+            self.error_message(self.tr("Relabel Marked Objects"), message)
+
+        started = run_object_relabel_flow(
+            self,
+            plan,
+            batch_root,
+            batch_root,
+            on_finished,
+            on_flow_failed,
+        )
+        if not started:
+            # The flow refused to start; restore the entry state so the
+            # single command stays usable.
+            self._object_relabel_running = False
+            action.setEnabled(True)
+
+    def edit_marked_object_fields(self):
+        """Edit selected JSON fields on the frozen marked-object snapshot."""
+        if self._object_field_edit_running or self._object_relabel_running:
+            return
+        project_id = self._marked_project_id()
+        counts = self.marked_object_store.counts_for_project(project_id)
+        if counts["objects"] == 0:
+            QtWidgets.QMessageBox.information(
+                self,
+                self.tr("Batch Edit Marked Objects"),
+                self.tr(
+                    "No marked objects yet. Enable cross-image object "
+                    "marking and click objects to mark them first."
+                ),
+            )
+            return
+        if not self.filename:
+            return
+        resolution = self.dataset_review_resolve_dirty()
+        if resolution in ("cancel", "save_failed"):
+            if resolution == "save_failed":
+                self.error_message(
+                    self.tr("Batch Edit Marked Objects"),
+                    self.tr(
+                        "Failed to save the current file. Field editing "
+                        "was aborted; all marks are kept."
+                    ),
+                )
+            return
+        if resolution == "discard":
+            self.load_file(self.filename)
+        snapshot = self.marked_object_store.snapshot_for_project(project_id)
+        dialog = ObjectFieldEditDialog(
+            counts["objects"], counts["files"], parent=self
+        )
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        try:
+            assignments = dialog.assignments()
+            plan = build_object_field_edit_plan(
+                snapshot,
+                project_id,
+                assignments,
+                self._batch_write_root(),
+                self._annotation_path_for_image,
+            )
+        except ObjectFieldEditPlanError as exc:
+            self.error_message(self.tr("Batch Edit Marked Objects"), str(exc))
+            return
+        batch_root = self._batch_write_root()
+        action = self.object_mark_actions.edit_marked_object_fields
+        self._object_field_edit_running = True
+        action.setEnabled(False)
+
+        def on_finished(result):
+            self._object_field_edit_running = False
+            action.setEnabled(True)
+            self._apply_object_field_edit_result(result)
+
+        def on_flow_failed(message):
+            self._object_field_edit_running = False
+            action.setEnabled(True)
+            self.error_message(self.tr("Batch Edit Marked Objects"), message)
+
+        started = run_object_field_edit_flow(
+            self,
+            plan,
+            batch_root,
+            batch_root,
+            on_finished,
+            on_flow_failed,
+        )
+        if not started:
+            self._object_field_edit_running = False
+            action.setEnabled(True)
+
+    def _candidate_target_labels(self):
+        """Collect candidate target labels from the project label list."""
+        candidates = []
+        for index in range(self.unique_label_list.count()):
+            text = self.unique_label_list.item(index).text()
+            if text:
+                candidates.append(text)
+        if not candidates:
+            for shape in self.canvas.shapes:
+                if shape.label:
+                    candidates.append(shape.label)
+        return sorted(set(candidates)) or [""]
+
+    def _marked_project_id(self):
+        """Return the stable project identity used by full object keys."""
+        return self._batch_write_root()
+
+    def _batch_write_root(self):
+        """Return the canonical root shared by every batch writer."""
+        if self.output_dir:
+            return osp.normcase(osp.abspath(str(self.output_dir)))
+        root = self.dataset_review_dataset_root()
+        return osp.normcase(osp.abspath(root)) if root else ""
+
+    def _annotation_path_for_image(self, image_id):
+        """Resolve an image path to its annotation JSON (project rules)."""
+        path = osp.splitext(str(image_id))[0] + ".json"
+        if self.output_dir:
+            return osp.join(str(self.output_dir), osp.basename(path))
+        return path
+
+    def _sync_marked_object_ui(self):
+        """Refresh the canvas overlay and action badges from the store."""
+        project_id = self._marked_project_id()
+        image_id = osp.abspath(self.filename) if self.filename else ""
+        if project_id and image_id:
+            refs = self.marked_object_store.refs_for_image(
+                project_id, image_id
+            )
+            self.canvas.set_marked_shape_ids([ref.shape_id for ref in refs])
+        else:
+            self.canvas.set_marked_shape_ids([])
+        counts = self.marked_object_store.counts_for_project(project_id)
+        actions = getattr(self, "object_mark_actions", None)
+        if actions is None:
+            return
+        actions.relabel_marked_objects.setText(
+            self.tr("Relabel Marked Objects (%d objects, %d files)...")
+            % (counts["objects"], counts["files"])
+        )
+        field_action = getattr(actions, "edit_marked_object_fields", None)
+        if field_action is not None:
+            field_action.setText(
+                self.tr("Batch Edit Marked Objects (%d objects, %d files)...")
+                % (counts["objects"], counts["files"])
+            )
+        actions.clear_batch_marks.setEnabled(counts["objects"] > 0)
+
+    def _remove_marks_for_shapes(self, shapes):
+        """Drop marks of deleted shapes on the current image."""
+        if not self.filename:
+            return
+        project_id = self._marked_project_id()
+        if not project_id:
+            return
+        image_id = osp.abspath(self.filename)
+        keys = [
+            (project_id, image_id, shape.xanylabeling_shape_id)
+            for shape in shapes
+            if getattr(shape, "xanylabeling_shape_id", "")
+        ]
+        if not keys:
+            return
+        self.marked_object_store.remove_many(keys)
+        self._sync_marked_object_ui()
+
+    def _apply_object_relabel_result(self, result):
+        """Sync marks with per-object results and refresh bounded state."""
+        self.marked_object_store.apply_relabel_result(result)
+        committed = set(result.committed_annotation_paths)
+        committed_images = {
+            osp.abspath(self._annotation_path_for_image(item.key[1])): (
+                item.key[1]
+            )
+            for item in result.objects
+        }
+        for annotation_path, image_id in committed_images.items():
+            if annotation_path in committed:
+                # Keep the label→file dataset index in sync with disk.
+                self._dataset_index_controller.label_saved(image_id)
+        current = None
+        if self.filename:
+            current = osp.abspath(
+                self._annotation_path_for_image(osp.abspath(self.filename))
+            )
+        if current and current in committed:
+            self.load_file(self.filename)
+        else:
+            self._sync_marked_object_ui()
+
+    def _apply_object_field_edit_result(self, result):
+        """Sync marks and bounded dataset state after field editing."""
+        self.marked_object_store.apply_field_edit_result(result)
+        committed = set(result.committed_annotation_paths)
+        committed_images = {
+            osp.abspath(self._annotation_path_for_image(item.key[1])): (
+                item.key[1]
+            )
+            for item in result.objects
+        }
+        for annotation_path, image_id in committed_images.items():
+            if annotation_path in committed:
+                self._dataset_index_controller.label_saved(image_id)
+        current = None
+        if self.filename:
+            current = osp.abspath(
+                self._annotation_path_for_image(osp.abspath(self.filename))
+            )
+        if current and current in committed:
+            self.load_file(self.filename)
+        else:
+            self._sync_marked_object_ui()
+
+    def restore_object_relabel_from_manifest(self):
+        """Pick a recovery manifest file and restore it."""
+        start_dir = str(self._batch_write_root() or "")
+        if not start_dir and self.filename:
+            start_dir = osp.dirname(osp.abspath(self.filename))
+        manifest_path, _selected = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            self.tr("Select a recovery manifest"),
+            start_dir,
+            self.tr("Transaction manifests (*.json)"),
+        )
+        if manifest_path:
+            self.restore_object_relabel_manifest(manifest_path)
+
+    def restore_object_relabel_manifest(self, manifest_path):
+        """Restore files from one object-relabel transaction manifest."""
+        if not manifest_path or not osp.isfile(manifest_path):
+            self.error_message(
+                self.tr("Restore object relabel"),
+                self.tr("Manifest file not found: {path}").format(
+                    path=manifest_path
+                ),
+            )
+            return
+        try:
+            manifest_root = self._manifest_source_root(manifest_path)
+        except (OSError, TypeError, ValueError, KeyError) as exc:
+            self.error_message(
+                self.tr("Restore object relabel"),
+                self.tr("Invalid recovery manifest: {error}").format(
+                    error=exc
+                ),
+            )
+            return
+        current_root = self._batch_write_root()
+        if current_root and osp.normcase(
+            osp.abspath(manifest_root)
+        ) != osp.normcase(osp.abspath(current_root)):
+            self.error_message(
+                self.tr("Restore object relabel"),
+                self.tr("The recovery manifest belongs to another dataset."),
+            )
+            return
+        resolution = self.dataset_review_resolve_dirty()
+        if resolution in ("cancel", "save_failed"):
+            if resolution == "save_failed":
+                self.error_message(
+                    self.tr("Restore object relabel"),
+                    self.tr(
+                        "Failed to save the current file; restore aborted."
+                    ),
+                )
+            return
+        if resolution == "discard" and self.filename:
+            self.load_file(self.filename)
+
+        gate_owner = "object-relabel-restore"
+        if not BatchWriteGate.try_acquire(manifest_root, gate_owner):
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("Restore object relabel"),
+                self.tr(
+                    "Another batch write is already running for this dataset."
+                ),
+            )
+            return
+        try:
+            engine = JsonTransactionEngine(
+                osp.dirname(osp.dirname(manifest_path))
+            )
+            restored = engine.restore(manifest_path, root=manifest_root)
+        except (OSError, TypeError, ValueError, KeyError) as exc:
+            self.error_message(
+                self.tr("Restore object relabel"),
+                self.tr("Restore failed: {error}").format(error=exc),
+            )
+            return
+        finally:
+            BatchWriteGate.release(manifest_root, gate_owner)
+        restored_paths = {
+            osp.abspath(item.source_path)
+            for item in restored.files
+            if item.status == "succeeded"
+        }
+        for annotation_path in restored_paths:
+            image_id = self._image_for_annotation_path(annotation_path)
+            if image_id:
+                self._dataset_index_controller.label_saved(image_id)
+        current = None
+        if self.filename:
+            current = osp.abspath(
+                self._annotation_path_for_image(osp.abspath(self.filename))
+            )
+        if current and current in restored_paths:
+            self.load_file(self.filename)
+        QtWidgets.QMessageBox.information(
+            self,
+            self.tr("Restore object relabel"),
+            self.tr(
+                "Restored {count} file(s) from the recovery manifest."
+            ).format(count=len(restored_paths)),
+        )
+
+    def _manifest_source_root(self, manifest_path):
+        """Return the canonical source root recorded by a manifest."""
+        payload = JsonTransactionEngine._read_manifest_payload(manifest_path)
+        entries = payload.get("entries", [])
+        if not isinstance(entries, list) or not entries:
+            raise ValueError("manifest has no source entries")
+        root = JsonTransactionEngine._restore_root(entries)
+        if not root or root == ".":
+            raise ValueError("manifest source root is unavailable")
+        return osp.normcase(osp.abspath(root))
+
+    def _image_for_annotation_path(self, annotation_path):
+        """Find the loaded image corresponding to one annotation path."""
+        target = osp.normcase(osp.abspath(annotation_path))
+        candidates = list(self.image_list)
+        if self.filename and self.filename not in candidates:
+            candidates.append(self.filename)
+        for image_id in candidates:
+            if (
+                osp.normcase(
+                    osp.abspath(self._annotation_path_for_image(image_id))
+                )
+                == target
+            ):
+                return image_id
+        return None
+
+    def _prune_missing_marked_objects(self):
+        """Remove marks whose persisted objects no longer exist."""
+        project_id = self._marked_project_id()
+        if not project_id:
+            return
+        missing = []
+        for ref in self.marked_object_store.snapshot_for_project(project_id):
+            annotation_path = self._annotation_path_for_image(ref.image_id)
+            if not osp.isfile(annotation_path):
+                missing.append(ref.object_key)
+                continue
+            try:
+                with open(annotation_path, "r", encoding="utf-8") as stream:
+                    data = json.load(stream)
+                shapes = data.get("shapes")
+                if not isinstance(shapes, list):
+                    continue
+                shape_ids = {
+                    shape.get("xanylabeling_shape_id")
+                    for shape in shapes
+                    if isinstance(shape, dict)
+                    and isinstance(shape.get("xanylabeling_shape_id"), str)
+                }
+            except (OSError, TypeError, ValueError):
+                continue
+            if ref.shape_id not in shape_ids:
+                missing.append(ref.object_key)
+        if missing:
+            self.marked_object_store.remove_many(missing)
+        self._sync_marked_object_ui()
+
     def gid_manager(self):
         modify_gid_dialog = GroupIDModifyDialog(parent=self)
         result = modify_gid_dialog.exec()
@@ -4182,6 +4816,7 @@ class LabelingWidget(LabelDialog):
         if result == QtWidgets.QDialog.DialogCode.Accepted:
             if modify_shape_dialog.need_reload and self.filename:
                 self.load_file(self.filename)
+            self._prune_missing_marked_objects()
 
     def open_chatbot(self):
         dialog = ChatbotDialog(self)
@@ -4546,6 +5181,29 @@ class LabelingWidget(LabelDialog):
     def toggle_draw_mode(
         self, edit=True, create_mode="rectangle", disable_auto_labeling=True
     ):
+        telemetry = self._behavior_telemetry
+        if edit and self._behavior_creation_token and telemetry is not None:
+            telemetry.cancel_creation(self._behavior_creation_token)
+            self._behavior_creation_token = None
+            self._behavior_creation_mode = None
+        elif not edit and telemetry is not None:
+            if self._behavior_creation_token:
+                telemetry.cancel_creation(self._behavior_creation_token)
+            creation_mode = (
+                "digit_prefill"
+                if self.digit_to_label is not None
+                else "r_then_label"
+            )
+            self._behavior_creation_mode = creation_mode
+            self._behavior_creation_token = telemetry.begin_creation(
+                creation_mode,
+                initial_source=creation_mode,
+                shape_type=create_mode,
+                input_source=(
+                    "keyboard" if creation_mode == "digit_prefill" else "menu"
+                ),
+            )
+            telemetry.begin_create_draw(self._behavior_creation_token)
         if edit and hasattr(self, "digit_bind_draw_manager"):
             self.digit_bind_draw_manager.clear_pending()
 
@@ -5757,15 +6415,15 @@ class LabelingWidget(LabelDialog):
 
         current_index = self.fn_to_index[str(item.text())]
         if current_index < len(self.image_list):
-                filename = self.image_list[current_index]
-                if filename:
-                    if self._review_metrics is not None:
-                        self._review_metrics.target_cleared(
-                            EpisodeEndReason.IMAGE_CHANGED
-                        )
-                    self._teardown_review_transients()
-                    self._review_session.image_changed(str(current_index))
-                    self.load_file(filename)
+            filename = self.image_list[current_index]
+            if filename:
+                if self._review_metrics is not None:
+                    self._review_metrics.target_cleared(
+                        EpisodeEndReason.IMAGE_CHANGED
+                    )
+                self._teardown_review_transients()
+                self._review_session.image_changed(str(current_index))
+                self.load_file(filename)
 
     def _on_inspector_navigate(self, file_path: str, shape_index: int):
         """Navigate to a file and select a specific shape (inspector click)."""
@@ -5891,6 +6549,16 @@ class LabelingWidget(LabelDialog):
         self.canvas.notify_shape_changed(shape)
         self.set_dirty()
         self.canvas.update()
+        behavior_action = getattr(self, "_behavior_action", None)
+        if callable(behavior_action):
+            behavior_action(
+                "inspector_review",
+                input_source="mouse",
+                payload={
+                    "issue_rule": "editable_table",
+                    "shape_type": shape.shape_type,
+                },
+            )
 
     def _schedule_inspector_table_refresh(self):
         """Debounced refresh of the inspector editable table."""
@@ -5968,6 +6636,10 @@ class LabelingWidget(LabelDialog):
             bool(config.get("enabled", False)), parent=self
         )
         dialog.enabled_changed.connect(self._set_behavior_analytics_enabled)
+        if self._behavior_telemetry is not None:
+            dialog.set_recording_status(
+                self._behavior_telemetry.recorder.health
+            )
         dialog.export_requested.connect(self._export_behavior_analysis)
         dialog.cleanup_requested.connect(
             lambda: self._cleanup_behavior_logs(dialog)
@@ -5985,6 +6657,8 @@ class LabelingWidget(LabelDialog):
         if not enabled and self._behavior_telemetry is not None:
             self._behavior_telemetry.shutdown()
             self._behavior_telemetry = None
+            if self._behavior_activity_timer is not None:
+                self._behavior_activity_timer.stop()
         elif enabled and self.filename:
             self._ensure_behavior_telemetry(osp.dirname(self.filename))
             telemetry = self._behavior_telemetry
@@ -5993,64 +6667,138 @@ class LabelingWidget(LabelDialog):
 
     def _behavior_storage_root(self) -> Path:
         """Return the local analytics storage root."""
-        return Path(get_work_directory()) / ".xanylabeling" / "behavior_analytics"
+        return (
+            Path(get_work_directory()) / ".xanylabeling" / "behavior_analytics"
+        )
 
-    def _export_behavior_analysis(self, range_key: str, output_dir: str) -> None:
-        """Read local events and publish one deterministic analysis bundle."""
+    def _export_behavior_analysis(
+        self, range_key: str, output_dir: str
+    ) -> None:
+        """Start a cancellable background export of local behavior facts."""
         dialog = getattr(self, "_behavior_analytics_dialog", None)
         if dialog is None:
             return
-        if dialog is not None:
-            dialog.set_status("Reading local events...")
         event_filter = AnalysisFilter()
-        if range_key == "project" and self._behavior_telemetry is not None:
-            project = self._behavior_telemetry.tracker.project_session
-            if project is not None:
-                event_filter = AnalysisFilter(
-                    project_session_ids=frozenset(
-                        {project.project_session_id}
+        comparison_filter = None
+        comparison_sources = None
+
+        def preset_filter(preset: str) -> AnalysisFilter:
+            """Resolve one UI preset into the UTC event filter contract."""
+            if preset in {"all", "all_local"}:
+                return AnalysisFilter()
+            if preset == "custom":
+                start = dialog.custom_start_edit.text().strip()
+                end = dialog.custom_end_edit.text().strip()
+                selection = build_range_selection(
+                    "custom",
+                    local_start=start,
+                    local_end=end,
+                )
+            else:
+                selection = build_range_selection(preset)
+            return AnalysisFilter(
+                start_utc=selection.utc.start_utc,
+                end_utc=selection.utc.end_utc,
+            )
+
+        if range_key == "project":
+            project = (
+                self._behavior_telemetry.tracker.project_session
+                if self._behavior_telemetry is not None
+                else None
+            )
+            if project is None:
+                dialog.set_status(
+                    self.tr(
+                        "Export refused: there is no active project session."
                     )
                 )
+                return
+            event_filter = AnalysisFilter(
+                project_session_ids=frozenset({project.project_session_id})
+            )
+        elif range_key == "days":
+            event_filter = preset_filter("recent_1d")
+        elif range_key == "preset":
+            try:
+                event_filter = preset_filter(dialog.preset_box.currentData())
+            except (TypeError, ValueError) as exc:
+                dialog.set_status(
+                    self.tr("Export refused: %1").replace("%1", str(exc))
+                )
+                return
+        elif range_key == "dual":
+            try:
+                event_filter = preset_filter(dialog.baseline_box.currentData())
+                comparison_filter = preset_filter(
+                    dialog.comparison_box.currentData()
+                )
+                comparison_sources = [self._behavior_storage_root() / "events"]
+            except (TypeError, ValueError) as exc:
+                dialog.set_status(
+                    self.tr("Comparison refused: %1").replace("%1", str(exc))
+                )
+                return
         progress = QtWidgets.QProgressDialog(
-            "Reading local behavior events...",
-            "Cancel",
+            self.tr("Exporting local behavior facts..."),
+            self.tr("Cancel"),
             0,
-            1,
+            0,
             self,
         )
         progress.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
         progress.show()
-        QtWidgets.QApplication.processEvents()
-        if progress.wasCanceled():
-            return
-        try:
-            events, quality = read_events(
-                [self._behavior_storage_root() / "events"],
-                event_filter=event_filter,
+
+        worker = BehaviorAnalyticsExportWorker(
+            output_dir,
+            [self._behavior_storage_root() / "events"],
+            event_filter=event_filter,
+            comparison_sources=comparison_sources,
+            comparison_filter=comparison_filter,
+            parent=self,
+        )
+        self._behavior_analytics_export_worker = worker
+
+        def update_progress(phase: str, processed: int, accepted: int) -> None:
+            """Keep the dialog responsive with bounded worker progress."""
+            dialog.set_status(
+                self.tr("%1: processed %2 events; accepted %3.")
+                .replace("%1", phase)
+                .replace("%2", str(processed))
+                .replace("%3", str(accepted))
             )
-            if progress.wasCanceled():
-                return
-            bundle = export_analysis_bundle(
-                output_dir,
-                events,
-                quality=quality,
-                event_filter=event_filter,
-                representative_trace_limit=int(
-                    self._config.get("behavior_analytics", {}).get(
-                        "representative_trace_limit", 24
-                    )
-                ),
-                max_bundle_bytes=int(
-                    self._config.get("behavior_analytics", {}).get(
-                        "max_bundle_bytes", 5_242_880
-                    )
-                ),
+
+        def succeeded(bundle: str) -> None:
+            """Show the published bundle path and close progress UI."""
+            dialog.set_status(
+                self.tr("Analysis bundle created: %1").replace("%1", bundle)
             )
-            dialog.set_status(f"Analysis bundle created: {bundle}")
-        except (FileExistsError, OSError, ValueError) as exc:
-            dialog.set_status(f"Analysis failed: {exc}")
-        finally:
             progress.close()
+
+        def failed(message: str) -> None:
+            """Show a deterministic export failure without partial output."""
+            dialog.set_status(
+                self.tr("Analysis failed: %1").replace("%1", message)
+            )
+            progress.close()
+
+        def cancelled() -> None:
+            """Report cancellation without treating it as a failed export."""
+            dialog.set_status(
+                self.tr("Analysis export cancelled; no bundle was published.")
+            )
+            progress.close()
+
+        worker.progress_changed.connect(update_progress)
+        worker.export_succeeded.connect(succeeded)
+        worker.export_failed.connect(failed)
+        worker.export_cancelled.connect(cancelled)
+        progress.canceled.connect(worker.cancel)
+        worker.finished.connect(worker.deleteLater)
+        worker.finished.connect(
+            lambda: setattr(self, "_behavior_analytics_export_worker", None)
+        )
+        worker.start()
 
     def _cleanup_behavior_logs(self, dialog) -> None:
         """Apply the configured retention period to local event logs only."""
@@ -6065,12 +6813,14 @@ class LabelingWidget(LabelDialog):
                 retention_days=retention_days,
             )
             dialog.set_status(
-                "Cleaned "
-                f"{summary.events_removed} events from "
-                f"{summary.files_changed} shards."
+                self.tr("Cleaned %1 events from %2 shards.")
+                .replace("%1", str(summary.events_removed))
+                .replace("%2", str(summary.files_changed))
             )
         except (OSError, ValueError) as exc:
-            dialog.set_status(f"Cleanup failed: {exc}")
+            dialog.set_status(
+                self.tr("Cleanup failed: %1").replace("%1", str(exc))
+            )
 
     def attribute_selection_changed(self, i, property, combo):
         if self._building_attributes_panel:
@@ -6079,13 +6829,24 @@ class LabelingWidget(LabelDialog):
         if i < len(self.canvas.shapes):
             if not self.canvas.shapes[i].attributes:
                 self.canvas.shapes[i].attributes = {}
-            if (
-                self.canvas.shapes[i].attributes.get(property, "")
-                == selected_option
-            ):
+            previous_option = self.canvas.shapes[i].attributes.get(
+                property, ""
+            )
+            if previous_option == selected_option:
                 return
             self.canvas.shapes[i].attributes[property] = selected_option
             self.save_attributes(self.canvas.shapes)
+            self._behavior_action(
+                "attribute_edit",
+                input_source="mouse",
+                payload={"attribute_category": str(property)},
+                net_change_summary={
+                    "attribute_category": str(property),
+                    "before_bool": bool(previous_option),
+                    "after_bool": bool(selected_option),
+                    "change_kind": "option_changed",
+                },
+            )
 
     def attribute_radio_changed(self, i, property, option, checked):
         if self._building_attributes_panel:
@@ -6093,10 +6854,22 @@ class LabelingWidget(LabelDialog):
         if checked and i < len(self.canvas.shapes):
             if not self.canvas.shapes[i].attributes:
                 self.canvas.shapes[i].attributes = {}
-            if self.canvas.shapes[i].attributes.get(property) == option:
+            previous_option = self.canvas.shapes[i].attributes.get(property)
+            if previous_option == option:
                 return
             self.canvas.shapes[i].attributes[property] = option
             self.save_attributes(self.canvas.shapes)
+            self._behavior_action(
+                "attribute_edit",
+                input_source="mouse",
+                payload={"attribute_category": str(property)},
+                net_change_summary={
+                    "attribute_category": str(property),
+                    "before_bool": bool(previous_option),
+                    "after_bool": bool(option),
+                    "change_kind": "option_changed",
+                },
+            )
             self.canvas.update()
 
     def attribute_line_changed(self, i, property, line: QLineEdit):
@@ -6106,10 +6879,22 @@ class LabelingWidget(LabelDialog):
         if i < len(self.canvas.shapes):
             if not self.canvas.shapes[i].attributes:
                 self.canvas.shapes[i].attributes = {}
-            if self.canvas.shapes[i].attributes.get(property, "") == line_text:
+            previous_text = self.canvas.shapes[i].attributes.get(property, "")
+            if previous_text == line_text:
                 return
             self.canvas.shapes[i].attributes[property] = line_text
             self.save_attributes(self.canvas.shapes)
+            self._behavior_action(
+                "attribute_edit",
+                input_source="mouse",
+                payload={"attribute_category": str(property)},
+                net_change_summary={
+                    "attribute_category": str(property),
+                    "before_bool": bool(previous_text),
+                    "after_bool": bool(line_text),
+                    "change_kind": "text_changed",
+                },
+            )
 
     def update_selected_options(self, selected_options):
         if not isinstance(selected_options, dict):
@@ -6575,6 +7360,11 @@ class LabelingWidget(LabelDialog):
         self.canvas.notify_shape_changed(shape)
         self.set_dirty()
         self.canvas.update()
+        self._behavior_action(
+            "label_edit",
+            input_source="mouse",
+            payload={"label_key": "changed"},
+        )
 
     def _info_panel_gid_changed(self, shape_index, text):
         if self._building_attributes_panel:
@@ -6597,6 +7387,15 @@ class LabelingWidget(LabelDialog):
         self.set_dirty()
         self._refresh_shape_filters()
         self.canvas.update()
+        self._behavior_action(
+            "attribute_edit",
+            input_source="mouse",
+            payload={"attribute_category": "group_id"},
+            net_change_summary={
+                "attribute_category": "group_id",
+                "change_kind": "value_changed",
+            },
+        )
 
     def _info_panel_difficult_changed(self, shape_index, checked):
         if self._building_attributes_panel:
@@ -6607,6 +7406,16 @@ class LabelingWidget(LabelDialog):
         shape.difficult = checked
         self.canvas.notify_shape_changed(shape)
         self.set_dirty()
+        self._behavior_action(
+            "attribute_edit",
+            input_source="mouse",
+            payload={"attribute_category": "difficult"},
+            net_change_summary={
+                "attribute_category": "difficult",
+                "after_bool": bool(checked),
+                "change_kind": "value_changed",
+            },
+        )
 
     def _reset_attributes_panel(self):
         """Clear attribute widgets without recreating the scroll area."""
@@ -6736,10 +7545,31 @@ class LabelingWidget(LabelDialog):
 
         telemetry = self._behavior_telemetry
         if telemetry is not None and self.canvas.current is None:
-            for shape in selected_shapes:
+            selection_source = (
+                "user_list_single"
+                if getattr(self, "_list_selecting", False)
+                else "user_canvas_single"
+            )
+            if len(selected_shapes) > 1:
+                selection_source = "user_multi"
+            selection_batch_id = (
+                uuid.uuid4().hex if len(selected_shapes) > 1 else None
+            )
+            selection_targets = (
+                selected_shapes[:1]
+                if selection_source == "user_multi"
+                else selected_shapes
+            )
+            for shape in selection_targets:
                 shape_id = getattr(shape, "xanylabeling_shape_id", None)
                 if shape_id:
-                    telemetry.select_shape(shape_id)
+                    telemetry.select_shape(
+                        shape_id,
+                        selection_source=selection_source,
+                        selection_batch_id=selection_batch_id,
+                    )
+            if not selected_shapes:
+                telemetry.clear_shape()
 
         selected_count = len(selected_shapes)
         is_drawing_mode = (
@@ -6878,13 +7708,14 @@ class LabelingWidget(LabelDialog):
         self._no_selection_slot = True
         self.label_list.setUpdatesEnabled(False)
         try:
-            for shape in shapes:
-                self.add_label(
-                    shape,
-                    update_last_label=update_last_label,
-                    refresh_filters=False,
-                )
-            self.label_list.clearSelection()
+            with self.label_list.programmatic_update():
+                for shape in shapes:
+                    self.add_label(
+                        shape,
+                        update_last_label=update_last_label,
+                        refresh_filters=False,
+                    )
+                self.label_list.clearSelection()
         finally:
             self.label_list.setUpdatesEnabled(True)
             self._no_selection_slot = False
@@ -6892,6 +7723,7 @@ class LabelingWidget(LabelDialog):
         self.canvas.load_shapes(
             shapes, replace=replace, store_backup=store_backup
         )
+        self._sync_marked_object_ui()
         _t_canvas = time.perf_counter()
         self._refresh_shape_filters()
         _t_filter = time.perf_counter()
@@ -7084,11 +7916,18 @@ class LabelingWidget(LabelDialog):
             # retried later; it must never turn a successful label save into a
             # failed save operation.
             self._dataset_index_controller.label_saved(self.image_path)
-            self._behavior_action("labels_saved", input_source="keyboard")
+            self._behavior_action(
+                "labels_saved",
+                input_source="keyboard",
+                payload={"saved_after_change": True},
+            )
             return True
         except LabelFileError as e:
             self._behavior_action(
-                "labels_saved", input_source="keyboard", result="failed"
+                "labels_saved",
+                input_source="keyboard",
+                result="failed",
+                payload={"saved_after_change": False},
             )
             self.error_message(
                 self.tr("Error saving label data"), self.tr("<b>%s</b>") % e
@@ -7107,9 +7946,7 @@ class LabelingWidget(LabelDialog):
         if added_shapes:
             self._refresh_shape_filters()
             for _shape in added_shapes:
-                self._behavior_action(
-                    "shape_created", input_source="keyboard"
-                )
+                self._behavior_action("shape_created", input_source="keyboard")
         self.set_dirty()
 
     def paste_selected_shape(self):
@@ -7198,18 +8035,30 @@ class LabelingWidget(LabelDialog):
                 self._list_selecting = False
 
     def label_item_changed(self, item):
+        if self.label_list.is_programmatic_update:
+            return
         shape = item.shape()
+        previous_visible = bool(getattr(shape, "visible", True))
+        visible = item.checkState() == Qt.CheckState.Checked
         shape.visible = item.checkState() == Qt.CheckState.Checked
-        self.canvas.set_shape_visible(
-            shape, item.checkState() == Qt.CheckState.Checked
-        )
+        self.canvas.set_shape_visible(shape, visible)
         self._update_select_toggle_button_tooltip()
         if (
             hasattr(self, "navigator_dialog")
             and self.navigator_dialog.isVisible()
         ):
             self.update_navigator_shapes()
-        self._behavior_action("shape_edited", input_source="mouse")
+        self._behavior_action(
+            "attribute_edit",
+            input_source="mouse",
+            payload={"attribute_category": "visibility"},
+            net_change_summary={
+                "attribute_category": "visibility",
+                "before_bool": previous_visible,
+                "after_bool": visible,
+                "change_kind": "shown" if visible else "hidden",
+            },
+        )
 
     def label_order_changed(self):
         self.set_dirty()
@@ -7257,6 +8106,11 @@ class LabelingWidget(LabelDialog):
 
         position MUST be in global coordinates.
         """
+        telemetry = getattr(self, "_behavior_telemetry", None)
+        creation_token = getattr(self, "_behavior_creation_token", None)
+        behavior_action = getattr(self, "_behavior_action", None)
+        if telemetry is not None and creation_token:
+            telemetry.finish_create_draw(creation_token)
         # Keypoint fill mode: auto-assign label and group_id for new points
         if (
             hasattr(self, "keypoint_fill_mode")
@@ -7276,9 +8130,23 @@ class LabelingWidget(LabelDialog):
                     self.canvas.store_shapes()
                     self.keypoint_fill_mode.advance()
                     self.set_dirty()
-                    self._behavior_action(
-                        "shape_created", input_source="mouse"
-                    )
+                    if telemetry is not None and creation_token:
+                        telemetry.commit_creation(
+                            creation_token,
+                            str(
+                                getattr(shape, "shape_id", None)
+                                or getattr(shape, "id", None)
+                                or "created"
+                            ),
+                            shape_type=getattr(shape, "shape_type", None),
+                        )
+                        self._behavior_creation_token = None
+                        self._behavior_creation_mode = None
+                    else:
+                        if callable(behavior_action):
+                            behavior_action(
+                                "shape_created", input_source="mouse"
+                            )
                     return
 
         items = self.unique_label_list.selectedItems()
@@ -7332,6 +8200,8 @@ class LabelingWidget(LabelDialog):
                     group_id = last_gid
             else:
                 previous_text = self.label_dialog.edit.text()
+                if telemetry is not None and creation_token:
+                    telemetry.begin_create_label(creation_token)
                 (
                     text,
                     flags,
@@ -7344,8 +8214,20 @@ class LabelingWidget(LabelDialog):
                     group_id=last_gid,
                     move_mode=self._config.get("move_mode", "auto"),
                 )
+                if telemetry is not None and creation_token:
+                    telemetry.finish_create_label(
+                        creation_token,
+                        result="success" if text else "cancelled",
+                    )
                 if not text:
                     self.label_dialog.edit.setText(previous_text)
+                    if telemetry is not None and creation_token:
+                        telemetry.cancel_creation(
+                            creation_token, reason="label_cancelled"
+                        )
+                        self._behavior_creation_token = None
+                        self._behavior_creation_mode = None
+                    return
 
         # Feature 1: auto-create new person instance group_id.
         # Priority: bind_draw pending (DigitBindDrawManager) >
@@ -7372,6 +8254,12 @@ class LabelingWidget(LabelDialog):
             if bound is not None:
                 self.digit_bind_draw_manager.clear_pending()
                 self.canvas.discard_last_shape()
+            if telemetry is not None and creation_token:
+                telemetry.cancel_creation(
+                    creation_token, reason="label_validation_failed"
+                )
+                self._behavior_creation_token = None
+                self._behavior_creation_mode = None
             return
 
         if self.attributes and text:
@@ -7391,7 +8279,21 @@ class LabelingWidget(LabelDialog):
             shape.difficult = difficult
             shape.kie_linking = kie_linking
             self.add_label(shape)
-            self._behavior_action("shape_created", input_source="mouse")
+            if telemetry is not None and creation_token:
+                telemetry.commit_creation(
+                    creation_token,
+                    str(
+                        getattr(shape, "shape_id", None)
+                        or getattr(shape, "id", None)
+                        or "created"
+                    ),
+                    shape_type=getattr(shape, "shape_type", None),
+                )
+                self._behavior_creation_token = None
+                self._behavior_creation_mode = None
+            else:
+                if callable(behavior_action):
+                    behavior_action("shape_created", input_source="mouse")
             self.actions.edit_mode.setEnabled(True)
             self.actions.undo_last_point.setEnabled(False)
             self.actions.undo.setEnabled(True)
@@ -8029,11 +8931,12 @@ class LabelingWidget(LabelDialog):
 
     def hide_selected_polygons(self):
         shapes_to_hide = []
-        for item in self.label_list:
-            if item.shape().selected:
-                item.setCheckState(Qt.CheckState.Unchecked)
-                item.shape().visible = False
-                shapes_to_hide.append(item.shape())
+        with self.label_list.programmatic_update():
+            for item in self.label_list:
+                if item.shape().selected:
+                    item.setCheckState(Qt.CheckState.Unchecked)
+                    item.shape().visible = False
+                    shapes_to_hide.append(item.shape())
 
         self.selected_polygon_stack.extend(shapes_to_hide)
         self.canvas.update()
@@ -8048,7 +8951,8 @@ class LabelingWidget(LabelDialog):
             shape_to_show = self.selected_polygon_stack.pop()
             item = self.label_list.find_item_by_shape(shape_to_show)
             if item:
-                item.setCheckState(Qt.CheckState.Checked)
+                with self.label_list.programmatic_update():
+                    item.setCheckState(Qt.CheckState.Checked)
                 shape_to_show.visible = True
                 self.canvas.update()
                 if (
@@ -8100,9 +9004,10 @@ class LabelingWidget(LabelDialog):
             return
         project_root = osp.abspath(project_root)
         current = self._behavior_telemetry
-        if current is not None and getattr(
-            current.tracker, "_project_root", None
-        ) == project_root:
+        if (
+            current is not None
+            and getattr(current.tracker, "_project_root", None) == project_root
+        ):
             return
         if current is not None:
             current.shutdown()
@@ -8137,27 +9042,82 @@ class LabelingWidget(LabelDialog):
             }
         )
         self._behavior_telemetry = telemetry
+        if self._behavior_activity_timer is None:
+            self._behavior_activity_timer = QtCore.QTimer(self)
+            self._behavior_activity_timer.timeout.connect(
+                self._observe_behavior_activity
+            )
+        idle_timeout_ms = int(analytics_config.get("idle_timeout_ms", 120_000))
+        self._behavior_activity_timer.setInterval(
+            max(500, min(5_000, idle_timeout_ms // 4))
+        )
+        self._behavior_activity_timer.start()
+
+    def _observe_behavior_activity(self) -> None:
+        """Poll the low-frequency idle boundary for the active telemetry."""
+        telemetry = self._behavior_telemetry
+        if telemetry is not None:
+            telemetry.observe_activity()
 
     def _behavior_zoom_requested(self, _delta, _point) -> None:
         """Aggregate canvas zoom input into one local action burst."""
         if self._behavior_telemetry is not None:
             self._behavior_telemetry.record_burst(
-                "zoom", input_source="wheel"
+                "zoom",
+                input_source="wheel",
+                start_summary={
+                    "selection_state": (
+                        "selected"
+                        if self.canvas.selected_shapes
+                        else "no_active_object"
+                    )
+                },
             )
 
     def _behavior_scroll_requested(self, _delta, orientation, _value) -> None:
         """Aggregate canvas pan/scroll input into one local action burst."""
         if self._behavior_telemetry is not None:
+            direction = (
+                "horizontal"
+                if orientation == QtCore.Qt.Orientation.Horizontal
+                else "vertical"
+            )
             self._behavior_telemetry.record_burst(
-                "pan", input_source="wheel"
+                "pan",
+                input_source="wheel",
+                start_summary={"direction": direction},
+                end_summary={"direction": direction},
             )
 
     def _behavior_burst_requested(self, action, input_source) -> None:
         """Forward a canvas high-frequency input to the local aggregator."""
         if self._behavior_telemetry is not None:
+            action = "keyboard_nudge" if action == "micro_adjust" else action
             self._behavior_telemetry.record_burst(
                 action, input_source=input_source
             )
+
+    def _behavior_semantic_burst_requested(
+        self,
+        action,
+        shape,
+        edit_target,
+        input_source,
+        start_summary,
+        net_change,
+    ) -> None:
+        """Adapt Canvas-resolved burst targets to privacy-safe telemetry."""
+        telemetry = self._behavior_telemetry
+        if telemetry is None:
+            return
+        telemetry.record_burst(
+            str(action),
+            input_source=str(input_source),
+            edit_target=str(edit_target) if edit_target else None,
+            start_summary=start_summary,
+            end_summary={"shape_type": getattr(shape, "shape_type", None)},
+            net_change_summary=net_change,
+        )
 
     def _behavior_action(
         self,
@@ -8168,6 +9128,10 @@ class LabelingWidget(LabelDialog):
         duration_ms=None,
         correlation_id=None,
         payload=None,
+        context=None,
+        participating_features=None,
+        interruption_reason=None,
+        net_change_summary=None,
     ):
         """Record one best-effort semantic UI action when enabled."""
         telemetry = self._behavior_telemetry
@@ -8180,6 +9144,10 @@ class LabelingWidget(LabelDialog):
             duration_ms=duration_ms,
             correlation_id=correlation_id,
             payload=payload,
+            context=context,
+            participating_features=participating_features,
+            interruption_reason=interruption_reason,
+            net_change_summary=net_change_summary,
         )
 
     def load_file(self, filename=None):  # noqa: C901
@@ -8788,9 +9756,8 @@ class LabelingWidget(LabelDialog):
             and getattr(self, "_review_metrics", None) is not None
         ):
             self._review_metrics.focus_changed(self.isActiveWindow())
-        if (
-            event.type() == QtCore.QEvent.Type.ActivationChange
-            and hasattr(self, "_review_session")
+        if event.type() == QtCore.QEvent.Type.ActivationChange and hasattr(
+            self, "_review_session"
         ):
             self._review_session.focus_changed(self.isActiveWindow())
         if event.type() == QtCore.QEvent.Type.ActivationChange:
@@ -8803,6 +9770,33 @@ class LabelingWidget(LabelDialog):
         if not self.may_continue():
             event.ignore()
             return
+        self._stop_shape_identity_worker()
+        relabel_thread = getattr(self, "_object_relabel_thread", None)
+        if relabel_thread is not None and relabel_thread.isRunning():
+            # Abort what is still cancellable and drain the worker so the
+            # QThread is never destroyed while running.
+            relabel_thread.request_abort()
+            if not relabel_thread.wait(2000):
+                self.status(
+                    self.tr(
+                        "A relabel transaction is still committing; "
+                        "close was cancelled."
+                    )
+                )
+                event.ignore()
+                return
+        field_thread = getattr(self, "_object_field_edit_thread", None)
+        if field_thread is not None and field_thread.isRunning():
+            field_thread.request_abort()
+            if not field_thread.wait(2000):
+                self.status(
+                    self.tr(
+                        "A field-edit transaction is still committing; "
+                        "close was cancelled."
+                    )
+                )
+                event.ignore()
+                return
         if self._review_metrics is not None:
             self._review_metrics.target_cleared(
                 EpisodeEndReason.APPLICATION_CLOSED
@@ -8810,6 +9804,8 @@ class LabelingWidget(LabelDialog):
         if self._behavior_telemetry is not None:
             self._behavior_telemetry.shutdown()
             self._behavior_telemetry = None
+        if self._behavior_activity_timer is not None:
+            self._behavior_activity_timer.stop()
         self._teardown_review_transients()
         self._review_session.stop()
         self._shutdown_dataset_review()
@@ -8930,6 +9926,11 @@ class LabelingWidget(LabelDialog):
         if current_index - 1 >= 0:
             filename = self.file_list_widget.item(current_index - 1).text()
             if filename:
+                self._behavior_action(
+                    "image_navigate",
+                    input_source="keyboard",
+                    payload={"navigation_direction": "previous"},
+                )
                 self.load_file(filename)
 
     def open_next_image(self, _value=False, load=True):
@@ -8954,6 +9955,11 @@ class LabelingWidget(LabelDialog):
                 filename = self.file_list_widget.item(count - 1).text()
         self.filename = filename
         if self.filename and load:
+            self._behavior_action(
+                "image_navigate",
+                input_source="keyboard",
+                payload={"navigation_direction": "next"},
+            )
             self.load_file(self.filename)
         _perf_log(
             "open_next_image exit: %.3fs, next=%s",
@@ -9037,6 +10043,121 @@ class LabelingWidget(LabelDialog):
             )
             self.file_list_widget.repaint()
 
+    def assign_project_shape_ids(self) -> None:
+        """Persist missing or conflicting Shape IDs across the project."""
+        if self._shape_identity_worker is not None:
+            return
+        if not self.may_continue():
+            return
+
+        roots: list[str] = []
+        if self.last_open_dir:
+            roots.append(self.last_open_dir)
+        elif self.filename:
+            roots.append(osp.dirname(str(self.filename)))
+        if self.output_dir:
+            roots.append(self.output_dir)
+        if not roots:
+            self.status(self.tr("No JSON annotation files found"), 5000)
+            return
+
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            self.tr("Assign Shape IDs"),
+            self.tr(
+                "Scan this project and assign persistent unique IDs to "
+                "every Shape that needs one?"
+            ),
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+
+        worker = ProjectShapeIdentityWorker(roots)
+        self._shape_identity_worker = worker
+        self.actions.assign_shape_ids.setEnabled(False)
+        worker.progress.connect(self._on_shape_identity_progress)
+        worker.completed.connect(
+            lambda result, active_worker=worker: (
+                self._on_shape_identity_completed(active_worker, result)
+            )
+        )
+        worker.cancelled.connect(
+            lambda active_worker=worker: self._on_shape_identity_cancelled(
+                active_worker
+            )
+        )
+        worker.finished.connect(
+            lambda active_worker=worker: self._on_shape_identity_worker_finished(
+                active_worker
+            )
+        )
+        worker.finished.connect(worker.deleteLater)
+        self.status(self.tr("Scanning project JSON files..."), 5000)
+        worker.start()
+
+    def _on_shape_identity_progress(self, current: int, total: int) -> None:
+        """Show non-blocking progress for project identity assignment."""
+        if total <= 0:
+            self.status(self.tr("No JSON annotation files found"), 5000)
+            return
+        self.status(
+            self.tr("Assigning Shape IDs: %d/%d files") % (current, total),
+            2000,
+        )
+
+    def _on_shape_identity_completed(
+        self,
+        worker: ProjectShapeIdentityWorker,
+        result: ProjectShapeIdentityResult,
+    ) -> None:
+        """Display the result of a completed project identity assignment."""
+        if self._shape_identity_worker is not worker:
+            return
+        self.actions.assign_shape_ids.setEnabled(True)
+        self.status(
+            self.tr(
+                "Shape ID assignment complete: %d files changed, "
+                "%d Shapes assigned, %d files failed"
+            )
+            % (
+                result.files_changed,
+                result.shapes_assigned,
+                result.files_failed,
+            ),
+            10000,
+        )
+        if result.files_failed:
+            failures = [
+                f"{osp.basename(item.path)}: {item.error}"
+                for item in result.file_results
+                if item.error
+            ]
+            QtWidgets.QMessageBox.warning(
+                self,
+                self.tr("Shape ID Assignment Incomplete"),
+                self.tr("Some files could not be updated:\n%s")
+                % "\n".join(failures[:10]),
+            )
+
+    def _on_shape_identity_cancelled(
+        self, worker: ProjectShapeIdentityWorker
+    ) -> None:
+        """Reset the action state after a cancelled identity assignment."""
+        if self._shape_identity_worker is not worker:
+            return
+        self.actions.assign_shape_ids.setEnabled(True)
+        self.status(self.tr("Shape ID assignment cancelled"), 5000)
+
+    def _on_shape_identity_worker_finished(
+        self, worker: ProjectShapeIdentityWorker
+    ) -> None:
+        """Release the worker reference only after its thread has exited."""
+        if self._shape_identity_worker is worker:
+            self._shape_identity_worker = None
+
     def save_file(self, _value=False):
         assert not self.image.isNull(), "cannot save empty image"
         if self.label_file:
@@ -9098,6 +10219,7 @@ class LabelingWidget(LabelDialog):
     def close_file(self, _value=False):
         if not self.may_continue():
             return
+        self._stop_shape_identity_worker()
         self._clear_rect_refine_focus()
         self._clear_viewport_session()
         self.reset_state()
@@ -9208,6 +10330,7 @@ class LabelingWidget(LabelDialog):
             self.filename = filename
             if self.filename:
                 self.load_file(self.filename)
+            self._prune_missing_marked_objects()
 
     def delete_image_file(self):
         if len(self.image_list) < 2:
@@ -9276,6 +10399,7 @@ class LabelingWidget(LabelDialog):
             self.filename = filename
             if self.filename:
                 self.load_file(self.filename)
+            self._prune_missing_marked_objects()
 
     # Message Dialogs. #
     def has_labels(self):
@@ -9323,10 +10447,18 @@ class LabelingWidget(LabelDialog):
     def dataset_review_dataset_root(self):
         """Return the root used for queue-relative dataset paths."""
 
+        if self.last_open_dir and osp.isdir(str(self.last_open_dir)):
+            return osp.abspath(str(self.last_open_dir))
         if self.image_list:
-            return osp.dirname(str(self.image_list[0]))
+            directories = [
+                osp.dirname(osp.abspath(str(path))) for path in self.image_list
+            ]
+            try:
+                return osp.commonpath(directories)
+            except ValueError:
+                return directories[0]
         if self.filename:
-            return osp.dirname(str(self.filename))
+            return osp.dirname(osp.abspath(str(self.filename)))
         return ""
 
     def dataset_review_descriptors(self):
@@ -9599,11 +10731,14 @@ class LabelingWidget(LabelDialog):
         return osp.dirname(str(self.filename)) if self.filename else "."
 
     def toggle_visibility_shapes(self, value):
-        for index, item in enumerate(self.label_list):
-            item.setCheckState(
-                Qt.CheckState.Checked if value else Qt.CheckState.Unchecked
-            )
-            self.label_list[index].shape().visible = True if value else False
+        with self.label_list.programmatic_update():
+            for index, item in enumerate(self.label_list):
+                item.setCheckState(
+                    Qt.CheckState.Checked if value else Qt.CheckState.Unchecked
+                )
+                self.label_list[index].shape().visible = (
+                    True if value else False
+                )
         self._config["show_shapes"] = value
         self._update_select_toggle_button_tooltip()
         if (
@@ -9617,6 +10752,7 @@ class LabelingWidget(LabelDialog):
         self.canvas.update()
         if self.canvas.h_hape is not None and not self.canvas.h_hape.points:
             self.canvas.delete_shape(self.canvas.h_hape)
+            self._remove_marks_for_shapes([self.canvas.h_hape])
             self.remove_labels([self.canvas.h_hape])
             self.set_dirty()
             if self.no_shape():
@@ -9625,9 +10761,13 @@ class LabelingWidget(LabelDialog):
 
     def delete_selected_shape(self):
         deleted_shapes = self.canvas.delete_selected()
+        self._remove_marks_for_shapes(deleted_shapes)
         self.remove_labels(deleted_shapes)
         for _shape in deleted_shapes:
-            self._behavior_action("shape_deleted", input_source="keyboard")
+            self._behavior_action(
+                "shape_deleted",
+                input_source="keyboard",
+            )
         self.set_dirty()
         if self.no_shape():
             for action in self.actions.on_shapes_present:
@@ -9730,6 +10870,7 @@ class LabelingWidget(LabelDialog):
             self.close_compare_view(confirm=False)
 
         # Cancel any previous background label check.
+        self._stop_shape_identity_worker()
         self._stop_label_check_worker()
 
         self._prepare_dataset_index_for_directory(dirpath)
@@ -9799,6 +10940,17 @@ class LabelingWidget(LabelDialog):
             # No cache exists yet. Discover label presence in the background,
             # but never block annotation with an application-modal dialog.
             self._start_label_check_worker(image_files)
+
+    def _stop_shape_identity_worker(self) -> None:
+        """Cancel and drain a running project identity worker."""
+        worker = self._shape_identity_worker
+        if worker is None:
+            return
+        worker.cancel()
+        worker.wait()
+        worker.deleteLater()
+        if self._shape_identity_worker is worker:
+            self._shape_identity_worker = None
 
     def _stop_label_check_worker(self):
         """Cancel and release the active background label checker."""
@@ -9936,7 +11088,15 @@ class LabelingWidget(LabelDialog):
 
         self.set_dirty()
         for _shape in getattr(auto_labeling_result, "shapes", []) or []:
-            self._behavior_action("shape_created", input_source="ai")
+            self._behavior_action(
+                "shape_created",
+                input_source="ai",
+                payload={
+                    "initial_source": "ai",
+                    "shape_type": getattr(_shape, "shape_type", "unknown"),
+                },
+                participating_features=["ai_active"],
+            )
 
     def clear_auto_labeling_marks(self):
         """Clear auto labeling marks from the current image."""
@@ -10159,6 +11319,12 @@ class LabelingWidget(LabelDialog):
             )
 
         if updated_shapes:
+            self._behavior_action(
+                "ai_correct",
+                input_source="ai",
+                payload={"participating_features": ["auto_labeling"]},
+                participating_features=["ai_active"],
+            )
             self.set_dirty()
 
     def shape_text_changed(self):

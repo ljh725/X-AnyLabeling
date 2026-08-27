@@ -15,6 +15,13 @@ from .label_converter import LabelConverter
 from .logger import logger
 from .schema import XLABEL_BASIC_FIELDS, create_xlabel_template
 from .shape import Shape
+from .shape_identity import (
+    MISSING_SHAPE_ID,
+    SHAPE_ID_FIELD,
+    describe_shape_identity_diagnostics,
+    normalize_shape_identities,
+    validate_shape_identities,
+)
 
 PIL.Image.MAX_IMAGE_PIXELS = None
 
@@ -36,6 +43,7 @@ class LabelFile:
 
     def __init__(self, filename=None, image_dir=None):
         self.shapes = []
+        self.shape_identity_diagnostics = ()
         self.image_path = None
         self.image_data = None
         self.image_dir = image_dir
@@ -145,7 +153,28 @@ class LabelFile:
                 )
 
             _t_shape_build = time.perf_counter()
-            shapes = [Shape().load_from_dict(s) for s in data["shapes"]]
+            identity_result = normalize_shape_identities(
+                (
+                    shape.get(SHAPE_ID_FIELD, MISSING_SHAPE_ID)
+                    for shape in data["shapes"]
+                )
+            )
+            shapes = []
+            for raw_shape, shape_id in zip(
+                data["shapes"], identity_result.identities
+            ):
+                normalized_shape = dict(raw_shape)
+                normalized_shape[SHAPE_ID_FIELD] = shape_id
+                shapes.append(Shape().load_from_dict(normalized_shape))
+            if identity_result.diagnostics:
+                logger.warning(
+                    "Repaired %d Shape identities while loading %s: %s",
+                    identity_result.repaired_count,
+                    filename,
+                    describe_shape_identity_diagnostics(
+                        identity_result.diagnostics
+                    ),
+                )
             _t_shapes = time.perf_counter()
             total_time = _t_shapes - _t0
             if total_time > 0.1:
@@ -174,6 +203,7 @@ class LabelFile:
         # Only replace data after everything is loaded.
         self.flags = flags
         self.shapes = shapes
+        self.shape_identity_diagnostics = identity_result.diagnostics
         self.image_path = image_path
         self.image_data = image_data
         self.filename = filename
@@ -190,6 +220,21 @@ class LabelFile:
         other_data=None,
         flags=None,
     ):
+        identity_violations = validate_shape_identities(
+            (
+                (
+                    shape.get(SHAPE_ID_FIELD, MISSING_SHAPE_ID)
+                    if isinstance(shape, dict)
+                    else MISSING_SHAPE_ID
+                )
+                for shape in shapes
+            )
+        )
+        if identity_violations:
+            raise LabelFileError(
+                "Invalid Shape identities: "
+                + describe_shape_identity_diagnostics(identity_violations)
+            )
         if image_data is not None:
             image_data = base64.b64encode(image_data).decode("utf-8")
             image_height, image_width = self._check_image_height_and_width(

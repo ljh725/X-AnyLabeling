@@ -210,6 +210,54 @@ def test_transaction_reports_replacement_failure_without_losing_backup(
     assert source.exists()
 
 
+def test_preflight_counts_matching_shapes_and_files_without_writing(tmp_path):
+    """Preflight reports per-batch counts and leaves files untouched."""
+    source = tmp_path / "sample.json"
+    payload = json.dumps(
+        {
+            "shapes": [
+                {"label": "old", "points": [[1, 2]]},
+                {"label": "old", "points": [[3, 4]]},
+                {"label": "keep", "points": []},
+            ]
+        }
+    )
+    source.write_text(payload, encoding="utf-8")
+    before = source.stat().st_mtime_ns
+    plan = build_label_change_plan(
+        {"old": _draft("old")},
+        {"old": _draft("old", value="new")},
+    )
+    engine = BatchMigrationEngine(str(tmp_path / "transactions"))
+    summary = engine.preflight([str(source)], plan)
+    assert summary.candidate_files == 1
+    assert summary.matching_shapes == 2
+    assert source.stat().st_mtime_ns == before
+    assert source.read_text(encoding="utf-8") == payload
+
+
+def test_preflight_is_cancellable_and_tolerates_invalid_files(tmp_path):
+    """Cancel stops iteration early; unreadable files are skipped."""
+    broken = tmp_path / "broken.json"
+    broken.write_text("{not-json", encoding="utf-8")
+    plan = build_label_change_plan(
+        {"old": _draft("old")},
+        {"old": _draft("old", value="new")},
+    )
+    engine = BatchMigrationEngine(str(tmp_path / "transactions"))
+    assert engine.preflight(
+        [str(broken), str(broken)], plan
+    ).matching_shapes == 0
+    calls = []
+
+    def cancelled():
+        calls.append(True)
+        return True
+
+    engine.preflight([str(broken)], plan, cancel_check=cancelled)
+    assert calls
+
+
 def test_visual_only_palette_update_does_not_touch_annotation_json(tmp_path):
     """Display metadata is written to the sidecar, never the annotation file."""
     source = tmp_path / "sample.json"
@@ -219,3 +267,21 @@ def test_visual_only_palette_update_does_not_touch_annotation_json(tmp_path):
     before = source.read_bytes(), source.stat().st_mtime_ns
     save_project_palette(str(tmp_path), {"person": (1, 2, 3)})
     assert (source.read_bytes(), source.stat().st_mtime_ns) == before
+
+
+def test_batch_write_gate_blocks_overlapping_owners():
+    """The gate is exclusive per root and released only by its owner."""
+    from anylabeling.views.labeling.widgets.label_batch import (
+        BatchWriteGate,
+    )
+
+    assert BatchWriteGate.try_acquire("root", "object-relabel")
+    assert not BatchWriteGate.try_acquire("root", "label-batch")
+    assert not BatchWriteGate.try_acquire("root", "object-relabel")
+    assert BatchWriteGate.try_acquire("other", "label-batch")
+    BatchWriteGate.release("root", "label-batch")
+    assert not BatchWriteGate.try_acquire("root", "label-batch")
+    BatchWriteGate.release("root", "object-relabel")
+    BatchWriteGate.release("other", "label-batch")
+    assert BatchWriteGate.try_acquire("root", "label-batch")
+    BatchWriteGate.release("root", "label-batch")

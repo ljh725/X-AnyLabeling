@@ -2,20 +2,33 @@
 
 from __future__ import annotations
 
-import json
 import math
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Callable, Iterable, Iterator
 
-from .catalog import validate_payload
-from .schema import (
-    EVENT_SCHEMA_VERSION,
-    EventEnvelope,
-    EventValidationError,
-)
+from .schema import EventEnvelope
+from .pipeline import UtcRange, iter_event_stream
 from .replay import replay_events
+from .metrics import (
+    action_metrics,
+    episode_metrics,
+    episode_cycle_metrics,
+    feature_comparisons,
+    image_metrics,
+    measurement_quality,
+    object_metrics,
+    rework_metrics,
+    semantic_actions,
+    sequence_metrics,
+    repetition_diagnostics,
+)
+from .statistics_v3 import (
+    episode_time_decomposition,
+    time_contribution_metrics,
+    workflow_stage_metrics,
+)
 
 
 @dataclass(frozen=True)
@@ -66,6 +79,17 @@ class ReadQuality:
     missing_reference_count: int = 0
     unknown_field_count: int = 0
     invalid_count: int = 0
+    parse_error_count: int = 0
+    schema_error_count: int = 0
+    required_field_error_count: int = 0
+    reference_error_count: int = 0
+    time_error_count: int = 0
+    terminal_error_count: int = 0
+    state_version_error_count: int = 0
+    sequence_gap_count: int = 0
+    manifest_error_count: int = 0
+    duplicate_source_count: int = 0
+    legacy_ordering_count: int = 0
     reason_counts: Counter[str] = field(default_factory=Counter)
     metadata: dict[str, object] = field(default_factory=dict)
 
@@ -82,6 +106,17 @@ class ReadQuality:
             "missing_reference_count": self.missing_reference_count,
             "unknown_field_count": self.unknown_field_count,
             "invalid_count": self.invalid_count,
+            "parse_error_count": self.parse_error_count,
+            "schema_error_count": self.schema_error_count,
+            "required_field_error_count": self.required_field_error_count,
+            "reference_error_count": self.reference_error_count,
+            "time_error_count": self.time_error_count,
+            "terminal_error_count": self.terminal_error_count,
+            "state_version_error_count": self.state_version_error_count,
+            "sequence_gap_count": self.sequence_gap_count,
+            "manifest_error_count": self.manifest_error_count,
+            "duplicate_source_count": self.duplicate_source_count,
+            "legacy_ordering_count": self.legacy_ordering_count,
             "reason_counts": dict(sorted(self.reason_counts.items())),
             "metadata": self.metadata,
         }
@@ -109,88 +144,28 @@ def read_events(  # noqa: C901
     """
     event_filter = event_filter or AnalysisFilter()
     quality = ReadQuality()
-    events: list[EventEnvelope] = []
-    known_fields = {
-        "schema_version",
-        "event_id",
-        "event_type",
-        "occurred_at_utc",
-        "local_date",
-        "timezone_offset",
-        "monotonic_ms",
-        "app_session_id",
-        "project_session_id",
-        "project_id",
-        "feature_state_version",
-        "input_source",
-        "result",
-        "image_id",
-        "shape_id",
-        "object_episode_id",
-        "correlation_id",
-        "duration_ms",
-        "payload",
-    }
-    for source in sources:
-        for path in iter_event_files(source):
-            try:
-                stream = path.open("r", encoding="utf-8")
-            except OSError as exc:
-                quality.invalid_count += 1
-                quality.reason_counts["file_error"] += 1
-                quality.reason_counts[str(exc)] += 1
-                continue
-            with stream:
-                for line in stream:
-                    if not line.strip():
-                        continue
-                    quality.read_count += 1
-                    try:
-                        data = json.loads(line)
-                        if isinstance(data, dict):
-                            quality.unknown_field_count += len(
-                                set(data) - known_fields
-                            )
-                        if (
-                            isinstance(data, dict)
-                            and data.get("schema_version")
-                            != EVENT_SCHEMA_VERSION
-                        ):
-                            quality.unknown_schema_count += 1
-                            quality.reason_counts["schema_version"] += 1
-                            continue
-                        event = EventEnvelope.from_mapping(data)
-                        validate_payload(event.event_type, event.payload)
-                    except json.JSONDecodeError:
-                        if not line.endswith(("\n", "\r")):
-                            quality.incomplete_count += 1
-                            quality.reason_counts["incomplete_tail"] += 1
-                        else:
-                            quality.corrupt_count += 1
-                            quality.reason_counts["json_parse"] += 1
-                        continue
-                    except EventValidationError as exc:
-                        text = str(exc)
-                        if "schema_version" in text:
-                            quality.unknown_schema_count += 1
-                            quality.reason_counts["schema_version"] += 1
-                        else:
-                            quality.invalid_count += 1
-                            quality.reason_counts["event_contract"] += 1
-                        continue
-                    except (TypeError, ValueError):
-                        quality.invalid_count += 1
-                        quality.reason_counts["payload_contract"] += 1
-                        continue
-                    if not event_filter.matches(event):
-                        quality.filtered_count += 1
-                        continue
-                    quality.accepted_count += 1
-                    events.append(event)
+    event_range = None
+    if event_filter.start_utc or event_filter.end_utc:
+        event_range = UtcRange(event_filter.start_utc, event_filter.end_utc)
+    streamed_events = list(
+        iter_event_stream(
+            sources,
+            event_range=event_range,
+            project_session_ids=event_filter.project_session_ids,
+            quality=quality,
+        )
+    )
+    events = [
+        event for event in streamed_events if event_filter.matches(event)
+    ]
+    local_filtered = len(streamed_events) - len(events)
+    quality.filtered_count += local_filtered
+    quality.accepted_count -= local_filtered
     events.sort(
         key=lambda event: (
             event.occurred_at_utc,
             event.monotonic_ms,
+            event.sequence_no if event.sequence_no is not None else 2**63 - 1,
             event.event_id,
         )
     )
@@ -204,6 +179,11 @@ def read_events(  # noqa: C901
         ),
         "input_schema_versions": sorted(
             {event.schema_version for event in events}
+        ),
+        "legacy_low_granularity_count": sum(
+            1
+            for event in events
+            if event.schema_version == 1 and event.event_type == "shape_edited"
         ),
     }
     project_sessions = {
@@ -233,6 +213,7 @@ def read_events(  # noqa: C901
         ):
             missing_references += 1
     quality.missing_reference_count = missing_references
+    quality.reference_error_count = missing_references
     quality.metadata["missing_reference_count"] = missing_references
     quality.incomplete_span_count = sum(
         1
@@ -240,6 +221,10 @@ def read_events(  # noqa: C901
         if event.event_type == "action_span" and event.result == "incomplete"
     )
     quality.metadata["incomplete_span_count"] = quality.incomplete_span_count
+    quality.metadata["legacy_ordering_count"] = quality.legacy_ordering_count
+    quality.metadata["sequence_gap_count"] = quality.sequence_gap_count
+    quality.metadata["manifest_error_count"] = quality.manifest_error_count
+    quality.metadata["duplicate_source_count"] = quality.duplicate_source_count
     return events, quality
 
 
@@ -273,6 +258,7 @@ def _duration_summary(values: list[int]) -> dict[str, float | int | None]:
             "mean_ms": None,
             "median_ms": None,
             "p75_ms": None,
+            "p90_ms": None,
             "p95_ms": None,
         }
     return {
@@ -281,6 +267,7 @@ def _duration_summary(values: list[int]) -> dict[str, float | int | None]:
         "mean_ms": sum(values) / len(values),
         "median_ms": _percentile(values, 50),
         "p75_ms": _percentile(values, 75),
+        "p90_ms": _percentile(values, 90),
         "p95_ms": _percentile(values, 95),
     }
 
@@ -294,13 +281,23 @@ def _context_key(event: EventEnvelope) -> tuple[str, str, str]:
     )
 
 
-def calculate_statistics(events: Iterable[EventEnvelope]) -> dict[str, object]:
+def calculate_statistics(
+    events: Iterable[EventEnvelope],
+    *,
+    cancel_check: Callable[[], bool] | None = None,
+) -> dict[str, object]:
     """Calculate deterministic counts, durations, transitions and episodes."""
+    materialized = []
+    for event in events:
+        if cancel_check and cancel_check():
+            raise RuntimeError("behavior analytics export cancelled")
+        materialized.append(event)
     ordered = sorted(
-        events,
+        materialized,
         key=lambda event: (
             event.occurred_at_utc,
             event.monotonic_ms,
+            event.sequence_no if event.sequence_no is not None else 2**63 - 1,
             event.event_id,
         ),
     )
@@ -329,8 +326,8 @@ def calculate_statistics(events: Iterable[EventEnvelope]) -> dict[str, object]:
                 event.image_id or "",
             )
         ] += 1
-        if event.duration_ms is not None:
-            durations[action].append(event.duration_ms)
+        if event.effective_duration_ms is not None:
+            durations[action].append(event.effective_duration_ms)
         if event.image_id and event.object_episode_id:
             key = (event.project_id, event.image_id, event.shape_id or "")
             row = episode_rows.setdefault(
@@ -448,7 +445,7 @@ def calculate_statistics(events: Iterable[EventEnvelope]) -> dict[str, object]:
             }
         )
     replay = replay_events(ordered)
-    feature_comparisons = _feature_comparisons(ordered, replay)
+    legacy_feature_comparisons = _feature_comparisons(ordered, replay)
     dimension_count_rows = [
         {
             "action": action,
@@ -469,6 +466,7 @@ def calculate_statistics(events: Iterable[EventEnvelope]) -> dict[str, object]:
         ), count in sorted(dimension_rows.items())
     ]
     loop_counts = _loop_counts(contexts)
+    quality_metrics = measurement_quality(ordered)
     return {
         "event_count": len(ordered),
         "action_counts": action_count_rows,
@@ -481,7 +479,23 @@ def calculate_statistics(events: Iterable[EventEnvelope]) -> dict[str, object]:
         "loop_counts": loop_counts,
         "time_metrics": replay["sessions"],
         "action_spans": replay["action_spans"],
-        "feature_comparisons": feature_comparisons,
+        "feature_comparisons": legacy_feature_comparisons,
+        "semantic_actions": [
+            event.to_dict() for event in semantic_actions(ordered)
+        ],
+        "action_metrics": action_metrics(ordered),
+        "episode_metrics": episode_metrics(ordered),
+        "episode_cycle_metrics": episode_cycle_metrics(ordered),
+        "object_metrics": object_metrics(ordered),
+        "image_metrics": image_metrics(ordered),
+        "rework_metrics": rework_metrics(ordered),
+        "measurement_quality": quality_metrics,
+        "feature_comparisons_v2": feature_comparisons(ordered),
+        "sequence_metrics": sequence_metrics(ordered),
+        "repetition_diagnostics": repetition_diagnostics(ordered),
+        "workflow_stage_metrics": workflow_stage_metrics(ordered),
+        "episode_time_decomposition": episode_time_decomposition(ordered),
+        "time_contribution": time_contribution_metrics(ordered),
     }
 
 

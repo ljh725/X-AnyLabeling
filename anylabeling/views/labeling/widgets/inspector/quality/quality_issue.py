@@ -41,6 +41,7 @@ class QcShape:
     shape_type: str
     points: List[Tuple[float, float]]
     group_id: Optional[int]
+    shape_id: str = ""
     flags: Dict[str, Any] = field(default_factory=dict)
     attributes: Dict[str, Any] = field(default_factory=dict)
     description: str = ""
@@ -192,6 +193,12 @@ class QcShapeLoader:
             shape_type=str(shape.get("shape_type", "") or ""),
             points=points,
             group_id=gid if isinstance(gid, int) else None,
+            shape_id=(
+                str(shape.get("xanylabeling_shape_id"))
+                if isinstance(shape.get("xanylabeling_shape_id"), str)
+                and shape.get("xanylabeling_shape_id")
+                else ""
+            ),
             flags=flags,
             attributes=attrs,
             description=str(shape.get("description", "") or ""),
@@ -255,6 +262,7 @@ class QualityIssue:
     file_path: str
     shape_index: int  # -1 for file-level issues
     message: str
+    shape_id: str = ""
     primary_metric: Optional[PrimaryMetric] = None
     metrics: Dict[str, float] = field(default_factory=dict)
     thresholds_hit: Dict[str, Any] = field(default_factory=dict)
@@ -280,7 +288,8 @@ class QualityIssue:
             metric_key = (
                 f"{self.primary_metric.name}:{self.primary_metric.value:.4f}"
             )
-        raw = f"{self.file_path}|{self.shape_index}|{self.rule_name}|{metric_key}"
+        shape_key = self.shape_id or f"index:{self.shape_index}"
+        raw = f"{self.file_path}|{shape_key}|{self.rule_name}|{metric_key}"
         return hashlib.md5(raw.encode("utf-8")).hexdigest()[:16]
 
     def to_dict(self) -> Dict[str, Any]:
@@ -292,6 +301,7 @@ class QualityIssue:
             "file_path": self.file_path,
             "image_path": self.image_path,
             "shape_index": self.shape_index,
+            "shape_id": self.shape_id,
             "label": self.label,
             "group_id": self.group_id,
             "bbox": self.bbox,

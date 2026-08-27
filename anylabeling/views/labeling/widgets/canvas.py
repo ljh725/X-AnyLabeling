@@ -47,6 +47,11 @@ from ..review_refinement.nudge import (
     valid_edge_nudge,
 )
 from ..shape import Shape
+from ..shape_identity import (
+    MISSING_SHAPE_ID,
+    describe_shape_identity_diagnostics,
+    normalize_shape_identities,
+)
 from .appearance import (
     AppearanceSettings,
     ColorMode,
@@ -231,10 +236,15 @@ class Canvas(
     show_shape = QtCore.pyqtSignal(int, int, QtCore.QPointF)
     selection_changed = QtCore.pyqtSignal(list)
     shape_moved = QtCore.pyqtSignal()
+    shape_edit_started = QtCore.pyqtSignal(str)
+    shape_edit_finished = QtCore.pyqtSignal(str, bool)
     shape_rotated = QtCore.pyqtSignal()
     shape_changed = QtCore.pyqtSignal(object)
     shapes_changed = QtCore.pyqtSignal(tuple)
     input_burst_requested = QtCore.pyqtSignal(str, str)
+    semantic_burst_requested = QtCore.pyqtSignal(
+        str, object, str, str, object, object
+    )
     rectangle_review_edge_drag_started = QtCore.pyqtSignal(str)
     rectangle_review_edge_drag_delta = QtCore.pyqtSignal(float)
     rectangle_review_edge_drag_finished = QtCore.pyqtSignal(bool)
@@ -251,6 +261,9 @@ class Canvas(
     edit_label_requested = QtCore.pyqtSignal()
     pose_occlusion_count_changed = QtCore.pyqtSignal(int)
     escape_pressed = QtCore.pyqtSignal()
+    # Cross-image object marking: emitted only for a plain click on one
+    # shape; the session store (outside the canvas) owns the mark set.
+    batch_mark_toggle_requested = QtCore.pyqtSignal(object)
 
     CREATE, EDIT = 0, 1
 
@@ -328,6 +341,12 @@ class Canvas(
         self._selection_box_rect = None
         self._selection_box_preview = []
         self._rubber_band_renderer = RubberBandRenderer()
+        # Cross-image object marking gesture state. The canvas only
+        # recognizes the gesture and paints the current image overlay;
+        # the cross-image mark set lives in the labeling widget session.
+        self.batch_mark_mode = False
+        self.marked_shape_ids: set[str] = set()
+        self._batch_mark_press = None
         # self.line represents:
         #   - create_mode == 'polygon': edge from last point to current
         #   - create_mode == 'rectangle': diagonal line of the rectangle
@@ -365,6 +384,7 @@ class Canvas(
         self.prev_h_cuboid_face = None
         self._size_overlay_hover_shape = None
         self.moving_shape = False
+        self._behavior_edit_target = None
         self._pending_edge_point = None
         self.rotating_shape = False
         self.snapping = True
@@ -608,6 +628,7 @@ class Canvas(
     def store_moving_shape(self):
         """Store a moving shape"""
         if self.moving_shape:
+            changed = False
             moving_shapes = (
                 [self.h_hape] + self.selected_shapes
                 if self.h_hape and self.h_hape not in self.selected_shapes
@@ -624,9 +645,17 @@ class Canvas(
                     ):
                         self.store_shapes()
                         self.shape_moved.emit()
+                        changed = True
                         break
-
+            if self._behavior_edit_target is not None:
+                self.shape_edit_finished.emit(
+                    self._behavior_edit_target, changed
+                )
+                self._behavior_edit_target = None
             self.moving_shape = False
+        elif self._behavior_edit_target is not None:
+            self.shape_edit_finished.emit(self._behavior_edit_target, False)
+            self._behavior_edit_target = None
 
     def clip_rectangle_to_pixmap(self, shape):
         """Clip rectangle shape to pixmap boundaries"""
@@ -1510,9 +1539,10 @@ class Canvas(
                 if self.bounded_move_shapes(self.selected_shapes_copy, eff):
                     self.update()
             elif self.selected_shapes:
-                self.selected_shapes_copy = [
-                    s.copy() for s in self.selected_shapes
-                ]
+                self.selected_shapes_copy = self._normalize_incoming_shape_ids(
+                    [s.copy_for_new_object() for s in self.selected_shapes],
+                    replace=False,
+                )
                 self.update()
             return
 
@@ -2229,6 +2259,20 @@ class Canvas(
                 )
                 if getattr(self, "_pending_initial_backup", False):
                     self.store_shapes()
+                if self.selected_vertex():
+                    self._behavior_edit_target = "vertex"
+                elif self.selected_edge():
+                    self._behavior_edit_target = "edge"
+                elif self.selected_shapes:
+                    self._behavior_edit_target = "move"
+                if self._behavior_edit_target is not None:
+                    self.shape_edit_started.emit(self._behavior_edit_target)
+                if self.batch_mark_mode:
+                    self._batch_mark_press = self._batch_mark_capture_press(
+                        pos
+                    )
+                else:
+                    self._batch_mark_press = None
                 self.select_shape_point(
                     pos, multiple_selection_mode=group_mode
                 )
@@ -2253,7 +2297,7 @@ class Canvas(
             self.prev_point = pos
 
     # QT Overload
-    def mouseReleaseEvent(self, ev):
+    def mouseReleaseEvent(self, ev):  # noqa: C901
         """Mouse release event"""
         if self.is_loading:
             return
@@ -2361,6 +2405,8 @@ class Canvas(
                     self._set_selected_shapes(
                         toggle_shape(self.selected_shapes, self.h_hape)
                     )
+                if self.batch_mark_mode:
+                    self._emit_batch_mark_toggle_if_click(ev)
 
         self._pressed_ctrl_selection = False
         self.store_moving_shape()
@@ -3175,9 +3221,10 @@ class Canvas(
     def duplicate_selected_shapes(self):
         """Duplicate selected shapes"""
         if self.selected_shapes:
-            self.selected_shapes_copy = [
-                s.copy_for_new_object() for s in self.selected_shapes
-            ]
+            self.selected_shapes_copy = self._normalize_incoming_shape_ids(
+                [s.copy_for_new_object() for s in self.selected_shapes],
+                replace=False,
+            )
             self.bounded_shift_shapes(self.selected_shapes_copy)
             self.end_move(copy=True)
         return self.selected_shapes
@@ -3245,9 +3292,11 @@ class Canvas(
         fill_opacity = (
             settings.selected_fill_opacity
             if shape.selected
-            else settings.hover_fill_opacity
-            if shape.hovered
-            else settings.normal_fill_opacity
+            else (
+                settings.hover_fill_opacity
+                if shape.hovered
+                else settings.normal_fill_opacity
+            )
         )
         gid_badge = None
         if settings.show_gid == "always" or (
@@ -3258,9 +3307,9 @@ class Canvas(
                 gid_badge = str(shape.group_id)
         return VisualStyle(
             base_color=base_color,
-            outer_color=(18, 18, 18)
-            if settings.high_contrast_outline
-            else base_color,
+            outer_color=(
+                (18, 18, 18) if settings.high_contrast_outline else base_color
+            ),
             outline_width=settings.outline_width,
             semantic_width=settings.semantic_width,
             fill_opacity=fill_opacity,
@@ -3895,6 +3944,10 @@ class Canvas(
         self._draw_size_overlay(p)
 
         self._draw_crosshair(p)
+
+        # Cross-image object marking overlay. Independent of selected,
+        # hover, active-edge, and QA states; never mutates Shape data.
+        self._draw_batch_mark_overlay(p)
 
         # Draw attributes
         if self.show_attributes and not defer_drag_overlays:
@@ -4561,8 +4614,9 @@ class Canvas(
 
             if shape.contains_point(pos):
                 self._scale_rectangle(shape, wheel_up)
+                edit_target = "scale"
             else:
-                self._adjust_rectangle_edge(shape, pos, wheel_up)
+                edit_target = self._adjust_rectangle_edge(shape, pos, wheel_up)
 
             # Status bar from the same metrics as the overlay (rev.1 §3.2):
             # wheel scaling / edge-adjust previously skipped show_shape.
@@ -4570,6 +4624,14 @@ class Canvas(
             self.store_shapes()
             self.notify_shape_changed(shape)
             self.shape_moved.emit()
+            self.semantic_burst_requested.emit(
+                "rectangle_adjust",
+                shape,
+                edit_target or "edge",
+                "wheel",
+                {"input_kind": "wheel"},
+                {"changed": True},
+            )
             self.update()
             ev.accept()
             return
@@ -4609,8 +4671,7 @@ class Canvas(
             self.rectangle_review_refinement_enabled
             and self.rect_edge_active_edge is not None
             and not (
-                ev.modifiers()
-                & QtCore.Qt.KeyboardModifier.ControlModifier
+                ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
             )
         ):
             return False
@@ -4643,7 +4704,9 @@ class Canvas(
             step * abs(notches),
             (self.pixmap.width(), self.pixmap.height()),
         )
-        if valid and rea.apply_edge_coord(active.shape, active.edge_name, candidate):
+        if valid and rea.apply_edge_coord(
+            active.shape, active.edge_name, candidate
+        ):
             refreshed = rea.geometry_from_shape(active.shape)
             if refreshed is not None:
                 refreshed_edge = rea.edge_from_geometry(
@@ -4665,6 +4728,14 @@ class Canvas(
                 self.store_shapes()
             self.notify_shape_changed(active.shape)
             self.shape_moved.emit()
+            self.semantic_burst_requested.emit(
+                "rectangle_adjust",
+                active.shape,
+                active.edge_name,
+                "wheel",
+                {"input_kind": "wheel"},
+                {"changed": True},
+            )
             self.update()
         elif self.rectangle_review_feedback_snapshot is not None:
             self._set_rectangle_review_feedback(
@@ -4800,6 +4871,7 @@ class Canvas(
 
             if new_point is not None:
                 shape.points[i] = new_point
+        return closest_edge
 
     # ------------------------------------------------------------------
     # Rectangle edge editing mode.
@@ -4993,7 +5065,9 @@ class Canvas(
             self.notify_shape_changed(shape)
             restored_geometry = rea.geometry_from_shape(shape)
             restored_edge = (
-                rea.edge_from_geometry(shape, restored_geometry, active_edge_name)
+                rea.edge_from_geometry(
+                    shape, restored_geometry, active_edge_name
+                )
                 if restored_geometry is not None
                 else None
             )
@@ -5390,9 +5464,7 @@ class Canvas(
             (self.pixmap.width(), self.pixmap.height()),
             radius_px=16,
         )
-        roi_pixmap = self.pixmap.copy(
-            roi.x, roi.y, roi.width, roi.height
-        )
+        roi_pixmap = self.pixmap.copy(roi.x, roi.y, roi.width, roi.height)
         screen_width = 160.0
         screen_height = 120.0
         image_width = screen_width / max(self.scale, 1e-6)
@@ -5484,7 +5556,9 @@ class Canvas(
         refreshed = rea.geometry_from_shape(active.shape)
         if refreshed is not None:
             self.rect_edge_state.refresh_active(
-                rea.edge_from_geometry(active.shape, refreshed, active.edge_name)
+                rea.edge_from_geometry(
+                    active.shape, refreshed, active.edge_name
+                )
             )
         self.notify_shape_changed(active.shape)
         self.shape_moved.emit()
@@ -6053,10 +6127,7 @@ class Canvas(
         """Key press event"""
         key = ev.key()
         if key == QtCore.Qt.Key.Key_Tab and self._cycle_rect_edge(
-            bool(
-                ev.modifiers()
-                & QtCore.Qt.KeyboardModifier.ShiftModifier
-            )
+            bool(ev.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier)
         ):
             ev.accept()
             return
@@ -6187,7 +6258,11 @@ class Canvas(
         ]
         current = self.rect_edge_active_edge or self.rect_edge_hover_edge
         current_name = current.edge_name if current is not None else None
-        index = edge_names.index(current_name) if current_name in edge_names else -1
+        index = (
+            edge_names.index(current_name)
+            if current_name in edge_names
+            else -1
+        )
         step = -1 if reverse else 1
         edge_name = edge_names[(index + step) % len(edge_names)]
         if current is not None:
@@ -6216,9 +6291,7 @@ class Canvas(
                 QtCore.QPointF(point) for point in active.shape.points
             ]
             self.rectangle_review_edge_drag_started.emit(active.edge_name)
-            self._set_rectangle_review_feedback(
-                active, "nudge", active.coord
-            )
+            self._set_rectangle_review_feedback(active, "nudge", active.coord)
         direction = 1
         if key in (QtCore.Qt.Key.Key_Left, QtCore.Qt.Key.Key_Up):
             direction = -1
@@ -6246,9 +6319,11 @@ class Canvas(
             self._set_rectangle_review_feedback(
                 active,
                 "rejected",
-                self.rectangle_review_feedback_snapshot.original_coord
-                if self.rectangle_review_feedback_snapshot is not None
-                else active.coord,
+                (
+                    self.rectangle_review_feedback_snapshot.original_coord
+                    if self.rectangle_review_feedback_snapshot is not None
+                    else active.coord
+                ),
                 "boundary_or_min_size",
             )
             return True
@@ -6263,9 +6338,11 @@ class Canvas(
             self._set_rectangle_review_feedback(
                 refreshed_edge,
                 "nudge",
-                self.rectangle_review_feedback_snapshot.original_coord
-                if self.rectangle_review_feedback_snapshot is not None
-                else refreshed_edge.coord,
+                (
+                    self.rectangle_review_feedback_snapshot.original_coord
+                    if self.rectangle_review_feedback_snapshot is not None
+                    else refreshed_edge.coord
+                ),
             )
         if self._rectangle_review_nudge_burst.begin(
             (id(active.shape), active.edge_name, direction, "keyboard"),
@@ -6403,6 +6480,7 @@ class Canvas(
         """Load shapes"""
         _t0 = time.perf_counter()
         self._reset_rectangle_size_issue_state()
+        shapes = self._normalize_incoming_shape_ids(shapes, replace=replace)
         if replace:
             self._set_size_overlay_hover_shape(None)
             self._set_selected_shapes([], source="none")
@@ -6424,6 +6502,8 @@ class Canvas(
         self.h_vertex = None
         self.h_edge = None
         self.h_cuboid_face = None
+        self._batch_mark_press = None
+
         # Drop any in-progress rectangle edge edit so transient state never
         # leaks across images.
         self.clear_rect_edge_alignment()
@@ -6439,6 +6519,38 @@ class Canvas(
                 total_time,
                 len(self.shapes),
             )
+
+    def _normalize_incoming_shape_ids(
+        self, shapes: Iterable[Shape], *, replace: bool
+    ) -> list[Shape]:
+        """Claim unique persistent identities for Shapes entering the Canvas."""
+        incoming = list(shapes)
+        reserved_ids = (
+            ()
+            if replace
+            else (
+                getattr(shape, "xanylabeling_shape_id", MISSING_SHAPE_ID)
+                for shape in self.shapes
+            )
+        )
+        identity_result = normalize_shape_identities(
+            (
+                getattr(shape, "xanylabeling_shape_id", MISSING_SHAPE_ID)
+                for shape in incoming
+            ),
+            reserved_ids=reserved_ids,
+        )
+        for shape, shape_id in zip(incoming, identity_result.identities):
+            shape.xanylabeling_shape_id = shape_id
+        if identity_result.diagnostics:
+            logger.warning(
+                "Repaired %d incoming Canvas Shape identities: %s",
+                identity_result.repaired_count,
+                describe_shape_identity_diagnostics(
+                    identity_result.diagnostics
+                ),
+            )
+        return incoming
 
     def set_shape_visible(self, shape, value):
         """Set visibility for a shape"""
@@ -6498,6 +6610,73 @@ class Canvas(
         self.cross_line_color = color
         self.cross_line_opacity = opacity
         self.update()
+
+    def set_batch_mark_mode(self, enabled):
+        """Enable or pause cross-image marking gesture recognition.
+
+        Pausing keeps the active mark set (owned elsewhere) untouched.
+        """
+        self.batch_mark_mode = bool(enabled)
+        self._batch_mark_press = None
+        self.update()
+
+    def set_marked_shape_ids(self, shape_ids):
+        """Set marked identities for the current image and repaint."""
+        self.marked_shape_ids = {str(shape_id) for shape_id in shape_ids}
+        self.update()
+
+    def _batch_mark_capture_press(self, pos):
+        """Record the press candidate for a possible mark toggle.
+
+        Vertex, active-edge, and blank presses never qualify; dragging
+        and geometric edits are filtered out again at release time.
+        """
+        if self.selected_vertex() or self.selected_edge():
+            return None
+        shape = self.h_hape
+        if shape is None or shape not in self.shapes:
+            return None
+        return (shape, pos)
+
+    def _emit_batch_mark_toggle_if_click(self, ev):
+        """Emit one toggle request when press-release forms a plain click."""
+        press = self._batch_mark_press
+        self._batch_mark_press = None
+        if press is None:
+            return
+        shape, press_pos = press
+        if shape not in self.shapes or self.moving_shape:
+            return
+        release_pos = self.transform_pos(ev.position())
+        if (
+            QtCore.QLineF(press_pos, release_pos).length()
+            > self._selection_drag_threshold()
+        ):
+            return
+        self.batch_mark_toggle_requested.emit(shape)
+
+    def _draw_batch_mark_overlay(self, painter):
+        """Draw orange outer strokes around the marked current-image shapes."""
+        if not self.marked_shape_ids:
+            return
+        pen_width = max(1.0, 2.0 / max(self.scale, 1e-6))
+        pad = 2.0 * pen_width
+        painter.save()
+        painter.setPen(
+            QtGui.QPen(
+                QtGui.QColor(255, 140, 0),
+                pen_width,
+                QtCore.Qt.PenStyle.DashLine,
+            )
+        )
+        for shape in self.shapes:
+            if shape.xanylabeling_shape_id not in self.marked_shape_ids:
+                continue
+            if not self.is_visible(shape):
+                continue
+            rect = shape.bounding_rect().adjusted(-pad, -pad, pad, pad)
+            painter.drawRect(rect)
+        painter.restore()
 
     def gen_new_group_id(self):
         """Generate new shape's group_id based on current shapes"""
