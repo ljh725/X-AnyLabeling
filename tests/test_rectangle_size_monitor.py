@@ -115,6 +115,20 @@ def test_full_scan_reports_multiple_labels_without_selection(qapp) -> None:
     ]
 
 
+def test_replace_shapes_republishes_unchanged_snapshot(qapp) -> None:
+    """A full snapshot boundary should resynchronize downstream views."""
+    shape = _shape()
+    monitor = RectangleSizeMonitor([_rule()], enabled=True)
+    emissions = []
+    monitor.issues_changed.connect(emissions.append)
+    monitor.replace_shapes([shape])
+    emissions.clear()
+
+    monitor.replace_shapes([shape])
+
+    assert emissions == [monitor.issues]
+
+
 @pytest.mark.parametrize(
     ("attribute", "value"),
     [("visible", False), ("hidden_by_filter", True)],

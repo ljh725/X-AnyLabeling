@@ -246,7 +246,7 @@ class RectangleSizeMonitor(QtCore.QObject):
         self._reported_candidate_error_ids.clear()
         self._cancel_pending()
         if self._enabled:
-            self._scan_all()
+            self._scan_all(force_publish=True)
         else:
             self._clear_issue_state()
 
@@ -325,8 +325,12 @@ class RectangleSizeMonitor(QtCore.QObject):
         self._pending_shape_identities.clear()
         self._scan_shape_identities(identities)
 
-    def _scan_all(self) -> None:
-        """Rebuild candidates, associations, and issues from all shapes."""
+    def _scan_all(self, *, force_publish: bool = False) -> None:
+        """Rebuild candidates, associations, and issues from all shapes.
+
+        Args:
+            force_publish: Whether to publish even when issues are unchanged.
+        """
         candidates = []
         candidate_id_by_shape_identity = {}
         shape_by_candidate_id = {}
@@ -354,7 +358,7 @@ class RectangleSizeMonitor(QtCore.QObject):
         self._issues_by_candidate_id = {
             issue.candidate_id: issue for issue in issues
         }
-        self._replace_issues(issues)
+        self._replace_issues(issues, force_publish=force_publish)
 
     def _scan_shape_identities(self, identities: Iterable[int]) -> None:
         """Refresh only invalidated shape identities."""
@@ -492,10 +496,17 @@ class RectangleSizeMonitor(QtCore.QObject):
     def _replace_issues(
         self,
         issues: Iterable[RectangleSizeIssue],
+        *,
+        force_publish: bool = False,
     ) -> None:
-        """Publish a changed immutable issue snapshot exactly once."""
+        """Publish an immutable issue snapshot when required.
+
+        Args:
+            issues: Issues in their current display order.
+            force_publish: Whether to republish an unchanged snapshot.
+        """
         new_issues = tuple(issues)
-        if new_issues == self._issues:
+        if new_issues == self._issues and not force_publish:
             return
         self._issues = new_issues
         self.issues_changed.emit(new_issues)
