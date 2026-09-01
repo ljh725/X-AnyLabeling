@@ -98,6 +98,7 @@ annotation_appearance:
   unrelated_opacity: 0.28
   show_labels: true
   show_gid: focus  # always, focus, never
+  # Selection/group isolation is transient and always starts disabled.
   outline_width: 1.0
   semantic_width: 1.0
 
@@ -258,6 +259,7 @@ shortcuts:
   show_masks: Ctrl+M
   show_texts: Ctrl+T
   show_labels: Ctrl+L
+  isolate_selection: Shift+I
   show_linking: Ctrl+K
   show_attributes: Ctrl+Shift+L
   union_selected_shapes: Ctrl+Shift+M

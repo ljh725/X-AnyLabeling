@@ -1825,6 +1825,16 @@ class LabelingWidget(LabelDialog):
             enabled=True,
             auto_trigger=True,
         )
+        isolate_selection = action(
+            self.tr("Isolate Selection/Group"),
+            self.toggle_isolation,
+            shortcuts.get("isolate_selection"),
+            None,
+            self.tr("Show only the selected object or its group"),
+            checkable=True,
+            checked=False,
+            enabled=True,
+        )
         pose_view = action(
             self.tr("Pose View"),
             self.toggle_pose_view,
@@ -2493,6 +2503,7 @@ class LabelingWidget(LabelDialog):
             show_attributes=show_attributes,
             show_linking=show_linking,
             label_on_selection=label_on_selection,
+            isolate_selection=isolate_selection,
             toggle_rect_edge_align=toggle_rect_edge_align,
             toggle_precision_mode_lock=toggle_precision_mode_lock,
             toggle_rect_refine_mode=toggle_rect_refine_mode,
@@ -2863,6 +2874,7 @@ class LabelingWidget(LabelDialog):
                 show_attributes,
                 show_linking,
                 label_on_selection,
+                isolate_selection,
                 pose_view,
                 toggle_rect_edge_align,
                 toggle_precision_mode_lock,
@@ -7526,6 +7538,11 @@ class LabelingWidget(LabelDialog):
                 self.label_list.scroll_to_item(item)
         self._no_selection_slot = False
         n_selected = len(selected_shapes)
+        isolate_action = getattr(self.actions, "isolate_selection", None)
+        if isolate_action is not None:
+            isolate_action.blockSignals(True)
+            isolate_action.setChecked(self.canvas.isolation_enabled)
+            isolate_action.blockSignals(False)
         same_type = (
             len(set(shape.shape_type for shape in selected_shapes)) <= 1
         )
@@ -8745,6 +8762,37 @@ class LabelingWidget(LabelDialog):
         assert hasattr(self.canvas, key), f"Canvas has no attribute {key}"
         setattr(self.canvas, key, value)
         self.canvas.update()
+
+    def toggle_isolation(self, enabled=None) -> None:
+        """Toggle transient selection/group isolation on the canvas."""
+        target = (
+            not self.canvas.isolation_enabled
+            if enabled is None
+            else bool(enabled)
+        )
+        self.canvas.set_isolation_enabled(target)
+        action = getattr(
+            getattr(self, "actions", None), "isolate_selection", None
+        )
+        if (
+            action is not None
+            and action.isChecked() != self.canvas.isolation_enabled
+        ):
+            action.blockSignals(True)
+            action.setChecked(self.canvas.isolation_enabled)
+            action.blockSignals(False)
+        if self.canvas.isolation_enabled:
+            group_id = getattr(self.canvas, "_isolation_group_id", None)
+            if group_id is not None:
+                message = "Selection isolation enabled (group %s)" % group_id
+            else:
+                count = len(
+                    getattr(self.canvas, "_isolation_shape_tokens", ())
+                )
+                message = "Selection isolation enabled (%d object(s))" % count
+        else:
+            message = "Selection isolation disabled"
+        self.status(self.tr(message))
 
     def set_rectangle_size_violations_enabled(self, enabled: bool) -> None:
         """Toggle proactive rectangle-size validation and persist it.

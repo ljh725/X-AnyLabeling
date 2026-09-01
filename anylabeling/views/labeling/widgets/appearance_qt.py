@@ -38,7 +38,11 @@ class QtAppearanceAdapter:
     @classmethod
     def fill_brush(cls, style: VisualStyle) -> QtGui.QBrush:
         """Create the configured low-opacity fill brush."""
-        return QtGui.QBrush(cls.color(style.base_color, style.fill_opacity))
+        alpha = round(
+            max(0, min(255, int(style.fill_opacity)))
+            * max(0.0, min(1.0, float(style.object_opacity)))
+        )
+        return QtGui.QBrush(cls.color(style.base_color, alpha))
 
     @staticmethod
     def badge_text(style: VisualStyle) -> str:

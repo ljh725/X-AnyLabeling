@@ -8,6 +8,8 @@ from anylabeling.views.labeling.widgets.appearance import (
     AppearanceSettings,
     ColorMode,
     GroupFocusController,
+    ShapeVisualContext,
+    resolve_render_decision,
     color_for_key,
     is_valid_group_id,
     resolve_base_color,
@@ -83,6 +85,59 @@ def test_focus_controller_supports_same_group_multi_select_and_clears_mixed():
     assert controller.emphasis({"group_id": 4}) < 1.0
     mixed = [{"id": "a", "group_id": 3}, {"id": "b", "group_id": 4}]
     assert controller.update("image-a", mixed).focused_group_id is None
+
+
+def test_focus_controller_uses_configured_unrelated_opacity_boundaries():
+    """Focus dimming follows the configured value, including its bounds."""
+    controller = GroupFocusController()
+    controller.update("image-a", [{"id": "a", "group_id": 3}])
+    unrelated = {"group_id": 4}
+
+    assert controller.emphasis(unrelated, 0.08) == 0.08
+    assert controller.emphasis(unrelated, -1) == 0.0
+    assert controller.emphasis(unrelated, 2) == 1.0
+    assert controller.emphasis({"group_id": 3}, 0.08) == 1.0
+
+
+def test_render_policy_applies_focus_zero_opacity_and_label_gates():
+    """Final render decisions hide all ordinary channels at zero opacity."""
+    context = ShapeVisualContext(
+        shape_token="other",
+        label="person",
+        group_id=4,
+        selected=False,
+        hovered=False,
+        focused=False,
+    )
+    decision = resolve_render_decision(
+        context,
+        focus_active=True,
+        unrelated_opacity=0.0,
+        show_labels=True,
+        show_gid="always",
+    )
+    assert not decision.draw_geometry
+    assert not decision.draw_text
+    assert not decision.draw_gid
+    assert not decision.draw_size_overlay
+    assert decision.canvas_interactive
+
+
+def test_render_policy_isolation_excludes_hidden_shapes_from_hit_testing():
+    """Isolation hides excluded shapes and removes them from Canvas hits."""
+    context = ShapeVisualContext(
+        shape_token="other",
+        label="person",
+        group_id=4,
+    )
+    decision = resolve_render_decision(
+        context,
+        isolation_enabled=True,
+        isolation_group_id=8,
+    )
+    assert not decision.draw_geometry
+    assert not decision.draw_text
+    assert not decision.canvas_interactive
 
 
 def test_focus_controller_resets_when_image_changes():

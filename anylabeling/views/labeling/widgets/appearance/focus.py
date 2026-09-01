@@ -87,12 +87,15 @@ class GroupFocusController:
         )
         return self._state
 
-    def emphasis(self, shape: object) -> float:
-        """Return opacity multiplier for a shape after visibility gates pass."""
+    def emphasis(
+        self, shape: object, unrelated_opacity: float = 0.28
+    ) -> float:
+        """Return opacity after visibility gates using configured dimming."""
+        opacity = max(0.0, min(1.0, float(unrelated_opacity)))
         if not self._state.active:
             return 1.0
         return (
             1.0
             if _value(shape, "group_id") == self._state.focused_group_id
-            else 0.28
+            else opacity
         )

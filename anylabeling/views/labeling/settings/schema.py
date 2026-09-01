@@ -118,9 +118,7 @@ def _settings_translation_markers() -> None:
     QCoreApplication.translate("SettingsDialog", "High Contrast Outline")
     QCoreApplication.translate("SettingsDialog", "Normal Fill Opacity")
     QCoreApplication.translate("SettingsDialog", "Selected Fill Opacity")
-    QCoreApplication.translate(
-        "SettingsDialog", "Unrelated Object Opacity"
-    )
+    QCoreApplication.translate("SettingsDialog", "Unrelated Object Opacity")
     QCoreApplication.translate("SettingsDialog", "Show Appearance Labels")
     QCoreApplication.translate("SettingsDialog", "Show Group ID")
     QCoreApplication.translate(
@@ -1421,6 +1419,7 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "fit_window",
             "show_attributes",
             "show_labels",
+            "isolate_selection",
             "label_display_mode",
             "show_linking",
             "show_masks",
@@ -1513,9 +1512,7 @@ def fields_for_primary(primary: str) -> list[SettingField]:
         return [field for field in SETTING_FIELDS if field.primary == "Canvas"]
     if primary == "Appearance":
         return [
-            field
-            for field in SETTING_FIELDS
-            if field.primary == "Appearance"
+            field for field in SETTING_FIELDS if field.primary == "Appearance"
         ]
     return []
 

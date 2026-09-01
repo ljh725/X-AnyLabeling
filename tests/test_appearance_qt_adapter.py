@@ -31,7 +31,7 @@ def test_adapter_preserves_alpha_and_screen_stable_width():
     assert pen.width() == 1
     assert outer.width() == 4
     assert pen.color().alpha() == 128
-    assert brush.color().alpha() == 28
+    assert brush.color().alpha() == 14
 
 
 def test_adapter_badge_and_no_brush_helpers():

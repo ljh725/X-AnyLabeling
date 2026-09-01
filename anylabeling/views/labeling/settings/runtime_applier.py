@@ -320,6 +320,13 @@ class SettingsRuntimeApplier:
         settings = load_user_appearance(self._widget._config)
         self._widget.appearance_settings = settings
         self._widget.canvas.set_appearance_settings(settings)
+        action = getattr(
+            getattr(self._widget, "actions", None), "isolate_selection", None
+        )
+        if action is not None:
+            action.blockSignals(True)
+            action.setChecked(self._widget.canvas.isolation_enabled)
+            action.blockSignals(False)
 
     def apply_canvas_basic(self) -> None:
         self._widget.canvas.epsilon = float(

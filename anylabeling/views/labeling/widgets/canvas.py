@@ -56,9 +56,12 @@ from .appearance import (
     AppearanceSettings,
     ColorMode,
     GroupFocusController,
+    IsolationState,
     ShapeVisualContext,
     VisualStyle,
     resolve_base_color,
+    derive_isolation_state,
+    resolve_render_decision,
 )
 from .rectangle_size_overlay import (
     RectangleSizeOverlayRenderer,
@@ -372,6 +375,10 @@ class Canvas(
         self.appearance_image_token = ""
         self.group_focus_controller = GroupFocusController()
         self._appearance_base_color_cache = {}
+        self._isolation_enabled = False
+        self._isolation_group_id = None
+        self._isolation_shape_tokens = ()
+        self._isolation_state = IsolationState()
         self._hide_backround = False
         self.hide_backround = False
         self.h_hape = None
@@ -818,16 +825,21 @@ class Canvas(
             except Exception:  # noqa: BLE001 - fail closed
                 return False
         predicate = self._virtual_review_visibility_predicate
-        if predicate is None:
-            return True
-        try:
-            return bool(predicate(shape))
-        except Exception:  # noqa: BLE001 - fail closed
+        if predicate is not None:
+            try:
+                if not bool(predicate(shape)):
+                    return False
+            except Exception:  # noqa: BLE001 - fail closed
+                return False
+        if self._isolation_enabled and not self._isolation_allows(shape):
             return False
+        return True
 
     def _virtual_review_context_visible(self, shape) -> bool:
         """Return whether a shape belongs to the dim virtual context pass."""
         if not self.base_visible(shape):
+            return False
+        if self._isolation_enabled and not self._isolation_allows(shape):
             return False
         predicate = self._main_visibility_predicate
         if predicate is not None:
@@ -2512,7 +2524,12 @@ class Canvas(
         seen = set()
         for shape in shapes or []:
             identity = id(shape)
-            if identity in seen or not self.is_shape_interactive(shape):
+            if identity in seen or not self.base_visible(shape):
+                continue
+            if not self.is_shape_interactive(shape) and source not in {
+                "label_list",
+                "inspector",
+            }:
                 continue
             seen.add(identity)
             selected.append(shape)
@@ -2534,6 +2551,8 @@ class Canvas(
             self.selected_shapes,
             self.appearance_settings.color_mode.value,
         )
+        if self._isolation_enabled:
+            self._refresh_isolation_target()
 
         self.selection_changed.emit(list(self.selected_shapes))
 
@@ -3247,6 +3266,16 @@ class Canvas(
     def set_appearance_settings(self, settings: AppearanceSettings) -> None:
         """Apply display-only appearance settings and repaint once."""
         self.appearance_settings = settings
+        if (
+            settings.color_mode is not ColorMode.FOCUS
+            and self._isolation_enabled
+        ):
+            self._isolation_enabled = False
+            self._isolation_group_id = None
+            self._isolation_shape_tokens = ()
+            self._isolation_state = IsolationState(
+                image_token=self.appearance_image_token
+            )
         self._appearance_base_color_cache.clear()
         self.group_focus_controller.update(
             self.appearance_image_token,
@@ -3265,7 +3294,55 @@ class Canvas(
         """Reset transient group focus when the displayed image changes."""
         self.appearance_image_token = str(image_token)
         self.group_focus_controller.reset_image(self.appearance_image_token)
+        self._isolation_enabled = False
+        self._isolation_group_id = None
+        self._isolation_shape_tokens = ()
+        self._isolation_state = IsolationState(
+            image_token=self.appearance_image_token
+        )
         self.update()
+
+    @property
+    def isolation_enabled(self) -> bool:
+        """Return whether transient selection isolation is active."""
+        return self._isolation_enabled
+
+    def _refresh_isolation_target(self) -> None:
+        """Derive the transient isolation target from formal selection."""
+        self._isolation_state = derive_isolation_state(
+            self.appearance_image_token,
+            self.selected_shapes,
+            enabled=self._isolation_enabled,
+        )
+        self._isolation_enabled = self._isolation_state.enabled
+        self._isolation_group_id = self._isolation_state.focused_group_id
+        self._isolation_shape_tokens = (
+            self._isolation_state.selected_shape_tokens
+        )
+
+    def _isolation_allows(self, shape: Shape) -> bool:
+        """Return whether ``shape`` belongs to the active isolation target."""
+        if not self._isolation_enabled:
+            return True
+        return self._isolation_state.allows(shape)
+
+    def set_isolation_enabled(self, enabled: bool) -> None:
+        """Enable or disable transient selection/group isolation."""
+        self._isolation_enabled = bool(enabled) and bool(self.selected_shapes)
+        if self._isolation_enabled:
+            self._refresh_isolation_target()
+        else:
+            self._isolation_group_id = None
+            self._isolation_shape_tokens = ()
+            self._isolation_state = IsolationState(
+                image_token=self.appearance_image_token
+            )
+        self.update()
+
+    def toggle_isolation(self) -> bool:
+        """Toggle transient isolation and return its resulting state."""
+        self.set_isolation_enabled(not self._isolation_enabled)
+        return self._isolation_enabled
 
     def _visual_style_for_shape(self, shape: Shape) -> VisualStyle:
         """Resolve toolkit-neutral style after existing visibility gates."""
@@ -3288,7 +3365,9 @@ class Canvas(
                 self.appearance_label_colors,
             )
             self._appearance_base_color_cache[cache_key] = base_color
-        opacity = self.group_focus_controller.emphasis(shape)
+        opacity = self.group_focus_controller.emphasis(
+            shape, settings.unrelated_opacity
+        )
         fill_opacity = (
             settings.selected_fill_opacity
             if shape.selected
@@ -3319,6 +3398,45 @@ class Canvas(
             selected=shape.selected,
             hovered=shape.hovered,
             editing=self._is_shape_under_edge_edit(shape),
+        )
+
+    def _should_draw_geometry(self, shape: Shape) -> bool:
+        """Return whether ordinary geometry should enter the paint path."""
+        if not self.main_visible(shape):
+            return False
+        return self._visual_style_for_shape(shape).object_opacity > 0.0
+
+    def _render_decision_for_shape(self, shape: Shape, hovered: bool = False):
+        """Resolve the shared toolkit-neutral output gates for ``shape``."""
+        focus_state = self.group_focus_controller.state
+        context = ShapeVisualContext(
+            shape_token=str(id(shape)),
+            label=str(getattr(shape, "label", "") or ""),
+            group_id=getattr(shape, "group_id", None),
+            visible=self.main_visible(shape),
+            base_visible=self.base_visible(shape),
+            selected=bool(getattr(shape, "selected", False)),
+            hovered=bool(getattr(shape, "hovered", False) or hovered),
+            editing=self._is_shape_under_edge_edit(shape),
+            focused=(
+                not focus_state.active
+                or getattr(shape, "group_id", None)
+                == focus_state.focused_group_id
+            ),
+            image_token=self.appearance_image_token,
+        )
+        return resolve_render_decision(
+            context,
+            focus_active=focus_state.active,
+            unrelated_opacity=self.appearance_settings.unrelated_opacity,
+            isolation_enabled=self._isolation_enabled,
+            isolation_group_id=self._isolation_group_id,
+            isolation_shape_tokens=self._isolation_shape_tokens,
+            show_labels=(
+                self.show_labels and self.appearance_settings.show_labels
+            ),
+            label_on_selection=self.label_on_selection,
+            show_gid=self.appearance_settings.show_gid,
         )
 
     def paintEvent(self, event):  # noqa: C901
@@ -3425,7 +3543,7 @@ class Canvas(
             p.setPen(pen)
             grouped_shapes = {}
             for shape in self.shapes:
-                if not self.main_visible(shape):
+                if not self._should_draw_geometry(shape):
                     continue
                 if shape.group_id is None:
                     continue
@@ -3496,7 +3614,7 @@ class Canvas(
             linking_pairs = []
             group_color = (255, 128, 0)
             for shape in self.shapes:
-                if not self.main_visible(shape):
+                if not self._should_draw_geometry(shape):
                     continue
 
                 try:
@@ -3552,7 +3670,7 @@ class Canvas(
         # Draw shape masks
         if self.show_masks and not defer_drag_overlays:
             for shape in self.shapes:
-                if not self.main_visible(shape):
+                if not self._should_draw_geometry(shape):
                     continue
                 if shape.shape_type not in [
                     "polygon",
@@ -3655,7 +3773,7 @@ class Canvas(
 
         # Draw degrees
         for shape in self.shapes:
-            if not self.main_visible(shape):
+            if not self._should_draw_geometry(shape):
                 continue
             if not viewport_rect.intersects(shape.bounding_rect()):
                 continue
@@ -3669,7 +3787,12 @@ class Canvas(
                     and not (self.selected_vertex() and self.moving_shape)
                 )
                 edge_editing = self._is_shape_under_edge_edit(shape)
+                decision = self._render_decision_for_shape(shape)
+                if not decision.draw_geometry:
+                    continue
                 style = self._visual_style_for_shape(shape)
+                if style.object_opacity <= 0.0:
+                    continue
                 shape.paint(
                     p,
                     force_unselected=edge_editing,
@@ -3797,6 +3920,7 @@ class Canvas(
                 and shape.shape_type == "rectangle"
                 and not (self.label_on_selection and not shape.selected)
                 and shape.label not in autolabel_names
+                and self._should_draw_geometry(shape)
             )
 
         # Draw texts
@@ -3814,6 +3938,8 @@ class Canvas(
             p.setPen(pen)
             for shape in self.shapes:
                 if not self.main_visible(shape):
+                    continue
+                if not self._should_draw_geometry(shape):
                     continue
                 if should_merge_rectangle_text(shape):
                     continue
@@ -3845,6 +3971,8 @@ class Canvas(
             p.setPen(pen)
             for shape in self.shapes:
                 if not self.main_visible(shape):
+                    continue
+                if not self._should_draw_geometry(shape):
                     continue
                 if should_merge_rectangle_text(shape):
                     continue
@@ -3916,7 +4044,11 @@ class Canvas(
                 # Feed only main-visible Shapes so focus also gates the pose
                 # overlay. Without a predicate this remains the full base-
                 # visible set.
-                list(self.iter_main_visible_shapes()),
+                [
+                    shape
+                    for shape in self.iter_main_visible_shapes()
+                    if self._should_draw_geometry(shape)
+                ],
                 self.pixmap.size(),
                 self.scale,
                 show_labels=True,
@@ -3948,6 +4080,7 @@ class Canvas(
         # Cross-image object marking overlay. Independent of selected,
         # hover, active-edge, and QA states; never mutates Shape data.
         self._draw_batch_mark_overlay(p)
+        self._draw_isolation_badge(p)
 
         # Draw attributes
         if self.show_attributes and not defer_drag_overlays:
@@ -3958,6 +4091,8 @@ class Canvas(
 
             for shape in self.shapes:
                 if not self.main_visible(shape):
+                    continue
+                if not self._should_draw_geometry(shape):
                     continue
                 if should_merge_rectangle_text(shape):
                     continue
@@ -4094,7 +4229,9 @@ class Canvas(
             p.setPen(pen)
             p.setFont(font)
 
-            for _, _, text_positions, attribute_lines in attributes_list:
+            for shape, _, text_positions, attribute_lines in attributes_list:
+                if not self._should_draw_geometry(shape):
+                    continue
                 for i, (text_pos, line_text) in enumerate(
                     zip(text_positions, attribute_lines)
                 ):
@@ -4177,6 +4314,28 @@ class Canvas(
                 _dt,
                 len(self.shapes),
             )
+
+    def _draw_isolation_badge(self, painter: QtGui.QPainter) -> None:
+        """Draw a non-persistent corner badge while isolation is active."""
+        if not self._isolation_enabled:
+            return
+        painter.save()
+        painter.resetTransform()
+        if self._isolation_group_id is not None:
+            text = self.tr("ISOLATED · Group %s") % self._isolation_group_id
+        else:
+            count = len(self._isolation_shape_tokens)
+            text = self.tr("ISOLATED · %d object(s)") % count
+        font = QtGui.QFont("Arial", 10, QtGui.QFont.Weight.Bold)
+        painter.setFont(font)
+        fm = QtGui.QFontMetrics(font)
+        rect = QtCore.QRectF(10, 10, fm.horizontalAdvance(text) + 18, 28)
+        painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 220), 1))
+        painter.setBrush(QtGui.QColor(25, 70, 120, 220))
+        painter.drawRoundedRect(rect, 5, 5)
+        painter.setPen(QtGui.QColor(255, 255, 255))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)
+        painter.restore()
 
     def render_visualization(
         self,
@@ -5899,6 +6058,11 @@ class Canvas(
             _shape,
             _source,
         ) = metrics
+        if (
+            _shape is not None
+            and not self._render_decision_for_shape(_shape).draw_size_overlay
+        ):
+            return None
         if max_edge < 1e-6:
             return None
 
@@ -5937,7 +6101,8 @@ class Canvas(
             if (
                 shape is None
                 or not any(current is shape for current in self.shapes)
-                or not self.base_visible(shape)
+                or not self.main_visible(shape)
+                or not self._should_draw_geometry(shape)
             ):
                 continue
             requests.append(
@@ -5990,6 +6155,10 @@ class Canvas(
             The label string, or ``None`` when no label should be drawn.
         """
         if not self._is_standard_label_visible(shape, hovered_shape):
+            return None
+        if not self._render_decision_for_shape(
+            shape, hovered=shape is hovered_shape
+        ).draw_text:
             return None
         return self._standard_label_text_for_shape(shape)
 

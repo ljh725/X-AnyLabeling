@@ -9,6 +9,8 @@ from .config import (
     save_project_palette,
 )
 from .focus import GroupFocusController, GroupFocusState
+from .isolation import IsolationState, derive_isolation_state
+from .render_policy import RenderDecision, resolve_render_decision
 from .palette import (
     ACCESSIBLE_PALETTE,
     color_for_key,
@@ -29,6 +31,8 @@ __all__ = [
     "DEFAULT_APPEARANCE_SETTINGS",
     "GroupFocusController",
     "GroupFocusState",
+    "IsolationState",
+    "RenderDecision",
     "ShapeVisualContext",
     "VisualStyle",
     "color_for_key",
@@ -38,5 +42,7 @@ __all__ = [
     "load_user_appearance",
     "migrate_legacy_appearance",
     "resolve_base_color",
+    "resolve_render_decision",
+    "derive_isolation_state",
     "save_project_palette",
 ]
