@@ -223,3 +223,11 @@ nul
 /tools/analyze_c_drive_storage.ps1
 /tools/measure_storage_paths.ps1
 /scripts/scan_incremental_code_review.py
+
+# - Agent/pytest 会话临时目录与运行日志（不入库，保留本地）
+/.tmp-*/
+/.codex-tmp*/
+/.pytest-tmp*/
+/tmppytest-*/
+/logs/
+/log-*/
