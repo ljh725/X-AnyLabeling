@@ -99,6 +99,45 @@ def _safe_positive_int(value: object, fallback: int) -> int:
     return max(1, number)
 
 
+def validate_shape_references(
+    shapes: Iterable[Shape],
+    *,
+    replace: bool,
+    existing_shapes: Iterable[Shape] = (),
+) -> list[Shape]:
+    """Materialize and validate live object identities before shape loading.
+
+    Args:
+        shapes: Incoming Shape objects in requested Canvas order.
+        replace: Whether the incoming snapshot replaces current membership.
+        existing_shapes: Current Canvas objects reserved during append.
+
+    Returns:
+        The materialized incoming Shape list.
+
+    Raises:
+        ValueError: If the incoming list repeats an object, or an append
+            contains an object already owned by the current Canvas.
+    """
+    incoming = list(shapes)
+    incoming_identities: set[int] = set()
+    for shape in incoming:
+        identity = id(shape)
+        if identity in incoming_identities:
+            raise ValueError(
+                "Incoming shape snapshot contains duplicate objects"
+            )
+        incoming_identities.add(identity)
+
+    if not replace:
+        existing_identities = {id(shape) for shape in existing_shapes}
+        if incoming_identities.intersection(existing_identities):
+            raise ValueError(
+                "Incoming shape object is already owned by the current Canvas"
+            )
+    return incoming
+
+
 # ---------------------------------------------------------------------------
 # Size-overlay pure helpers (no QPainter dependency -> unit-testable)
 # ---------------------------------------------------------------------------
@@ -6648,6 +6687,11 @@ class Canvas(
     def load_shapes(self, shapes, replace=True, store_backup=True):
         """Load shapes"""
         _t0 = time.perf_counter()
+        shapes = validate_shape_references(
+            shapes,
+            replace=replace,
+            existing_shapes=self.shapes,
+        )
         self._reset_rectangle_size_issue_state()
         shapes = self._normalize_incoming_shape_ids(shapes, replace=replace)
         if replace:

@@ -158,7 +158,10 @@ from .widgets import (
 )
 from .widgets.behavior_analytics_dialog import BehaviorAnalyticsDialog
 from .widgets.behavior_analytics_worker import BehaviorAnalyticsExportWorker
-from .widgets.canvas import DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX
+from .widgets.canvas import (
+    DEFAULT_PERSON_SMALL_TARGET_MIN_EDGE_PX,
+    validate_shape_references,
+)
 from .widgets.label_batch import BatchWriteGate, JsonTransactionEngine
 from .widgets.object_relabel import (
     MarkedObjectRef,
@@ -7721,6 +7724,11 @@ class LabelingWidget(LabelDialog):
     def load_shapes(
         self, shapes, replace=True, update_last_label=True, store_backup=True
     ):
+        shapes = validate_shape_references(
+            shapes,
+            replace=replace,
+            existing_shapes=self.canvas.shapes,
+        )
         _t0 = time.perf_counter()
         self._no_selection_slot = True
         self.label_list.setUpdatesEnabled(False)
@@ -7989,8 +7997,22 @@ class LabelingWidget(LabelDialog):
             self.load_shapes(shapes, replace=False)
             created_count = len(shapes)
         else:
-            self.load_shapes(self._copied_shapes, replace=False)
-            created_count = len(self._copied_shapes)
+            shapes = [
+                template.copy_for_new_object()
+                for template in (self._copied_shapes or ())
+            ]
+            for shape in shapes:
+                shape.selected = False
+                shape.hovered = False
+                shape.fill = False
+                shape.visible = True
+                shape.cache_label = None
+                shape.cache_description = None
+                shape.highlight_clear()
+                if hasattr(shape, "hidden_by_filter"):
+                    shape.hidden_by_filter = False
+            self.load_shapes(shapes, replace=False)
+            created_count = len(shapes)
         for _ in range(created_count):
             self._behavior_action("shape_created", input_source="keyboard")
         self.set_dirty()
