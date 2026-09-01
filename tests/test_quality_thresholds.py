@@ -224,8 +224,8 @@ class TestProfileLoader:
         p = load_threshold_profile()
         assert p.profile_id == "v0_default"
         assert p.schema_version == "l1_l2_qc.v1"
-        # 5 L1 + 12 L2
-        assert len(p.rules) == 17
+        # 5 L1 + 13 L2 (including duplicate rectangles)
+        assert len(p.rules) == 18
         rule_ids = {r.rule_id for r in p.rules}
         assert {"L2-01", "L2-12", "L1-01", "L1-05"} <= rule_ids
 

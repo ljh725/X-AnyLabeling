@@ -21,6 +21,7 @@ Design notes:
 from __future__ import annotations
 
 import logging
+import math
 from collections import Counter
 from dataclasses import replace
 from typing import Any, Dict, List, Optional, Tuple
@@ -44,6 +45,13 @@ from .severity_eval import evaluate_severity
 from .threshold_profile import RuleThreshold, ThresholdProfile
 
 logger = logging.getLogger(__name__)
+
+
+def _valid_group_id(value: object) -> bool:
+    """Return whether a group id is a non-negative integer."""
+    return (
+        isinstance(value, int) and not isinstance(value, bool) and value >= 0
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1203,6 +1211,127 @@ def l2_12_image_level_class_density(
     return out
 
 
+def l2_13_duplicate_rectangles(
+    ctx: FileContext,
+    profile: ThresholdProfile,
+    cfg: MatchingCfg,
+    rule: RuleThreshold,
+) -> List[QualityIssue]:
+    """Report highly overlapping same-label rectangles without mutation."""
+    settings = profile.config.get("duplicate_rectangles", {}) or {}
+    same_group_iou = float(settings.get("same_group_iou_error", 0.95))
+    other_group_iou = float(settings.get("other_group_iou_warning", 0.97))
+    edge_tolerance = float(settings.get("edge_tolerance_px", 2.0))
+    cell_size = max(1.0, float(settings.get("candidate_cell_size_px", 256.0)))
+    buckets: Dict[str, List[Tuple[QcShape, G.BBox]]] = {}
+    for shape in ctx.qc_file.shapes:
+        if shape.shape_type != "rectangle" or not shape.label:
+            continue
+        bbox = G.shape_bbox(shape.shape_type, shape.points)
+        if not G.is_valid_bbox(bbox):
+            continue
+        buckets.setdefault(shape.label, []).append((shape, bbox))
+
+    candidates: Dict[
+        Tuple[int, int], Tuple[QcShape, G.BBox, QcShape, G.BBox]
+    ] = {}
+    for entries in buckets.values():
+        grid: Dict[Tuple[int, int], List[int]] = {}
+        for index, (_shape, bbox) in enumerate(entries):
+            x1, y1, x2, y2 = bbox
+            for gx in range(
+                math.floor(x1 / cell_size), math.floor(x2 / cell_size) + 1
+            ):
+                for gy in range(
+                    math.floor(y1 / cell_size), math.floor(y2 / cell_size) + 1
+                ):
+                    grid.setdefault((gx, gy), []).append(index)
+        for indexes in grid.values():
+            for left_pos, left_index in enumerate(indexes):
+                for right_index in indexes[left_pos + 1 :]:
+                    left, right = sorted((left_index, right_index))
+                    key = (left, right)
+                    if key in candidates:
+                        continue
+                    left_shape, left_bbox = entries[left]
+                    right_shape, right_bbox = entries[right]
+                    candidates[key] = (
+                        left_shape,
+                        left_bbox,
+                        right_shape,
+                        right_bbox,
+                    )
+
+    out: List[QualityIssue] = []
+    for left_shape, left_bbox, right_shape, right_bbox in sorted(
+        candidates.values(),
+        key=lambda item: (item[0].shape_index, item[2].shape_index),
+    ):
+        if left_shape.shape_index > right_shape.shape_index:
+            left_shape, right_shape = right_shape, left_shape
+            left_bbox, right_bbox = right_bbox, left_bbox
+        overlap = G.iou(left_bbox, right_bbox)
+        edge_delta = max(
+            abs(left_bbox[index] - right_bbox[index]) for index in range(4)
+        )
+        same_group = (
+            _valid_group_id(left_shape.group_id)
+            and left_shape.group_id == right_shape.group_id
+        )
+        severity = None
+        threshold = same_group_iou if same_group else other_group_iou
+        reason = ""
+        if same_group and (
+            overlap >= same_group_iou or edge_delta <= edge_tolerance
+        ):
+            severity = "error"
+            reason = "同 group_id 高度重合或边界几乎一致"
+        elif not same_group and overlap >= other_group_iou:
+            severity = "warning"
+            reason = "不同或缺失 group_id 的同标签矩形高度重合"
+        if severity is None:
+            continue
+        primary = PrimaryMetric(
+            "duplicate_rectangle_iou", overlap, rule.direction
+        )
+        out.append(
+            QualityIssue(
+                rule_id=rule.rule_id,
+                rule_name=rule.rule_name,
+                severity=severity,
+                file_path=ctx.qc_file.file_path,
+                image_path=ctx.qc_file.image_path,
+                shape_index=left_shape.shape_index,
+                shape_id=left_shape.shape_id,
+                label=left_shape.label,
+                group_id=left_shape.group_id,
+                bbox=_bbox_list(left_bbox),
+                message=(
+                    f"[疑似重复矩形] label='{left_shape.label}' "
+                    f"shape #{left_shape.shape_index} 与 #{right_shape.shape_index} "
+                    f"IoU={overlap:.4f}，{reason}"
+                ),
+                primary_metric=primary,
+                metrics={
+                    "duplicate_iou": overlap,
+                    "max_edge_delta_px": edge_delta,
+                },
+                thresholds_hit={
+                    "iou_threshold": threshold,
+                    "edge_tolerance_px": edge_tolerance,
+                    "same_valid_group": same_group,
+                },
+                match={
+                    "duplicate_shape_index": right_shape.shape_index,
+                    "duplicate_shape_id": right_shape.shape_id,
+                    "duplicate_group_id": right_shape.group_id,
+                    "duplicate_bbox": _bbox_list(right_bbox),
+                },
+            )
+        )
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Runner registry
 # ---------------------------------------------------------------------------
@@ -1229,6 +1358,7 @@ _L2_RUNNERS = [
     _Runner("L2-10", l2_10_body_part_vertical_band),
     _Runner("L2-11", l2_11_head_keypoints_near_head_face),
     _Runner("L2-12", l2_12_image_level_class_density),
+    _Runner("L2-13", l2_13_duplicate_rectangles),
 ]
 
 

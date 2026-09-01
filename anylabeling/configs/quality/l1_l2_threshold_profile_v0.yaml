@@ -116,6 +116,13 @@ person_expand_for_keypoints:
 person_small_target:
   min_edge_px: 36.0
 
+# 同标签矩形重复候选（只读质检，不自动删除）
+duplicate_rectangles:
+  same_group_iou_error: 0.95
+  other_group_iou_warning: 0.97
+  edge_tolerance_px: 2.0
+  candidate_cell_size_px: 256.0
+
 rules:
   # ---- L1 硬规则（JSON 字段 / 基础合法性）----
   - rule_id: L1-01
@@ -311,4 +318,14 @@ rules:
     warning_threshold:
       abs_z: 3.5
     error_threshold: null
+    error_requires: []
+
+  - rule_id: L2-13
+    rule_name: duplicate_rectangles
+    enabled: true
+    default_severity: warning
+    primary_metric: duplicate_rectangle_iou
+    direction: higher_is_worse
+    warning_threshold: 0.97
+    error_threshold: 0.95
     error_requires: []

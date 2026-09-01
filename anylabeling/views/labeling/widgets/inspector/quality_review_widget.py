@@ -79,6 +79,7 @@ class QualityReviewWidget(QtWidgets.QWidget):
     """L1/L2 quality review queue UI."""
 
     issue_clicked = QtCore.pyqtSignal(str, int)
+    related_issue_clicked = QtCore.pyqtSignal(str, int)
     import_requested = QtCore.pyqtSignal()
     rescan_current_requested = QtCore.pyqtSignal()
     generate_suggestion_requested = QtCore.pyqtSignal()
@@ -186,8 +187,11 @@ class QualityReviewWidget(QtWidgets.QWidget):
         action_row = QtWidgets.QHBoxLayout()
         self.prev_btn = self._mk_btn(self.tr("上一条未处理"))
         self.next_btn = self._mk_btn(self.tr("下一条未处理"))
+        self.related_btn = self._mk_btn(self.tr("定位另一对象"))
+        self.related_btn.setEnabled(False)
         action_row.addWidget(self.prev_btn)
         action_row.addWidget(self.next_btn)
+        action_row.addWidget(self.related_btn)
         action_row.addStretch()
         layout.addLayout(action_row)
 
@@ -267,6 +271,7 @@ class QualityReviewWidget(QtWidgets.QWidget):
         )
         self.clear_btn.clicked.connect(lambda: self._apply_status("pending"))
         self.note_edit.editingFinished.connect(self._on_note_committed)
+        self.related_btn.clicked.connect(self._navigate_related)
 
     # ------------------------------------------------------------------
     # Public API (called by InspectorPanel)
@@ -450,6 +455,10 @@ class QualityReviewWidget(QtWidgets.QWidget):
             parts.append(
                 f"{item.primary_metric_name}={item.primary_metric_value:.2f}"
             )
+        if item.duplicate_shape_index is not None:
+            parts.append(f"other_idx={item.duplicate_shape_index}")
+        if item.duplicate_iou is not None:
+            parts.append(f"IoU={item.duplicate_iou:.4f}")
         return ", ".join(parts)
 
     # ------------------------------------------------------------------
@@ -489,8 +498,12 @@ class QualityReviewWidget(QtWidgets.QWidget):
         self._update_action_state()
 
     def _update_action_state(self) -> None:
-        has_sel = self.get_selected_item() is not None
+        item = self.get_selected_item()
+        has_sel = item is not None
         self.rescan_btn.setEnabled(self.current_rescan_file() is not None)
+        self.related_btn.setEnabled(
+            item is not None and item.duplicate_shape_index is not None
+        )
         self.suggest_btn.setEnabled(self._queue.has_report)
         for btn in (
             self.fixed_btn,
@@ -504,6 +517,15 @@ class QualityReviewWidget(QtWidgets.QWidget):
             self.next_btn,
         ):
             btn.setEnabled(has_sel)
+
+    def _navigate_related(self) -> None:
+        """Navigate to the secondary shape of a duplicate-rectangle issue."""
+        item = self.get_selected_item()
+        if item is None or item.duplicate_shape_index is None:
+            return
+        self.related_issue_clicked.emit(
+            item.file_path, int(item.duplicate_shape_index)
+        )
 
     def _jump_unreviewed(
         self,

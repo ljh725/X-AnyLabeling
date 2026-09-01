@@ -125,6 +125,8 @@ class QualityReviewItem:
     primary_metric_name: str = ""
     primary_metric_value: float = 0.0
     primary_metric_direction: str = "higher_is_worse"
+    duplicate_shape_index: Optional[int] = None
+    duplicate_iou: Optional[float] = None
     # review state
     status: str = "pending"
     decision: str = ""
@@ -662,6 +664,27 @@ def _item_from_report_issue(
         shape_index = int(raw.get("shape_index", -1))
     except (TypeError, ValueError):
         shape_index = -1
+    match = raw.get("match") or {}
+    if not isinstance(match, dict):
+        match = {}
+    duplicate_index = match.get("duplicate_shape_index")
+    try:
+        duplicate_index = (
+            int(duplicate_index) if duplicate_index is not None else None
+        )
+    except (TypeError, ValueError):
+        duplicate_index = None
+    duplicate_iou = None
+    metrics = raw.get("metrics") or {}
+    if isinstance(metrics, dict):
+        try:
+            duplicate_iou = float(
+                metrics.get(
+                    "duplicate_iou", metrics.get("duplicate_rectangle_iou")
+                )
+            )
+        except (TypeError, ValueError):
+            duplicate_iou = None
     return QualityReviewItem(
         issue_id=issue_id,
         run_id=str(raw.get("run_id", run_id) or run_id),
@@ -679,6 +702,8 @@ def _item_from_report_issue(
         primary_metric_direction=str(
             primary.get("direction", "") or "higher_is_worse"
         ),
+        duplicate_shape_index=duplicate_index,
+        duplicate_iou=duplicate_iou,
         original_severity=str(raw.get("severity", "") or ""),
     )
 

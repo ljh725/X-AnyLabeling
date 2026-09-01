@@ -326,6 +326,9 @@ class InspectorPanel(QtWidgets.QDockWidget):
         self._quality_review.issue_clicked.connect(
             self.issue_navigate_requested.emit
         )
+        self._quality_review.related_issue_clicked.connect(
+            self.issue_navigate_requested.emit
+        )
         self._quality_review.import_requested.connect(
             self._on_import_quality_report
         )
@@ -1273,4 +1276,3 @@ class InspectorPanel(QtWidgets.QDockWidget):
     @property
     def rule_config_widget(self) -> RuleConfigWidget:
         return self._rule_config
-
