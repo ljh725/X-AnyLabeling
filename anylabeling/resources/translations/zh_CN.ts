@@ -1709,6 +1709,30 @@ Original images backed up to:
   <context>
     <name>LabelingWidget</name>
     <message>
+      <source>Target label: {label}
+Marked objects: {objects} in {files} file(s)
+Changeable: {changeable}
+Already target label: {unchanged}
+Deleted: {deleted}
+Identity conflicts: {conflict}
+Read failures: {failed}
+
+This operation writes annotation JSON files immediately and is not added to the normal undo stack. A recovery manifest is created for committed files.
+
+Proceed with the commit?</source>
+      <translation>目标标签：{label}
+已标记对象：{objects} 个，涉及 {files} 个文件
+可更改：{changeable}
+已经是目标标签：{unchanged}
+已删除：{deleted}
+标识冲突：{conflict}
+读取失败：{failed}
+
+此操作会立即写入标注 JSON 文件，且不会进入普通撤销栈。已提交文件会生成恢复清单。
+
+是否继续提交？</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="1616" />
       <source>矩形单边调整</source>
       <translation>矩形单边调整</translation>
@@ -6623,6 +6647,10 @@ Do you want to continue?</source>
     <message><source>Relabel selected objects</source><translation>重标注所选对象</translation></message>
     <message><source>Target label:</source><translation>目标标签：</translation></message>
     <message><source>Index unavailable: %1</source><translation>索引不可用：%1</translation></message>
+    <message><source>Refresh index</source><translation>刷新索引</translation></message>
+    <message><source>Rebuild index</source><translation>重建索引</translation></message>
+    <message><source>No labeled objects in the index</source><translation>索引中没有已标注对象</translation></message>
+    <message><source>Relabel failed: %1</source><translation>重标注失败：%1</translation></message>
     <message><source>Page %1 / %2 (%3 objects)</source><translation>第 %1 / %2 页（%3 个对象）</translation></message>
     <message><source>Selected: %1 objects in %2 files</source><translation>已选择 %1 个对象，来自 %2 个文件</translation></message>
   </context>

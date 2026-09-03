@@ -111,6 +111,9 @@ def _preflight_message(summary) -> str:
         "Deleted: {deleted}\n"
         "Identity conflicts: {conflict}\n"
         "Read failures: {failed}\n\n"
+        "This operation writes annotation JSON files immediately and is "
+        "not added to the normal undo stack. A recovery manifest is created "
+        "for committed files.\n\n"
         "Proceed with the commit?",
     ).format(
         label=summary.target_label,

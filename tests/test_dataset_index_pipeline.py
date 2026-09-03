@@ -34,7 +34,18 @@ class PipelineProbeIndex(DatasetFilterIndex):
             json_path=json_path,
             sort_order=sort_order,
             json_size=10,
-            shapes=[("person", "1", "rectangle")],
+            shapes=[
+                (
+                    "person",
+                    "1",
+                    "rectangle",
+                    f"{sort_order:032x}",
+                    0.0,
+                    0.0,
+                    10.0,
+                    10.0,
+                )
+            ],
             status=INDEX_STATUS_OK,
             read_seconds=0.01,
         )

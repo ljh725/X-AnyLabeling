@@ -1710,6 +1710,30 @@ Original images backed up to:
   <context>
     <name>LabelingWidget</name>
     <message>
+      <source>Target label: {label}
+Marked objects: {objects} in {files} file(s)
+Changeable: {changeable}
+Already target label: {unchanged}
+Deleted: {deleted}
+Identity conflicts: {conflict}
+Read failures: {failed}
+
+This operation writes annotation JSON files immediately and is not added to the normal undo stack. A recovery manifest is created for committed files.
+
+Proceed with the commit?</source>
+      <translation>대상 레이블: {label}
+표시된 객체: {objects}개, {files}개 파일
+변경 가능: {changeable}
+이미 대상 레이블임: {unchanged}
+삭제됨: {deleted}
+식별자 충돌: {conflict}
+읽기 실패: {failed}
+
+이 작업은 주석 JSON 파일에 즉시 기록되며 일반 실행 취소 스택에 추가되지 않습니다. 커밋된 파일에는 복구 매니페스트가 생성됩니다.
+
+커밋을 계속하시겠습니까?</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="1616" />
       <source>矩形单边调整</source>
       <translation>사각형 단일 변 조정</translation>
@@ -6597,6 +6621,10 @@ Do you want to continue?</source>
     <message><source>Relabel selected objects</source><translation type="unfinished"></translation></message>
     <message><source>Target label:</source><translation type="unfinished"></translation></message>
     <message><source>Index unavailable: %1</source><translation type="unfinished"></translation></message>
+    <message><source>Refresh index</source><translation>인덱스 새로 고침</translation></message>
+    <message><source>Rebuild index</source><translation>인덱스 다시 빌드</translation></message>
+    <message><source>No labeled objects in the index</source><translation>인덱스에 레이블이 지정된 객체가 없습니다</translation></message>
+    <message><source>Relabel failed: %1</source><translation>레이블 변경 실패: %1</translation></message>
     <message><source>Page %1 / %2 (%3 objects)</source><translation type="unfinished"></translation></message>
     <message><source>Selected: %1 objects in %2 files</source><translation type="unfinished"></translation></message>
   </context>

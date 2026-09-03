@@ -17,6 +17,12 @@ from anylabeling.views.labeling.widgets.dataset_thumbnail import (
     DatasetLabelThumbnailWindow,
     ThumbnailRenderer,
 )
+from anylabeling.views.labeling.widgets.object_relabel import (
+    ObjectMutationResult,
+    ObjectRelabelResult,
+    STATUS_FAILED,
+    STATUS_SUCCEEDED,
+)
 
 
 @pytest.fixture(scope="module")
@@ -39,6 +45,9 @@ class FakeController(QtCore.QObject):
         self.refs = tuple(refs)
         self.is_query_ready = True
         self.state_value = "ready"
+        self.query_calls = 0
+        self.refresh_calls = 0
+        self.rebuild_calls = 0
 
     def query_label_counts(self):
         """Return the single fake label and its count."""
@@ -46,6 +55,7 @@ class FakeController(QtCore.QObject):
 
     def query_thumbnail_objects(self, label, limit=100, offset=0):
         """Return a bounded page from the fake references."""
+        self.query_calls += 1
         items = tuple(ref for ref in self.refs if ref.label == label)
         return DatasetThumbnailPage(
             label,
@@ -54,6 +64,16 @@ class FakeController(QtCore.QObject):
             offset,
             items[offset : offset + limit],
         )
+
+    def refresh(self):
+        """Record one incremental recovery request."""
+        self.refresh_calls += 1
+        return True
+
+    def rebuild(self):
+        """Record one full recovery request."""
+        self.rebuild_calls += 1
+        return True
 
 
 def _ref(tmp_path, index=0):
@@ -97,6 +117,24 @@ def test_renderer_groups_and_renders_visible_source(qapp, tmp_path):
     renderer.close()
 
 
+def test_renderer_uses_bounded_pool_and_deduplicates_inflight(qapp, tmp_path):
+    """Repeated visibility requests do not enqueue the same crop twice."""
+    ref = _ref(tmp_path)
+    renderer = ThumbnailRenderer(
+        str(tmp_path / "cache"), max_concurrency=1, parent=qapp
+    )
+    generation = renderer.invalidate()
+
+    renderer.request([ref], generation=generation)
+    first_inflight = set(renderer._inflight)
+    renderer.request([ref], generation=generation)
+
+    assert renderer._pool.maxThreadCount() == 1
+    assert first_inflight
+    assert renderer._inflight == first_inflight
+    renderer.close()
+
+
 def test_browser_pages_and_selection_are_bounded(qapp, tmp_path):
     """The browser exposes one page and emits only selected valid refs."""
     refs = [_ref(tmp_path, index) for index in range(3)]
@@ -117,5 +155,135 @@ def test_browser_pages_and_selection_are_bounded(qapp, tmp_path):
         QtCore.QItemSelectionModel.SelectionFlag.Select,
     )
     assert window._selected_refs() == (refs[0],)
+    window.close()
+    qapp.processEvents()
+
+
+def test_browser_is_a_resizable_top_level_window_and_closes(qapp, tmp_path):
+    """The browser owns normal window chrome and emits one close lifecycle."""
+    controller = FakeController([_ref(tmp_path)])
+    parent = QtWidgets.QWidget()
+    window = DatasetLabelThumbnailWindow(
+        controller, "project", str(tmp_path), parent=parent
+    )
+    closed = []
+    window.closed.connect(lambda: closed.append(True))
+
+    assert window.isWindow()
+    assert window.testAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
+    assert window.minimumSize() != window.maximumSize()
+    window.close()
+    qapp.processEvents()
+    assert closed == [True]
+
+
+def test_page_reloads_clamp_after_last_page_shrinks(qapp, tmp_path):
+    """A stale last-page offset falls back to the final valid page."""
+    image_path = str(tmp_path / "shared.png")
+    refs = tuple(
+        DatasetThumbnailRef(
+            image_path,
+            str(tmp_path / "shared.json"),
+            index,
+            index,
+            f"{index:032x}",
+            "person",
+            (1.0, 1.0, 10.0, 10.0),
+        )
+        for index in range(101)
+    )
+    controller = FakeController(refs)
+    window = DatasetLabelThumbnailWindow(controller, "project", str(tmp_path))
+    window._page = 1
+    controller.refs = refs[:4]
+    window._load_page()
+
+    assert window._page == 0
+    assert window._model.rowCount() == 4
+    assert "Page 1 / 1" in window.page_label.text()
+    window.close()
+    qapp.processEvents()
+
+
+def test_partial_failure_keeps_selection_and_error(qapp, tmp_path):
+    """Failed objects remain selected and visibly retryable after a batch."""
+    refs = [_ref(tmp_path, index) for index in range(2)]
+    controller = FakeController(refs)
+    window = DatasetLabelThumbnailWindow(controller, "project", str(tmp_path))
+    selection = window.view.selectionModel()
+    for row in range(2):
+        selection.select(
+            window._model.index(row, 0),
+            QtCore.QItemSelectionModel.SelectionFlag.Select,
+        )
+    result = ObjectRelabelResult(
+        transaction_id="tx",
+        phase="committed",
+        cancelled=False,
+        objects=(
+            ObjectMutationResult(
+                ("project", refs[0].image_path, refs[0].shape_id),
+                STATUS_SUCCEEDED,
+            ),
+            ObjectMutationResult(
+                ("project", refs[1].image_path, refs[1].shape_id),
+                STATUS_FAILED,
+                "identity changed",
+            ),
+        ),
+    )
+
+    window.apply_relabel_result(result)
+
+    assert window._selected_refs() == (refs[1],)
+    assert (
+        window._model.index(1, 0).data(window._model.MutationErrorRole)
+        == "identity changed"
+    )
+    assert window._model.is_selectable(1)
+    window.close()
+    qapp.processEvents()
+
+
+def test_refresh_notifications_are_coalesced(qapp, tmp_path):
+    """Many per-file completions trigger only one bounded page reload."""
+    controller = FakeController([_ref(tmp_path)])
+    window = DatasetLabelThumbnailWindow(controller, "project", str(tmp_path))
+    baseline = controller.query_calls
+    for index in range(5):
+        controller.file_refresh_finished.emit(str(index), True, "")
+    deadline = time.monotonic() + 0.5
+    while time.monotonic() < deadline:
+        qapp.processEvents()
+        time.sleep(0.01)
+
+    assert controller.query_calls == baseline + 1
+    window.close()
+    qapp.processEvents()
+
+
+def test_stale_state_exposes_recovery_and_ready_empty_is_truthful(
+    qapp, tmp_path
+):
+    """Unavailable indexes offer recovery while a ready empty index does not."""
+    controller = FakeController([])
+    controller.is_query_ready = False
+    controller.state_value = "stale"
+    window = DatasetLabelThumbnailWindow(controller, "project", str(tmp_path))
+
+    assert "stale" in window.summary_label.text()
+    assert not window.refresh_index_button.isHidden()
+    assert not window.rebuild_index_button.isHidden()
+    window.refresh_index_button.click()
+    window.rebuild_index_button.click()
+    assert controller.refresh_calls == 1
+    assert controller.rebuild_calls == 1
+
+    controller.is_query_ready = True
+    controller.state_value = "ready"
+    window._on_controller_state_changed("stale", "ready")
+    assert "No labeled objects" in window.summary_label.text()
+    assert window.refresh_index_button.isHidden()
+    assert window.rebuild_index_button.isHidden()
     window.close()
     qapp.processEvents()

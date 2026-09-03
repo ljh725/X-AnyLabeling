@@ -7,6 +7,7 @@ import math
 import os
 import os.path as osp
 import tempfile
+import threading
 from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Optional
@@ -71,30 +72,35 @@ class ThumbnailMemoryCache:
         """Initialize the cache with a positive item limit."""
         self.max_items = max(1, int(max_items))
         self._items: OrderedDict[str, bytes] = OrderedDict()
+        self._lock = threading.RLock()
 
     def get(self, key: ThumbnailCacheKey) -> Optional[bytes]:
         """Return cached bytes and promote them to the most-recent end."""
         token = key.token
-        value = self._items.get(token)
-        if value is not None:
-            self._items.move_to_end(token)
-        return value
+        with self._lock:
+            value = self._items.get(token)
+            if value is not None:
+                self._items.move_to_end(token)
+            return value
 
     def put(self, key: ThumbnailCacheKey, value: bytes) -> None:
         """Insert bytes and evict the least-recent entries over the limit."""
         token = key.token
-        self._items[token] = bytes(value)
-        self._items.move_to_end(token)
-        while len(self._items) > self.max_items:
-            self._items.popitem(last=False)
+        with self._lock:
+            self._items[token] = bytes(value)
+            self._items.move_to_end(token)
+            while len(self._items) > self.max_items:
+                self._items.popitem(last=False)
 
     def clear(self) -> None:
         """Remove all in-memory entries."""
-        self._items.clear()
+        with self._lock:
+            self._items.clear()
 
     def __len__(self) -> int:
         """Return the current number of cached entries."""
-        return len(self._items)
+        with self._lock:
+            return len(self._items)
 
 
 class ThumbnailDiskCache:

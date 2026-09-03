@@ -15,7 +15,9 @@ pytest.importorskip("PyQt6")
 
 from PyQt6 import QtCore, QtGui, QtWidgets  # noqa: E402
 
-from anylabeling.views.labeling import label_widget as label_widget_module  # noqa: E402
+from anylabeling.views.labeling import (
+    label_widget as label_widget_module,
+)  # noqa: E402
 from anylabeling.views.labeling.shape import Shape  # noqa: E402
 from anylabeling.views.labeling.widgets.canvas import Canvas  # noqa: E402
 from anylabeling.views.labeling.widgets.object_relabel import (  # noqa: E402
@@ -26,6 +28,9 @@ from anylabeling.views.labeling.widgets.object_relabel import (  # noqa: E402
     STATUS_FAILED,
     STATUS_SUCCEEDED,
     STATUS_CANCELLED,
+)
+from anylabeling.views.labeling.widgets.object_relabel_dialog import (  # noqa: E402
+    _preflight_message,
 )
 
 
@@ -129,8 +134,8 @@ def _widget(tmp_path, filename="a.png", output_dir=None):
     widget._dataset_index_controller = SimpleNamespace(
         label_saved=lambda image_path: index_refreshes.append(image_path)
     )
-    widget._marked_project_id = (
-        lambda: osp.normcase(osp.abspath(str(tmp_path)))
+    widget._marked_project_id = lambda: osp.normcase(
+        osp.abspath(str(tmp_path))
     )
     widget._batch_write_root = lambda: osp.abspath(str(tmp_path))
     widget._annotation_path_for_image = (
@@ -141,12 +146,9 @@ def _widget(tmp_path, filename="a.png", output_dir=None):
             widget
         )
     )
-    widget._candidate_target_labels = (
-        lambda: sorted(
-            {s.label for s in widget.canvas.shapes if s.label}
-        )
-        or [""]
-    )
+    widget._candidate_target_labels = lambda: sorted(
+        {s.label for s in widget.canvas.shapes if s.label}
+    ) or [""]
     widget.dataset_review_resolve_dirty = lambda: "save"
     widget.error_message = lambda *args, **kwargs: None
     widget.status = lambda *args, **kwargs: None
@@ -167,7 +169,9 @@ def test_canvas_plain_object_click_toggles_mark(qapp):
     canvas.set_batch_mark_mode(True)
     emitted = []
     canvas.batch_mark_toggle_requested.connect(emitted.append)
-    canvas.mousePressEvent(_mouse_event(QtCore.QEvent.Type.MouseButtonPress, 30, 30))
+    canvas.mousePressEvent(
+        _mouse_event(QtCore.QEvent.Type.MouseButtonPress, 30, 30)
+    )
     canvas.mouseReleaseEvent(
         _mouse_event(QtCore.QEvent.Type.MouseButtonRelease, 30, 30)
     )
@@ -185,7 +189,9 @@ def test_canvas_drag_vertex_edge_and_blank_do_not_toggle(qapp):
 
     # Drag: release far from the press position.
     canvas.h_hape = shape
-    canvas.mousePressEvent(_mouse_event(QtCore.QEvent.Type.MouseButtonPress, 30, 30))
+    canvas.mousePressEvent(
+        _mouse_event(QtCore.QEvent.Type.MouseButtonPress, 30, 30)
+    )
     canvas.mouseReleaseEvent(
         _mouse_event(QtCore.QEvent.Type.MouseButtonRelease, 300, 300)
     )
@@ -194,7 +200,9 @@ def test_canvas_drag_vertex_edge_and_blank_do_not_toggle(qapp):
     # Vertex press: hover targets a vertex, not the body.
     canvas.h_hape = shape
     canvas.h_vertex = 0
-    canvas.mousePressEvent(_mouse_event(QtCore.QEvent.Type.MouseButtonPress, 10, 10))
+    canvas.mousePressEvent(
+        _mouse_event(QtCore.QEvent.Type.MouseButtonPress, 10, 10)
+    )
     canvas.mouseReleaseEvent(
         _mouse_event(QtCore.QEvent.Type.MouseButtonRelease, 10, 10)
     )
@@ -204,7 +212,9 @@ def test_canvas_drag_vertex_edge_and_blank_do_not_toggle(qapp):
     # Active edge press.
     canvas.h_hape = shape
     canvas.h_edge = 0
-    canvas.mousePressEvent(_mouse_event(QtCore.QEvent.Type.MouseButtonPress, 30, 10))
+    canvas.mousePressEvent(
+        _mouse_event(QtCore.QEvent.Type.MouseButtonPress, 30, 10)
+    )
     canvas.mouseReleaseEvent(
         _mouse_event(QtCore.QEvent.Type.MouseButtonRelease, 30, 10)
     )
@@ -213,7 +223,9 @@ def test_canvas_drag_vertex_edge_and_blank_do_not_toggle(qapp):
 
     # Blank click.
     canvas.h_hape = None
-    canvas.mousePressEvent(_mouse_event(QtCore.QEvent.Type.MouseButtonPress, 5, 5))
+    canvas.mousePressEvent(
+        _mouse_event(QtCore.QEvent.Type.MouseButtonPress, 5, 5)
+    )
     canvas.mouseReleaseEvent(
         _mouse_event(QtCore.QEvent.Type.MouseButtonRelease, 5, 5)
     )
@@ -229,7 +241,9 @@ def test_canvas_moving_shape_release_does_not_toggle(qapp):
     emitted = []
     canvas.batch_mark_toggle_requested.connect(emitted.append)
     canvas.h_hape = shape
-    canvas.mousePressEvent(_mouse_event(QtCore.QEvent.Type.MouseButtonPress, 30, 30))
+    canvas.mousePressEvent(
+        _mouse_event(QtCore.QEvent.Type.MouseButtonPress, 30, 30)
+    )
     canvas.moving_shape = True
     canvas.mouseReleaseEvent(
         _mouse_event(QtCore.QEvent.Type.MouseButtonRelease, 31, 31)
@@ -249,7 +263,9 @@ def test_pausing_mark_mode_keeps_marked_ids_and_gesture_silent(qapp):
     emitted = []
     canvas.batch_mark_toggle_requested.connect(emitted.append)
     canvas.h_hape = shape
-    canvas.mousePressEvent(_mouse_event(QtCore.QEvent.Type.MouseButtonPress, 30, 30))
+    canvas.mousePressEvent(
+        _mouse_event(QtCore.QEvent.Type.MouseButtonPress, 30, 30)
+    )
     canvas.mouseReleaseEvent(
         _mouse_event(QtCore.QEvent.Type.MouseButtonRelease, 30, 30)
     )
@@ -346,10 +362,18 @@ def test_delete_selected_removes_marks_of_deleted_shapes(tmp_path):
     )
     store = widget.marked_object_store
     assert store.contains(
-        (widget._marked_project_id(), osp.abspath(widget.filename), kept.xanylabeling_shape_id)
+        (
+            widget._marked_project_id(),
+            osp.abspath(widget.filename),
+            kept.xanylabeling_shape_id,
+        )
     )
     assert not store.contains(
-        (widget._marked_project_id(), osp.abspath(widget.filename), deleted.xanylabeling_shape_id)
+        (
+            widget._marked_project_id(),
+            osp.abspath(widget.filename),
+            deleted.xanylabeling_shape_id,
+        )
     )
 
 
@@ -410,7 +434,9 @@ def test_dirty_cancel_aborts_before_label_selection(tmp_path, monkeypatch):
     monkeypatch.setattr(
         QtWidgets.QInputDialog,
         "getItem",
-        staticmethod(lambda *args, **kwargs: asked.append(args) or ("", False)),
+        staticmethod(
+            lambda *args, **kwargs: asked.append(args) or ("", False)
+        ),
     )
     started = []
     monkeypatch.setattr(
@@ -500,9 +526,7 @@ def test_apply_result_reloads_only_when_current_file_committed(tmp_path):
             ),
         ),
         files=(
-            SimpleNamespace(
-                source_path=annotation, status=STATUS_SUCCEEDED
-            ),
+            SimpleNamespace(source_path=annotation, status=STATUS_SUCCEEDED),
         ),
     )
     label_widget_module.LabelingWidget._apply_object_relabel_result(
@@ -555,9 +579,7 @@ def test_worker_abort_before_commit_returns_cancelled_and_keeps_marks(
     store.toggle(MarkedObjectRef("proj", str(tmp_path / "a.png"), "sid-1"))
     store.apply_relabel_result(results[0])
     assert store.counts()["objects"] == 1
-    assert (
-        source.read_text(encoding="utf-8").find('"person"') >= 0
-    )
+    assert source.read_text(encoding="utf-8").find('"person"') >= 0
 
 
 def test_worker_error_emits_failed_callback_message(tmp_path, qapp):
@@ -784,9 +806,7 @@ def test_entry_uses_project_scoped_counts(tmp_path, monkeypatch):
         QtWidgets.QInputDialog,
         "getItem",
         staticmethod(
-            lambda parent, title, label, *a, **k: captured.update(
-                prompt=label
-            )
+            lambda parent, title, label, *a, **k: captured.update(prompt=label)
             or ("", False)
         ),
     )
@@ -799,6 +819,25 @@ def test_entry_uses_project_scoped_counts(tmp_path, monkeypatch):
     label_widget_module.LabelingWidget.relabel_marked_objects(widget)
     assert "1 marked object(s) in 1 file(s)" in captured["prompt"]
     assert not started
+
+
+def test_preflight_confirmation_warns_about_immediate_non_undoable_write():
+    """Confirmation states the immediate-write and normal-undo boundary."""
+    summary = SimpleNamespace(
+        target_label="face",
+        snapshot_objects=2,
+        candidate_files=1,
+        changeable=2,
+        unchanged=0,
+        deleted=0,
+        conflict=0,
+        failed=0,
+    )
+
+    message = _preflight_message(summary).lower()
+
+    assert "immediately" in message
+    assert "normal undo stack" in message
 
 
 def test_restore_entry_and_close_guard_are_wired():
@@ -890,7 +929,11 @@ def test_prune_missing_marked_objects_cleans_shape_manager_deletions(tmp_path):
     )
     (tmp_path / "a.json").write_text(
         json.dumps(
-            {"shapes": [{"xanylabeling_shape_id": existing.xanylabeling_shape_id}]}
+            {
+                "shapes": [
+                    {"xanylabeling_shape_id": existing.xanylabeling_shape_id}
+                ]
+            }
         ),
         encoding="utf-8",
     )

@@ -124,6 +124,7 @@ class ThumbnailRenderer(QtCore.QObject):
         self,
         cache_root: str,
         memory_limit: int = 512,
+        max_concurrency: int = 2,
         parent: Optional[QtCore.QObject] = None,
     ) -> None:
         """Initialize renderer caches and a private generation counter."""
@@ -132,6 +133,9 @@ class ThumbnailRenderer(QtCore.QObject):
         self.disk = ThumbnailDiskCache(cache_root)
         self._generation = 0
         self._closed = False
+        self._inflight: set[tuple[int, str]] = set()
+        self._pool = QtCore.QThreadPool(self)
+        self._pool.setMaxThreadCount(max(1, int(max_concurrency)))
 
     @property
     def generation(self) -> int:
@@ -147,11 +151,15 @@ class ThumbnailRenderer(QtCore.QObject):
         self,
         refs: Iterable[DatasetThumbnailRef],
         size: tuple[int, int] = (180, 140),
+        generation: Optional[int] = None,
     ) -> int:
         """Request visible references and return their generation token."""
         if self._closed:
             return self._generation
-        generation = self.invalidate()
+        if generation is None:
+            generation = self.invalidate()
+        elif generation != self._generation:
+            return self._generation
         grouped: dict[
             str, list[tuple[DatasetThumbnailRef, ThumbnailCacheKey]]
         ] = {}
@@ -191,14 +199,17 @@ class ThumbnailRenderer(QtCore.QObject):
                     ThumbnailRenderResult(generation, ref, key, cached)
                 )
                 continue
+            inflight_key = (generation, key.token)
+            if inflight_key in self._inflight:
+                continue
+            self._inflight.add(inflight_key)
             grouped.setdefault(ref.image_path, []).append((ref, key))
-        pool = QtCore.QThreadPool.globalInstance()
         for image_path, entries in grouped.items():
             task = _RenderTask(
                 generation, image_path, entries, self.memory, self.disk
             )
             task.signals.finished.connect(self._on_task_finished)
-            pool.start(task)
+            self._pool.start(task)
         return generation
 
     def close(self) -> None:
@@ -209,6 +220,9 @@ class ThumbnailRenderer(QtCore.QObject):
     @QtCore.pyqtSlot(object)
     def _on_task_finished(self, results: object) -> None:
         """Forward worker results; consumers enforce generation freshness."""
+        for result in results:
+            if result.key is not None:
+                self._inflight.discard((result.generation, result.key.token))
         if self._closed:
             return
         for result in results:

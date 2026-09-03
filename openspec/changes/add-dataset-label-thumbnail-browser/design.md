@@ -61,6 +61,8 @@ DatasetThumbnailRef
 
 新增独立目录承载窗口、页面模型、缩略图调度和缓存，主窗口只负责创建/显示一个可复用的非模态窗口、提供当前项目上下文并接收改标请求。缩略图网格使用模型/视图与自定义 delegate，避免为每个对象创建重型 QWidget。
 
+“独立非模态窗口”具体指带系统标题栏的顶层 Qt Window：用户可关闭、拖动和缩放；关闭时停止接收后台结果、释放窗口对象并清除主界面保存的引用。它不能以无边框子控件形式附着在标注界面上。
+
 窗口状态由 `(dataset generation, selected label, page number, render generation)` 标识。标签、页面、数据集或窗口生命周期变化都会推进 generation；后台返回结果必须匹配当前 generation 才能进入模型。
 
 **Alternatives considered:** 把网格直接堆入 `label_widget.py` 或 Inspector。前者扩大高成本文件职责，后者会把数据检查工作流与独立的数据集改标工作流耦合，因此采用独立窗口和薄入口。
@@ -98,6 +100,8 @@ DatasetThumbnailRef
 统一改标结果中的成功文件继续逐个调用 `DatasetIndexController.label_saved(image_path)`，由控制器从 JSON 重扫该文件；不执行推测性的 SQL `UPDATE label`。控制器增加可供窗口监听的局部刷新完成/延迟信号，窗口等受影响文件刷新完成后重新查询当前标签总数和当前页。
 
 如果页尾对象退出后当前 offset 超过新总数，页码回退到最后一个有效页。若索引刷新失败或被正在运行的 rebuild 延迟，窗口进入 stale 状态并禁用下一次提交，直到控制器恢复 READY；不得继续显示旧结果并允许写入。
+
+恢复入口位于缩略图窗口的索引状态区域，显式提供“刷新索引”和“重建索引”操作并调用 `DatasetIndexController` 现有接口。READY 但没有标签时显示空数据状态，不得显示“索引不可用”。同一批提交产生的逐文件刷新通知由窗口短暂合并后只触发一次页面重查。
 
 **Alternatives considered:** JSON 和 SQLite 在一个数据库事务概念中同时更新。两者不是同一种存储，无法提供真正原子性；把 JSON 作为事实并让索引可失效重建更符合现有架构。
 
