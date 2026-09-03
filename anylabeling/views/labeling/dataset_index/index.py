@@ -6,6 +6,7 @@ SQLite 仅作为可丢弃、可重建的索引缓存，不保存不可从 JSON �
 
 import hashlib
 import logging
+import math
 import os
 import os.path as osp
 import sqlite3
@@ -21,14 +22,39 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from .json_stream import JsonStreamError, read_top_level_array
+from .types import DatasetThumbnailPage, DatasetThumbnailRef
 
 logger = logging.getLogger(__name__)
+
+
+def _points_bbox(points: object) -> tuple[Optional[float], ...]:
+    """Return an axis-aligned bbox for numeric two-dimensional points."""
+    values: list[tuple[float, float]] = []
+    if isinstance(points, (list, tuple)):
+        for point in points:
+            if not isinstance(point, (list, tuple)) or len(point) < 2:
+                continue
+            x, y = point[0], point[1]
+            if isinstance(x, bool) or isinstance(y, bool):
+                continue
+            if not isinstance(x, (int, float)) or not isinstance(
+                y, (int, float)
+            ):
+                continue
+            x_value, y_value = float(x), float(y)
+            if math.isfinite(x_value) and math.isfinite(y_value):
+                values.append((x_value, y_value))
+    if not values:
+        return (None, None, None, None)
+    xs, ys = zip(*values)
+    return (min(xs), min(ys), max(xs), max(ys))
+
 
 # ---------------------------------------------------------------------------
 # 常量
 # ---------------------------------------------------------------------------
 
-SCHEMA_VERSION = "2"
+SCHEMA_VERSION = "3"
 CACHE_DIR = osp.expanduser("~/.cache/xanylabeling/dataset_index")
 INDEX_STATUS_OK = "ok"
 INDEX_STATUS_MISSING = "missing"
@@ -60,6 +86,11 @@ QUERY_INDEX_DEFINITIONS = (
         "idx_shapes_file_shape",
         "CREATE INDEX IF NOT EXISTS idx_shapes_file_shape "
         "ON shapes(file_id, shape_index)",
+    ),
+    (
+        "idx_shapes_file_shape_id",
+        "CREATE INDEX IF NOT EXISTS idx_shapes_file_shape_id "
+        "ON shapes(file_id, shape_id)",
     ),
     (
         "idx_files_sort_order",
@@ -696,6 +727,103 @@ class DatasetFilterIndex:
             logger.warning("DatasetFilterIndex label query failed: %s", exc)
             return []
 
+    def query_label_counts(self) -> List[tuple[str, int]]:
+        """Return non-empty indexed labels and their Shape counts."""
+        if self._conn is None:
+            return []
+        try:
+            rows = self._conn.execute("""
+                SELECT label, COUNT(*)
+                FROM shapes
+                WHERE label IS NOT NULL AND label <> ''
+                GROUP BY label
+                ORDER BY label COLLATE NOCASE, label
+                """).fetchall()
+            return [(str(label), int(count)) for label, count in rows]
+        except sqlite3.Error as exc:
+            logger.warning(
+                "DatasetFilterIndex label-count query failed: %s", exc
+            )
+            return []
+
+    def query_thumbnail_objects(
+        self, label: str, limit: int = 100, offset: int = 0
+    ) -> DatasetThumbnailPage:
+        """Return a stable, bounded page of objects for one exact label.
+
+        Args:
+            label: Exact Shape label to query.
+            limit: Requested page size, clamped to the range 1..100.
+            offset: Zero-based row offset.
+
+        Returns:
+            A page containing only lightweight index references.
+        """
+        normalized_label = label if isinstance(label, str) else ""
+        page_limit = max(1, min(int(limit), 100))
+        page_offset = max(0, int(offset))
+        if self._conn is None or not normalized_label:
+            return DatasetThumbnailPage(
+                normalized_label, 0, page_limit, page_offset, ()
+            )
+        try:
+            total_row = self._conn.execute(
+                "SELECT COUNT(*) FROM shapes WHERE label = ?",
+                (normalized_label,),
+            ).fetchone()
+            total = int(total_row[0]) if total_row else 0
+            rows = self._conn.execute(
+                """
+                SELECT f.image_path, f.json_path, f.sort_order,
+                       s.shape_index, s.shape_id, s.label,
+                       s.bbox_x_min, s.bbox_y_min,
+                       s.bbox_x_max, s.bbox_y_max
+                FROM shapes s
+                JOIN files f ON s.file_id = f.id
+                WHERE s.label = ?
+                ORDER BY f.sort_order, f.image_path, s.shape_index
+                LIMIT ? OFFSET ?
+                """,
+                (normalized_label, page_limit, page_offset),
+            ).fetchall()
+            items = []
+            for row in rows:
+                image_path, json_path, sort_order, shape_index, shape_id = row[
+                    :5
+                ]
+                row_label = row[5] or ""
+                bbox_values = row[6:10]
+                bbox = (
+                    tuple(float(value) for value in bbox_values)
+                    if all(value is not None for value in bbox_values)
+                    else None
+                )
+                items.append(
+                    DatasetThumbnailRef(
+                        image_path=str(image_path or ""),
+                        json_path=str(json_path or ""),
+                        sort_order=int(sort_order or 0),
+                        shape_index=int(shape_index),
+                        shape_id=str(shape_id or ""),
+                        label=str(row_label),
+                        bbox=bbox,
+                    )
+                )
+            return DatasetThumbnailPage(
+                normalized_label,
+                total,
+                page_limit,
+                page_offset,
+                tuple(items),
+            )
+        except (sqlite3.Error, TypeError, ValueError) as exc:
+            logger.warning(
+                "DatasetFilterIndex thumbnail query failed: %s", exc
+            )
+            return DatasetThumbnailPage(
+                normalized_label, 0, page_limit, page_offset, ()
+            )
+
     # ------------------------------------------------------------------
     # Schema 管理（内部）
     # ------------------------------------------------------------------
@@ -749,9 +877,14 @@ class DatasetFilterIndex:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 file_id INTEGER NOT NULL,
                 shape_index INTEGER NOT NULL,
+                shape_id TEXT,
                 label TEXT,
                 group_id TEXT,
                 shape_type TEXT,
+                bbox_x_min REAL,
+                bbox_y_min REAL,
+                bbox_x_max REAL,
+                bbox_y_max REAL,
                 FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
             );
             """)
@@ -1168,7 +1301,9 @@ class DatasetFilterIndex:
                 error_message="JSON file does not exist",
                 read_seconds=time.perf_counter() - read_started,
             )
-        shapes, error_message = cls._read_shapes(json_path)
+        shapes, error_message = cls._read_shapes(
+            json_path, include_geometry=True
+        )
         status = INDEX_STATUS_ERROR if error_message else INDEX_STATUS_OK
         return PreparedIndexFile(
             image_path=image_path,
@@ -1235,12 +1370,23 @@ class DatasetFilterIndex:
         self._conn.executemany(
             """
             INSERT INTO shapes
-            (file_id, shape_index, label, group_id, shape_type)
-            VALUES (?, ?, ?, ?, ?)
+            (file_id, shape_index, shape_id, label, group_id, shape_type,
+             bbox_x_min, bbox_y_min, bbox_x_max, bbox_y_max)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                (file_id, idx, label, gid, stype)
-                for idx, (label, gid, stype) in enumerate(prepared.shapes)
+                (
+                    file_id,
+                    idx,
+                    shape_id,
+                    label,
+                    gid,
+                    stype,
+                    *bbox,
+                )
+                for idx, (label, gid, stype, shape_id, *bbox) in enumerate(
+                    prepared.shapes
+                )
             ),
         )
         return prepared.status
@@ -1293,7 +1439,9 @@ class DatasetFilterIndex:
             )
             return INDEX_STATUS_MISSING
 
-        shapes, error_message = self._read_shapes(json_path)
+        shapes, error_message = self._read_shapes(
+            json_path, include_geometry=True
+        )
         status = INDEX_STATUS_ERROR if error_message else INDEX_STATUS_OK
 
         self._conn.execute(
@@ -1321,12 +1469,23 @@ class DatasetFilterIndex:
         self._conn.executemany(
             """
             INSERT INTO shapes
-            (file_id, shape_index, label, group_id, shape_type)
-            VALUES (?, ?, ?, ?, ?)
+            (file_id, shape_index, shape_id, label, group_id, shape_type,
+             bbox_x_min, bbox_y_min, bbox_x_max, bbox_y_max)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                (file_id, idx, label, gid, stype)
-                for idx, (label, gid, stype) in enumerate(shapes)
+                (
+                    file_id,
+                    idx,
+                    shape_id,
+                    label,
+                    gid,
+                    stype,
+                    *bbox,
+                )
+                for idx, (label, gid, stype, shape_id, *bbox) in enumerate(
+                    shapes
+                )
             ),
         )
         return status
@@ -1467,19 +1626,22 @@ class DatasetFilterIndex:
         return label_file
 
     @staticmethod
-    def _read_shapes(json_path: str) -> Tuple[List[tuple], str]:
+    def _read_shapes(
+        json_path: str, include_geometry: bool = False
+    ) -> Tuple[List[tuple], str]:
         """从 JSON 文件中读取轻量 shape 字段。
 
-        只提取查询所需的字段：label、group_id、shape_type。
-        不读取 points、imageData 等完整数据。
+        只提取查询所需的字段：label、group_id、shape_type；缩略图索引
+        构建时可额外提取永久 Shape ID 和 bbox，不保留完整 points。
 
         Args:
             json_path: JSON 标注文件路径。
 
         Returns:
-            二元组 `(shapes, error_message)`。shapes 中每个元素为
-            `(label, group_id, shape_type)`。如果解析失败，shapes 为空，
-            error_message 保存失败原因。
+            二元组 `(shapes, error_message)`。默认 shapes 中每个元素为
+            `(label, group_id, shape_type)`；当 ``include_geometry`` 为真时，
+            每个元素还包含 `shape_id` 和四个 bbox 值。如果解析失败，
+            shapes 为空，error_message 保存失败原因。
         """
         try:
             with open(json_path, "r", encoding="utf-8") as f:
@@ -1492,7 +1654,15 @@ class DatasetFilterIndex:
                 gid = shape.get("group_id")
                 gid = str(gid) if gid is not None else "-1"
                 stype = shape.get("shape_type", "") or ""
-                results.append((label, gid, stype))
+                if not include_geometry:
+                    results.append((label, gid, stype))
+                    continue
+                shape_id_value = shape.get("xanylabeling_shape_id")
+                shape_id = (
+                    str(shape_id_value) if shape_id_value is not None else ""
+                )
+                bbox = _points_bbox(shape.get("points"))
+                results.append((label, gid, stype, shape_id, *bbox))
         except (JsonStreamError, OSError, AttributeError) as exc:
             logger.warning(
                 f"Failed to read JSON index fields {json_path}: {exc}"

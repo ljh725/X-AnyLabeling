@@ -178,6 +178,7 @@ from .widgets.object_field_edit_dialog import (
     ObjectFieldEditDialog,
     run_object_field_edit_flow,
 )
+from .widgets.dataset_thumbnail import DatasetLabelThumbnailWindow
 from .widgets.pose_label import (
     PoseViewPanel,
 )
@@ -421,6 +422,7 @@ class LabelingWidget(LabelDialog):
         self.marked_object_store = MarkedObjectStore()
         self._object_relabel_thread = None
         self._object_relabel_running = False
+        self._dataset_thumbnail_window = None
         self._object_field_edit_thread = None
         self._object_field_edit_running = False
         self._settings_runtime_applier = SettingsRuntimeApplier(self)
@@ -1470,12 +1472,22 @@ class LabelingWidget(LabelDialog):
             icon="undo",
             tip=self.tr("Roll back a committed object relabel transaction"),
         )
+        dataset_label_thumbnails = action(
+            self.tr("Dataset Label Thumbnails..."),
+            self.open_dataset_label_thumbnails,
+            icon="edit",
+            tip=self.tr(
+                "Browse objects by label across the current dataset and "
+                "relabel selected thumbnails"
+            ),
+        )
         self.object_mark_actions = utils.Struct(
             batch_mark_mode=batch_mark_mode,
             clear_batch_marks=clear_batch_marks,
             relabel_marked_objects=relabel_marked_objects,
             edit_marked_object_fields=edit_marked_object_fields,
             restore_object_relabel=restore_object_relabel,
+            dataset_label_thumbnails=dataset_label_thumbnails,
         )
         copy_coordinates = action(
             self.tr("Copy Coordinates"),
@@ -2740,6 +2752,7 @@ class LabelingWidget(LabelDialog):
                 relabel_marked_objects,
                 edit_marked_object_fields,
                 restore_object_relabel,
+                dataset_label_thumbnails,
                 None,
                 shape_converter,
                 assign_shape_ids,
@@ -4376,8 +4389,6 @@ class LabelingWidget(LabelDialog):
         Any future menu, context-menu, or digit-shortcut entry point
         must call this method instead of implementing its own write path.
         """
-        if self._object_relabel_running:
-            return
         project_id = self._marked_project_id()
         counts = self.marked_object_store.counts_for_project(project_id)
         if counts["objects"] == 0:
@@ -4392,23 +4403,13 @@ class LabelingWidget(LabelDialog):
             return
         if not self.filename:
             return
-        resolution = self.dataset_review_resolve_dirty()
-        if resolution in ("cancel", "save_failed"):
-            if resolution == "save_failed":
-                self.error_message(
-                    self.tr("Relabel Marked Objects"),
-                    self.tr(
-                        "Failed to save the current file. Relabeling "
-                        "aborted; all marks are kept."
-                    ),
-                )
+        title = self.tr("Relabel Marked Objects")
+        if not LabelingWidget._prepare_object_relabel(self, title):
             return
-        if resolution == "discard":
-            self.load_file(self.filename)
         snapshot = self.marked_object_store.snapshot_for_project(project_id)
         target, ok = QtWidgets.QInputDialog.getItem(
             self,
-            self.tr("Relabel Marked Objects"),
+            title,
             self.tr(
                 "Target label for {objects} marked object(s) in {files} "
                 "file(s):"
@@ -4419,6 +4420,47 @@ class LabelingWidget(LabelDialog):
         )
         if not ok or not target.strip():
             return
+        LabelingWidget._launch_object_relabel(
+            self,
+            snapshot,
+            target,
+            title,
+            prepared=True,
+        )
+
+    def _prepare_object_relabel(self, title: str) -> bool:
+        """Resolve current-file dirty state before any object commit."""
+        if self._object_relabel_running or not self.filename:
+            return False
+        resolution = self.dataset_review_resolve_dirty()
+        if resolution in ("cancel", "save_failed"):
+            if resolution == "save_failed":
+                self.error_message(
+                    title,
+                    self.tr(
+                        "Failed to save the current file. Relabeling "
+                        "aborted; all marks are kept."
+                    ),
+                )
+            return False
+        if resolution == "discard":
+            self.load_file(self.filename)
+        return True
+
+    def _launch_object_relabel(
+        self,
+        snapshot,
+        target: str,
+        title: str,
+        on_result=None,
+        prepared: bool = False,
+    ) -> bool:
+        """Run the shared object relabel flow for any immutable ref snapshot."""
+        if not prepared and not LabelingWidget._prepare_object_relabel(
+            self, title
+        ):
+            return False
+        project_id = self._marked_project_id()
         try:
             plan = build_object_relabel_plan(
                 snapshot,
@@ -4428,22 +4470,33 @@ class LabelingWidget(LabelDialog):
                 self._annotation_path_for_image,
             )
         except ObjectRelabelPlanError as exc:
-            self.error_message(self.tr("Relabel Marked Objects"), str(exc))
-            return
+            self.error_message(title, str(exc))
+            return False
         batch_root = self._batch_write_root()
         action = self.object_mark_actions.relabel_marked_objects
+        thumbnail_action = getattr(
+            self.object_mark_actions, "dataset_label_thumbnails", None
+        )
         self._object_relabel_running = True
         action.setEnabled(False)
+        if thumbnail_action is not None:
+            thumbnail_action.setEnabled(False)
 
         def on_finished(result):
             self._object_relabel_running = False
             action.setEnabled(True)
+            if thumbnail_action is not None:
+                thumbnail_action.setEnabled(True)
             self._apply_object_relabel_result(result)
+            if on_result is not None:
+                on_result(result)
 
         def on_flow_failed(message):
             self._object_relabel_running = False
             action.setEnabled(True)
-            self.error_message(self.tr("Relabel Marked Objects"), message)
+            if thumbnail_action is not None:
+                thumbnail_action.setEnabled(True)
+            self.error_message(title, message)
 
         started = run_object_relabel_flow(
             self,
@@ -4454,10 +4507,70 @@ class LabelingWidget(LabelDialog):
             on_flow_failed,
         )
         if not started:
-            # The flow refused to start; restore the entry state so the
-            # single command stays usable.
             self._object_relabel_running = False
             action.setEnabled(True)
+            if thumbnail_action is not None:
+                thumbnail_action.setEnabled(True)
+        return started
+
+    def open_dataset_label_thumbnails(self) -> None:
+        """Open or raise the dataset-level label thumbnail browser."""
+        if self._dataset_thumbnail_window is not None:
+            self._dataset_thumbnail_window.show()
+            self._dataset_thumbnail_window.raise_()
+            self._dataset_thumbnail_window.activateWindow()
+            return
+        dataset_root = self.dataset_review_dataset_root()
+        if not dataset_root:
+            QtWidgets.QMessageBox.information(
+                self,
+                self.tr("Dataset Label Thumbnails"),
+                self.tr("Open a dataset before using label thumbnails."),
+            )
+            return
+        window = DatasetLabelThumbnailWindow(
+            self._dataset_index_controller,
+            self._marked_project_id(),
+            dataset_root,
+            self._candidate_target_labels,
+            parent=self,
+        )
+        window.relabel_requested.connect(self._relabel_from_thumbnail)
+        window.closed.connect(self._on_dataset_thumbnail_closed)
+        self._dataset_thumbnail_window = window
+        window.show()
+        window.raise_()
+        window.activateWindow()
+
+    def _relabel_from_thumbnail(self, refs, target: str) -> None:
+        """Convert thumbnail selections to the shared object relabel flow."""
+        if self._object_relabel_running:
+            return
+        project_id = self._marked_project_id()
+        snapshot = tuple(
+            MarkedObjectRef(
+                project_id=project_id,
+                image_id=osp.abspath(ref.image_path),
+                shape_id=ref.shape_id,
+                display_summary=ref.label,
+            )
+            for ref in refs
+        )
+        self._launch_object_relabel(
+            snapshot,
+            target,
+            self.tr("Relabel Thumbnail Objects"),
+            on_result=self._on_thumbnail_relabel_result,
+        )
+
+    def _on_thumbnail_relabel_result(self, result) -> None:
+        """Refresh the thumbnail browser after the shared flow terminates."""
+        if self._dataset_thumbnail_window is not None:
+            self._dataset_thumbnail_window.apply_relabel_result(result)
+
+    def _on_dataset_thumbnail_closed(self) -> None:
+        """Release the browser reference after a user close."""
+        self._dataset_thumbnail_window = None
 
     def edit_marked_object_fields(self):
         """Edit selected JSON fields on the frozen marked-object snapshot."""

@@ -21,6 +21,7 @@ from .types import (
     DatasetIndexAutoRefreshPolicy,
     DatasetIndexContext,
     DatasetIndexState,
+    DatasetThumbnailPage,
 )
 from .worker import DatasetIndexWorker
 
@@ -56,6 +57,7 @@ class DatasetIndexController(QtCore.QObject):
     statuses_refresh_requested = QtCore.pyqtSignal()
     cache_attached = QtCore.pyqtSignal()
     label_sync_deferred = QtCore.pyqtSignal(str, str)
+    file_refresh_finished = QtCore.pyqtSignal(str, bool, str)
 
     def __init__(
         self,
@@ -396,6 +398,7 @@ class DatasetIndexController(QtCore.QObject):
             return
         try:
             self._index.refresh_file(image_path, self._context.output_dir)
+            self.file_refresh_finished.emit(image_path, True, "")
         except Exception as exc:  # noqa: BLE001
             self._pending_refresh_files.add(image_path)
             self.set_state(DatasetIndexState.STALE)
@@ -405,6 +408,7 @@ class DatasetIndexController(QtCore.QObject):
                 exc,
             )
             self.label_sync_deferred.emit(image_path, str(exc))
+            self.file_refresh_finished.emit(image_path, False, str(exc))
 
     def file_statuses(
         self, image_files: Sequence[str]
@@ -446,6 +450,29 @@ class DatasetIndexController(QtCore.QObject):
         if not self.is_query_ready:
             return {}
         return self._index.query_shapes(filter_state)
+
+    def query_label_counts(self) -> List[tuple[str, int]]:
+        """Return indexed labels and counts when the cache is queryable."""
+        if not self.is_query_ready:
+            return []
+        return self._index.query_label_counts()
+
+    def query_thumbnail_objects(
+        self, label: str, limit: int = 100, offset: int = 0
+    ) -> DatasetThumbnailPage:
+        """Return one bounded page of thumbnail references."""
+        page_limit = max(1, min(int(limit), 100))
+        page_offset = max(0, int(offset))
+        if not self.is_query_ready:
+            return DatasetThumbnailPage(
+                label if isinstance(label, str) else "",
+                0,
+                page_limit,
+                page_offset,
+            )
+        return self._index.query_thumbnail_objects(
+            label, page_limit, page_offset
+        )
 
     def close_index(self) -> None:
         """Close and release the active query connection."""
@@ -742,6 +769,7 @@ class DatasetIndexController(QtCore.QObject):
                     image_path,
                     self._context.output_dir,
                 )
+                self.file_refresh_finished.emit(image_path, True, "")
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
                     "Deferred dataset index refresh failed for %s: %s",
@@ -750,6 +778,7 @@ class DatasetIndexController(QtCore.QObject):
                 )
                 self._pending_refresh_files.add(image_path)
                 self.set_state(DatasetIndexState.STALE)
+                self.file_refresh_finished.emit(image_path, False, str(exc))
 
 
 __all__ = [

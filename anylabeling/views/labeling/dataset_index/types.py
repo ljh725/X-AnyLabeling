@@ -41,6 +41,40 @@ class DatasetIndexQueryProtocol(Protocol):
         """Return matching shape indexes grouped by image path."""
         ...
 
+    def query_label_counts(self) -> List[tuple[str, int]]:
+        """Return non-empty labels and their indexed Shape counts."""
+        ...
+
+    def query_thumbnail_objects(
+        self, label: str, limit: int = 100, offset: int = 0
+    ) -> "DatasetThumbnailPage":
+        """Return one bounded page of objects for an exact label."""
+        ...
+
+
+@dataclass(frozen=True)
+class DatasetThumbnailRef:
+    """Immutable lightweight reference used by the thumbnail browser."""
+
+    image_path: str
+    json_path: str
+    sort_order: int
+    shape_index: int
+    shape_id: str
+    label: str
+    bbox: Optional[tuple[float, float, float, float]] = None
+
+
+@dataclass(frozen=True)
+class DatasetThumbnailPage:
+    """A bounded, stable page of indexed thumbnail references."""
+
+    label: str
+    total: int
+    limit: int
+    offset: int
+    items: tuple[DatasetThumbnailRef, ...] = ()
+
 
 @dataclass(frozen=True)
 class DatasetIndexContext:
@@ -79,4 +113,6 @@ __all__ = [
     "DatasetIndexContext",
     "DatasetIndexQueryProtocol",
     "DatasetIndexState",
+    "DatasetThumbnailPage",
+    "DatasetThumbnailRef",
 ]

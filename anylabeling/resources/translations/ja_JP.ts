@@ -6585,4 +6585,17 @@ Do you want to continue?</source>
       <translation type="unfinished"></translation>
     </message>
   </context>
+  <context>
+    <name>DatasetLabelThumbnailWindow</name>
+    <message><source>Dataset Label Thumbnails</source><translation type="unfinished"></translation></message>
+    <message><source>Label:</source><translation type="unfinished"></translation></message>
+    <message><source>Previous</source><translation type="unfinished"></translation></message>
+    <message><source>Next</source><translation type="unfinished"></translation></message>
+    <message><source>Relabel selected</source><translation type="unfinished"></translation></message>
+    <message><source>Relabel selected objects</source><translation type="unfinished"></translation></message>
+    <message><source>Target label:</source><translation type="unfinished"></translation></message>
+    <message><source>Index unavailable: %1</source><translation type="unfinished"></translation></message>
+    <message><source>Page %1 / %2 (%3 objects)</source><translation type="unfinished"></translation></message>
+    <message><source>Selected: %1 objects in %2 files</source><translation type="unfinished"></translation></message>
+  </context>
 </TS>

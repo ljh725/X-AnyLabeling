@@ -6577,4 +6577,17 @@ Do you want to continue?</source>
       <translation type="unfinished"></translation>
     </message>
   </context>
+  <context>
+    <name>DatasetLabelThumbnailWindow</name>
+    <message><source>Dataset Label Thumbnails</source><translation>Dataset Label Thumbnails</translation></message>
+    <message><source>Label:</source><translation>Label:</translation></message>
+    <message><source>Previous</source><translation>Previous</translation></message>
+    <message><source>Next</source><translation>Next</translation></message>
+    <message><source>Relabel selected</source><translation>Relabel selected</translation></message>
+    <message><source>Relabel selected objects</source><translation>Relabel selected objects</translation></message>
+    <message><source>Target label:</source><translation>Target label:</translation></message>
+    <message><source>Index unavailable: %1</source><translation>Index unavailable: %1</translation></message>
+    <message><source>Page %1 / %2 (%3 objects)</source><translation>Page %1 / %2 (%3 objects)</translation></message>
+    <message><source>Selected: %1 objects in %2 files</source><translation>Selected: %1 objects in %2 files</translation></message>
+  </context>
 </TS>

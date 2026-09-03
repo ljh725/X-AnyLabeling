@@ -6613,4 +6613,17 @@ Do you want to continue?</source>
       <translation type="unfinished"></translation>
     </message>
   </context>
+  <context>
+    <name>DatasetLabelThumbnailWindow</name>
+    <message><source>Dataset Label Thumbnails</source><translation>数据集标签缩略图</translation></message>
+    <message><source>Label:</source><translation>标签：</translation></message>
+    <message><source>Previous</source><translation>上一页</translation></message>
+    <message><source>Next</source><translation>下一页</translation></message>
+    <message><source>Relabel selected</source><translation>重标注所选对象</translation></message>
+    <message><source>Relabel selected objects</source><translation>重标注所选对象</translation></message>
+    <message><source>Target label:</source><translation>目标标签：</translation></message>
+    <message><source>Index unavailable: %1</source><translation>索引不可用：%1</translation></message>
+    <message><source>Page %1 / %2 (%3 objects)</source><translation>第 %1 / %2 页（%3 个对象）</translation></message>
+    <message><source>Selected: %1 objects in %2 files</source><translation>已选择 %1 个对象，来自 %2 个文件</translation></message>
+  </context>
 </TS>

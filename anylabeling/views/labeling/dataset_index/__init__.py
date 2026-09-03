@@ -26,6 +26,8 @@ from .types import (
     DatasetIndexContext,
     DatasetIndexQueryProtocol,
     DatasetIndexState,
+    DatasetThumbnailPage,
+    DatasetThumbnailRef,
 )
 
 __all__ = [
@@ -48,6 +50,8 @@ __all__ = [
     "DatasetIndexQueryProtocol",
     "DatasetIndexResult",
     "DatasetIndexState",
+    "DatasetThumbnailPage",
+    "DatasetThumbnailRef",
     "install_staged_database",
     "make_db_path",
     "make_staging_db_path",
