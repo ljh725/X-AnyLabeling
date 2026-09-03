@@ -6648,6 +6648,9 @@ Do you want to continue?</source>
     <message><source>Relabel selected objects</source><translation>重标注所选对象</translation></message>
     <message><source>Target label:</source><translation>目标标签：</translation></message>
     <message><source>Index unavailable: %1</source><translation>索引不可用：%1</translation></message>
+    <message><source>Start scan</source><translation>开始扫描</translation></message>
+    <message><source>Scanning…</source><translation>正在扫描…</translation></message>
+    <message><source>Scanning: %1 / %2 %3</source><translation>正在扫描：%1 / %2 %3</translation></message>
     <message><source>Refresh index</source><translation>刷新索引</translation></message>
     <message><source>Rebuild index</source><translation>重建索引</translation></message>
     <message><source>No labeled objects in the index</source><translation>索引中没有已标注对象</translation></message>

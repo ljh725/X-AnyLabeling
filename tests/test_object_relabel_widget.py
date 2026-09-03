@@ -1074,10 +1074,16 @@ def test_thumbnail_digit_mapping_and_dataset_lifecycle_are_wired():
     )
     widget = SimpleNamespace(
         _dataset_thumbnail_window=window,
+        _dataset_thumbnail_auto_refresh_paused=True,
+        _dataset_index_controller=SimpleNamespace(
+            resume_pending_auto_refresh=lambda lease: resumed.append(lease)
+        ),
+        _thumbnail_last_synced_identity=("image.png", "shape-id"),
         digit_rename_manager=SimpleNamespace(
             rename_shortcuts={3: {"label": "vehicle"}}
         ),
     )
+    resumed = []
 
     assert (
         label_widget_module.LabelingWidget._thumbnail_digit_label(widget, 3)
@@ -1090,6 +1096,9 @@ def test_thumbnail_digit_mapping_and_dataset_lifecycle_are_wired():
     label_widget_module.LabelingWidget._close_dataset_thumbnail_window(widget)
     assert window.close_calls == 1
     assert widget._dataset_thumbnail_window is None
+    label_widget_module.LabelingWidget._on_dataset_thumbnail_closed(widget)
+    assert resumed == [True]
+    assert not widget._dataset_thumbnail_auto_refresh_paused
 
     for method in (
         label_widget_module.LabelingWidget.import_image_folder,
@@ -1101,3 +1110,7 @@ def test_thumbnail_digit_mapping_and_dataset_lifecycle_are_wired():
         label_widget_module.LabelingWidget.shape_selection_changed
     )
     assert "_sync_dataset_thumbnail_selection" in selection_source
+    open_source = inspect.getsource(
+        label_widget_module.LabelingWidget.open_dataset_label_thumbnails
+    )
+    assert "pause_pending_auto_refresh()" in open_source

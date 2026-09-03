@@ -424,6 +424,7 @@ class LabelingWidget(LabelDialog):
         self._object_relabel_thread = None
         self._object_relabel_running = False
         self._dataset_thumbnail_window = None
+        self._dataset_thumbnail_auto_refresh_paused = False
         self._thumbnail_navigation_active = False
         self._thumbnail_last_synced_identity = None
         self._object_field_edit_thread = None
@@ -4531,6 +4532,9 @@ class LabelingWidget(LabelDialog):
                 self.tr("Open a dataset before using label thumbnails."),
             )
             return
+        self._dataset_thumbnail_auto_refresh_paused = (
+            self._dataset_index_controller.pause_pending_auto_refresh()
+        )
         window = DatasetLabelThumbnailWindow(
             self._dataset_index_controller,
             self._marked_project_id(),
@@ -4578,6 +4582,10 @@ class LabelingWidget(LabelDialog):
         """Release the browser reference after a user close."""
         self._dataset_thumbnail_window = None
         self._thumbnail_last_synced_identity = None
+        self._dataset_index_controller.resume_pending_auto_refresh(
+            self._dataset_thumbnail_auto_refresh_paused
+        )
+        self._dataset_thumbnail_auto_refresh_paused = False
 
     def _close_dataset_thumbnail_window(self) -> None:
         """Close and release the browser before its dataset context changes."""

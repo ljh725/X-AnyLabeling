@@ -6620,6 +6620,9 @@ Do you want to continue?</source>
     <message><source>Relabel selected objects</source><translation type="unfinished"></translation></message>
     <message><source>Target label:</source><translation type="unfinished"></translation></message>
     <message><source>Index unavailable: %1</source><translation type="unfinished"></translation></message>
+    <message><source>Start scan</source><translation>スキャン開始</translation></message>
+    <message><source>Scanning…</source><translation>スキャン中…</translation></message>
+    <message><source>Scanning: %1 / %2 %3</source><translation>スキャン中: %1 / %2 %3</translation></message>
     <message><source>Refresh index</source><translation>インデックスを更新</translation></message>
     <message><source>Rebuild index</source><translation>インデックスを再構築</translation></message>
     <message><source>No labeled objects in the index</source><translation>インデックスにラベル付きオブジェクトがありません</translation></message>

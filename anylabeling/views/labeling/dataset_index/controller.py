@@ -371,6 +371,31 @@ class DatasetIndexController(QtCore.QObject):
         self._auto_refresh_timer.start(self._auto_refresh_delay_ms)
         return True
 
+    def pause_pending_auto_refresh(self) -> bool:
+        """Pause a scheduled verification without changing its policy.
+
+        Returns:
+            True when a pending timer was paused. Running workers are never
+            cancelled by this method.
+        """
+        if not self._auto_refresh_timer.isActive():
+            return False
+        self._cancel_auto_refresh()
+        return True
+
+    def resume_pending_auto_refresh(self, was_paused: bool) -> bool:
+        """Resume a caller-owned pause when verification is still relevant.
+
+        Args:
+            was_paused: Token returned by :meth:`pause_pending_auto_refresh`.
+
+        Returns:
+            True when verification was scheduled again.
+        """
+        if not was_paused:
+            return False
+        return self.schedule_auto_refresh()
+
     def refresh(self) -> bool:
         """Start an incremental index refresh for the current context."""
         return self._start("refresh")

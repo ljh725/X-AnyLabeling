@@ -2,7 +2,12 @@
 
 from importlib import import_module
 
-from .cache import ThumbnailCacheKey, ThumbnailDiskCache, ThumbnailMemoryCache
+from .cache import (
+    THUMBNAIL_CROP_POLICY_VERSION,
+    ThumbnailCacheKey,
+    ThumbnailDiskCache,
+    ThumbnailMemoryCache,
+)
 
 _LAZY_IMPORTS = {
     "ThumbnailRenderResult": ("pipeline", "ThumbnailRenderResult"),
@@ -24,6 +29,7 @@ def __getattr__(name: str):
 
 
 __all__ = [
+    "THUMBNAIL_CROP_POLICY_VERSION",
     "ThumbnailCacheKey",
     "ThumbnailDiskCache",
     "ThumbnailMemoryCache",

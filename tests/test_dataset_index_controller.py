@@ -507,6 +507,28 @@ def test_auto_refresh_policy_is_explicit_and_controller_owned() -> None:
     assert workers.created[0].mode == "refresh"
 
 
+def test_pending_auto_refresh_can_be_paused_and_resumed() -> None:
+    """A thumbnail lease pauses only a pending controller-owned timer."""
+    controller, _indexes, workers = _controller(
+        auto_refresh_policy=DatasetIndexAutoRefreshPolicy.ON_CACHE_ATTACH
+    )
+    assert controller.attach_existing("root", "labels", ["a.jpg"])
+
+    lease = controller.pause_pending_auto_refresh()
+
+    assert lease is True
+    assert not controller._auto_refresh_timer.isActive()
+    assert controller.resume_pending_auto_refresh(lease)
+    assert controller._auto_refresh_timer.isActive()
+    assert not controller.resume_pending_auto_refresh(False)
+
+    controller._auto_refresh_timer.stop()
+    assert controller.refresh()
+    worker = workers.created[0]
+    assert not controller.pause_pending_auto_refresh()
+    assert not worker.cancel_called
+
+
 def test_install_failure_restores_old_index_as_stale() -> None:
     """Atomic install failure must reopen the old cache and report stale."""
 

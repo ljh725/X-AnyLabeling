@@ -13,10 +13,33 @@ from PyQt6 import QtCore, QtGui
 from anylabeling.views.labeling.dataset_index import DatasetThumbnailRef
 
 from .cache import (
+    THUMBNAIL_CROP_POLICY_VERSION,
     ThumbnailCacheKey,
     ThumbnailDiskCache,
     ThumbnailMemoryCache,
 )
+
+HORIZONTAL_PADDING_RATIO = 0.15
+
+
+def thumbnail_crop_rect(
+    bbox: tuple[float, float, float, float],
+    image_size: tuple[int, int],
+) -> Optional[tuple[int, int, int, int]]:
+    """Return a bounded crop with horizontal-only object padding."""
+    left, top, right, bottom = bbox
+    bbox_width = right - left
+    if bbox_width <= 0:
+        return None
+    pad_x = bbox_width * HORIZONTAL_PADDING_RATIO
+    x = max(0, math.floor(left - pad_x))
+    y = max(0, math.floor(top))
+    x2 = min(int(image_size[0]), math.ceil(right + pad_x))
+    y2 = min(int(image_size[1]), math.ceil(bottom))
+    width, height = x2 - x, y2 - y
+    if width <= 0 or height <= 0:
+        return None
+    return x, y, width, height
 
 
 @dataclass(frozen=True)
@@ -87,16 +110,14 @@ class _RenderTask(QtCore.QRunnable):
     ) -> ThumbnailRenderResult:
         """Render one bbox from an already decoded image."""
         assert ref.bbox is not None
-        left, top, right, bottom = ref.bbox
-        x = max(0, math.floor(left))
-        y = max(0, math.floor(top))
-        x2 = min(image.width(), math.ceil(right))
-        y2 = min(image.height(), math.ceil(bottom))
-        width, height = x2 - x, y2 - y
-        if width <= 0 or height <= 0:
+        crop_rect = thumbnail_crop_rect(
+            ref.bbox, (image.width(), image.height())
+        )
+        if crop_rect is None:
             return ThumbnailRenderResult(
                 self.generation, ref, key, error="bbox has no visible area"
             )
+        x, y, width, height = crop_rect
         cropped = image.copy(QtCore.QRect(x, y, width, height))
         scaled = cropped.scaled(
             QtCore.QSize(*key.size),
@@ -177,7 +198,11 @@ class ThumbnailRenderer(QtCore.QObject):
                 )
                 continue
             key = ThumbnailCacheKey.for_ref(
-                ref, stat.st_mtime_ns, stat.st_size, size
+                ref,
+                stat.st_mtime_ns,
+                stat.st_size,
+                size,
+                THUMBNAIL_CROP_POLICY_VERSION,
             )
             if key is None or not ref.shape_id.strip():
                 self.result_ready.emit(

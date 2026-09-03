@@ -14,6 +14,8 @@ from typing import Optional
 
 from anylabeling.views.labeling.dataset_index import DatasetThumbnailRef
 
+THUMBNAIL_CROP_POLICY_VERSION = "horizontal-padding-15-v1"
+
 
 @dataclass(frozen=True)
 class ThumbnailCacheKey:
@@ -25,6 +27,7 @@ class ThumbnailCacheKey:
     shape_id: str
     bbox: tuple[float, float, float, float]
     size: tuple[int, int]
+    crop_policy: str
 
     @classmethod
     def for_ref(
@@ -33,6 +36,7 @@ class ThumbnailCacheKey:
         image_mtime_ns: int,
         image_size: int,
         size: tuple[int, int],
+        crop_policy: str = THUMBNAIL_CROP_POLICY_VERSION,
     ) -> Optional["ThumbnailCacheKey"]:
         """Build a key when the reference has a finite four-value bbox."""
         if ref.bbox is None or len(ref.bbox) != 4:
@@ -47,6 +51,7 @@ class ThumbnailCacheKey:
             str(ref.shape_id),
             bbox,
             (max(1, int(size[0])), max(1, int(size[1]))),
+            str(crop_policy),
         )
 
     @property
@@ -60,6 +65,7 @@ class ThumbnailCacheKey:
                 self.shape_id,
                 self.bbox,
                 self.size,
+                self.crop_policy,
             )
         ).encode("utf-8")
         return hashlib.sha256(payload).hexdigest()
@@ -149,6 +155,7 @@ class ThumbnailDiskCache:
 
 
 __all__ = [
+    "THUMBNAIL_CROP_POLICY_VERSION",
     "ThumbnailCacheKey",
     "ThumbnailDiskCache",
     "ThumbnailMemoryCache",

@@ -6622,6 +6622,9 @@ Do you want to continue?</source>
     <message><source>Relabel selected objects</source><translation type="unfinished"></translation></message>
     <message><source>Target label:</source><translation type="unfinished"></translation></message>
     <message><source>Index unavailable: %1</source><translation type="unfinished"></translation></message>
+    <message><source>Start scan</source><translation>스캔 시작</translation></message>
+    <message><source>Scanning…</source><translation>스캔 중…</translation></message>
+    <message><source>Scanning: %1 / %2 %3</source><translation>스캔 중: %1 / %2 %3</translation></message>
     <message><source>Refresh index</source><translation>인덱스 새로 고침</translation></message>
     <message><source>Rebuild index</source><translation>인덱스 다시 빌드</translation></message>
     <message><source>No labeled objects in the index</source><translation>인덱스에 레이블이 지정된 객체가 없습니다</translation></message>

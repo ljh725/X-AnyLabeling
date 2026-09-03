@@ -40,6 +40,8 @@ class FakeController(QtCore.QObject):
 
     state_changed = QtCore.pyqtSignal(object, object)
     file_refresh_finished = QtCore.pyqtSignal(str, bool, str)
+    progress_changed = QtCore.pyqtSignal(int, int, str)
+    busy_changed = QtCore.pyqtSignal(bool)
 
     def __init__(self, refs):
         """Initialize a ready controller with one label's references."""
@@ -47,6 +49,7 @@ class FakeController(QtCore.QObject):
         self.refs = tuple(refs)
         self.is_query_ready = True
         self.state_value = "ready"
+        self.is_busy = False
         self.query_calls = 0
         self.refresh_calls = 0
         self.rebuild_calls = 0
@@ -299,19 +302,102 @@ def test_stale_state_exposes_recovery_and_ready_empty_is_truthful(
     window = DatasetLabelThumbnailWindow(controller, "project", str(tmp_path))
 
     assert "stale" in window.summary_label.text()
-    assert not window.refresh_index_button.isHidden()
-    assert not window.rebuild_index_button.isHidden()
-    window.refresh_index_button.click()
-    window.rebuild_index_button.click()
+    assert not window.scan_button.isHidden()
+    window.scan_button.click()
     assert controller.refresh_calls == 1
-    assert controller.rebuild_calls == 1
+    assert controller.rebuild_calls == 0
 
     controller.is_query_ready = True
     controller.state_value = "ready"
     window._on_controller_state_changed("stale", "ready")
     assert "No labeled objects" in window.summary_label.text()
-    assert window.refresh_index_button.isHidden()
-    assert window.rebuild_index_button.isHidden()
+    assert not window.scan_button.isHidden()
+    window.close()
+    qapp.processEvents()
+
+
+def test_open_does_not_scan_and_manual_scan_shows_progress(qapp, tmp_path):
+    """Opening is passive; explicit scanning gates relabel and shows progress."""
+    ref = _ref(tmp_path)
+    controller = FakeController([ref])
+    window = DatasetLabelThumbnailWindow(controller, "project", str(tmp_path))
+
+    assert controller.refresh_calls == 0
+    assert controller.rebuild_calls == 0
+    window.view.selectionModel().select(
+        window._model.index(0, 0),
+        QtCore.QItemSelectionModel.SelectionFlag.Select,
+    )
+    assert window.relabel_button.isEnabled()
+
+    window.scan_button.click()
+    assert controller.refresh_calls == 1
+
+    controller.is_busy = True
+    controller.busy_changed.emit(True)
+    controller.progress_changed.emit(2, 5, str(tmp_path / "image-2.png"))
+
+    assert not window.scan_button.isEnabled()
+    assert not window.relabel_button.isEnabled()
+    assert not window.scan_progress_bar.isHidden()
+    assert window.scan_progress_bar.maximum() == 5
+    assert window.scan_progress_bar.value() == 2
+    assert "image-2.png" in window.scan_progress_label.text()
+
+    controller.is_busy = False
+    controller.busy_changed.emit(False)
+    assert window.scan_progress_bar.isHidden()
+    assert window._model.rowCount() == 1
+    window.close()
+    qapp.processEvents()
+
+
+def test_delegate_distinguishes_selection_and_navigation_focus(qapp, tmp_path):
+    """Selected blue and reverse-focus white borders remain simultaneously."""
+    refs = [_ref(tmp_path, index) for index in range(2)]
+    window = DatasetLabelThumbnailWindow(
+        FakeController(refs), "project", str(tmp_path)
+    )
+    selection = window.view.selectionModel()
+    for row in range(2):
+        selection.select(
+            window._model.index(row, 0),
+            QtCore.QItemSelectionModel.SelectionFlag.Select,
+        )
+    window._model.set_focus_identity((refs[0].image_path, refs[0].shape_id))
+
+    canvas = QtGui.QImage(230, 200, QtGui.QImage.Format.Format_RGB32)
+    canvas.fill(QtGui.QColor("#000000"))
+    painter = QtGui.QPainter(canvas)
+    option = QtWidgets.QStyleOptionViewItem()
+    option.rect = QtCore.QRect(0, 0, 230, 200)
+    option.state = (
+        QtWidgets.QStyle.StateFlag.State_Enabled
+        | QtWidgets.QStyle.StateFlag.State_Selected
+    )
+    window.view.itemDelegate().paint(
+        painter, option, window._model.index(0, 0)
+    )
+    painter.end()
+
+    assert canvas.pixelColor(4, 100).name() == "#35a2ff"
+    assert canvas.pixelColor(10, 100).name() == "#ffffff"
+    assert len(selection.selectedIndexes()) == 2
+    window.close()
+    qapp.processEvents()
+
+
+def test_manual_scan_rebuilds_when_no_readable_cache(qapp, tmp_path):
+    """The single scan action rebuilds only when no index can be queried."""
+    controller = FakeController([])
+    controller.is_query_ready = False
+    controller.state_value = "missing"
+    window = DatasetLabelThumbnailWindow(controller, "project", str(tmp_path))
+
+    window.scan_button.click()
+
+    assert controller.refresh_calls == 0
+    assert controller.rebuild_calls == 1
     window.close()
     qapp.processEvents()
 
@@ -354,7 +440,27 @@ def test_focus_object_switches_to_owning_page_and_selects_card(qapp, tmp_path):
     assert window.focus_object(refs[123].image_path, refs[123].shape_id)
     assert window._page == 1
     assert window._selected_refs() == (refs[123],)
+    focused = window._model.index(23, 0)
+    assert focused.data(window._model.FocusRole) is True
+
+    controller.is_busy = True
+    controller.state_value = "syncing"
+    controller.busy_changed.emit(True)
+    controller.is_busy = False
+    controller.state_value = "ready"
+    controller.busy_changed.emit(False)
+    focused = window._model.index(23, 0)
+    assert focused.data(window._model.FocusRole) is True
+
     assert not window.focus_object(refs[0].image_path, "missing")
+    assert focused.data(window._model.FocusRole) is False
+
+    assert window.focus_object(refs[123].image_path, refs[123].shape_id)
+    window.view.selectionModel().select(
+        window._model.index(24, 0),
+        QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect,
+    )
+    assert focused.data(window._model.FocusRole) is False
     window.close()
     qapp.processEvents()
 

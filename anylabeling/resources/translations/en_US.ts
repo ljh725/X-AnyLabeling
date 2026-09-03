@@ -6612,6 +6612,9 @@ Do you want to continue?</source>
     <message><source>Relabel selected objects</source><translation>Relabel selected objects</translation></message>
     <message><source>Target label:</source><translation>Target label:</translation></message>
     <message><source>Index unavailable: %1</source><translation>Index unavailable: %1</translation></message>
+    <message><source>Start scan</source><translation>Start scan</translation></message>
+    <message><source>Scanning…</source><translation>Scanning…</translation></message>
+    <message><source>Scanning: %1 / %2 %3</source><translation>Scanning: %1 / %2 %3</translation></message>
     <message><source>Refresh index</source><translation>Refresh index</translation></message>
     <message><source>Rebuild index</source><translation>Rebuild index</translation></message>
     <message><source>No labeled objects in the index</source><translation>No labeled objects in the index</translation></message>
