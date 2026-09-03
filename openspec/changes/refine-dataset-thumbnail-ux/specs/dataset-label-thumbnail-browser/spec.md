@@ -19,15 +19,15 @@
 - **WHEN** 共享索引控制器报告扫描成功且索引进入已验证可用状态
 - **THEN** 系统自动加载标签列表和第一页并允许用户正常浏览
 
-### Requirement: 缩略图必须按永久对象身份和带水平上下文的 bbox 生成
-每个缩略图项 MUST 绑定 `(project_id, image_id, xanylabeling_shape_id)` 完整对象键。系统 SHALL 使用索引中的 Shape points 包围盒元数据，在 bbox 左右两侧分别增加 bbox 宽度 15% 的水平 padding 后从原图裁剪对象内容；垂直范围 MUST 保持不变，扩展范围 MUST 收敛到图像边界。Shape 数组下标只能用于稳定显示顺序，MUST NOT 作为改标身份。
+### Requirement: 缩略图必须按永久对象身份和带四周上下文的 bbox 生成
+每个缩略图项 MUST 绑定 `(project_id, image_id, xanylabeling_shape_id)` 完整对象键。系统 SHALL 使用索引中的 Shape points 包围盒元数据，在 bbox 四周分别增加 padding（左右各为 bbox 宽度的 15%，上下各为 bbox 高度的 15%）后从原图裁剪对象内容；扩展范围 MUST 收敛到图像边界。Shape 数组下标只能用于稳定显示顺序，MUST NOT 作为改标身份。
 
-#### Scenario: 正常生成带水平上下文的对象缩略图
+#### Scenario: 正常生成带四周上下文的对象缩略图
 - **WHEN** 当前页对象具有合法永久 ID、有效 bbox 且原图可读取
-- **THEN** 系统显示左右各扩展 bbox 宽度 15%、垂直不扩展并裁到图像边界的缩略图
+- **THEN** 系统显示左右各扩展 bbox 宽度 15%、上下各扩展 bbox 高度 15% 并裁到图像边界的缩略图
 
 #### Scenario: 扩展后的 bbox 接近图像边界
-- **WHEN** 水平 padding 超出原图左边界或右边界
+- **WHEN** 任一方向的 padding 超出原图边界
 - **THEN** 系统把裁剪范围限制在原图内且保持有效裁剪
 
 #### Scenario: 原图或 bbox 无法生成缩略图
@@ -35,7 +35,7 @@
 - **THEN** 系统为该对象显示错误占位信息，不阻塞当前页其他缩略图，并且不允许通过该错误项发起改标
 
 ### Requirement: 缩略图缓存必须可丢弃并自动失效
-系统 SHALL 使用有界内存缓存，并 SHALL 使用可删除、可重建的磁盘缩略图缓存。缓存身份 MUST 至少包含图片状态、永久 Shape ID、bbox、缩略图尺寸和裁剪策略版本，使图片、bbox 或水平 padding 策略变化后的旧缩略图不能被继续显示。
+系统 SHALL 使用有界内存缓存，并 SHALL 使用可删除、可重建的磁盘缩略图缓存。缓存身份 MUST 至少包含图片状态、永久 Shape ID、bbox、缩略图尺寸和裁剪策略版本，使图片、bbox 或 padding 策略变化后的旧缩略图不能被继续显示。
 
 #### Scenario: 缓存命中
 - **WHEN** 请求对象的缓存身份与当前图片、Shape ID、bbox、尺寸和裁剪策略版本完全一致

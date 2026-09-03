@@ -6,6 +6,7 @@ import pytest
 
 from anylabeling.views.labeling.dataset_index import DatasetThumbnailRef
 from anylabeling.views.labeling.widgets.dataset_thumbnail.cache import (
+    THUMBNAIL_CROP_POLICY_VERSION,
     ThumbnailCacheKey,
     ThumbnailDiskCache,
     ThumbnailMemoryCache,
@@ -49,7 +50,7 @@ def test_cache_key_changes_with_crop_policy_version(tmp_path):
     """A crop-policy change cannot reuse bytes from an older geometry."""
     ref = _ref(tmp_path)
     padded = ThumbnailCacheKey.for_ref(
-        ref, 1, 10, (180, 140), "horizontal-padding-15-v1"
+        ref, 1, 10, (180, 140), THUMBNAIL_CROP_POLICY_VERSION
     )
     unpadded = ThumbnailCacheKey.for_ref(
         ref, 1, 10, (180, 140), "no-padding-v1"
@@ -62,17 +63,19 @@ def test_cache_key_changes_with_crop_policy_version(tmp_path):
 @pytest.mark.parametrize(
     ("bbox", "image_size", "expected"),
     [
-        ((20.0, 10.0, 60.0, 30.0), (100, 80), (14, 10, 52, 20)),
-        ((2.0, 10.0, 42.0, 30.0), (100, 80), (0, 10, 48, 20)),
-        ((60.0, 10.0, 98.0, 30.0), (100, 80), (54, 10, 46, 20)),
+        ((20.0, 10.0, 60.0, 30.0), (100, 80), (14, 7, 52, 26)),
+        ((2.0, 10.0, 42.0, 30.0), (100, 80), (0, 7, 48, 26)),
+        ((60.0, 10.0, 98.0, 30.0), (100, 80), (54, 7, 46, 26)),
+        ((20.0, 2.0, 60.0, 12.0), (100, 80), (14, 0, 52, 14)),
+        ((20.0, 65.0, 60.0, 75.0), (100, 80), (14, 63, 52, 14)),
         ((10.0, 20.0, 10.0, 30.0), (100, 80), None),
         ((10.0, 30.0, 20.0, 20.0), (100, 80), None),
     ],
 )
-def test_crop_adds_only_horizontal_padding_and_clamps(
+def test_crop_adds_bidirectional_padding_and_clamps(
     bbox, image_size, expected
 ):
-    """Crop padding expands x only and remains inside source bounds."""
+    """Crop padding expands both axes and remains inside source bounds."""
     assert thumbnail_crop_rect(bbox, image_size) == expected
 
 

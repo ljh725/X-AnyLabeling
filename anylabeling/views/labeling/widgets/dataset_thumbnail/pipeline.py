@@ -20,22 +20,25 @@ from .cache import (
 )
 
 HORIZONTAL_PADDING_RATIO = 0.15
+VERTICAL_PADDING_RATIO = 0.15
 
 
 def thumbnail_crop_rect(
     bbox: tuple[float, float, float, float],
     image_size: tuple[int, int],
 ) -> Optional[tuple[int, int, int, int]]:
-    """Return a bounded crop with horizontal-only object padding."""
+    """Return a bounded crop with per-axis object padding."""
     left, top, right, bottom = bbox
     bbox_width = right - left
-    if bbox_width <= 0:
+    bbox_height = bottom - top
+    if bbox_width <= 0 or bbox_height <= 0:
         return None
     pad_x = bbox_width * HORIZONTAL_PADDING_RATIO
+    pad_y = bbox_height * VERTICAL_PADDING_RATIO
     x = max(0, math.floor(left - pad_x))
-    y = max(0, math.floor(top))
+    y = max(0, math.floor(top - pad_y))
     x2 = min(int(image_size[0]), math.ceil(right + pad_x))
-    y2 = min(int(image_size[1]), math.ceil(bottom))
+    y2 = min(int(image_size[1]), math.ceil(bottom + pad_y))
     width, height = x2 - x, y2 - y
     if width <= 0 or height <= 0:
         return None

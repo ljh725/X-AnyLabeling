@@ -14,7 +14,7 @@ from typing import Optional
 
 from anylabeling.views.labeling.dataset_index import DatasetThumbnailRef
 
-THUMBNAIL_CROP_POLICY_VERSION = "horizontal-padding-15-v1"
+THUMBNAIL_CROP_POLICY_VERSION = "padding-15-v1"
 
 
 @dataclass(frozen=True)
