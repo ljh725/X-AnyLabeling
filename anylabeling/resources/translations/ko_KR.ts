@@ -1709,6 +1709,7 @@ Original images backed up to:
   </context>
   <context>
     <name>LabelingWidget</name>
+    <message><source>Cannot locate thumbnail object: %s</source><translation>썸네일 객체를 찾을 수 없습니다: %s</translation></message>
     <message>
       <source>Target label: {label}
 Marked objects: {objects} in {files} file(s)

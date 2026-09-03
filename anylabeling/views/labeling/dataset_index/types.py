@@ -51,6 +51,12 @@ class DatasetIndexQueryProtocol(Protocol):
         """Return one bounded page of objects for an exact label."""
         ...
 
+    def query_thumbnail_location(
+        self, image_path: str, shape_id: str
+    ) -> Optional["DatasetThumbnailLocation"]:
+        """Return one object's stable position inside its label results."""
+        ...
+
 
 @dataclass(frozen=True)
 class DatasetThumbnailRef:
@@ -74,6 +80,19 @@ class DatasetThumbnailPage:
     limit: int
     offset: int
     items: tuple[DatasetThumbnailRef, ...] = ()
+
+
+@dataclass(frozen=True)
+class DatasetThumbnailLocation:
+    """Stable location of one uniquely indexed object within its label."""
+
+    image_path: str
+    json_path: str
+    sort_order: int
+    shape_index: int
+    shape_id: str
+    label: str
+    offset: int
 
 
 @dataclass(frozen=True)
@@ -113,6 +132,7 @@ __all__ = [
     "DatasetIndexContext",
     "DatasetIndexQueryProtocol",
     "DatasetIndexState",
+    "DatasetThumbnailLocation",
     "DatasetThumbnailPage",
     "DatasetThumbnailRef",
 ]

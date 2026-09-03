@@ -1700,6 +1700,7 @@ Original images backed up to:
   </context>
   <context>
     <name>LabelingWidget</name>
+    <message><source>Cannot locate thumbnail object: %s</source><translation>Cannot locate thumbnail object: %s</translation></message>
     <message>
       <source>Target label: {label}
 Marked objects: {objects} in {files} file(s)

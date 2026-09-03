@@ -15,6 +15,7 @@ from anylabeling.views.labeling.dataset_index import (
     DatasetIndexContext,
     DatasetIndexResult,
     DatasetIndexState,
+    DatasetThumbnailLocation,
 )
 from anylabeling.views.labeling.dataset_index.controller import (
     DatasetIndexController,
@@ -91,6 +92,8 @@ class FakeIndex:
         self.query_shapes_result = {}
         self.query_calls = []
         self.query_shapes_calls = []
+        self.thumbnail_location_result = None
+        self.thumbnail_location_calls = []
 
     def open(self) -> bool:
         """Return the configured open result."""
@@ -135,6 +138,11 @@ class FakeIndex:
         """Record and answer one shape-level query."""
         self.query_shapes_calls.append(filter_state)
         return dict(self.query_shapes_result)
+
+    def query_thumbnail_location(self, image_path: str, shape_id: str):
+        """Record and answer one object-location query."""
+        self.thumbnail_location_calls.append((image_path, shape_id))
+        return self.thumbnail_location_result
 
 
 class FakeIndexFactory:
@@ -300,6 +308,25 @@ def test_query_facade_hides_index_and_preserves_stale_cache_reads() -> None:
     assert controller.query_shapes(state) == {"a.jpg": [1, 3]}
     assert index.query_calls == [state]
     assert index.query_shapes_calls == [state]
+
+
+def test_thumbnail_location_facade_is_gated_by_query_readiness() -> None:
+    """Object navigation reads only a verified READY index."""
+    controller, indexes, _workers = _controller()
+
+    assert controller.query_thumbnail_location("a.jpg", "shape") is None
+    assert controller.attach_existing("root", "labels", ["a.jpg"])
+    index = indexes.created[-1]
+    location = DatasetThumbnailLocation(
+        "a.jpg", "a.json", 0, 2, "shape", "person", 7
+    )
+    index.thumbnail_location_result = location
+    controller.set_state(DatasetIndexState.STALE)
+    assert controller.query_thumbnail_location("a.jpg", "shape") is None
+
+    controller.set_state(DatasetIndexState.READY)
+    assert controller.query_thumbnail_location("a.jpg", "shape") == location
+    assert index.thumbnail_location_calls == [("a.jpg", "shape")]
 
 
 def test_rebuild_creates_connects_and_starts_worker() -> None:

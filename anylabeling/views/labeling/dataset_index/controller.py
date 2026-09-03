@@ -21,6 +21,7 @@ from .types import (
     DatasetIndexAutoRefreshPolicy,
     DatasetIndexContext,
     DatasetIndexState,
+    DatasetThumbnailLocation,
     DatasetThumbnailPage,
 )
 from .worker import DatasetIndexWorker
@@ -473,6 +474,17 @@ class DatasetIndexController(QtCore.QObject):
         return self._index.query_thumbnail_objects(
             label, page_limit, page_offset
         )
+
+    def query_thumbnail_location(
+        self, image_path: str, shape_id: str
+    ) -> Optional[DatasetThumbnailLocation]:
+        """Return one object's label-relative position when queryable."""
+        if (
+            self.state is not DatasetIndexState.READY
+            or not self.is_query_ready
+        ):
+            return None
+        return self._index.query_thumbnail_location(image_path, shape_id)
 
     def close_index(self) -> None:
         """Close and release the active query connection."""

@@ -26,6 +26,7 @@ from .types import (
     DatasetIndexContext,
     DatasetIndexQueryProtocol,
     DatasetIndexState,
+    DatasetThumbnailLocation,
     DatasetThumbnailPage,
     DatasetThumbnailRef,
 )
@@ -50,6 +51,7 @@ __all__ = [
     "DatasetIndexQueryProtocol",
     "DatasetIndexResult",
     "DatasetIndexState",
+    "DatasetThumbnailLocation",
     "DatasetThumbnailPage",
     "DatasetThumbnailRef",
     "install_staged_database",

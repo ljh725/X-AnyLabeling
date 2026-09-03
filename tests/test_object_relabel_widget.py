@@ -18,6 +18,9 @@ from PyQt6 import QtCore, QtGui, QtWidgets  # noqa: E402
 from anylabeling.views.labeling import (
     label_widget as label_widget_module,
 )  # noqa: E402
+from anylabeling.views.labeling.dataset_index import (  # noqa: E402
+    DatasetThumbnailRef,
+)
 from anylabeling.views.labeling.shape import Shape  # noqa: E402
 from anylabeling.views.labeling.widgets.canvas import Canvas  # noqa: E402
 from anylabeling.views.labeling.widgets.object_relabel import (  # noqa: E402
@@ -952,3 +955,141 @@ def test_prune_missing_marked_objects_cleans_shape_manager_deletions(tmp_path):
             missing.xanylabeling_shape_id,
         )
     )
+
+
+def test_thumbnail_navigation_honors_dirty_guard_and_selects_permanent_id(
+    tmp_path,
+):
+    """Thumbnail activation saves/discards first, then loads and centers by ID."""
+    current = tmp_path / "current.png"
+    target = tmp_path / "target.png"
+    current.write_bytes(b"current")
+    target.write_bytes(b"target")
+    shape = SimpleNamespace(xanylabeling_shape_id="shape-id")
+    selected = []
+    centered = []
+    statuses = []
+    widget = SimpleNamespace(
+        filename=str(current),
+        canvas=SimpleNamespace(
+            shapes=[shape],
+            select_shapes=lambda shapes, source=None: selected.append(
+                (list(shapes), source)
+            ),
+        ),
+        _thumbnail_navigation_active=False,
+        may_continue=lambda: True,
+        status=lambda *args: statuses.append(args),
+        tr=lambda text: text,
+        _center_on_shape=centered.append,
+    )
+    widget.load_file = lambda filename: setattr(widget, "filename", filename)
+    ref = DatasetThumbnailRef(
+        str(target),
+        str(tmp_path / "target.json"),
+        0,
+        0,
+        "shape-id",
+        "person",
+        (0.0, 0.0, 1.0, 1.0),
+    )
+
+    label_widget_module.LabelingWidget._navigate_from_thumbnail(widget, ref)
+
+    assert osp.normcase(widget.filename) == osp.normcase(str(target))
+    assert selected == [([shape], "inspector")]
+    assert centered == [shape]
+    assert not widget._thumbnail_navigation_active
+
+    selected.clear()
+    centered.clear()
+    label_widget_module.LabelingWidget._navigate_from_thumbnail(widget, ref)
+    assert selected == [([shape], "inspector")]
+    assert centered == [shape]
+
+    widget.filename = str(current)
+    widget.may_continue = lambda: False
+    selected.clear()
+    label_widget_module.LabelingWidget._navigate_from_thumbnail(widget, ref)
+    assert widget.filename == str(current)
+    assert selected == []
+
+    widget.filename = str(target)
+    widget.may_continue = lambda: True
+    widget.canvas.shapes = []
+    label_widget_module.LabelingWidget._navigate_from_thumbnail(widget, ref)
+    assert statuses and "shape-id" in statuses[-1][0]
+
+
+def test_main_selection_reveals_thumbnail_without_navigation_feedback():
+    """A single canvas selection focuses the browser without loading a file."""
+    focused = []
+    window = SimpleNamespace(
+        isVisible=lambda: True,
+        focus_object=lambda image, shape_id: (
+            focused.append((image, shape_id)),
+            True,
+        )[1],
+    )
+    shape = SimpleNamespace(xanylabeling_shape_id="shape-id")
+    widget = SimpleNamespace(
+        _dataset_thumbnail_window=window,
+        _thumbnail_navigation_active=False,
+        _thumbnail_last_synced_identity=None,
+        filename="image.png",
+    )
+
+    label_widget_module.LabelingWidget._sync_dataset_thumbnail_selection(
+        widget, [shape]
+    )
+    assert focused == [("image.png", "shape-id")]
+
+    label_widget_module.LabelingWidget._sync_dataset_thumbnail_selection(
+        widget, [shape]
+    )
+    assert len(focused) == 1
+
+    widget._thumbnail_navigation_active = True
+    label_widget_module.LabelingWidget._sync_dataset_thumbnail_selection(
+        widget, [shape]
+    )
+    assert len(focused) == 1
+
+
+def test_thumbnail_digit_mapping_and_dataset_lifecycle_are_wired():
+    """The browser reuses rename bindings and closes at all dataset exits."""
+    import inspect
+
+    window = SimpleNamespace(close_calls=0)
+    window.close = lambda: setattr(
+        window, "close_calls", window.close_calls + 1
+    )
+    widget = SimpleNamespace(
+        _dataset_thumbnail_window=window,
+        digit_rename_manager=SimpleNamespace(
+            rename_shortcuts={3: {"label": "vehicle"}}
+        ),
+    )
+
+    assert (
+        label_widget_module.LabelingWidget._thumbnail_digit_label(widget, 3)
+        == "vehicle"
+    )
+    assert (
+        label_widget_module.LabelingWidget._thumbnail_digit_label(widget, 4)
+        is None
+    )
+    label_widget_module.LabelingWidget._close_dataset_thumbnail_window(widget)
+    assert window.close_calls == 1
+    assert widget._dataset_thumbnail_window is None
+
+    for method in (
+        label_widget_module.LabelingWidget.import_image_folder,
+        label_widget_module.LabelingWidget.close_file,
+        label_widget_module.LabelingWidget.closeEvent,
+    ):
+        assert "_close_dataset_thumbnail_window" in inspect.getsource(method)
+    selection_source = inspect.getsource(
+        label_widget_module.LabelingWidget.shape_selection_changed
+    )
+    assert "_sync_dataset_thumbnail_selection" in selection_source

@@ -94,3 +94,69 @@ def test_thumbnail_query_preserves_invalid_bbox_as_non_selectable_metadata(
         assert page.items[0].shape_id == "b" * 32
     finally:
         index.close()
+
+
+def test_thumbnail_location_returns_label_relative_offset(tmp_path):
+    """A permanent object key resolves to its stable page offset."""
+    shapes = []
+    for shape_index in range(105):
+        shapes.append(
+            {
+                "label": "person" if shape_index != 4 else "face",
+                "shape_type": "rectangle",
+                "xanylabeling_shape_id": f"{shape_index:032x}",
+                "points": [[shape_index, 0], [shape_index + 3, 4]],
+            }
+        )
+    image_path, json_path = _write_dataset(tmp_path, shapes)
+    index = DatasetFilterIndex(":memory:")
+    try:
+        index.rebuild([str(image_path)], dataset_root=str(tmp_path))
+
+        location = index.query_thumbnail_location(
+            str(image_path), f"{101:032x}"
+        )
+
+        assert location is not None
+        assert location.image_path == str(image_path)
+        assert location.json_path == str(json_path)
+        assert location.shape_index == 101
+        assert location.label == "person"
+        assert location.offset == 100
+        assert (
+            index.query_thumbnail_location(str(image_path), "missing") is None
+        )
+    finally:
+        index.close()
+
+
+def test_thumbnail_location_rejects_ambiguous_permanent_identity(tmp_path):
+    """Duplicate permanent IDs in one image never produce a navigation target."""
+    duplicate_id = "d" * 32
+    image_path, _json_path = _write_dataset(
+        tmp_path,
+        [
+            {
+                "label": "person",
+                "shape_type": "rectangle",
+                "xanylabeling_shape_id": duplicate_id,
+                "points": [[0, 0], [3, 4]],
+            },
+            {
+                "label": "person",
+                "shape_type": "rectangle",
+                "xanylabeling_shape_id": duplicate_id,
+                "points": [[5, 5], [8, 9]],
+            },
+        ],
+    )
+    index = DatasetFilterIndex(":memory:")
+    try:
+        index.rebuild([str(image_path)], dataset_root=str(tmp_path))
+
+        assert (
+            index.query_thumbnail_location(str(image_path), duplicate_id)
+            is None
+        )
+    finally:
+        index.close()

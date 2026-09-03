@@ -7,10 +7,12 @@ import pytest
 
 QtCore = pytest.importorskip("PyQt6.QtCore")
 QtGui = pytest.importorskip("PyQt6.QtGui")
+QtTest = pytest.importorskip("PyQt6.QtTest")
 QtWidgets = pytest.importorskip("PyQt6.QtWidgets")
 
 from anylabeling.views.labeling.dataset_index import (
     DatasetThumbnailPage,
+    DatasetThumbnailLocation,
     DatasetThumbnailRef,
 )
 from anylabeling.views.labeling.widgets.dataset_thumbnail import (
@@ -50,8 +52,12 @@ class FakeController(QtCore.QObject):
         self.rebuild_calls = 0
 
     def query_label_counts(self):
-        """Return the single fake label and its count."""
-        return [("person", len(self.refs))]
+        """Return deterministic fake label counts."""
+        labels = sorted({ref.label for ref in self.refs})
+        return [
+            (label, sum(ref.label == label for ref in self.refs))
+            for label in labels
+        ]
 
     def query_thumbnail_objects(self, label, limit=100, offset=0):
         """Return a bounded page from the fake references."""
@@ -63,6 +69,27 @@ class FakeController(QtCore.QObject):
             min(limit, 100),
             offset,
             items[offset : offset + limit],
+        )
+
+    def query_thumbnail_location(self, image_path, shape_id):
+        """Return a unique label-relative location for one fake object."""
+        matches = [
+            ref
+            for ref in self.refs
+            if ref.image_path == image_path and ref.shape_id == shape_id
+        ]
+        if len(matches) != 1:
+            return None
+        ref = matches[0]
+        label_refs = [item for item in self.refs if item.label == ref.label]
+        return DatasetThumbnailLocation(
+            ref.image_path,
+            ref.json_path,
+            ref.sort_order,
+            ref.shape_index,
+            ref.shape_id,
+            ref.label,
+            label_refs.index(ref),
         )
 
     def refresh(self):
@@ -267,7 +294,7 @@ def test_stale_state_exposes_recovery_and_ready_empty_is_truthful(
 ):
     """Unavailable indexes offer recovery while a ready empty index does not."""
     controller = FakeController([])
-    controller.is_query_ready = False
+    controller.is_query_ready = True
     controller.state_value = "stale"
     window = DatasetLabelThumbnailWindow(controller, "project", str(tmp_path))
 
@@ -286,4 +313,107 @@ def test_stale_state_exposes_recovery_and_ready_empty_is_truthful(
     assert window.refresh_index_button.isHidden()
     assert window.rebuild_index_button.isHidden()
     window.close()
+    qapp.processEvents()
+
+
+def test_explicit_activation_requests_navigation_but_selection_does_not(
+    qapp, tmp_path
+):
+    """Selection remains local until a card is double-clicked or activated."""
+    ref = _ref(tmp_path)
+    window = DatasetLabelThumbnailWindow(
+        FakeController([ref]), "project", str(tmp_path)
+    )
+    requested = []
+    window.navigate_requested.connect(requested.append)
+    index = window._model.index(0, 0)
+
+    window.view.selectionModel().select(
+        index,
+        QtCore.QItemSelectionModel.SelectionFlag.Select,
+    )
+    assert requested == []
+
+    window.view.setCurrentIndex(index)
+    QtTest.QTest.keyClick(window.view, QtCore.Qt.Key.Key_Return)
+    assert requested == [ref]
+
+    requested.clear()
+    window._activate_index(index)
+    assert requested == [ref]
+    window.close()
+    qapp.processEvents()
+
+
+def test_focus_object_switches_to_owning_page_and_selects_card(qapp, tmp_path):
+    """Main-canvas selection reveals the matching thumbnail across pages."""
+    refs = [_ref(tmp_path, index) for index in range(150)]
+    controller = FakeController(refs)
+    window = DatasetLabelThumbnailWindow(controller, "project", str(tmp_path))
+
+    assert window.focus_object(refs[123].image_path, refs[123].shape_id)
+    assert window._page == 1
+    assert window._selected_refs() == (refs[123],)
+    assert not window.focus_object(refs[0].image_path, "missing")
+    window.close()
+    qapp.processEvents()
+
+
+def test_digit_shortcut_uses_existing_mapping_and_ignores_text_focus(
+    qapp, tmp_path
+):
+    """Window-local digits invoke relabel only outside text-entry controls."""
+    ref = _ref(tmp_path)
+    window = DatasetLabelThumbnailWindow(
+        FakeController([ref]),
+        "project",
+        str(tmp_path),
+        digit_label_resolver=lambda digit: "vehicle" if digit == 3 else None,
+    )
+    requested = []
+    window.relabel_requested.connect(
+        lambda refs, target: requested.append((refs, target))
+    )
+    window.show()
+    window.view.setFocus()
+    qapp.processEvents()
+    window.view.selectionModel().select(
+        window._model.index(0, 0),
+        QtCore.QItemSelectionModel.SelectionFlag.Select,
+    )
+
+    QtTest.QTest.keyClick(window.view, QtCore.Qt.Key.Key_3)
+    qapp.processEvents()
+    assert requested == [((ref,), "vehicle")]
+    assert not window._apply_digit_shortcut(4)
+
+    window.label_combo.setFocus()
+    qapp.processEvents()
+    QtTest.QTest.keyClick(window.label_combo, QtCore.Qt.Key.Key_3)
+    qapp.processEvents()
+    assert len(requested) == 1
+    window.close()
+    qapp.processEvents()
+
+
+def test_reopened_dataset_uses_an_isolated_cache_root(qapp, tmp_path):
+    """A new dataset window never reuses the previous dataset cache root."""
+    first_root = tmp_path / "first"
+    second_root = tmp_path / "second"
+    first_root.mkdir()
+    second_root.mkdir()
+    first = DatasetLabelThumbnailWindow(
+        FakeController([]), "first", str(first_root)
+    )
+    first_cache = first._renderer.disk.root
+    first.close()
+    qapp.processEvents()
+
+    second = DatasetLabelThumbnailWindow(
+        FakeController([]), "second", str(second_root)
+    )
+    second_cache = second._renderer.disk.root
+
+    assert first_cache != second_cache
+    second.close()
     qapp.processEvents()

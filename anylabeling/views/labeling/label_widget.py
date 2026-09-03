@@ -81,6 +81,7 @@ from .filter_navigation_engine import (
 from .dataset_index import (
     INDEX_STATUS_MISSING,
     DatasetIndexState,
+    DatasetThumbnailRef,
 )
 from .dataset_index.controller import (
     START_REJECTED_BUSY,
@@ -423,6 +424,8 @@ class LabelingWidget(LabelDialog):
         self._object_relabel_thread = None
         self._object_relabel_running = False
         self._dataset_thumbnail_window = None
+        self._thumbnail_navigation_active = False
+        self._thumbnail_last_synced_identity = None
         self._object_field_edit_thread = None
         self._object_field_edit_running = False
         self._settings_runtime_applier = SettingsRuntimeApplier(self)
@@ -4533,11 +4536,14 @@ class LabelingWidget(LabelDialog):
             self._marked_project_id(),
             dataset_root,
             self._candidate_target_labels,
+            self._thumbnail_digit_label,
             parent=self,
         )
         window.relabel_requested.connect(self._relabel_from_thumbnail)
+        window.navigate_requested.connect(self._navigate_from_thumbnail)
         window.closed.connect(self._on_dataset_thumbnail_closed)
         self._dataset_thumbnail_window = window
+        self._thumbnail_last_synced_identity = None
         window.show()
         window.raise_()
         window.activateWindow()
@@ -4571,6 +4577,89 @@ class LabelingWidget(LabelDialog):
     def _on_dataset_thumbnail_closed(self) -> None:
         """Release the browser reference after a user close."""
         self._dataset_thumbnail_window = None
+        self._thumbnail_last_synced_identity = None
+
+    def _close_dataset_thumbnail_window(self) -> None:
+        """Close and release the browser before its dataset context changes."""
+        window = self._dataset_thumbnail_window
+        if window is None:
+            return
+        self._dataset_thumbnail_window = None
+        self._thumbnail_last_synced_identity = None
+        window.close()
+
+    def _thumbnail_digit_label(self, digit: int) -> Optional[str]:
+        """Resolve one existing digit-rename binding for the browser."""
+        mapping = self.digit_rename_manager.rename_shortcuts.get(digit)
+        if not isinstance(mapping, dict):
+            return None
+        label = str(mapping.get("label", "") or "").strip()
+        return label or None
+
+    def _navigate_from_thumbnail(self, ref: DatasetThumbnailRef) -> None:
+        """Load and center the object identified by an activated thumbnail."""
+        target_image = osp.abspath(ref.image_path)
+        current_image = osp.abspath(self.filename) if self.filename else ""
+        if osp.normcase(current_image) != osp.normcase(target_image):
+            if not osp.isfile(target_image):
+                self.status(self.tr("Image not found: %s") % target_image)
+                return
+            if not self.may_continue():
+                return
+
+        self._thumbnail_navigation_active = True
+        try:
+            if osp.normcase(current_image) != osp.normcase(target_image):
+                self.load_file(target_image)
+            loaded_image = osp.abspath(self.filename) if self.filename else ""
+            if osp.normcase(loaded_image) != osp.normcase(target_image):
+                return
+            matches = [
+                shape
+                for shape in self.canvas.shapes
+                if getattr(shape, "xanylabeling_shape_id", "") == ref.shape_id
+            ]
+            if len(matches) != 1:
+                self.status(
+                    self.tr("Cannot locate thumbnail object: %s")
+                    % ref.shape_id
+                )
+                return
+            self.canvas.select_shapes(matches, source="inspector")
+            self._center_on_shape(matches[0])
+            self._thumbnail_last_synced_identity = (
+                osp.normcase(target_image),
+                ref.shape_id,
+            )
+        finally:
+            self._thumbnail_navigation_active = False
+
+    def _sync_dataset_thumbnail_selection(
+        self, selected_shapes: list[Shape]
+    ) -> None:
+        """Reveal one main-canvas selection in the open thumbnail browser."""
+        window = self._dataset_thumbnail_window
+        if window is None or not window.isVisible():
+            return
+        if (
+            self._thumbnail_navigation_active
+            or len(selected_shapes) != 1
+            or not self.filename
+        ):
+            self._thumbnail_last_synced_identity = None
+            return
+        shape_id = getattr(selected_shapes[0], "xanylabeling_shape_id", "")
+        if not shape_id:
+            self._thumbnail_last_synced_identity = None
+            return
+        identity = (
+            osp.normcase(osp.abspath(self.filename)),
+            shape_id,
+        )
+        if identity == self._thumbnail_last_synced_identity:
+            return
+        if window.focus_object(self.filename, shape_id):
+            self._thumbnail_last_synced_identity = identity
 
     def edit_marked_object_fields(self):
         """Edit selected JSON fields on the frozen marked-object snapshot."""
@@ -7727,6 +7816,8 @@ class LabelingWidget(LabelDialog):
             # A valid single three-box rectangle selection updates focus.
             self._rect_refine_forward_selection(selected_shapes)
 
+        self._sync_dataset_thumbnail_selection(selected_shapes)
+
     def add_label(self, shape, update_last_label=True, refresh_filters=True):
         if shape.group_id is None:
             text = shape.label
@@ -9980,6 +10071,7 @@ class LabelingWidget(LabelDialog):
                 )
                 event.ignore()
                 return
+        self._close_dataset_thumbnail_window()
         if self._review_metrics is not None:
             self._review_metrics.target_cleared(
                 EpisodeEndReason.APPLICATION_CLOSED
@@ -10402,6 +10494,7 @@ class LabelingWidget(LabelDialog):
     def close_file(self, _value=False):
         if not self.may_continue():
             return
+        self._close_dataset_thumbnail_window()
         self._stop_shape_identity_worker()
         self._clear_rect_refine_focus()
         self._clear_viewport_session()
@@ -11048,6 +11141,7 @@ class LabelingWidget(LabelDialog):
         if not self.may_continue() or not dirpath:
             return
 
+        self._close_dataset_thumbnail_window()
         self._clear_viewport_session()
         if self.compare_view_manager.is_active():
             self.close_compare_view(confirm=False)

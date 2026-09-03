@@ -22,7 +22,11 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from .json_stream import JsonStreamError, read_top_level_array
-from .types import DatasetThumbnailPage, DatasetThumbnailRef
+from .types import (
+    DatasetThumbnailLocation,
+    DatasetThumbnailPage,
+    DatasetThumbnailRef,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -766,6 +770,7 @@ class DatasetFilterIndex:
             return DatasetThumbnailPage(
                 normalized_label, 0, page_limit, page_offset, ()
             )
+
         try:
             total_row = self._conn.execute(
                 "SELECT COUNT(*) FROM shapes WHERE label = ?",
@@ -823,6 +828,69 @@ class DatasetFilterIndex:
             return DatasetThumbnailPage(
                 normalized_label, 0, page_limit, page_offset, ()
             )
+
+    def query_thumbnail_location(
+        self, image_path: str, shape_id: str
+    ) -> Optional[DatasetThumbnailLocation]:
+        """Return the label-relative offset of one unique permanent object."""
+        if self._conn is None or not image_path or not shape_id:
+            return None
+        normalized_path = osp.abspath(osp.normpath(str(image_path)))
+        try:
+            rows = self._conn.execute(
+                """
+                SELECT f.image_path, f.json_path, f.sort_order,
+                       s.shape_index, s.shape_id, s.label
+                FROM shapes s
+                JOIN files f ON s.file_id = f.id
+                WHERE f.image_path = ? AND s.shape_id = ?
+                ORDER BY s.shape_index
+                LIMIT 2
+                """,
+                (normalized_path, str(shape_id)),
+            ).fetchall()
+            if len(rows) != 1:
+                return None
+            row = rows[0]
+            label = str(row[5] or "")
+            if not label:
+                return None
+            before = self._conn.execute(
+                """
+                SELECT COUNT(*)
+                FROM shapes s
+                JOIN files f ON s.file_id = f.id
+                WHERE s.label = ? AND (
+                    f.sort_order < ? OR
+                    (f.sort_order = ? AND f.image_path < ?) OR
+                    (f.sort_order = ? AND f.image_path = ?
+                     AND s.shape_index < ?)
+                )
+                """,
+                (
+                    label,
+                    int(row[2]),
+                    int(row[2]),
+                    str(row[0]),
+                    int(row[2]),
+                    str(row[0]),
+                    int(row[3]),
+                ),
+            ).fetchone()
+            return DatasetThumbnailLocation(
+                image_path=str(row[0]),
+                json_path=str(row[1] or ""),
+                sort_order=int(row[2]),
+                shape_index=int(row[3]),
+                shape_id=str(row[4]),
+                label=label,
+                offset=int(before[0]) if before else 0,
+            )
+        except (sqlite3.Error, TypeError, ValueError) as exc:
+            logger.warning(
+                "DatasetFilterIndex thumbnail-location query failed: %s", exc
+            )
+            return None
 
     # ------------------------------------------------------------------
     # Schema 管理（内部）

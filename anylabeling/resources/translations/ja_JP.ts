@@ -1708,6 +1708,7 @@ Original images backed up to:
   </context>
   <context>
     <name>LabelingWidget</name>
+    <message><source>Cannot locate thumbnail object: %s</source><translation>サムネイルのオブジェクトを特定できません: %s</translation></message>
     <message>
       <source>Target label: {label}
 Marked objects: {objects} in {files} file(s)

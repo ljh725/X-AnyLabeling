@@ -250,6 +250,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
     """Non-modal label browser that emits selected objects for relabeling."""
 
     relabel_requested = QtCore.pyqtSignal(object, str)
+    navigate_requested = QtCore.pyqtSignal(object)
     closed = QtCore.pyqtSignal()
 
     def __init__(
@@ -258,6 +259,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         project_id: str,
         dataset_root: str,
         target_labels: Optional[Callable[[], Iterable[str]]] = None,
+        digit_label_resolver: Optional[Callable[[int], Optional[str]]] = None,
         parent: Optional[QtWidgets.QWidget] = None,
     ) -> None:
         """Initialize the browser against a read-only index controller."""
@@ -267,6 +269,9 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self._project_id = project_id
         self._dataset_root = osp.normcase(osp.abspath(dataset_root))
         self._target_labels = target_labels or (lambda: [])
+        self._digit_label_resolver = digit_label_resolver or (
+            lambda _digit: None
+        )
         self._page_size = 100
         self._page = 0
         self._selected_label = ""
@@ -275,6 +280,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self._render_generation = 0
         self._mutation_errors: dict[tuple[str, str], str] = {}
         self._retained_selection: set[tuple[str, str]] = set()
+        self._digit_shortcuts: list[QtGui.QShortcut] = []
         self._model = ThumbnailItemModel(self)
         self._renderer = ThumbnailRenderer(
             thumbnail_cache_root(dataset_root), parent=self
@@ -298,6 +304,13 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             refresh_signal.connect(self._on_file_refresh_finished)
         self._build_ui()
         self._load_labels()
+
+    def _index_is_ready(self) -> bool:
+        """Return whether the controller owns a verified readable index."""
+        return bool(
+            self._controller.is_query_ready
+            and getattr(self._controller, "state_value", "ready") == "ready"
+        )
 
     def _build_ui(self) -> None:
         """Construct the compact browser controls and grid."""
@@ -339,6 +352,8 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self.view.selectionModel().selectionChanged.connect(
             lambda *_args: self._update_selection_summary()
         )
+        self.view.doubleClicked.connect(self._activate_index)
+        self.view.installEventFilter(self)
         root.addWidget(self.view, 1)
 
         footer = QtWidgets.QHBoxLayout()
@@ -357,11 +372,111 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self.relabel_button.clicked.connect(self._request_relabel)
         footer.addWidget(self.relabel_button)
         root.addLayout(footer)
+        self._install_digit_shortcuts()
         self._update_selection_summary()
+
+    def _install_digit_shortcuts(self) -> None:
+        """Install window-local relabel shortcuts for configured digits."""
+        for digit in range(10):
+            shortcut = QtGui.QShortcut(QtGui.QKeySequence(str(digit)), self)
+            shortcut.setContext(QtCore.Qt.ShortcutContext.WindowShortcut)
+            shortcut.setAutoRepeat(False)
+            shortcut.activated.connect(
+                lambda digit=digit: self._apply_digit_shortcut(digit)
+            )
+            self._digit_shortcuts.append(shortcut)
+
+    def eventFilter(
+        self, watched: QtCore.QObject, event: QtCore.QEvent
+    ) -> bool:
+        """Activate the current card on Enter without changing click behavior."""
+        if (
+            watched is self.view
+            and event.type() == QtCore.QEvent.Type.KeyPress
+        ):
+            if event.key() in (
+                QtCore.Qt.Key.Key_Return,
+                QtCore.Qt.Key.Key_Enter,
+            ):
+                self._activate_index(self.view.currentIndex())
+                event.accept()
+                return True
+        return super().eventFilter(watched, event)
+
+    def _activate_index(self, index: QtCore.QModelIndex) -> None:
+        """Request main-canvas navigation for one explicitly activated card."""
+        if not index.isValid() or not self._model.is_selectable(index.row()):
+            return
+        ref = self._model.ref_at(index.row())
+        if ref is not None:
+            self.navigate_requested.emit(ref)
+
+    def _apply_digit_shortcut(self, digit: int) -> bool:
+        """Relabel the current selection through the shared batch workflow."""
+        focus = QtWidgets.QApplication.focusWidget()
+        if isinstance(
+            focus,
+            (
+                QtWidgets.QLineEdit,
+                QtWidgets.QTextEdit,
+                QtWidgets.QPlainTextEdit,
+                QtWidgets.QAbstractSpinBox,
+                QtWidgets.QComboBox,
+            ),
+        ):
+            return False
+        refs = self._selected_refs()
+        if not refs:
+            return False
+        target = self._digit_label_resolver(digit)
+        if not target or not str(target).strip():
+            return False
+        self.relabel_requested.emit(refs, str(target).strip())
+        return True
+
+    def focus_object(self, image_path: str, shape_id: str) -> bool:
+        """Reveal and select one indexed object without emitting navigation."""
+        location = self._controller.query_thumbnail_location(
+            image_path, shape_id
+        )
+        if location is None:
+            return False
+        label_index = self.label_combo.findData(location.label)
+        if label_index < 0:
+            return False
+
+        self.label_combo.blockSignals(True)
+        self.label_combo.setCurrentIndex(label_index)
+        self.label_combo.blockSignals(False)
+        self._selected_label = location.label
+        self._page = location.offset // self._page_size
+        self._load_page()
+
+        identity = (
+            osp.normcase(osp.abspath(location.image_path)),
+            location.shape_id,
+        )
+        for row in range(self._model.rowCount()):
+            ref = self._model.ref_at(row)
+            if ref is None or self._model.identity_key(ref) != identity:
+                continue
+            index = self._model.index(row, 0)
+            self.view.clearSelection()
+            self.view.selectionModel().select(
+                index,
+                QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect,
+            )
+            self.view.setCurrentIndex(index)
+            self.view.scrollTo(
+                index,
+                QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter,
+            )
+            return True
+        return False
 
     def _load_labels(self) -> None:
         """Load label counts from the active index or show its state."""
-        if not self._controller.is_query_ready:
+        if not self._index_is_ready():
             self._set_unavailable_state()
             return
         previous_label = self._selected_label
@@ -388,7 +503,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
 
     def _on_controller_state_changed(self, *_args) -> None:
         """Reflect READY/stale transitions without keeping old results."""
-        if self._controller.is_query_ready:
+        if self._index_is_ready():
             self._load_labels()
         else:
             self._set_unavailable_state()
@@ -397,7 +512,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self, _image_path: str, succeeded: bool, _message: str
     ) -> None:
         """Refresh after successful JSON-to-index synchronization."""
-        if succeeded and self._controller.is_query_ready:
+        if succeeded and self._index_is_ready():
             self._reload_timer.start()
         elif not succeeded:
             self._reload_timer.stop()
@@ -451,7 +566,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
 
     def _load_page(self) -> None:
         """Fetch one page from SQLite and request visible thumbnails."""
-        if not self._controller.is_query_ready or not self._selected_label:
+        if not self._index_is_ready() or not self._selected_label:
             self._set_unavailable_state()
             return
         page: DatasetThumbnailPage = self._controller.query_thumbnail_objects(
@@ -556,9 +671,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             .replace("%1", str(len(refs)))
             .replace("%2", str(len(files)))
         )
-        self.relabel_button.setEnabled(
-            bool(refs) and self._controller.is_query_ready
-        )
+        self.relabel_button.setEnabled(bool(refs) and self._index_is_ready())
 
     def _request_relabel(self) -> None:
         """Choose a target label and emit the immutable page selection."""
