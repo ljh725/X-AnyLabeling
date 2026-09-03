@@ -1055,6 +1055,14 @@ def test_main_selection_reveals_thumbnail_without_navigation_feedback():
     )
     assert len(focused) == 1
 
+    widget._thumbnail_navigation_active = False
+    widget._virtual_review_active = True
+    widget._thumbnail_last_synced_identity = None
+    label_widget_module.LabelingWidget._sync_dataset_thumbnail_selection(
+        widget, [shape]
+    )
+    assert len(focused) == 1
+
 
 def test_thumbnail_digit_mapping_and_dataset_lifecycle_are_wired():
     """The browser reuses rename bindings and closes at all dataset exits."""

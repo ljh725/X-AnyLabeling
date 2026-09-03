@@ -4643,6 +4643,7 @@ class LabelingWidget(LabelDialog):
             return
         if (
             self._thumbnail_navigation_active
+            or getattr(self, "_virtual_review_active", False)
             or len(selected_shapes) != 1
             or not self.filename
         ):
