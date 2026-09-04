@@ -206,13 +206,15 @@ class InspectorPanel(QtWidgets.QDockWidget):
     """Dock panel for annotation data quality inspection.
 
     Signals:
-        issue_navigate_requested(file_path: str, shape_index: int)
+        issue_navigate_requested(file_path, shape_index, shape_id)
+            Locate the shape by ``shape_id`` when non-empty (stable
+            across edits); fall back to ``shape_index`` otherwise.
         shape_edit_requested(file_path: str, shape_index: int, field: str, value)
         scan_started()
         scan_finished(report: ValidationReport)
     """
 
-    issue_navigate_requested = QtCore.pyqtSignal(str, int)
+    issue_navigate_requested = QtCore.pyqtSignal(str, int, str)
     shape_edit_requested = QtCore.pyqtSignal(str, int, str, object)
     scan_started = QtCore.pyqtSignal()
     scan_finished = QtCore.pyqtSignal(object)
@@ -299,10 +301,10 @@ class InspectorPanel(QtWidgets.QDockWidget):
 
         # ── wire signals ─────────────────────────────────────────
         self._issue_list.issue_double_clicked.connect(
-            self.issue_navigate_requested.emit
+            lambda f, i: self.issue_navigate_requested.emit(f, i, "")
         )
         self._issue_list.issue_clicked.connect(
-            self.issue_navigate_requested.emit
+            lambda f, i: self.issue_navigate_requested.emit(f, i, "")
         )
         self._issue_list.rescan_requested.connect(self.run_scan)
         self._issue_list.scan_current_requested.connect(self.run_scan_current)
@@ -311,10 +313,10 @@ class InspectorPanel(QtWidgets.QDockWidget):
         )
 
         self._table_widget.shape_clicked.connect(
-            self.issue_navigate_requested.emit
+            lambda f, i: self.issue_navigate_requested.emit(f, i, "")
         )
         self._table_widget.shape_double_clicked.connect(
-            self.issue_navigate_requested.emit
+            lambda f, i: self.issue_navigate_requested.emit(f, i, "")
         )
         self._table_widget.set_edit_callback(self._on_table_edit)
 

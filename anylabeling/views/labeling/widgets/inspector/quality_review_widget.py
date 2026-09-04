@@ -10,8 +10,10 @@ This widget stays a view only — all queue logic lives in the pure-Python
 ``QualityReviewQueue`` so it remains unit-testable without Qt.
 
 Signals (consumed by InspectorPanel):
-    issue_clicked(file_path: str, shape_index: int)
-        Navigate to the issue's file + shape.  Matches the existing
+    issue_clicked(file_path: str, shape_index: int, shape_id: str)
+        Navigate to the issue's file + shape.  ``shape_id`` is preferred
+        for locating the shape (stable across edits); ``shape_index`` is
+        the fallback when the annotation has no id.  Matches the existing
         ``issue_navigate_requested`` contract so the panel re-emits it.
     import_requested()
         User clicked the import button (panel shows the file dialog).
@@ -78,8 +80,8 @@ _TREE_ROLE = Qt.ItemDataRole.UserRole
 class QualityReviewWidget(QtWidgets.QWidget):
     """L1/L2 quality review queue UI."""
 
-    issue_clicked = QtCore.pyqtSignal(str, int)
-    related_issue_clicked = QtCore.pyqtSignal(str, int)
+    issue_clicked = QtCore.pyqtSignal(str, int, str)
+    related_issue_clicked = QtCore.pyqtSignal(str, int, str)
     import_requested = QtCore.pyqtSignal()
     rescan_current_requested = QtCore.pyqtSignal()
     generate_suggestion_requested = QtCore.pyqtSignal()
@@ -415,6 +417,7 @@ class QualityReviewWidget(QtWidgets.QWidget):
                 "issue_id": item.issue_id,
                 "file_path": item.file_path,
                 "shape_index": item.shape_index,
+                "shape_id": item.shape_id,
             },
         )
         leaf.setToolTip(0, item.message)
@@ -477,6 +480,7 @@ class QualityReviewWidget(QtWidgets.QWidget):
         self.issue_clicked.emit(
             str(data.get("file_path", "")),
             int(data.get("shape_index", -1)),
+            str(data.get("shape_id", "") or ""),
         )
 
     def _on_item_double_clicked(
@@ -524,7 +528,9 @@ class QualityReviewWidget(QtWidgets.QWidget):
         if item is None or item.duplicate_shape_index is None:
             return
         self.related_issue_clicked.emit(
-            item.file_path, int(item.duplicate_shape_index)
+            item.file_path,
+            int(item.duplicate_shape_index),
+            item.duplicate_shape_id or "",
         )
 
     def _jump_unreviewed(

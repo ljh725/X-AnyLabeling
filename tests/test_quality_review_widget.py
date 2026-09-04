@@ -45,18 +45,24 @@ def _make_item(
     severity="warning",
     rule_id="L2-01",
     rule_name="face_matched_head_candidate",
+    shape_id="",
+    duplicate_shape_index=None,
+    duplicate_shape_id="",
 ):
     return QualityReviewItem(
         issue_id=issue_id,
         run_id="run",
         file_path=file_path,
         shape_index=shape_index,
+        shape_id=shape_id,
         rule_id=rule_id,
         rule_name=rule_name,
         severity=severity,
         message=f"issue {issue_id}",
         primary_metric_name="face_head_match_gap",
         primary_metric_value=0.7,
+        duplicate_shape_index=duplicate_shape_index,
+        duplicate_shape_id=duplicate_shape_id,
     )
 
 
@@ -95,7 +101,48 @@ class TestNavigation:
         leaf, _ = next(_leaf_items(widget))
         widget.tree.setCurrentItem(leaf)
         widget._on_item_clicked(leaf, 0)
-        assert emitted == [("/abs/file.json", 3)]
+        assert emitted == [("/abs/file.json", 3, "")]
+
+    def test_click_issue_emits_shape_id_when_present(self, widget):
+        # shape_id travels with the click so navigation can locate the
+        # shape by stable id instead of positional index
+        _seed_queue(
+            widget,
+            [
+                _make_item(
+                    "id1",
+                    "/abs/file.json",
+                    3,
+                    shape_id="abc123",
+                )
+            ],
+        )
+        emitted = []
+        widget.issue_clicked.connect(lambda *a: emitted.append(a))
+        leaf, _ = next(_leaf_items(widget))
+        widget._on_item_clicked(leaf, 0)
+        assert emitted == [("/abs/file.json", 3, "abc123")]
+
+    def test_related_navigation_emits_duplicate_shape_id(self, widget):
+        _seed_queue(
+            widget,
+            [
+                _make_item(
+                    "id1",
+                    "/abs/file.json",
+                    2,
+                    shape_id="left-id",
+                    duplicate_shape_index=7,
+                    duplicate_shape_id="right-id",
+                )
+            ],
+        )
+        emitted = []
+        widget.related_issue_clicked.connect(lambda *a: emitted.append(a))
+        leaf, _ = next(_leaf_items(widget))
+        widget.tree.setCurrentItem(leaf)
+        widget._navigate_related()
+        assert emitted == [("/abs/file.json", 7, "right-id")]
 
     def test_file_level_issue_emits_minus_one(self, widget):
         # shape_index == -1 → only navigate to file, no shape selection
@@ -107,7 +154,7 @@ class TestNavigation:
         widget.issue_clicked.connect(lambda *a: emitted.append(a))
         leaf, _ = next(_leaf_items(widget))
         widget._on_item_clicked(leaf, 0)
-        assert emitted == [("/abs/file.json", -1)]
+        assert emitted == [("/abs/file.json", -1, "")]
 
     def test_group_row_does_not_navigate(self, widget):
         _seed_queue(

@@ -6651,8 +6651,15 @@ class LabelingWidget(LabelDialog):
                 self._review_session.image_changed(str(current_index))
                 self.load_file(filename)
 
-    def _on_inspector_navigate(self, file_path: str, shape_index: int):
-        """Navigate to a file and select a specific shape (inspector click)."""
+    def _on_inspector_navigate(
+        self, file_path: str, shape_index: int, shape_id: str = ""
+    ):
+        """Navigate to a file and select a specific shape (inspector click).
+
+        Locates the shape by ``xanylabeling_shape_id`` when available so
+        the selection survives shape insertions/deletions made after the
+        scan; falls back to the recorded positional index.
+        """
         normalized = str(file_path)
 
         # Convert JSON path to image path if needed
@@ -6681,9 +6688,16 @@ class LabelingWidget(LabelDialog):
         if str(self.filename) != target_image:
             return
 
-        # Select the shape and center on it
-        if 0 <= shape_index < len(self.canvas.shapes):
+        # Select the shape and center on it (shape_id first, index fallback)
+        shape = None
+        if shape_id:
+            for candidate in self.canvas.shapes:
+                if candidate.xanylabeling_shape_id == shape_id:
+                    shape = candidate
+                    break
+        if shape is None and 0 <= shape_index < len(self.canvas.shapes):
             shape = self.canvas.shapes[shape_index]
+        if shape is not None:
             self.canvas.select_shapes([shape])
             self._center_on_shape(shape)
 
