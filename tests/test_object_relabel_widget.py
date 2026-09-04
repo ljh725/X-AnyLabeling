@@ -577,6 +577,7 @@ def test_worker_abort_before_commit_returns_cancelled_and_keeps_marks(
     thread.request_abort()
     thread.run()
     assert results and results[0].cancelled
+    assert results[0].cancellation_stage == "preflight"
     assert results[0].counts[STATUS_CANCELLED] == 1
     store = MarkedObjectStore()
     store.toggle(MarkedObjectRef("proj", str(tmp_path / "a.png"), "sid-1"))
@@ -610,10 +611,13 @@ def test_worker_error_emits_failed_callback_message(tmp_path, qapp):
     assert errors == ["RuntimeError: boom"]
 
 
+@pytest.mark.parametrize(
+    ("show_result_dialog", "expected_messages"), ((True, 1), (False, 0))
+)
 def test_relabel_flow_closes_progress_and_reports_result_once(
-    tmp_path, qapp, monkeypatch
+    tmp_path, qapp, monkeypatch, show_result_dialog, expected_messages
 ):
-    """A terminal result closes progress and remains idempotent."""
+    """A terminal result is delivered once with caller-selected presentation."""
     from anylabeling.views.labeling.widgets import object_relabel_dialog
 
     class _FakeThread(QtCore.QObject):
@@ -689,6 +693,7 @@ def test_relabel_flow_closes_progress_and_reports_result_once(
         str(tmp_path),
         finished.append,
         pytest.fail,
+        show_result_dialog=show_result_dialog,
     )
     thread = parent._object_relabel_thread
     dialog = parent.findChild(QtWidgets.QProgressDialog)
@@ -701,13 +706,65 @@ def test_relabel_flow_closes_progress_and_reports_result_once(
     assert parent._object_relabel_thread is None
     assert thread.wait_calls == 1
     assert finished == [result]
-    assert len(messages) == 1
+    assert len(messages) == expected_messages
     assert len(releases) == 1
 
     thread.finished_result.emit(result)
     assert finished == [result]
-    assert len(messages) == 1
+    assert len(messages) == expected_messages
     assert len(releases) == 1
+
+
+def test_launch_delivers_result_before_reenabling_entry(tmp_path, monkeypatch):
+    """Consumers see synchronized state while the shared flow remains gated."""
+    widget = _widget(tmp_path)
+    snapshot = (
+        MarkedObjectRef(
+            widget._marked_project_id(),
+            osp.abspath(widget.filename),
+            "shape-id",
+        ),
+    )
+    captured = {}
+
+    def fake_flow(*args, **kwargs):
+        captured["on_finished"] = args[4]
+        captured["show_result_dialog"] = kwargs["show_result_dialog"]
+        return True
+
+    monkeypatch.setattr(
+        label_widget_module, "run_object_relabel_flow", fake_flow
+    )
+    order = []
+    widget._apply_object_relabel_result = lambda result: order.append(
+        (
+            "apply",
+            widget._object_relabel_running,
+            widget.object_mark_actions.enabled[-1],
+        )
+    )
+
+    assert label_widget_module.LabelingWidget._launch_object_relabel(
+        widget,
+        snapshot,
+        "vehicle",
+        "Relabel",
+        on_result=lambda result: order.append(
+            (
+                "entry-result",
+                widget._object_relabel_running,
+                widget.object_mark_actions.enabled[-1],
+            )
+        ),
+        prepared=True,
+        show_result_dialog=False,
+    )
+    captured["on_finished"](ObjectRelabelResult("tx", "committed", False))
+
+    assert captured["show_result_dialog"] is False
+    assert order == [("apply", True, False), ("entry-result", True, False)]
+    assert widget._object_relabel_running is False
+    assert widget.object_mark_actions.enabled[-1] is True
 
 
 # ------------------------------------------------ audit-fix regressions
@@ -1114,3 +1171,30 @@ def test_thumbnail_digit_mapping_and_dataset_lifecycle_are_wired():
         label_widget_module.LabelingWidget.open_dataset_label_thumbnails
     )
     assert "pause_pending_auto_refresh()" in open_source
+
+
+def test_thumbnail_restore_passes_exact_manifest_without_picker(tmp_path):
+    """The result-bar shortcut enters protected recovery with its exact path."""
+    manifest_path = str(tmp_path / "tx" / "manifest.json")
+    captured = {}
+
+    def callback(_result):
+        """Accept a recovery result for identity comparison."""
+
+    widget = SimpleNamespace(_on_thumbnail_restore_result=callback)
+
+    def restore(path, **kwargs):
+        captured.update(path=path, **kwargs)
+
+    widget.restore_object_relabel_manifest = restore
+
+    label_widget_module.LabelingWidget._restore_object_relabel_from_thumbnail(
+        widget, manifest_path
+    )
+
+    assert captured == {
+        "path": manifest_path,
+        "require_committed_fingerprint": True,
+        "on_result": callback,
+        "show_result_dialog": False,
+    }

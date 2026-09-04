@@ -46,14 +46,17 @@ class ObjectRelabelThread(QtCore.QThread):
         self._commit_root = commit_root
         self._confirm = threading.Event()
         self._aborted = False
+        self._phase = "preflight"
+        self._cancellation_stage = ""
 
     def confirm_commit(self) -> None:
         """Let the worker proceed from preflight into staging."""
         self._confirm.set()
 
-    def request_abort(self) -> None:
+    def request_abort(self, stage: str = "") -> None:
         """Abort before commit; ignored once committing has started."""
         self._aborted = True
+        self._cancellation_stage = stage or self._phase
         self._confirm.set()
 
     def run(self) -> None:
@@ -66,16 +69,28 @@ class ObjectRelabelThread(QtCore.QThread):
             )
             if self._aborted or summary.cancelled:
                 self.finished_result.emit(
-                    self._engine.cancelled_result(plan=self._plan)
+                    self._engine.cancelled_result(
+                        plan=self._plan,
+                        cancellation_stage=(
+                            self._cancellation_stage or "preflight"
+                        ),
+                    )
                 )
                 return
+            self._phase = "confirmation"
             self.preflight_ready.emit(summary)
             self._confirm.wait()
             if self._aborted:
                 self.finished_result.emit(
-                    self._engine.cancelled_result(plan=self._plan)
+                    self._engine.cancelled_result(
+                        plan=self._plan,
+                        cancellation_stage=(
+                            self._cancellation_stage or "confirmation"
+                        ),
+                    )
                 )
                 return
+            self._phase = "staging"
             staged = self._engine.stage(
                 self._plan,
                 cancel_check=lambda: self._aborted,
@@ -83,7 +98,12 @@ class ObjectRelabelThread(QtCore.QThread):
             )
             if self._aborted or staged.operation.cancelled:
                 self.finished_result.emit(
-                    self._engine.cancelled_result(staged=staged)
+                    self._engine.cancelled_result(
+                        staged=staged,
+                        cancellation_stage=(
+                            self._cancellation_stage or "staging"
+                        ),
+                    )
                 )
                 return
             self.committing_started.emit()
@@ -170,13 +190,13 @@ def run_object_relabel_flow(
     commit_root: str,
     on_finished,
     on_flow_failed,
+    show_result_dialog: bool = True,
 ) -> bool:
     """Drive preflight → confirm → stage → commit for one plan.
 
     Returns False when another relabel flow is already active for the
-    same dataset root. ``on_finished(result)`` runs after the result
-    dialog is acknowledged; ``on_flow_failed(message)`` covers worker
-    errors.
+    same dataset root. ``on_finished(result)`` runs after any caller-selected
+    result presentation; ``on_flow_failed(message)`` covers worker errors.
     """
 
     flow_key = osp.normcase(osp.abspath(commit_root))
@@ -234,13 +254,14 @@ def run_object_relabel_flow(
         thread.wait()
         parent._object_relabel_thread = None
         close_progress()
-        QtWidgets.QMessageBox.information(
-            parent,
-            QtCore.QCoreApplication.translate(
-                "LabelingWidget", "Relabel Marked Objects"
-            ),
-            _result_message(result),
-        )
+        if show_result_dialog:
+            QtWidgets.QMessageBox.information(
+                parent,
+                QtCore.QCoreApplication.translate(
+                    "LabelingWidget", "Relabel Marked Objects"
+                ),
+                _result_message(result),
+            )
         on_finished(result)
 
     def on_progress(phase: str, index: int, total: int, path: str) -> None:
@@ -283,7 +304,7 @@ def run_object_relabel_flow(
             dialog.show()
             thread.confirm_commit()
         else:
-            thread.request_abort()
+            thread.request_abort("confirmation")
 
     def on_committing() -> None:
         state["committing"] = True

@@ -4458,6 +4458,7 @@ class LabelingWidget(LabelDialog):
         title: str,
         on_result=None,
         prepared: bool = False,
+        show_result_dialog: bool = True,
     ) -> bool:
         """Run the shared object relabel flow for any immutable ref snapshot."""
         if not prepared and not LabelingWidget._prepare_object_relabel(
@@ -4487,13 +4488,15 @@ class LabelingWidget(LabelDialog):
             thumbnail_action.setEnabled(False)
 
         def on_finished(result):
-            self._object_relabel_running = False
-            action.setEnabled(True)
-            if thumbnail_action is not None:
-                thumbnail_action.setEnabled(True)
-            self._apply_object_relabel_result(result)
-            if on_result is not None:
-                on_result(result)
+            try:
+                self._apply_object_relabel_result(result)
+                if on_result is not None:
+                    on_result(result)
+            finally:
+                self._object_relabel_running = False
+                action.setEnabled(True)
+                if thumbnail_action is not None:
+                    thumbnail_action.setEnabled(True)
 
         def on_flow_failed(message):
             self._object_relabel_running = False
@@ -4509,6 +4512,7 @@ class LabelingWidget(LabelDialog):
             batch_root,
             on_finished,
             on_flow_failed,
+            show_result_dialog=show_result_dialog,
         )
         if not started:
             self._object_relabel_running = False
@@ -4544,6 +4548,9 @@ class LabelingWidget(LabelDialog):
             parent=self,
         )
         window.relabel_requested.connect(self._relabel_from_thumbnail)
+        window.restore_requested.connect(
+            self._restore_object_relabel_from_thumbnail
+        )
         window.navigate_requested.connect(self._navigate_from_thumbnail)
         window.closed.connect(self._on_dataset_thumbnail_closed)
         self._dataset_thumbnail_window = window
@@ -4571,12 +4578,29 @@ class LabelingWidget(LabelDialog):
             target,
             self.tr("Relabel Thumbnail Objects"),
             on_result=self._on_thumbnail_relabel_result,
+            show_result_dialog=False,
         )
 
     def _on_thumbnail_relabel_result(self, result) -> None:
         """Refresh the thumbnail browser after the shared flow terminates."""
         if self._dataset_thumbnail_window is not None:
             self._dataset_thumbnail_window.apply_relabel_result(result)
+
+    def _restore_object_relabel_from_thumbnail(
+        self, manifest_path: str
+    ) -> None:
+        """Restore the exact transaction exposed by the thumbnail result bar."""
+        self.restore_object_relabel_manifest(
+            manifest_path,
+            require_committed_fingerprint=True,
+            on_result=self._on_thumbnail_restore_result,
+            show_result_dialog=False,
+        )
+
+    def _on_thumbnail_restore_result(self, result) -> None:
+        """Show direct recovery feedback inside the thumbnail window."""
+        if self._dataset_thumbnail_window is not None:
+            self._dataset_thumbnail_window.apply_restore_result(result)
 
     def _on_dataset_thumbnail_closed(self) -> None:
         """Release the browser reference after a user close."""
@@ -4883,7 +4907,13 @@ class LabelingWidget(LabelDialog):
         if manifest_path:
             self.restore_object_relabel_manifest(manifest_path)
 
-    def restore_object_relabel_manifest(self, manifest_path):
+    def restore_object_relabel_manifest(
+        self,
+        manifest_path,
+        require_committed_fingerprint=False,
+        on_result=None,
+        show_result_dialog=True,
+    ):
         """Restore files from one object-relabel transaction manifest."""
         if not manifest_path or not osp.isfile(manifest_path):
             self.error_message(
@@ -4925,6 +4955,21 @@ class LabelingWidget(LabelDialog):
         if resolution == "discard" and self.filename:
             self.load_file(self.filename)
 
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            self.tr("Restore object relabel"),
+            self.tr(
+                "Restore files from this recovery manifest? Files changed "
+                "after the relabel commit will be left unchanged. This is "
+                "a file-level recovery operation, not a normal undo step."
+            ),
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if answer != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+
         gate_owner = "object-relabel-restore"
         if not BatchWriteGate.try_acquire(manifest_root, gate_owner):
             QtWidgets.QMessageBox.warning(
@@ -4939,7 +4984,11 @@ class LabelingWidget(LabelDialog):
             engine = JsonTransactionEngine(
                 osp.dirname(osp.dirname(manifest_path))
             )
-            restored = engine.restore(manifest_path, root=manifest_root)
+            restored = engine.restore(
+                manifest_path,
+                root=manifest_root,
+                require_committed_fingerprint=(require_committed_fingerprint),
+            )
         except (OSError, TypeError, ValueError, KeyError) as exc:
             self.error_message(
                 self.tr("Restore object relabel"),
@@ -4964,13 +5013,22 @@ class LabelingWidget(LabelDialog):
             )
         if current and current in restored_paths:
             self.load_file(self.filename)
-        QtWidgets.QMessageBox.information(
-            self,
-            self.tr("Restore object relabel"),
-            self.tr(
-                "Restored {count} file(s) from the recovery manifest."
-            ).format(count=len(restored_paths)),
-        )
+        if on_result is not None:
+            on_result(restored)
+        if show_result_dialog:
+            file_counts = restored.counts
+            QtWidgets.QMessageBox.information(
+                self,
+                self.tr("Restore object relabel"),
+                self.tr(
+                    "Restore finished — restored: {restored}, conflict: "
+                    "{conflict}, failed: {failed}."
+                ).format(
+                    restored=file_counts.get("succeeded", 0),
+                    conflict=file_counts.get("conflict", 0),
+                    failed=file_counts.get("failed", 0),
+                ),
+            )
 
     def _manifest_source_root(self, manifest_path):
         """Return the canonical source root recorded by a manifest."""

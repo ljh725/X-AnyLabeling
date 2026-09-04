@@ -271,6 +271,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
     """Non-modal label browser that emits selected objects for relabeling."""
 
     relabel_requested = QtCore.pyqtSignal(object, str)
+    restore_requested = QtCore.pyqtSignal(str)
     navigate_requested = QtCore.pyqtSignal(object)
     closed = QtCore.pyqtSignal()
 
@@ -302,6 +303,9 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self._mutation_errors: dict[tuple[str, str], str] = {}
         self._retained_selection: set[tuple[str, str]] = set()
         self._programmatic_selection = False
+        self._relabel_refresh_pending = False
+        self._result_base_summary = ""
+        self._result_details = ""
         self._digit_shortcuts: list[QtGui.QShortcut] = []
         self._model = ThumbnailItemModel(self)
         self._renderer = ThumbnailRenderer(
@@ -356,6 +360,38 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self.scan_button.clicked.connect(self._start_scan)
         controls.addWidget(self.scan_button)
         root.addLayout(controls)
+
+        self.result_frame = QtWidgets.QFrame()
+        self.result_frame.setObjectName("thumbnailRelabelResultBar")
+        result_layout = QtWidgets.QVBoxLayout(self.result_frame)
+        result_layout.setContentsMargins(10, 7, 8, 7)
+        result_header = QtWidgets.QHBoxLayout()
+        self.result_summary_label = QtWidgets.QLabel()
+        self.result_summary_label.setWordWrap(True)
+        result_header.addWidget(self.result_summary_label, 1)
+        self.result_details_button = QtWidgets.QPushButton(self.tr("Details"))
+        self.result_details_button.clicked.connect(self._toggle_result_details)
+        result_header.addWidget(self.result_details_button)
+        self.result_restore_button = QtWidgets.QPushButton(
+            self.tr("Restore this operation…")
+        )
+        self.result_restore_button.clicked.connect(
+            self._request_result_restore
+        )
+        result_header.addWidget(self.result_restore_button)
+        self.result_close_button = QtWidgets.QToolButton()
+        self.result_close_button.setText("×")
+        self.result_close_button.setToolTip(self.tr("Dismiss"))
+        self.result_close_button.clicked.connect(self.result_frame.hide)
+        result_header.addWidget(self.result_close_button)
+        result_layout.addLayout(result_header)
+        self.result_details_edit = QtWidgets.QPlainTextEdit()
+        self.result_details_edit.setReadOnly(True)
+        self.result_details_edit.setMaximumHeight(130)
+        self.result_details_edit.hide()
+        result_layout.addWidget(self.result_details_edit)
+        self.result_frame.hide()
+        root.addWidget(self.result_frame)
 
         progress_row = QtWidgets.QHBoxLayout()
         self.scan_progress_label = QtWidgets.QLabel()
@@ -454,12 +490,15 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             ),
         ):
             return False
+        if not self._mutation_is_available():
+            return False
         refs = self._selected_refs()
         if not refs:
             return False
         target = self._digit_label_resolver(digit)
         if not target or not str(target).strip():
             return False
+        self.result_frame.hide()
         self.relabel_requested.emit(refs, str(target).strip())
         return True
 
@@ -596,6 +635,12 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         elif not succeeded:
             self._reload_timer.stop()
             self._set_unavailable_state()
+            if self._result_base_summary:
+                self.result_summary_label.setText(
+                    self._result_base_summary
+                    + " · "
+                    + self.tr("Index refresh failed; relabel remains disabled")
+                )
 
     def _set_empty_state(self) -> None:
         """Show a truthful empty-label state for a ready index."""
@@ -615,6 +660,8 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self.scan_button.show()
         self.scan_button.setEnabled(True)
         self._set_scan_progress_visible(False)
+        if self._index_is_ready():
+            self._set_relabel_refresh_pending(False)
 
     def _set_unavailable_state(self) -> None:
         """Clear old data while the controller cannot serve safe queries."""
@@ -689,7 +736,9 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             self._restore_retained_selection()
         finally:
             self._programmatic_selection = previous_guard
+        self._set_relabel_refresh_pending(False)
         self._update_page_controls()
+        self._update_selection_summary()
         self._visible_timer.start(0)
 
     def _request_visible(self) -> None:
@@ -785,12 +834,23 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         )
         busy = bool(getattr(self._controller, "is_busy", False))
         self.relabel_button.setEnabled(
-            bool(refs) and self._index_is_ready() and not busy
+            bool(refs)
+            and self._index_is_ready()
+            and not busy
+            and not self._relabel_refresh_pending
+        )
+
+    def _mutation_is_available(self) -> bool:
+        """Return whether the visible model is safe for a new mutation."""
+        return bool(
+            self._index_is_ready()
+            and not bool(getattr(self._controller, "is_busy", False))
+            and not self._relabel_refresh_pending
         )
 
     def _request_relabel(self) -> None:
         """Choose a target label and emit the immutable page selection."""
-        if bool(getattr(self._controller, "is_busy", False)):
+        if not self._mutation_is_available():
             return
         refs = self._selected_refs()
         if not refs:
@@ -807,10 +867,14 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             True,
         )
         if ok and target.strip():
+            self.result_frame.hide()
             self.relabel_requested.emit(refs, target.strip())
 
     def apply_relabel_result(self, result) -> None:
         """Retain failed objects and coalesce successful index refreshes."""
+        self._show_relabel_result(result)
+        if result.committed_annotation_paths:
+            self._set_relabel_refresh_pending(True)
         for item in result.objects:
             identity = (
                 osp.normcase(osp.abspath(item.key[1])),
@@ -818,7 +882,11 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             )
             if item.status in KEEP_ON_RESULT:
                 self._retained_selection.add(identity)
-                if item.status != "cancelled":
+                if item.status == "cancelled":
+                    self._mutation_errors[identity] = item.message or self.tr(
+                        "Relabel cancelled before commit"
+                    )
+                else:
                     self._mutation_errors[identity] = item.message or self.tr(
                         "Relabel failed: %1"
                     ).replace("%1", item.status)
@@ -836,6 +904,200 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self._update_selection_summary()
         if result.committed_annotation_paths:
             self._reload_timer.start()
+
+    def apply_restore_result(self, result) -> None:
+        """Show file-level recovery feedback and wait for a fresh model."""
+        counts = result.counts
+        restored = counts.get("succeeded", 0)
+        conflict = counts.get("conflict", 0)
+        failed = counts.get("failed", 0)
+        if restored and not (conflict or failed):
+            level = "success"
+            title = self.tr("Recovery completed")
+        elif restored:
+            level = "warning"
+            title = self.tr("Recovery partially completed")
+        else:
+            level = "error"
+            title = self.tr("Recovery not completed")
+        summary = self.tr("%1 — restored: %2, conflict: %3, failed: %4")
+        summary = (
+            summary.replace("%1", title)
+            .replace("%2", str(restored))
+            .replace("%3", str(conflict))
+            .replace("%4", str(failed))
+        )
+        details = self._file_result_details(result)
+        self._set_result_bar(level, summary, details, "")
+        if restored:
+            self._set_relabel_refresh_pending(True)
+            self._update_selection_summary()
+            self._reload_timer.start()
+
+    def _show_relabel_result(self, result) -> None:
+        """Render one structured relabel result in the in-window result bar."""
+        counts = result.counts
+        succeeded = counts.get("succeeded", 0)
+        unchanged = counts.get("unchanged", 0)
+        deleted = counts.get("deleted", 0)
+        conflict = counts.get("conflict", 0)
+        failed = counts.get("failed", 0)
+        cancelled = counts.get("cancelled", 0)
+        if result.cancelled:
+            level = "neutral"
+            stage = result.cancellation_stage
+            if stage == "preflight":
+                title = self.tr("Preflight stopped; no files entered commit")
+            elif stage == "confirmation":
+                title = self.tr(
+                    "Commit was not confirmed; no files entered commit"
+                )
+            elif stage == "staging":
+                title = self.tr("Staging stopped; no files were modified")
+            else:
+                title = self.tr("Relabel cancelled; no files were committed")
+        elif succeeded > 0 and not (conflict or failed):
+            level = "success"
+            title = self.tr("Completed")
+        elif (
+            succeeded == 0
+            and (unchanged or deleted)
+            and not (conflict or failed)
+        ):
+            level = "neutral"
+            title = self.tr("No write needed")
+        elif succeeded > 0:
+            level = "warning"
+            title = self.tr("Partially completed")
+        elif conflict or failed:
+            level = "error"
+            title = self.tr("Not completed")
+        else:
+            level = "neutral"
+            title = self.tr("Not run")
+        fragments = []
+        target = str(getattr(result, "target_label", "") or "")
+        if succeeded:
+            fragments.append(
+                self.tr('%1 changed to "%2"')
+                .replace("%1", str(succeeded))
+                .replace("%2", target)
+            )
+        for count, text in (
+            (unchanged, self.tr("%1 unchanged")),
+            (deleted, self.tr("%1 deleted")),
+            (conflict, self.tr("%1 conflict")),
+            (failed, self.tr("%1 failed")),
+            (cancelled, self.tr("%1 cancelled")),
+        ):
+            if count:
+                fragments.append(text.replace("%1", str(count)))
+        if not fragments:
+            fragments.append(self.tr("No objects were changed"))
+        if conflict or failed:
+            fragments.append(self.tr("Failed items remain selected"))
+        summary = "%s — %s" % (title, ", ".join(fragments))
+        manifest_path = result.manifest_path or ""
+        can_restore = bool(
+            manifest_path
+            and osp.isfile(manifest_path)
+            and result.committed_annotation_paths
+        )
+        self._set_result_bar(
+            level,
+            summary,
+            self._object_result_details(result),
+            manifest_path if can_restore else "",
+        )
+
+    def _object_result_details(self, result) -> str:
+        """Return copyable object/file counts and recovery metadata."""
+        counts = result.counts
+        file_counts = result.file_counts
+        return (
+            self.tr(
+                "Objects — succeeded: %1, unchanged: %2, deleted: %3, "
+                "conflict: %4, failed: %5, cancelled: %6\n"
+                "Files — succeeded: %7, skipped: %8, conflict: %9, failed: %10\n"
+                "Recovery manifest: %11"
+            )
+            .replace("%11", result.manifest_path or self.tr("(none)"))
+            .replace("%10", str(file_counts.get("failed", 0)))
+            .replace("%9", str(file_counts.get("conflict", 0)))
+            .replace("%8", str(file_counts.get("skipped", 0)))
+            .replace("%7", str(file_counts.get("succeeded", 0)))
+            .replace("%6", str(counts.get("cancelled", 0)))
+            .replace("%5", str(counts.get("failed", 0)))
+            .replace("%4", str(counts.get("conflict", 0)))
+            .replace("%3", str(counts.get("deleted", 0)))
+            .replace("%2", str(counts.get("unchanged", 0)))
+            .replace("%1", str(counts.get("succeeded", 0)))
+        )
+
+    def _file_result_details(self, result) -> str:
+        """Return copyable per-file restore outcomes."""
+        lines = [
+            self.tr("Recovery manifest: %1").replace(
+                "%1", result.manifest_path or self.tr("(none)")
+            )
+        ]
+        for item in result.files:
+            line = "%s — %s" % (item.status, item.source_path)
+            if item.message:
+                line += ": " + item.message
+            lines.append(line)
+        return "\n".join(lines)
+
+    def _set_result_bar(
+        self, level: str, summary: str, details: str, manifest_path: str
+    ) -> None:
+        """Populate and reveal the persistent in-window result surface."""
+        colors = {
+            "success": ("#dff2e4", "#275d38"),
+            "warning": ("#fff2cc", "#6b5200"),
+            "error": ("#f9dddd", "#7a2525"),
+            "neutral": ("#e8edf3", "#334155"),
+        }
+        background, foreground = colors.get(level, colors["neutral"])
+        self.result_frame.setStyleSheet(
+            "QFrame#thumbnailRelabelResultBar {"
+            f"background: {background}; color: {foreground};"
+            "border: 1px solid palette(mid); border-radius: 4px;}"
+        )
+        self.result_summary_label.setText(summary)
+        self._result_base_summary = summary
+        self._result_details = details
+        self.result_details_edit.setPlainText(details)
+        self.result_details_edit.hide()
+        self.result_details_button.setText(self.tr("Details"))
+        self.result_restore_button.setProperty("manifestPath", manifest_path)
+        self.result_restore_button.setVisible(bool(manifest_path))
+        self.result_frame.show()
+
+    def _set_relabel_refresh_pending(self, pending: bool) -> None:
+        """Gate mutations and expose whether the derived view is refreshing."""
+        self._relabel_refresh_pending = pending
+        if self._result_base_summary:
+            summary = self._result_base_summary
+            if pending:
+                summary += " · " + self.tr("Refreshing thumbnails…")
+            self.result_summary_label.setText(summary)
+
+    def _toggle_result_details(self) -> None:
+        """Toggle the copyable details area without dismissing the result."""
+        visible = not self.result_details_edit.isVisible()
+        self.result_details_edit.setVisible(visible)
+        self.result_details_button.setText(
+            self.tr("Hide details") if visible else self.tr("Details")
+        )
+
+    def _request_result_restore(self) -> None:
+        """Request recovery from the exact manifest attached to this result."""
+        manifest_path = str(
+            self.result_restore_button.property("manifestPath") or ""
+        )
+        if manifest_path:
+            self.restore_requested.emit(manifest_path)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """Stop accepting render results when the window closes."""

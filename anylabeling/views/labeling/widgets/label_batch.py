@@ -454,6 +454,7 @@ class JsonTransactionEngine:
                         raise RuntimeError("source changed after preflight")
                     os.replace(entry["staged_path"], source)
                     entry["status"] = "succeeded"
+                    entry["committed_fingerprint"] = _fingerprint(source)
                     results.append(
                         FileOperationResult(
                             source,
@@ -492,9 +493,12 @@ class JsonTransactionEngine:
         )
 
     def restore(
-        self, manifest_path: str, root: Optional[str] = None
+        self,
+        manifest_path: str,
+        root: Optional[str] = None,
+        require_committed_fingerprint: bool = False,
     ) -> OperationResult:
-        """Restore every committed source under the dataset write lock."""
+        """Restore non-conflicting sources under the dataset write lock."""
         payload = self._read_manifest_payload(manifest_path)
         domain = payload.get("domain")
         entries = self._entries_from_payload(payload)
@@ -504,6 +508,40 @@ class JsonTransactionEngine:
         with lock:
             for entry in entries:
                 try:
+                    committed_fingerprint = entry.get("committed_fingerprint")
+                    if (
+                        require_committed_fingerprint
+                        and committed_fingerprint is None
+                    ):
+                        entry["status"] = "conflict"
+                        entry["message"] = (
+                            "manifest has no committed fingerprint"
+                        )
+                        results.append(
+                            FileOperationResult(
+                                entry["source_path"],
+                                "conflict",
+                                entry["message"],
+                            )
+                        )
+                        continue
+                    if (
+                        committed_fingerprint is not None
+                        and _fingerprint(entry["source_path"])
+                        != committed_fingerprint
+                    ):
+                        entry["status"] = "conflict"
+                        entry["message"] = (
+                            "source changed after the relabel commit"
+                        )
+                        results.append(
+                            FileOperationResult(
+                                entry["source_path"],
+                                "conflict",
+                                entry["message"],
+                            )
+                        )
+                        continue
                     fd, temporary = tempfile.mkstemp(
                         prefix="restore-",
                         suffix=".json",
@@ -678,6 +716,13 @@ class BatchMigrationEngine:
         """Atomically replace staged files; this phase deliberately ignores cancel."""
         return self._engine.commit(staged, root)
 
-    def restore(self, manifest_path: str) -> OperationResult:
+    def restore(
+        self,
+        manifest_path: str,
+        require_committed_fingerprint: bool = False,
+    ) -> OperationResult:
         """Restore every committed source from its retained backup atomically."""
-        return self._engine.restore(manifest_path)
+        return self._engine.restore(
+            manifest_path,
+            require_committed_fingerprint=require_committed_fingerprint,
+        )

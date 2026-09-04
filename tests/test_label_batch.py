@@ -107,6 +107,81 @@ def test_transaction_stage_commit_and_restore(tmp_path):
     )
 
 
+def test_commit_records_fingerprint_and_restore_skips_only_changed_files(
+    tmp_path,
+):
+    """Recovery isolates post-commit edits while restoring safe peers."""
+    sources = [tmp_path / "first.json", tmp_path / "second.json"]
+    for source in sources:
+        source.write_text(
+            json.dumps({"shapes": [{"label": "old"}]}), encoding="utf-8"
+        )
+    plan = build_label_change_plan(
+        {"old": _draft("old")},
+        {"old": _draft("old", value="new")},
+    )
+    engine = BatchMigrationEngine(str(tmp_path / "transactions"))
+    committed = engine.commit(
+        engine.stage([str(path) for path in sources], plan), str(tmp_path)
+    )
+    manifest = json.loads(
+        open(committed.manifest_path, encoding="utf-8").read()
+    )
+    assert all(
+        entry.get("committed_fingerprint") for entry in manifest["entries"]
+    )
+
+    sources[1].write_text(
+        json.dumps({"shapes": [{"label": "manual-edit"}]}), encoding="utf-8"
+    )
+    restored = engine.restore(
+        committed.manifest_path, require_committed_fingerprint=True
+    )
+
+    assert restored.counts["succeeded"] == 1
+    assert restored.counts["conflict"] == 1
+    assert (
+        json.loads(sources[0].read_text(encoding="utf-8"))["shapes"][0][
+            "label"
+        ]
+        == "old"
+    )
+    assert (
+        json.loads(sources[1].read_text(encoding="utf-8"))["shapes"][0][
+            "label"
+        ]
+        == "manual-edit"
+    )
+
+
+def test_result_shortcut_rejects_legacy_manifest_without_fingerprint(tmp_path):
+    """The no-picker recovery path requires verifiable commit state."""
+    source = tmp_path / "sample.json"
+    source.write_text(
+        json.dumps({"shapes": [{"label": "old"}]}), encoding="utf-8"
+    )
+    plan = build_label_change_plan(
+        {"old": _draft("old")},
+        {"old": _draft("old", value="new")},
+    )
+    engine = BatchMigrationEngine(str(tmp_path / "transactions"))
+    committed = engine.commit(engine.stage([str(source)], plan), str(tmp_path))
+    manifest_path = committed.manifest_path
+    manifest = json.loads(open(manifest_path, encoding="utf-8").read())
+    for entry in manifest["entries"]:
+        entry.pop("committed_fingerprint", None)
+    with open(manifest_path, "w", encoding="utf-8") as stream:
+        json.dump(manifest, stream)
+
+    denied = engine.restore(manifest_path, require_committed_fingerprint=True)
+
+    assert denied.counts["conflict"] == 1
+    assert (
+        json.loads(source.read_text(encoding="utf-8"))["shapes"][0]["label"]
+        == "new"
+    )
+
+
 def test_transaction_skips_noop_without_touching_file(tmp_path):
     """No matching labels never enter the write set."""
     source = tmp_path / "sample.json"
@@ -245,9 +320,9 @@ def test_preflight_is_cancellable_and_tolerates_invalid_files(tmp_path):
         {"old": _draft("old", value="new")},
     )
     engine = BatchMigrationEngine(str(tmp_path / "transactions"))
-    assert engine.preflight(
-        [str(broken), str(broken)], plan
-    ).matching_shapes == 0
+    assert (
+        engine.preflight([str(broken), str(broken)], plan).matching_shapes == 0
+    )
     calls = []
 
     def cancelled():

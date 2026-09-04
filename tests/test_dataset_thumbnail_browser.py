@@ -25,6 +25,7 @@ from anylabeling.views.labeling.widgets.object_relabel import (
     STATUS_FAILED,
     STATUS_SUCCEEDED,
 )
+from anylabeling.views.labeling.widgets.label_batch import FileOperationResult
 
 
 @pytest.fixture(scope="module")
@@ -522,4 +523,242 @@ def test_reopened_dataset_uses_an_isolated_cache_root(qapp, tmp_path):
 
     assert first_cache != second_cache
     second.close()
+    qapp.processEvents()
+
+
+@pytest.mark.parametrize(
+    ("statuses", "cancelled", "stage", "heading", "color"),
+    [
+        (("succeeded",), False, "", "Completed", "#dff2e4"),
+        (("unchanged", "deleted"), False, "", "No write needed", "#e8edf3"),
+        (("succeeded", "failed"), False, "", "Partially completed", "#fff2cc"),
+        (("conflict", "failed"), False, "", "Not completed", "#f9dddd"),
+        ((), False, "", "Not run", "#e8edf3"),
+        (("cancelled",), True, "preflight", "Preflight stopped", "#e8edf3"),
+        (
+            ("cancelled",),
+            True,
+            "confirmation",
+            "Commit was not confirmed",
+            "#e8edf3",
+        ),
+        (("cancelled",), True, "staging", "Staging stopped", "#e8edf3"),
+    ],
+)
+def test_result_bar_matrix_and_severity(
+    qapp, tmp_path, statuses, cancelled, stage, heading, color
+):
+    """Every specified terminal class has deterministic text and severity."""
+    ref = _ref(tmp_path)
+    window = DatasetLabelThumbnailWindow(
+        FakeController([ref]), "project", str(tmp_path)
+    )
+    objects = tuple(
+        ObjectMutationResult(
+            ("project", ref.image_path, f"shape-{index}"), status
+        )
+        for index, status in enumerate(statuses)
+    )
+    result = ObjectRelabelResult(
+        transaction_id="tx",
+        phase="cancelled" if cancelled else "committed",
+        cancelled=cancelled,
+        objects=objects,
+        target_label="vehicle",
+        cancellation_stage=stage,
+    )
+
+    window.apply_relabel_result(result)
+
+    assert heading in window.result_summary_label.text()
+    assert color in window.result_frame.styleSheet()
+    assert not window.result_frame.isHidden()
+    window._load_page()
+    assert not window.result_frame.isHidden()
+    assert heading in window.result_summary_label.text()
+    window.close()
+    qapp.processEvents()
+
+
+def test_result_bar_exposes_exact_manifest_only_for_committed_files(
+    qapp, tmp_path
+):
+    """Recovery is offered only when this result committed a real file."""
+    ref = _ref(tmp_path)
+    window = DatasetLabelThumbnailWindow(
+        FakeController([ref]), "project", str(tmp_path)
+    )
+    manifest = str(tmp_path / "transactions" / "tx" / "manifest.json")
+    (tmp_path / "transactions" / "tx").mkdir(parents=True)
+    (tmp_path / "transactions" / "tx" / "manifest.json").write_text(
+        "{}", encoding="utf-8"
+    )
+    result = ObjectRelabelResult(
+        transaction_id="tx",
+        phase="committed",
+        cancelled=False,
+        manifest_path=manifest,
+        objects=(
+            ObjectMutationResult(
+                ("project", ref.image_path, ref.shape_id), "succeeded"
+            ),
+        ),
+        files=(FileOperationResult(ref.json_path, "succeeded"),),
+        target_label="vehicle",
+    )
+    requested = []
+    window.restore_requested.connect(requested.append)
+
+    window.apply_relabel_result(result)
+    window.result_restore_button.click()
+
+    assert not window.result_restore_button.isHidden()
+    assert requested == [manifest]
+    window.apply_relabel_result(
+        ObjectRelabelResult("noop", "committed", False, manifest_path=manifest)
+    )
+    assert window.result_restore_button.isHidden()
+    window.close()
+    qapp.processEvents()
+
+
+def test_refresh_barrier_blocks_button_and_digit_until_model_replaced(
+    qapp, tmp_path
+):
+    """Neither mutation entry can reuse the pre-refresh thumbnail model."""
+    ref = _ref(tmp_path)
+    controller = FakeController([ref])
+    window = DatasetLabelThumbnailWindow(
+        controller,
+        "project",
+        str(tmp_path),
+        digit_label_resolver=lambda digit: "vehicle" if digit == 3 else None,
+    )
+    requested = []
+    window.relabel_requested.connect(
+        lambda refs, target: requested.append((refs, target))
+    )
+    window.view.selectionModel().select(
+        window._model.index(0, 0),
+        QtCore.QItemSelectionModel.SelectionFlag.Select,
+    )
+    result = ObjectRelabelResult(
+        "tx",
+        "committed",
+        False,
+        manifest_path=str(tmp_path / "manifest.json"),
+        objects=(
+            ObjectMutationResult(
+                ("project", ref.image_path, ref.shape_id), "failed"
+            ),
+        ),
+        files=(FileOperationResult(ref.json_path, "succeeded"),),
+    )
+
+    window.apply_relabel_result(result)
+    window._reload_timer.stop()
+
+    assert window._relabel_refresh_pending
+    assert not window.relabel_button.isEnabled()
+    assert not window._apply_digit_shortcut(3)
+    assert requested == []
+    window._load_page()
+    assert not window._relabel_refresh_pending
+    assert window.relabel_button.isEnabled()
+    assert window._apply_digit_shortcut(3)
+    assert requested == [((ref,), "vehicle")]
+    assert window.result_frame.isHidden()
+    window.close()
+    qapp.processEvents()
+
+
+def test_result_summary_lists_every_nonzero_object_count(qapp, tmp_path):
+    """Mixed informational counts are preserved without zero-count noise."""
+    ref = _ref(tmp_path)
+    window = DatasetLabelThumbnailWindow(
+        FakeController([ref]), "project", str(tmp_path)
+    )
+    result = ObjectRelabelResult(
+        "tx",
+        "committed",
+        False,
+        objects=(
+            ObjectMutationResult(
+                ("project", ref.image_path, "a"), "succeeded"
+            ),
+            ObjectMutationResult(
+                ("project", ref.image_path, "b"), "unchanged"
+            ),
+            ObjectMutationResult(("project", ref.image_path, "c"), "deleted"),
+        ),
+        target_label="vehicle",
+    )
+
+    window.apply_relabel_result(result)
+
+    summary = window.result_summary_label.text()
+    assert '1 changed to "vehicle"' in summary
+    assert "1 unchanged" in summary
+    assert "1 deleted" in summary
+    assert "conflict" not in summary
+    assert "failed" not in summary
+    window.close()
+    qapp.processEvents()
+
+
+def test_failed_index_refresh_keeps_mutation_barrier(qapp, tmp_path):
+    """A stale index never clears pending merely because a timer fired."""
+    ref = _ref(tmp_path)
+    controller = FakeController([ref])
+    window = DatasetLabelThumbnailWindow(controller, "project", str(tmp_path))
+    window._relabel_refresh_pending = True
+
+    controller.state_value = "stale"
+    window._on_file_refresh_finished(ref.image_path, False, "stale")
+
+    assert window._relabel_refresh_pending
+    assert not window.relabel_button.isEnabled()
+    assert not window._apply_digit_shortcut(1)
+    assert not window.scan_button.isHidden()
+    window.close()
+    qapp.processEvents()
+
+
+def test_page_change_drops_ordinary_selection_but_restores_failed_item(
+    qapp, tmp_path
+):
+    """Only retained failure identities survive a page round-trip."""
+    refs = [_ref(tmp_path, index) for index in range(101)]
+    window = DatasetLabelThumbnailWindow(
+        FakeController(refs), "project", str(tmp_path)
+    )
+    window.view.selectionModel().select(
+        window._model.index(0, 0),
+        QtCore.QItemSelectionModel.SelectionFlag.Select,
+    )
+    window._next_page()
+    assert window._selected_refs() == ()
+    window._previous_page()
+    assert window._selected_refs() == ()
+
+    failed = ObjectRelabelResult(
+        "tx",
+        "committed",
+        False,
+        objects=(
+            ObjectMutationResult(
+                ("project", refs[0].image_path, refs[0].shape_id), "failed"
+            ),
+        ),
+    )
+    window.view.selectionModel().select(
+        window._model.index(0, 0),
+        QtCore.QItemSelectionModel.SelectionFlag.Select,
+    )
+    window.apply_relabel_result(failed)
+    window._next_page()
+    assert window._selected_refs() == ()
+    window._previous_page()
+    assert window._selected_refs() == (refs[0],)
+    window.close()
     qapp.processEvents()

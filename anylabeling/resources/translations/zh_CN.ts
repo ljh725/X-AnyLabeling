@@ -3663,6 +3663,8 @@ This warning will only be shown once. Do you want to continue?</source>
     <message><source>Remove field</source><translation>移除字段</translation></message>
     <message><source>true</source><translation>true</translation></message>
     <message><source>false</source><translation>false</translation></message>
+    <message><source>Restore files from this recovery manifest? Files changed after the relabel commit will be left unchanged. This is a file-level recovery operation, not a normal undo step.</source><translation>要从此恢复清单还原文件吗？改标提交后又被修改的文件将保持不变。这是文件级事务恢复，不是普通撤销操作。</translation></message>
+    <message><source>Restore finished — restored: {restored}, conflict: {conflict}, failed: {failed}.</source><translation>恢复完成——已恢复：{restored}，冲突：{conflict}，失败：{failed}。</translation></message>
   </context>
   <context>
     <name>Model</name>
@@ -6655,7 +6657,41 @@ Do you want to continue?</source>
     <message><source>Rebuild index</source><translation>重建索引</translation></message>
     <message><source>No labeled objects in the index</source><translation>索引中没有已标注对象</translation></message>
     <message><source>Relabel failed: %1</source><translation>重标注失败：%1</translation></message>
+    <message><source>Relabel cancelled before commit</source><translation>改标在提交前已取消</translation></message>
     <message><source>Page %1 / %2 (%3 objects)</source><translation>第 %1 / %2 页（%3 个对象）</translation></message>
     <message><source>Selected: %1 objects in %2 files</source><translation>已选择 %1 个对象，来自 %2 个文件</translation></message>
+    <message><source>Details</source><translation>查看详情</translation></message>
+    <message><source>Hide details</source><translation>收起详情</translation></message>
+    <message><source>Restore this operation…</source><translation>恢复本次…</translation></message>
+    <message><source>Dismiss</source><translation>关闭</translation></message>
+    <message><source>Recovery completed</source><translation>恢复完成</translation></message>
+    <message><source>Recovery partially completed</source><translation>恢复部分完成</translation></message>
+    <message><source>Recovery not completed</source><translation>恢复未完成</translation></message>
+    <message><source>%1 — restored: %2, conflict: %3, failed: %4</source><translation>%1——已恢复：%2，冲突：%3，失败：%4</translation></message>
+    <message><source>Preflight stopped; no files entered commit</source><translation>预检已停止；没有文件进入提交</translation></message>
+    <message><source>Commit was not confirmed; no files entered commit</source><translation>未确认提交；没有文件进入提交</translation></message>
+    <message><source>Staging stopped; no files were modified</source><translation>暂存已停止；没有文件被修改</translation></message>
+    <message><source>Relabel cancelled; no files were committed</source><translation>改标已取消；没有文件被提交</translation></message>
+    <message><source>Completed</source><translation>已完成</translation></message>
+    <message><source>No write needed</source><translation>无需写入</translation></message>
+    <message><source>Partially completed</source><translation>部分完成</translation></message>
+    <message><source>Not completed</source><translation>未完成</translation></message>
+    <message><source>Not run</source><translation>未执行</translation></message>
+    <message><source>%1 changed to "%2"</source><translation>%1 个已改为“%2”</translation></message>
+    <message><source>%1 unchanged</source><translation>%1 个原本已是目标标签</translation></message>
+    <message><source>%1 deleted</source><translation>%1 个已不存在</translation></message>
+    <message><source>%1 conflict</source><translation>%1 个身份冲突</translation></message>
+    <message><source>%1 failed</source><translation>%1 个处理失败</translation></message>
+    <message><source>%1 cancelled</source><translation>%1 个已取消</translation></message>
+    <message><source>No objects were changed</source><translation>没有对象被修改</translation></message>
+    <message><source>Failed items remain selected</source><translation>失败项已保留选中</translation></message>
+    <message><source>Recovery manifest: %1</source><translation>恢复清单：%1</translation></message>
+    <message><source>Refreshing thumbnails…</source><translation>正在刷新缩略图…</translation></message>
+    <message><source>Index refresh failed; relabel remains disabled</source><translation>索引刷新失败；改标保持禁用</translation></message>
+    <message><source>Objects — succeeded: %1, unchanged: %2, deleted: %3, conflict: %4, failed: %5, cancelled: %6
+Files — succeeded: %7, skipped: %8, conflict: %9, failed: %10
+Recovery manifest: %11</source><translation>对象——成功：%1，无变化：%2，已删除：%3，冲突：%4，失败：%5，取消：%6
+文件——成功：%7，跳过：%8，冲突：%9，失败：%10
+恢复清单：%11</translation></message>
   </context>
 </TS>

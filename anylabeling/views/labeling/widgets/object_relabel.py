@@ -381,6 +381,8 @@ class ObjectRelabelResult:
     manifest_path: Optional[str] = None
     objects: tuple[ObjectMutationResult, ...] = ()
     files: tuple[FileOperationResult, ...] = ()
+    target_label: str = ""
+    cancellation_stage: str = ""
 
     @property
     def counts(self) -> dict[str, int]:
@@ -595,6 +597,7 @@ class ObjectRelabelEngine:
             manifest_path=committed.manifest_path,
             objects=tuple(objects),
             files=committed.files,
+            target_label=staged.plan.target_label,
         )
 
     def cancelled_result(
@@ -602,6 +605,7 @@ class ObjectRelabelEngine:
         staged: Optional[ObjectStagedBatch] = None,
         plan: Optional[ObjectRelabelPlan] = None,
         manifest_path: Optional[str] = None,
+        cancellation_stage: str = "",
     ) -> ObjectRelabelResult:
         """Build an all-cancelled result for an aborted batch."""
         active_plan = staged.plan if staged is not None else plan
@@ -623,6 +627,8 @@ class ObjectRelabelEngine:
             ),
             objects=objects,
             files=staged.operation.files if staged is not None else (),
+            target_label=active_plan.target_label,
+            cancellation_stage=cancellation_stage,
         )
 
     @staticmethod

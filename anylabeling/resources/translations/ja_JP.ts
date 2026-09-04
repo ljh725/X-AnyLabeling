@@ -3635,6 +3635,8 @@ This warning will only be shown once. Do you want to continue?</source>
     <message><source>Focus the next virtual review task</source><translation>次のターゲット確認タスクにフォーカス</translation></message>
     <message><source>Previous Virtual Review Task</source><translation>前のターゲット確認タスク</translation></message>
     <message><source>Focus the previous virtual review task</source><translation>前のターゲット確認タスクにフォーカス</translation></message>
+    <message><source>Restore files from this recovery manifest? Files changed after the relabel commit will be left unchanged. This is a file-level recovery operation, not a normal undo step.</source><translation type="unfinished"></translation></message>
+    <message><source>Restore finished — restored: {restored}, conflict: {conflict}, failed: {failed}.</source><translation type="unfinished"></translation></message>
   </context>
   <context>
     <name>Model</name>
@@ -6627,7 +6629,39 @@ Do you want to continue?</source>
     <message><source>Rebuild index</source><translation>インデックスを再構築</translation></message>
     <message><source>No labeled objects in the index</source><translation>インデックスにラベル付きオブジェクトがありません</translation></message>
     <message><source>Relabel failed: %1</source><translation>ラベル変更に失敗しました: %1</translation></message>
+    <message><source>Relabel cancelled before commit</source><translation type="unfinished"></translation></message>
     <message><source>Page %1 / %2 (%3 objects)</source><translation type="unfinished"></translation></message>
     <message><source>Selected: %1 objects in %2 files</source><translation type="unfinished"></translation></message>
+    <message><source>Details</source><translation type="unfinished"></translation></message>
+    <message><source>Hide details</source><translation type="unfinished"></translation></message>
+    <message><source>Restore this operation…</source><translation type="unfinished"></translation></message>
+    <message><source>Dismiss</source><translation type="unfinished"></translation></message>
+    <message><source>Recovery completed</source><translation type="unfinished"></translation></message>
+    <message><source>Recovery partially completed</source><translation type="unfinished"></translation></message>
+    <message><source>Recovery not completed</source><translation type="unfinished"></translation></message>
+    <message><source>%1 — restored: %2, conflict: %3, failed: %4</source><translation type="unfinished"></translation></message>
+    <message><source>Preflight stopped; no files entered commit</source><translation type="unfinished"></translation></message>
+    <message><source>Commit was not confirmed; no files entered commit</source><translation type="unfinished"></translation></message>
+    <message><source>Staging stopped; no files were modified</source><translation type="unfinished"></translation></message>
+    <message><source>Relabel cancelled; no files were committed</source><translation type="unfinished"></translation></message>
+    <message><source>Completed</source><translation type="unfinished"></translation></message>
+    <message><source>No write needed</source><translation type="unfinished"></translation></message>
+    <message><source>Partially completed</source><translation type="unfinished"></translation></message>
+    <message><source>Not completed</source><translation type="unfinished"></translation></message>
+    <message><source>Not run</source><translation type="unfinished"></translation></message>
+    <message><source>%1 changed to "%2"</source><translation type="unfinished"></translation></message>
+    <message><source>%1 unchanged</source><translation type="unfinished"></translation></message>
+    <message><source>%1 deleted</source><translation type="unfinished"></translation></message>
+    <message><source>%1 conflict</source><translation type="unfinished"></translation></message>
+    <message><source>%1 failed</source><translation type="unfinished"></translation></message>
+    <message><source>%1 cancelled</source><translation type="unfinished"></translation></message>
+    <message><source>No objects were changed</source><translation type="unfinished"></translation></message>
+    <message><source>Failed items remain selected</source><translation type="unfinished"></translation></message>
+    <message><source>Recovery manifest: %1</source><translation type="unfinished"></translation></message>
+    <message><source>Refreshing thumbnails…</source><translation type="unfinished"></translation></message>
+    <message><source>Index refresh failed; relabel remains disabled</source><translation type="unfinished"></translation></message>
+    <message><source>Objects — succeeded: %1, unchanged: %2, deleted: %3, conflict: %4, failed: %5, cancelled: %6
+Files — succeeded: %7, skipped: %8, conflict: %9, failed: %10
+Recovery manifest: %11</source><translation type="unfinished"></translation></message>
   </context>
 </TS>
