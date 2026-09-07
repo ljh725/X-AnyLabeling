@@ -4560,6 +4560,7 @@ class LabelingWidget(LabelDialog):
             self._thumbnail_digit_label,
             parent=self,
             defer_initial_load=True,
+            settings=self.settings,
         )
         window.relabel_requested.connect(self._relabel_from_thumbnail)
         window.undo_requested.connect(self._undo_from_thumbnail)
@@ -4568,6 +4569,7 @@ class LabelingWidget(LabelDialog):
         )
         window.navigate_requested.connect(self._navigate_from_thumbnail)
         window.closed.connect(self._on_dataset_thumbnail_closed)
+        window.state_save_failed.connect(self.status)
         self._dataset_thumbnail_window = window
         self._thumbnail_last_synced_identity = None
         window.show()

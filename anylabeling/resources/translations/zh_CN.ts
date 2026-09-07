@@ -6725,5 +6725,32 @@ Recovery manifest: %11</source><translation>对象——成功：%1，无变化�
         <source>Thumbnails: %1/%2 finished, %3 failed (current view)</source>
         <translation>缩略图：已完成 %1/%2，失败 %3（当前视图）</translation>
     </message>
+    <message>
+        <source>Drag a card's right or bottom edge to resize all cards.</source>
+        <translation>拖动卡片右边缘或下边缘，统一调整所有卡片大小。</translation>
+    </message>
+    <message>
+        <source>Last close — page end: %1</source>
+        <translation>上次关闭时页面末项：%1</translation>
+    </message>
+    <message>
+        <source>Last single click: %1</source>
+        <translation>最后单击选中的对象：%1</translation>
+    </message>
+    <message>
+        <source>Could not save thumbnail review positions.</source>
+        <translation>无法保存缩略图检查位置。</translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailReviewState</name>
+    <message>
+        <source>No record</source>
+        <translation>暂无记录</translation>
+    </message>
+    <message>
+        <source> · object #%1 · ID: %2</source>
+        <translation> · 对象 #%1 · ID：%2</translation>
+    </message>
 </context>
 </TS>

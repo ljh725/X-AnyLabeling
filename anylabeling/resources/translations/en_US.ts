@@ -6689,5 +6689,32 @@ Recovery manifest: %11</translation></message>
         <source>Thumbnails: %1/%2 finished, %3 failed (current view)</source>
         <translation>Thumbnails: %1/%2 finished, %3 failed (current view)</translation>
     </message>
+    <message>
+        <source>Drag a card's right or bottom edge to resize all cards.</source>
+        <translation>Drag a card's right or bottom edge to resize all cards.</translation>
+    </message>
+    <message>
+        <source>Last close — page end: %1</source>
+        <translation>Last close — page end: %1</translation>
+    </message>
+    <message>
+        <source>Last single click: %1</source>
+        <translation>Last single click: %1</translation>
+    </message>
+    <message>
+        <source>Could not save thumbnail review positions.</source>
+        <translation>Could not save thumbnail review positions.</translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailReviewState</name>
+    <message>
+        <source>No record</source>
+        <translation>No record</translation>
+    </message>
+    <message>
+        <source> · object #%1 · ID: %2</source>
+        <translation> · object #%1 · ID: %2</translation>
+    </message>
 </context>
 </TS>

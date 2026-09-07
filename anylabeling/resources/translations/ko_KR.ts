@@ -6697,5 +6697,32 @@ Recovery manifest: %11</source><translation type="unfinished"></translation></me
         <source>Thumbnails: %1/%2 finished, %3 failed (current view)</source>
         <translation>썸네일: %1/%2 완료, %3 실패 (현재 보기)</translation>
     </message>
+    <message>
+        <source>Drag a card's right or bottom edge to resize all cards.</source>
+        <translation>카드의 오른쪽 또는 아래쪽 가장자리를 끌어 모든 카드의 크기를 조절하세요.</translation>
+    </message>
+    <message>
+        <source>Last close — page end: %1</source>
+        <translation>마지막 종료 시 페이지 끝 항목: %1</translation>
+    </message>
+    <message>
+        <source>Last single click: %1</source>
+        <translation>마지막으로 클릭하여 선택한 객체: %1</translation>
+    </message>
+    <message>
+        <source>Could not save thumbnail review positions.</source>
+        <translation>썸네일 검토 위치를 저장하지 못했습니다.</translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailReviewState</name>
+    <message>
+        <source>No record</source>
+        <translation>기록 없음</translation>
+    </message>
+    <message>
+        <source> · object #%1 · ID: %2</source>
+        <translation> · 객체 #%1 · ID: %2</translation>
+    </message>
 </context>
 </TS>

@@ -6695,5 +6695,32 @@ Recovery manifest: %11</source><translation type="unfinished"></translation></me
         <source>Thumbnails: %1/%2 finished, %3 failed (current view)</source>
         <translation>サムネイル：%1/%2 完了、%3 失敗（現在の表示）</translation>
     </message>
+    <message>
+        <source>Drag a card's right or bottom edge to resize all cards.</source>
+        <translation>カードの右端または下端をドラッグすると、すべてのカードのサイズを変更できます。</translation>
+    </message>
+    <message>
+        <source>Last close — page end: %1</source>
+        <translation>前回終了時のページ末尾：%1</translation>
+    </message>
+    <message>
+        <source>Last single click: %1</source>
+        <translation>最後にクリックして選択した対象：%1</translation>
+    </message>
+    <message>
+        <source>Could not save thumbnail review positions.</source>
+        <translation>サムネイルの確認位置を保存できませんでした。</translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailReviewState</name>
+    <message>
+        <source>No record</source>
+        <translation>記録なし</translation>
+    </message>
+    <message>
+        <source> · object #%1 · ID: %2</source>
+        <translation> · 対象 #%1 · ID：%2</translation>
+    </message>
 </context>
 </TS>

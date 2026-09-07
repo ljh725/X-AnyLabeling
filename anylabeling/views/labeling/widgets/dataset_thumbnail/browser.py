@@ -19,6 +19,8 @@ from anylabeling.views.labeling.widgets.object_relabel import (
 )
 
 from .pipeline import ThumbnailRenderResult, ThumbnailRenderer
+from .resizable_view import ResizableThumbnailView
+from .review_state import ReviewPosition, ThumbnailReviewState
 
 
 def thumbnail_cache_root(dataset_root: str) -> str:
@@ -259,6 +261,14 @@ class ThumbnailItemDelegate(QtWidgets.QStyledItemDelegate):
             painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
             painter.setPen(QtGui.QPen(QtGui.QColor("#ffffff"), 3))
             painter.drawRoundedRect(rect.adjusted(6, 6, -6, -6), 4, 4)
+        painter.setPen(QtGui.QPen(QtGui.QColor("#a9b4c2"), 1))
+        for offset in (5, 9, 13):
+            painter.drawLine(
+                rect.right() - offset,
+                rect.bottom() - 3,
+                rect.right() - 3,
+                rect.bottom() - offset,
+            )
         painter.restore()
 
     def sizeHint(
@@ -266,8 +276,11 @@ class ThumbnailItemDelegate(QtWidgets.QStyledItemDelegate):
         option: QtWidgets.QStyleOptionViewItem,
         index: QtCore.QModelIndex,
     ) -> QtCore.QSize:
-        """Return a fixed card size suitable for an icon-mode grid."""
+        """Use the grid's shared display size without changing page size."""
         del option, index
+        view = self.parent()
+        if isinstance(view, ResizableThumbnailView):
+            return view.card_size()
         return QtCore.QSize(220, 190)
 
 
@@ -278,6 +291,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
     undo_requested = QtCore.pyqtSignal(object)
     restore_requested = QtCore.pyqtSignal(str)
     navigate_requested = QtCore.pyqtSignal(object)
+    state_save_failed = QtCore.pyqtSignal(str)
     closed = QtCore.pyqtSignal()
 
     def __init__(
@@ -289,6 +303,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         digit_label_resolver: Optional[Callable[[int], Optional[str]]] = None,
         parent: Optional[QtWidgets.QWidget] = None,
         defer_initial_load: bool = False,
+        settings: Optional[QtCore.QSettings] = None,
     ) -> None:
         """Initialize the browser against a read-only index controller."""
         super().__init__(parent, QtCore.Qt.WindowType.Window)
@@ -296,6 +311,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self._controller = index_controller
         self._project_id = project_id
         self._dataset_root = osp.normcase(osp.abspath(dataset_root))
+        self._review_state = ThumbnailReviewState(dataset_root, settings)
         self._target_labels = target_labels or (lambda: [])
         self._digit_label_resolver = digit_label_resolver or (
             lambda _digit: None
@@ -380,6 +396,17 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         controls.addWidget(self.scan_button)
         root.addLayout(controls)
 
+        self.page_bookmark_label = QtWidgets.QLabel()
+        self.click_bookmark_label = QtWidgets.QLabel()
+        for label in (self.page_bookmark_label, self.click_bookmark_label):
+            label.setTextFormat(QtCore.Qt.TextFormat.PlainText)
+            label.setWordWrap(True)
+            label.setTextInteractionFlags(
+                QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
+            )
+            root.addWidget(label)
+        self._update_review_labels()
+
         self.result_frame = QtWidgets.QFrame()
         self.result_frame.setObjectName("thumbnailRelabelResultBar")
         result_layout = QtWidgets.QVBoxLayout(self.result_frame)
@@ -434,7 +461,11 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         render_row.addWidget(self.retry_button)
         root.addLayout(render_row)
 
-        self.view = QtWidgets.QListView()
+        self.view = ResizableThumbnailView()
+        self.view.card_width = self._review_state.card_width
+        self.view.setToolTip(
+            self.tr("Drag a card's right or bottom edge to resize all cards.")
+        )
         self.view.setModel(self._model)
         self.view.setItemDelegate(ThumbnailItemDelegate(self.view))
         self.view.setViewMode(QtWidgets.QListView.ViewMode.IconMode)
@@ -451,6 +482,9 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             self._on_view_selection_changed
         )
         self.view.doubleClicked.connect(self._activate_index)
+        self.view.object_clicked.connect(self._record_clicked_object)
+        self.view.resize_started.connect(self._visible_timer.stop)
+        self.view.resize_finished.connect(self._on_card_resize_finished)
         self.view.installEventFilter(self)
         root.addWidget(self.view, 1)
 
@@ -488,6 +522,36 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
                 lambda digit=digit: self._apply_digit_shortcut(digit)
             )
             self._digit_shortcuts.append(shortcut)
+
+    def _update_review_labels(self) -> None:
+        """Show two independent historical positions for manual checking."""
+        state = self._review_state
+        self.page_bookmark_label.setText(
+            self.tr("Last close — page end: %1").replace(
+                "%1", state.describe(state.page_end, False)
+            )
+        )
+        self.click_bookmark_label.setText(
+            self.tr("Last single click: %1").replace(
+                "%1", state.describe(state.last_click, True)
+            )
+        )
+
+    def _record_clicked_object(self, index: QtCore.QModelIndex) -> None:
+        """Record only a mouse-clicked card that remains selected."""
+        if self._model.is_selectable(index.row()):
+            ref = self._model.ref_at(index.row())
+            if ref is not None:
+                self._review_state.last_click = ReviewPosition.from_ref(ref)
+                self._update_review_labels()
+
+    def _on_card_resize_finished(self) -> None:
+        """Keep preview images while replacing old-size rendering work."""
+        if self._review_state.card_width != self.view.card_width:
+            self._review_state.card_width = self.view.card_width
+            self._render_generation = self._renderer.invalidate()
+            self._reset_render_progress()
+        self._visible_timer.start(0)
 
     def eventFilter(
         self, watched: QtCore.QObject, event: QtCore.QEvent
@@ -790,7 +854,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
 
     def _request_visible(self) -> None:
         """Request only visible rows plus a small one-screen look-ahead."""
-        if not self._model.rowCount():
+        if not self._model.rowCount() or self.view.is_resizing:
             return
         visible = self.view.viewport().rect()
         viewport = visible.adjusted(0, -220, 0, 220)
@@ -808,7 +872,13 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         for ref in refs:
             self._render_requested.add(self._model.item_key(ref))
         self._renderer.request(
-            refs, generation=self._render_generation, prefetch=prefetch
+            refs,
+            size=(
+                self.view.card_size().width() - 24,
+                self.view.card_size().height() - 58,
+            ),
+            generation=self._render_generation,
+            prefetch=prefetch,
         )
         self._update_render_progress()
 
@@ -1225,6 +1295,15 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         if self._closed:
             super().closeEvent(event)
             return
+        self.view.finish_resize()
+        last_ref = self._model.ref_at(self._model.rowCount() - 1)
+        if last_ref is not None:
+            self._review_state.page_end = ReviewPosition.from_ref(last_ref)
+        self._review_state.card_width = self.view.card_width
+        if not self._review_state.save():
+            self.state_save_failed.emit(
+                self.tr("Could not save thumbnail review positions.")
+            )
         self._closed = True
         self.clear_single_undo()
         self._visible_timer.stop()
