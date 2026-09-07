@@ -1,0 +1,632 @@
+{
+  "platform": "Windows-10-10.0.19045-SP0",
+  "python": "3.12.12",
+  "qt": "6.10.0",
+  "processor": "Intel64 Family 6 Model 165 Stepping 3, GenuineIntel",
+  "logical_cpus": 12,
+  "total_ram_mb": 16131.703125,
+  "storage": "local temporary directory; physical medium not identified",
+  "memory": "RSS after screen; process peak is cumulative across samples",
+  "fixture": "synthetic patterned PNG",
+  "cache": "cold application cache; OS cache uncontrolled",
+  "samples": [
+    {
+      "scan_ms": 13.415900059044361,
+      "objects": 104,
+      "resolution": [
+        640,
+        480
+      ],
+      "query_ms": 0.759500078856945,
+      "shell_ms": 11.094199493527412,
+      "cold": {
+        "first_ms": 28.36430072784424,
+        "screen_ms": 76.37470029294491,
+        "event_gap_ms": 13.621700927615166
+      },
+      "rss_after_screen_mb": 63.671875,
+      "process_peak_rss_mb": 66.6796875,
+      "worker_stages_ms": {
+        "cache_read": 5.155700258910656,
+        "cache_write": 58.41859709471464,
+        "scale": 2.694002352654934,
+        "stat": 1.1840993538498878,
+        "gui_apply": 2.214699052274227,
+        "crop": 1.5343967825174332,
+        "cache_decode": 0.004498288035392761,
+        "encode": 17.46079884469509,
+        "source_read_decode": 13.447399251163006
+      },
+      "source_decodes": 4,
+      "activate_ms": 0.102299265563488,
+      "locate_ms": 2.1430999040603638,
+      "hot": {
+        "first_ms": 9.670000523328781,
+        "screen_ms": 42.3208000138402,
+        "event_gap_ms": 5.803599953651428
+      },
+      "ten_page_changes_ms": 0.007100403308868408,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.7182005792856216
+    },
+    {
+      "scan_ms": 12.35289964824915,
+      "objects": 104,
+      "resolution": [
+        640,
+        480
+      ],
+      "query_ms": 0.731700100004673,
+      "shell_ms": 2.1609002724289894,
+      "cold": {
+        "first_ms": 21.66599966585636,
+        "screen_ms": 73.13199993222952,
+        "event_gap_ms": 9.35019925236702
+      },
+      "rss_after_screen_mb": 64.67578125,
+      "process_peak_rss_mb": 67.0390625,
+      "worker_stages_ms": {
+        "cache_read": 3.132801502943039,
+        "cache_write": 74.80290066450834,
+        "scale": 2.5947988033294678,
+        "stat": 0.7529007270932198,
+        "gui_apply": 2.4590985849499702,
+        "crop": 1.3076001778244972,
+        "cache_decode": 0.004500150680541992,
+        "encode": 15.375601127743721,
+        "source_read_decode": 12.01779954135418
+      },
+      "source_decodes": 4,
+      "activate_ms": 0.5538007244467735,
+      "locate_ms": 2.0781997591257095,
+      "hot": {
+        "first_ms": 8.162500336766243,
+        "screen_ms": 40.25950003415346,
+        "event_gap_ms": 7.854900322854519
+      },
+      "ten_page_changes_ms": 0.0051995739340782166,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.6675999611616135
+    },
+    {
+      "scan_ms": 12.712600640952587,
+      "objects": 104,
+      "resolution": [
+        640,
+        480
+      ],
+      "query_ms": 0.7303999736905098,
+      "shell_ms": 2.2572996094822884,
+      "cold": {
+        "first_ms": 24.983000010252,
+        "screen_ms": 70.41750010102987,
+        "event_gap_ms": 10.921699926257133
+      },
+      "rss_after_screen_mb": 64.28515625,
+      "process_peak_rss_mb": 67.3046875,
+      "worker_stages_ms": {
+        "cache_read": 4.456200636923313,
+        "cache_write": 58.51040128618479,
+        "scale": 2.6691993698477745,
+        "stat": 1.0088998824357986,
+        "gui_apply": 2.7240002527832985,
+        "crop": 1.4518005773425102,
+        "cache_decode": 0.004602596163749695,
+        "encode": 15.199098736047745,
+        "source_read_decode": 14.184098690748215
+      },
+      "source_decodes": 4,
+      "activate_ms": 0.4928000271320343,
+      "locate_ms": 1.9853003323078156,
+      "hot": {
+        "first_ms": 9.586100466549397,
+        "screen_ms": 40.58020003139973,
+        "event_gap_ms": 5.5792005732655525
+      },
+      "ten_page_changes_ms": 0.005000270903110504,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.664999708533287
+    },
+    {
+      "scan_ms": 12.143800035119057,
+      "objects": 104,
+      "resolution": [
+        640,
+        480
+      ],
+      "query_ms": 0.7142005488276482,
+      "shell_ms": 2.1567000076174736,
+      "cold": {
+        "first_ms": 22.443500347435474,
+        "screen_ms": 65.1655001565814,
+        "event_gap_ms": 10.141300037503242
+      },
+      "rss_after_screen_mb": 64.55078125,
+      "process_peak_rss_mb": 67.8046875,
+      "worker_stages_ms": {
+        "cache_read": 4.249104298651218,
+        "cache_write": 56.173598393797874,
+        "scale": 2.7175024151802063,
+        "stat": 0.8373009040951729,
+        "gui_apply": 3.015897236764431,
+        "crop": 1.4162017032504082,
+        "cache_decode": 0.004597939550876617,
+        "encode": 14.326098375022411,
+        "source_read_decode": 11.74909994006157
+      },
+      "source_decodes": 4,
+      "activate_ms": 0.5549006164073944,
+      "locate_ms": 2.1872995421290398,
+      "hot": {
+        "first_ms": 10.166400112211704,
+        "screen_ms": 42.44530014693737,
+        "event_gap_ms": 6.749000400304794
+      },
+      "ten_page_changes_ms": 0.004699453711509705,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.6697000935673714
+    },
+    {
+      "scan_ms": 14.497600495815277,
+      "objects": 104,
+      "resolution": [
+        640,
+        480
+      ],
+      "query_ms": 0.9175008162856102,
+      "shell_ms": 2.12709978222847,
+      "cold": {
+        "first_ms": 23.428800515830517,
+        "screen_ms": 73.288400657475,
+        "event_gap_ms": 10.971499606966972
+      },
+      "rss_after_screen_mb": 65.15234375,
+      "process_peak_rss_mb": 67.8046875,
+      "worker_stages_ms": {
+        "cache_read": 5.976801738142967,
+        "cache_write": 62.8041997551918,
+        "scale": 2.9430994763970375,
+        "stat": 0.9238990023732185,
+        "gui_apply": 2.976403571665287,
+        "crop": 2.020498737692833,
+        "cache_decode": 0.004599802196025848,
+        "encode": 16.385999508202076,
+        "source_read_decode": 13.953600078821182
+      },
+      "source_decodes": 4,
+      "activate_ms": 0.6091007962822914,
+      "locate_ms": 2.306000329554081,
+      "hot": {
+        "first_ms": 10.54729986935854,
+        "screen_ms": 50.023999996483326,
+        "event_gap_ms": 7.790300063788891
+      },
+      "ten_page_changes_ms": 0.011700205504894257,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 1.385900191962719
+    },
+    {
+      "scan_ms": 22.54640031605959,
+      "objects": 504,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "query_ms": 1.2087002396583557,
+      "shell_ms": 2.0212000235915184,
+      "cold": {
+        "first_ms": 33.150600269436836,
+        "screen_ms": 83.09390023350716,
+        "event_gap_ms": 10.825800709426403
+      },
+      "rss_after_screen_mb": 80.17578125,
+      "process_peak_rss_mb": 80.1796875,
+      "worker_stages_ms": {
+        "cache_read": 2.432500943541527,
+        "cache_write": 36.67070064693689,
+        "scale": 2.0033977925777435,
+        "stat": 0.16160029917955399,
+        "gui_apply": 2.197002060711384,
+        "crop": 0.8371984586119652,
+        "cache_decode": 0.0032996758818626404,
+        "encode": 8.905499242246151,
+        "source_read_decode": 14.838100410997868
+      },
+      "source_decodes": 1,
+      "activate_ms": 0.7931999862194061,
+      "locate_ms": 4.561999812722206,
+      "hot": {
+        "first_ms": 21.390399895608425,
+        "screen_ms": 73.38549941778183,
+        "event_gap_ms": 4.946999251842499
+      },
+      "ten_page_changes_ms": 20.879500545561314,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.7552998140454292
+    },
+    {
+      "scan_ms": 22.354199551045895,
+      "objects": 504,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "query_ms": 1.195799559354782,
+      "shell_ms": 2.026100642979145,
+      "cold": {
+        "first_ms": 34.0804997831583,
+        "screen_ms": 85.58449987322092,
+        "event_gap_ms": 9.297199547290802
+      },
+      "rss_after_screen_mb": 80.5078125,
+      "process_peak_rss_mb": 80.51171875,
+      "worker_stages_ms": {
+        "cache_read": 1.411300152540207,
+        "cache_write": 41.6484996676445,
+        "scale": 2.006399445235729,
+        "stat": 0.169399194419384,
+        "gui_apply": 1.8265005201101303,
+        "crop": 0.8156979456543922,
+        "cache_decode": 0.0032009556889533997,
+        "encode": 8.174699731171131,
+        "source_read_decode": 15.31749963760376
+      },
+      "source_decodes": 1,
+      "activate_ms": 0.09720027446746826,
+      "locate_ms": 4.4586993753910065,
+      "hot": {
+        "first_ms": 20.669800229370594,
+        "screen_ms": 73.49759992212057,
+        "event_gap_ms": 5.227000452578068
+      },
+      "ten_page_changes_ms": 21.309800446033478,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.7408000528812408
+    },
+    {
+      "scan_ms": 22.608699277043343,
+      "objects": 504,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "query_ms": 1.3980995863676071,
+      "shell_ms": 2.2141002118587494,
+      "cold": {
+        "first_ms": 32.468699850142,
+        "screen_ms": 85.27230005711317,
+        "event_gap_ms": 9.781300090253353
+      },
+      "rss_after_screen_mb": 80.4921875,
+      "process_peak_rss_mb": 80.5859375,
+      "worker_stages_ms": {
+        "cache_read": 2.3841001093387604,
+        "cache_write": 40.396399796009064,
+        "scale": 1.9852984696626663,
+        "stat": 0.16819965094327927,
+        "gui_apply": 1.8964018672704697,
+        "crop": 0.904301181435585,
+        "cache_decode": 0.003400258719921112,
+        "encode": 8.93199909478426,
+        "source_read_decode": 14.790600165724754
+      },
+      "source_decodes": 1,
+      "activate_ms": 0.5572997033596039,
+      "locate_ms": 4.355099983513355,
+      "hot": {
+        "first_ms": 21.16100024431944,
+        "screen_ms": 70.11040020734072,
+        "event_gap_ms": 4.804600030183792
+      },
+      "ten_page_changes_ms": 21.518800407648087,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.6870999932289124
+    },
+    {
+      "scan_ms": 22.27170020341873,
+      "objects": 504,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "query_ms": 1.299300231039524,
+      "shell_ms": 2.057100646197796,
+      "cold": {
+        "first_ms": 31.649400480091572,
+        "screen_ms": 288.92230056226254,
+        "event_gap_ms": 9.48949996381998
+      },
+      "rss_after_screen_mb": 80.51953125,
+      "process_peak_rss_mb": 80.609375,
+      "worker_stages_ms": {
+        "cache_read": 1.8296996131539345,
+        "cache_write": 241.4395958185196,
+        "scale": 2.1906020119786263,
+        "stat": 0.1613004133105278,
+        "gui_apply": 2.6056012138724327,
+        "crop": 0.8566984906792641,
+        "cache_decode": 0.0035995617508888245,
+        "encode": 9.875600226223469,
+        "source_read_decode": 14.823799952864647
+      },
+      "source_decodes": 1,
+      "activate_ms": 0.6213001906871796,
+      "locate_ms": 4.5242998749017715,
+      "hot": {
+        "first_ms": 20.198799669742584,
+        "screen_ms": 77.73249968886375,
+        "event_gap_ms": 4.900999367237091
+      },
+      "ten_page_changes_ms": 21.784599870443344,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.7355008274316788
+    },
+    {
+      "scan_ms": 19.184300675988197,
+      "objects": 504,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "query_ms": 1.4018993824720383,
+      "shell_ms": 2.011900767683983,
+      "cold": {
+        "first_ms": 32.89690054953098,
+        "screen_ms": 85.9355004504323,
+        "event_gap_ms": 10.102000087499619
+      },
+      "rss_after_screen_mb": 80.59765625,
+      "process_peak_rss_mb": 80.7421875,
+      "worker_stages_ms": {
+        "cache_read": 2.4336008355021477,
+        "cache_write": 39.78539723902941,
+        "scale": 1.969197764992714,
+        "stat": 0.16860011965036392,
+        "gui_apply": 1.746397465467453,
+        "crop": 0.8453996852040291,
+        "cache_decode": 0.003800727427005768,
+        "encode": 8.250000886619091,
+        "source_read_decode": 14.804399572312832
+      },
+      "source_decodes": 1,
+      "activate_ms": 0.4843994975090027,
+      "locate_ms": 3.9670001715421677,
+      "hot": {
+        "first_ms": 21.101499907672405,
+        "screen_ms": 72.79769983142614,
+        "event_gap_ms": 4.8732999712228775
+      },
+      "ten_page_changes_ms": 21.220900118350983,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.6852000951766968
+    },
+    {
+      "scan_ms": 52.76129953563213,
+      "objects": 2000,
+      "resolution": [
+        3840,
+        2160
+      ],
+      "query_ms": 1.7878003418445587,
+      "shell_ms": 2.2214995697140694,
+      "cold": {
+        "first_ms": 80.96999954432249,
+        "screen_ms": 138.33590038120747,
+        "event_gap_ms": 10.058499872684479
+      },
+      "rss_after_screen_mb": 129.171875,
+      "process_peak_rss_mb": 129.17578125,
+      "worker_stages_ms": {
+        "cache_read": 3.307199105620384,
+        "cache_write": 43.18019933998585,
+        "scale": 2.061201259493828,
+        "stat": 0.2114996314048767,
+        "gui_apply": 2.024398185312748,
+        "crop": 0.8832970634102821,
+        "cache_decode": 0.00360049307346344,
+        "encode": 9.805399924516678,
+        "source_read_decode": 61.53300032019615
+      },
+      "source_decodes": 1,
+      "activate_ms": 0.5112001672387123,
+      "locate_ms": 6.864400580525398,
+      "hot": {
+        "first_ms": 66.31620042026043,
+        "screen_ms": 125.00630039721727,
+        "event_gap_ms": 7.386200129985809
+      },
+      "ten_page_changes_ms": 27.365200221538544,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.8929995819926262
+    },
+    {
+      "scan_ms": 52.68440023064613,
+      "objects": 2000,
+      "resolution": [
+        3840,
+        2160
+      ],
+      "query_ms": 1.8841000273823738,
+      "shell_ms": 2.0552007481455803,
+      "cold": {
+        "first_ms": 77.5875998660922,
+        "screen_ms": 130.57589996606112,
+        "event_gap_ms": 8.496800437569618
+      },
+      "rss_after_screen_mb": 129.44140625,
+      "process_peak_rss_mb": 129.4453125,
+      "worker_stages_ms": {
+        "cache_read": 2.3612016811966896,
+        "cache_write": 42.63859894126654,
+        "scale": 2.0517008379101753,
+        "stat": 0.157100148499012,
+        "gui_apply": 1.8242988735437393,
+        "crop": 0.7983027026057243,
+        "cache_decode": 0.0033015385270118713,
+        "encode": 8.909097872674465,
+        "source_read_decode": 59.0221993625164
+      },
+      "source_decodes": 1,
+      "activate_ms": 0.4727998748421669,
+      "locate_ms": 6.9203004240989685,
+      "hot": {
+        "first_ms": 64.48629964143038,
+        "screen_ms": 118.91259998083115,
+        "event_gap_ms": 7.791600190103054
+      },
+      "ten_page_changes_ms": 29.788999818265438,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.7473994046449661
+    },
+    {
+      "scan_ms": 52.06719972193241,
+      "objects": 2000,
+      "resolution": [
+        3840,
+        2160
+      ],
+      "query_ms": 1.9223997369408607,
+      "shell_ms": 2.0312992855906487,
+      "cold": {
+        "first_ms": 77.10330002009869,
+        "screen_ms": 139.9569995701313,
+        "event_gap_ms": 9.747600182890892
+      },
+      "rss_after_screen_mb": 129.44921875,
+      "process_peak_rss_mb": 129.75390625,
+      "worker_stages_ms": {
+        "cache_read": 2.6560984551906586,
+        "cache_write": 49.02689903974533,
+        "scale": 2.138601616024971,
+        "stat": 0.20529981702566147,
+        "gui_apply": 2.06840131431818,
+        "crop": 0.853000208735466,
+        "cache_decode": 0.003402121365070343,
+        "encode": 10.59459988027811,
+        "source_read_decode": 58.71229991316795
+      },
+      "source_decodes": 1,
+      "activate_ms": 0.5390997976064682,
+      "locate_ms": 7.136399857699871,
+      "hot": {
+        "first_ms": 64.35380037873983,
+        "screen_ms": 124.06759988516569,
+        "event_gap_ms": 7.430099882185459
+      },
+      "ten_page_changes_ms": 28.983600437641144,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.7538003847002983
+    },
+    {
+      "scan_ms": 52.69500054419041,
+      "objects": 2000,
+      "resolution": [
+        3840,
+        2160
+      ],
+      "query_ms": 1.9070999696850777,
+      "shell_ms": 2.0548002794384956,
+      "cold": {
+        "first_ms": 77.67210062593222,
+        "screen_ms": 144.99070029705763,
+        "event_gap_ms": 9.04420018196106
+      },
+      "rss_after_screen_mb": 129.60546875,
+      "process_peak_rss_mb": 129.75390625,
+      "worker_stages_ms": {
+        "cache_read": 2.5856010615825653,
+        "cache_write": 54.81159966439009,
+        "scale": 2.136601135134697,
+        "stat": 0.14089979231357574,
+        "gui_apply": 2.6149004697799683,
+        "crop": 0.9142989292740822,
+        "cache_decode": 0.0033015385270118713,
+        "encode": 9.858999401330948,
+        "source_read_decode": 58.1279993057251
+      },
+      "source_decodes": 1,
+      "activate_ms": 0.18540024757385254,
+      "locate_ms": 7.13920034468174,
+      "hot": {
+        "first_ms": 64.43769950419664,
+        "screen_ms": 147.3927991464734,
+        "event_gap_ms": 7.192099466919899
+      },
+      "ten_page_changes_ms": 28.615999966859818,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.7311003282666206
+    },
+    {
+      "scan_ms": 53.55750024318695,
+      "objects": 2000,
+      "resolution": [
+        3840,
+        2160
+      ],
+      "query_ms": 1.6328999772667885,
+      "shell_ms": 2.040199935436249,
+      "cold": {
+        "first_ms": 77.93650031089783,
+        "screen_ms": 135.77200006693602,
+        "event_gap_ms": 9.231500327587128
+      },
+      "rss_after_screen_mb": 129.6171875,
+      "process_peak_rss_mb": 129.83984375,
+      "worker_stages_ms": {
+        "cache_read": 2.5005973875522614,
+        "cache_write": 46.33310157805681,
+        "scale": 2.070399932563305,
+        "stat": 0.1729000359773636,
+        "gui_apply": 2.4191979318857193,
+        "crop": 0.8819978684186935,
+        "cache_decode": 0.0035017728805541992,
+        "encode": 9.084300138056278,
+        "source_read_decode": 58.68629924952984
+      },
+      "source_decodes": 1,
+      "activate_ms": 0.47220010310411453,
+      "locate_ms": 6.777899339795113,
+      "hot": {
+        "first_ms": 65.54829981178045,
+        "screen_ms": 119.04540006071329,
+        "event_gap_ms": 7.218300364911556
+      },
+      "ten_page_changes_ms": 25.748200714588165,
+      "queue_peak": 20,
+      "cancelled_requests": 0,
+      "close_ms": 0.6817998364567757
+    }
+  ],
+  "summary": {
+    "shell_ms": {
+      "p50": 2.057100646197796,
+      "p95": 11.094199493527412
+    },
+    "activate_ms": {
+      "p50": 0.5112001672387123,
+      "p95": 0.7931999862194061
+    },
+    "locate_ms": {
+      "p50": 4.4586993753910065,
+      "p95": 7.13920034468174
+    },
+    "close_ms": {
+      "p50": 0.7311003282666206,
+      "p95": 1.385900191962719
+    }
+  }
+}

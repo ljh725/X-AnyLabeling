@@ -111,6 +111,91 @@ def test_no_focus_keeps_native_base_visibility(widget: Any) -> None:
     assert canvas.main_visible(shape) is False
 
 
+def test_real_widget_selection_never_auto_navigates_thumbnails(
+    widget: Any,
+) -> None:
+    """Repeated category selection cannot feed back into thumbnail queries."""
+    import json
+    from anylabeling.views.labeling.dataset_index import DatasetFilterIndex
+    from anylabeling.views.labeling.widgets.dataset_thumbnail import (
+        DatasetLabelThumbnailWindow,
+    )
+
+    shapes = [_rect("person", 20, 20, 30, 40), _rect("head", 80, 20, 20, 20)]
+    widget.load_shapes(shapes, replace=True, store_backup=False)
+    source = Path(widget.filename).with_suffix(".json")
+    source.write_text(
+        json.dumps(
+            {
+                "shapes": [
+                    dict(
+                        label=shape.label,
+                        shape_type="rectangle",
+                        xanylabeling_shape_id=shape.xanylabeling_shape_id,
+                        points=[[p.x(), p.y()] for p in shape.points],
+                    )
+                    for shape in shapes
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    index = DatasetFilterIndex(":memory:")
+    index.rebuild([widget.filename], dataset_root=str(source.parent))
+
+    class Controller(QtCore.QObject):
+        """Count real index reads while the main widget changes selection."""
+
+        is_query_ready = True
+        state_value = "ready"
+        is_busy = False
+        query_calls = 0
+
+        def query_thumbnail_objects(self, *args):
+            """Count page queries."""
+            self.query_calls += 1
+            return index.query_thumbnail_objects(*args)
+
+        def __getattr__(self, name):
+            """Forward remaining read-only index queries."""
+            return getattr(index, name)
+
+    controller = Controller()
+    window = DatasetLabelThumbnailWindow(
+        controller, "test", str(Path(widget.filename).parent)
+    )
+    widget._dataset_thumbnail_window = window
+    window.show()
+    QtWidgets.QApplication.processEvents()
+    initial = controller.query_calls
+    label = window._selected_label
+    for i in range(100):
+        widget.canvas.select_shapes([shapes[i % 2]], source="canvas")
+    assert controller.query_calls == initial
+    assert window._selected_label == label
+    widget.canvas.select_shapes([shapes[0]], source="inspector")
+    action = widget.object_mark_actions.locate_in_thumbnails
+    assert action.isEnabled()
+    assert action.shortcut().toString() == "Ctrl+Alt+T"
+    action.trigger()
+    assert window._selected_label == "person"
+    assert not window._selected_refs()
+    widget.canvas.prev_point = QtCore.QPointF(25, 25)
+    widget.canvas.move_by_keyboard(QtCore.QPointF(1, 0))
+    widget.canvas.keyReleaseEvent(
+        QtGui.QKeyEvent(
+            QtCore.QEvent.Type.KeyRelease,
+            QtCore.Qt.Key.Key_Right,
+            QtCore.Qt.KeyboardModifier.NoModifier,
+        )
+    )
+    assert widget.canvas.is_shape_restorable
+    window.close()
+    widget._dataset_thumbnail_window = None
+    widget.set_clean()
+    index.close()
+
+
 def test_focus_hides_nonmembers_and_preserves_base_hidden(widget: Any) -> None:
     """Focus narrows the task layer without overriding native hiding."""
     person = _rect("person", 10, 10, 120, 220)

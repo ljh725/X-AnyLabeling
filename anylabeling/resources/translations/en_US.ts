@@ -3645,7 +3645,23 @@ This warning will only be shown once. Do you want to continue?</translation>
     <message><source>Focus the previous virtual review task</source><translation>Focus the previous virtual review task</translation></message>
     <message><source>Restore files from this recovery manifest? Files changed after the relabel commit will be left unchanged. This is a file-level recovery operation, not a normal undo step.</source><translation>Restore files from this recovery manifest? Files changed after the relabel commit will be left unchanged. This is a file-level recovery operation, not a normal undo step.</translation></message>
     <message><source>Restore finished — restored: {restored}, conflict: {conflict}, failed: {failed}.</source><translation>Restore finished — restored: {restored}, conflict: {conflict}, failed: {failed}.</translation></message>
-  </context>
+      <message>
+        <source>Locate in label thumbnails</source>
+        <translation>Locate in label thumbnails</translation>
+    </message>
+    <message>
+        <source>Undo last single-object relabel</source>
+        <translation>Undo last single-object relabel</translation>
+    </message>
+    <message>
+        <source>Source labels: {labels}</source>
+        <translation>Source labels: {labels}</translation>
+    </message>
+    <message>
+        <source>One object: the thumbnail window offers one guarded undo after a successful label change.</source>
+        <translation>One object: the thumbnail window offers one guarded undo after a successful label change.</translation>
+    </message>
+</context>
   <context>
     <name>Model</name>
     <message>
@@ -6657,5 +6673,21 @@ Files — succeeded: %7, skipped: %8, conflict: %9, failed: %10
 Recovery manifest: %11</source><translation>Objects — succeeded: %1, unchanged: %2, deleted: %3, conflict: %4, failed: %5, cancelled: %6
 Files — succeeded: %7, skipped: %8, conflict: %9, failed: %10
 Recovery manifest: %11</translation></message>
-  </context>
+      <message>
+        <source>Undo last single-object relabel</source>
+        <translation>Undo last single-object relabel</translation>
+    </message>
+    <message>
+        <source>Scanning indexes annotations; thumbnails load on demand.</source>
+        <translation>Scanning indexes annotations; thumbnails load on demand.</translation>
+    </message>
+    <message>
+        <source>Retry failed images</source>
+        <translation>Retry failed images</translation>
+    </message>
+    <message>
+        <source>Thumbnails: %1/%2 finished, %3 failed (current view)</source>
+        <translation>Thumbnails: %1/%2 finished, %3 failed (current view)</translation>
+    </message>
+</context>
 </TS>

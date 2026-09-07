@@ -375,6 +375,7 @@ class JsonTransactionEngine:
                 )
             try:
                 with open(source, "r", encoding="utf-8") as stream:
+                    original_fingerprint = _fingerprint(source)
                     original = json.load(stream)
                 outcome = transform(source, original)
                 if not outcome.changed:
@@ -409,11 +410,13 @@ class JsonTransactionEngine:
                     if osp.exists(temporary):
                         os.remove(temporary)
                 shutil.copy2(source, backup)
+                if _fingerprint(source) != original_fingerprint:
+                    raise ValueError("source changed during staging")
                 entry = {
                     "source_path": osp.abspath(source),
                     "staged_path": staged,
                     "backup_path": backup,
-                    "original_fingerprint": _fingerprint(source),
+                    "original_fingerprint": original_fingerprint,
                     "status": "staged",
                     "matched_shapes": outcome.matched_shapes,
                     "domain_metadata": dict(outcome.metadata),

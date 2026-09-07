@@ -673,6 +673,9 @@ class Canvas(
 
     def store_moving_shape(self):
         """Store a moving shape"""
+        if getattr(self, "_keyboard_edit_before", None) is not None:
+            self._finish_keyboard_edit()
+            return
         if self.moving_shape:
             changed = False
             moving_shapes = (
@@ -823,6 +826,8 @@ class Canvas(
 
     def focusOutEvent(self, _):
         """Window out of focus event"""
+        if getattr(self, "_keyboard_edit_before", None) is not None:
+            self._finish_keyboard_edit()
         self._cancel_rect_edge_interaction()
         self.restore_cursor()
 
@@ -6302,6 +6307,7 @@ class Canvas(
     def move_by_keyboard(self, offset):
         """Move selected shapes by an offset (using keyboard)"""
         if self.selected_shapes:
+            self._prepare_keyboard_edit()
             self.bounded_move_shapes(
                 self.selected_shapes, self.prev_point + offset
             )
@@ -6311,6 +6317,7 @@ class Canvas(
     def rotate_by_keyboard(self, theta):
         """Rotate selected shapes by an theta (using keyboard)"""
         if self.selected_shapes:
+            self._prepare_keyboard_edit()
             rotating_shape = False
             for i, shape in enumerate(self.selected_shapes):
                 if shape._shape_type == "rotation":
@@ -6319,6 +6326,39 @@ class Canvas(
             if rotating_shape:
                 self.repaint()
                 self.rotating_shape = True
+
+    def _prepare_keyboard_edit(self) -> None:
+        """Capture geometry before a keyboard gesture, including lazy loads."""
+        if getattr(self, "_keyboard_edit_before", None) is not None:
+            return
+        self._keyboard_edit_before = [
+            (shape, list(shape.points)) for shape in self.shapes
+        ]
+        if self._pending_initial_backup or not self.shapes_backups:
+            self.shapes_backups.append([s.copy() for s in self.shapes])
+            self._pending_initial_backup = False
+
+    def _finish_keyboard_edit(self) -> None:
+        """Commit changed live objects and always clear gesture state."""
+        before = getattr(self, "_keyboard_edit_before", None)
+        self._keyboard_edit_before = None
+        try:
+            if before is None:
+                return
+            current_ids = {id(shape) for shape in self.shapes}
+            changed = any(
+                id(shape) in current_ids and shape.points != points
+                for shape, points in before
+            )
+            if changed:
+                self.store_shapes()
+                if self.moving_shape:
+                    self.shape_moved.emit()
+                if self.rotating_shape:
+                    self.shape_rotated.emit()
+        finally:
+            self.moving_shape = False
+            self.rotating_shape = False
 
     # QT Overload
     def event(self, ev):
@@ -6565,33 +6605,14 @@ class Canvas(
     # QT Overload
     def keyReleaseEvent(self, ev):
         """Key release event"""
+        if ev.isAutoRepeat():
+            return
         modifiers = ev.modifiers()
         if self.drawing():
             if modifiers == QtCore.Qt.KeyboardModifier.NoModifier:
                 self.snapping = True
         elif self.editing():
-            # NOTE: Temporary fix to avoid ValueError
-            # when the selected shape is not in the shapes list
-            if (
-                (self.moving_shape or self.rotating_shape)
-                and self.selected_shapes
-                and self.selected_shapes[0] in self.shapes
-            ):
-                index = self.shapes.index(self.selected_shapes[0])
-                if (
-                    self.shapes_backups[-1][index].points
-                    != self.shapes[index].points
-                ):
-                    self.store_shapes()
-                    if self.moving_shape:
-                        self.shape_moved.emit()
-                    if self.rotating_shape:
-                        self.shape_rotated.emit()
-
-                if self.moving_shape:
-                    self.moving_shape = False
-                if self.rotating_shape:
-                    self.rotating_shape = False
+            self._finish_keyboard_edit()
 
     def set_last_label(self, text, flags, group_id):
         """Set label and flags for last shape"""
@@ -6659,6 +6680,9 @@ class Canvas(
 
     def load_pixmap(self, pixmap, clear_shapes=True):
         """Load pixmap"""
+        self._keyboard_edit_before = None
+        self.moving_shape = False
+        self.rotating_shape = False
         self._crosshair_cursor_active = False
         self._set_size_overlay_hover_shape(None)
         self._set_selected_shapes([], source="none")
@@ -6695,6 +6719,9 @@ class Canvas(
         self._reset_rectangle_size_issue_state()
         shapes = self._normalize_incoming_shape_ids(shapes, replace=replace)
         if replace:
+            self._keyboard_edit_before = None
+            self.moving_shape = False
+            self.rotating_shape = False
             self._set_size_overlay_hover_shape(None)
             self._set_selected_shapes([], source="none")
             self.selected_shapes_copy = []
@@ -6794,6 +6821,9 @@ class Canvas(
 
     def reset_state(self):
         """Clear shapes and pixmap"""
+        self._keyboard_edit_before = None
+        self.moving_shape = False
+        self.rotating_shape = False
         self.restore_cursor()
         self._crosshair_cursor_active = False
         self._set_size_overlay_hover_shape(None)

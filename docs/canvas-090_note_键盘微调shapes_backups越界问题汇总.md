@@ -2,7 +2,11 @@
 
 > 分析日期：2026-09-07
 > 分支：`feature/selection-optimization`
-> 状态：已定位根因，待修复
+> 状态：2026-09-07 已修复，并通过键盘备份专项与真实窗口回归；下文保留修复前分析。
+
+修复在键盘编辑前准备初始快照，释放时按本次编辑对象身份判断实际变化，不再按未验证下标访问 `shapes_backups[-1]`；焦点丢失、切图与重置统一清理编辑状态。普通主画面选择不再自动定位缩略图，显式定位使用 `Ctrl+Alt+T`。
+
+验证包括空/短备份、删除/重排、移动/旋转、自动重复、焦点丢失、切图，以及真实主窗口连续 100 次跨类别选择。相关用例见 `tests/test_canvas_keyboard_backup.py` 和 `tests/test_rect_refine_canvas_gates.py`。已复现并修复本页的 IndexError；合成数据测试没有重现原用户数据上的整项目卡死，因此不把所有卡顿归因于这一异常。性能与验证记录见 `openspec/changes/improve-thumbnail-review-safety-and-performance/validation.md`。
 
 ## 一、问题现象
 

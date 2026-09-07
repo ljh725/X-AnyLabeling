@@ -7,6 +7,7 @@ transaction engine in :mod:`label_batch`.
 """
 
 import copy
+import hashlib
 import json
 import os.path as osp
 from collections import Counter
@@ -99,6 +100,7 @@ class ObjectRelabelPlan:
     project_id: str
     target_label: str
     targets_by_annotation_path: Mapping[str, tuple[MarkedObjectRef, ...]]
+    undo_record: Optional["SingleObjectRelabelUndo"] = None
 
     @property
     def total_objects(self) -> int:
@@ -372,6 +374,40 @@ class ObjectMutationResult:
 
 
 @dataclass(frozen=True)
+class SingleObjectRelabelUndo:
+    """One label-only inverse guarded by the committed document digest."""
+
+    ref: MarkedObjectRef
+    annotation_path: str
+    old_label: str
+    new_label: str
+    expected_digest: str
+
+
+def _document_digest(data: Mapping[str, Any]) -> str:
+    """Hash parsed content so formatting alone is not a conflict."""
+    return hashlib.sha256(
+        json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
+
+def _check_undo(plan: ObjectRelabelPlan, data: Mapping[str, Any]) -> None:
+    """Reject a stale inverse before staging any replacement."""
+    record = plan.undo_record
+    if record is not None and (
+        plan.total_objects != 1
+        or plan.target_label != record.old_label
+        or tuple(plan.targets_by_annotation_path) != (record.annotation_path,)
+        or next(iter(plan.targets_by_annotation_path.values()))[0].object_key
+        != record.ref.object_key
+        or _document_digest(data) != record.expected_digest
+    ):
+        raise ObjectIdentityConflict(
+            "Annotation changed after relabel; single-object undo is stale"
+        )
+
+
+@dataclass(frozen=True)
 class ObjectRelabelResult:
     """Structured aggregate result for one object relabel batch."""
 
@@ -383,6 +419,7 @@ class ObjectRelabelResult:
     files: tuple[FileOperationResult, ...] = ()
     target_label: str = ""
     cancellation_stage: str = ""
+    undo_record: Optional[SingleObjectRelabelUndo] = None
 
     @property
     def counts(self) -> dict[str, int]:
@@ -426,6 +463,7 @@ class ObjectStagedBatch:
     file_object_statuses: Mapping[str, Mapping[str, str]] = field(
         default_factory=dict
     )
+    undo_record: Optional[SingleObjectRelabelUndo] = None
 
 
 class ObjectRelabelEngine:
@@ -453,6 +491,7 @@ class ObjectRelabelEngine:
             ids = _ids_for_path(plan, path)
             try:
                 data = read_annotation_data(path)
+                _check_undo(plan, data)
                 file_status, statuses = classify_file_objects(
                     data, ids, plan.target_label
                 )
@@ -501,15 +540,36 @@ class ObjectRelabelEngine:
         """Stage target files with per-object statuses, without replacing."""
 
         records: dict[str, dict[str, str]] = {}
+        undo_record = None
 
         def transform(
             source: str, original: Mapping[str, Any]
         ) -> StagedTransform:
+            nonlocal undo_record
             ids = _ids_for_path(plan, source)
             try:
+                _check_undo(plan, original)
                 outcome = transform_objects_by_id(
                     original, ids, plan.target_label
                 )
+                if (
+                    plan.total_objects == 1
+                    and plan.undo_record is None
+                    and outcome.changed
+                ):
+                    ref = plan.targets_by_annotation_path[source][0]
+                    old_label = next(
+                        shape["label"]
+                        for shape in original["shapes"]
+                        if shape.get(SHAPE_ID_FIELD) == ref.shape_id
+                    )
+                    undo_record = SingleObjectRelabelUndo(
+                        ref,
+                        source,
+                        old_label,
+                        plan.target_label,
+                        _document_digest(outcome.data),
+                    )
             except ObjectIdentityConflict as exc:
                 records[source] = {
                     shape_id: STATUS_CONFLICT for shape_id in ids
@@ -564,6 +624,7 @@ class ObjectRelabelEngine:
             plan=plan,
             operation=operation,
             file_object_statuses=frozen_records,
+            undo_record=undo_record,
         )
 
     def commit(
@@ -598,6 +659,11 @@ class ObjectRelabelEngine:
             objects=tuple(objects),
             files=committed.files,
             target_label=staged.plan.target_label,
+            undo_record=(
+                staged.undo_record
+                if len(objects) == 1 and objects[0].status == STATUS_SUCCEEDED
+                else None
+            ),
         )
 
     def cancelled_result(

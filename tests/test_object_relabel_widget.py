@@ -1078,8 +1078,8 @@ def test_thumbnail_navigation_honors_dirty_guard_and_selects_permanent_id(
     assert statuses and "shape-id" in statuses[-1][0]
 
 
-def test_main_selection_reveals_thumbnail_without_navigation_feedback():
-    """A single canvas selection focuses the browser without loading a file."""
+def test_explicit_sync_reveals_thumbnail_without_navigation_feedback():
+    """The explicit command helper focuses once without loading a file."""
     focused = []
     window = SimpleNamespace(
         isVisible=lambda: True,
@@ -1166,7 +1166,7 @@ def test_thumbnail_digit_mapping_and_dataset_lifecycle_are_wired():
     selection_source = inspect.getsource(
         label_widget_module.LabelingWidget.shape_selection_changed
     )
-    assert "_sync_dataset_thumbnail_selection" in selection_source
+    assert "_sync_dataset_thumbnail_selection" not in selection_source
     open_source = inspect.getsource(
         label_widget_module.LabelingWidget.open_dataset_label_thumbnails
     )

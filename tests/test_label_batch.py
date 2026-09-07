@@ -3,6 +3,7 @@
 import json
 
 import anylabeling.views.labeling.widgets.label_batch as label_batch_module
+
 from anylabeling.views.labeling.widgets.appearance.config import (
     save_project_palette,
 )
@@ -360,3 +361,23 @@ def test_batch_write_gate_blocks_overlapping_owners():
     BatchWriteGate.release("other", "label-batch")
     assert BatchWriteGate.try_acquire("root", "label-batch")
     BatchWriteGate.release("root", "label-batch")
+
+
+def test_source_change_during_transform_cannot_be_committed(tmp_path) -> None:
+    """A write between parsing and staging cannot become the new baseline."""
+    source = tmp_path / "race.json"
+    source.write_text('{"shapes": []}', encoding="utf-8")
+    external = '{"shapes": [], "new_external_field": true}'
+
+    def transform(_path, original):
+        """Simulate an external edit while the worker stages its old read."""
+        source.write_text(external, encoding="utf-8")
+        return label_batch_module.StagedTransform(
+            dict(original, stale_edit=True), changed=True
+        )
+
+    engine = label_batch_module.JsonTransactionEngine(str(tmp_path / "txn"))
+    staged = engine.stage_files([str(source)], transform)
+    result = engine.commit(staged, str(tmp_path))
+    assert not result.counts.get("succeeded", 0)
+    assert source.read_text(encoding="utf-8") == external

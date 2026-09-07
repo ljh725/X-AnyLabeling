@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os.path as osp
+import time
 from typing import Callable, Iterable, Optional
 
 from PyQt6 import QtCore, QtGui, QtWidgets
@@ -106,10 +107,13 @@ class ThumbnailItemModel(QtCore.QAbstractListModel):
         if result.error:
             self._render_errors[key] = result.error
         elif result.image_bytes:
-            image = QtGui.QImage.fromData(result.image_bytes, "PNG")
+            image = getattr(result, "image", None)
+            if image is None:
+                image = QtGui.QImage.fromData(result.image_bytes, "PNG")
             if image.isNull():
                 self._render_errors[key] = "thumbnail data is invalid"
             else:
+                self._render_errors.pop(key, None)
                 self._images[key] = image
         self.dataChanged.emit(
             self.index(row, 0),
@@ -208,14 +212,14 @@ class ThumbnailItemDelegate(QtWidgets.QStyledItemDelegate):
         mutation_error = index.data(ThumbnailItemModel.MutationErrorRole) or ""
         if isinstance(image, QtGui.QImage) and not image.isNull():
             pixmap = QtGui.QPixmap.fromImage(image)
-            painter.drawPixmap(
-                image_rect,
-                pixmap.scaled(
-                    image_rect.size(),
-                    QtCore.Qt.AspectRatioMode.KeepAspectRatio,
-                    QtCore.Qt.TransformationMode.SmoothTransformation,
-                ),
+            fitted = pixmap.scaled(
+                image_rect.size(),
+                QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                QtCore.Qt.TransformationMode.SmoothTransformation,
             )
+            target = QtCore.QRect(QtCore.QPoint(), fitted.size())
+            target.moveCenter(image_rect.center())
+            painter.drawPixmap(target.topLeft(), fitted)
         else:
             painter.setPen(QtGui.QColor("#c8c8c8"))
             painter.drawText(
@@ -271,6 +275,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
     """Non-modal label browser that emits selected objects for relabeling."""
 
     relabel_requested = QtCore.pyqtSignal(object, str)
+    undo_requested = QtCore.pyqtSignal(object)
     restore_requested = QtCore.pyqtSignal(str)
     navigate_requested = QtCore.pyqtSignal(object)
     closed = QtCore.pyqtSignal()
@@ -283,6 +288,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         target_labels: Optional[Callable[[], Iterable[str]]] = None,
         digit_label_resolver: Optional[Callable[[int], Optional[str]]] = None,
         parent: Optional[QtWidgets.QWidget] = None,
+        defer_initial_load: bool = False,
     ) -> None:
         """Initialize the browser against a read-only index controller."""
         super().__init__(parent, QtCore.Qt.WindowType.Window)
@@ -299,6 +305,10 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self._selected_label = ""
         self._current_total = 0
         self._closed = False
+        self._initialized = False
+        self._single_undo = None
+        self._render_requested = set()
+        self._render_finished = {}
         self._render_generation = 0
         self._mutation_errors: dict[tuple[str, str], str] = {}
         self._retained_selection: set[tuple[str, str]] = set()
@@ -335,7 +345,16 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         if busy_signal is not None:
             busy_signal.connect(self._on_scan_busy_changed)
         self._build_ui()
-        self._load_labels()
+        if defer_initial_load:
+            QtCore.QTimer.singleShot(0, self._initialize)
+        else:
+            self._initialize()
+
+    def _initialize(self) -> None:
+        """Load the first page once, after the production window is shown."""
+        if not self._closed and not self._initialized:
+            self._initialized = True
+            self._load_labels()
 
     def _index_is_ready(self) -> bool:
         """Return whether the controller owns a verified readable index."""
@@ -401,6 +420,20 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         root.addLayout(progress_row)
         self._set_scan_progress_visible(False)
 
+        render_row = QtWidgets.QHBoxLayout()
+        self.render_progress_label = QtWidgets.QLabel()
+        self.render_progress_label.setToolTip(
+            self.tr("Scanning indexes annotations; thumbnails load on demand.")
+        )
+        render_row.addWidget(self.render_progress_label, 1)
+        self.retry_button = QtWidgets.QPushButton(
+            self.tr("Retry failed images")
+        )
+        self.retry_button.clicked.connect(self._retry_failed_images)
+        self.retry_button.setEnabled(False)
+        render_row.addWidget(self.retry_button)
+        root.addLayout(render_row)
+
         self.view = QtWidgets.QListView()
         self.view.setModel(self._model)
         self.view.setItemDelegate(ThumbnailItemDelegate(self.view))
@@ -436,6 +469,11 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         )
         self.relabel_button.clicked.connect(self._request_relabel)
         footer.addWidget(self.relabel_button)
+        self.undo_button = QtWidgets.QPushButton(
+            self.tr("Undo last single-object relabel")
+        )
+        self.undo_button.clicked.connect(self._request_single_undo)
+        footer.addWidget(self.undo_button)
         root.addLayout(footer)
         self._install_digit_shortcuts()
         self._update_selection_summary()
@@ -503,7 +541,8 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         return True
 
     def focus_object(self, image_path: str, shape_id: str) -> bool:
-        """Reveal and select one indexed object without emitting navigation."""
+        """Reveal an indexed object without adding a relabel candidate."""
+        self._initialize()
         self._model.set_focus_identity(None)
         location = self._controller.query_thumbnail_location(
             image_path, shape_id
@@ -524,21 +563,24 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             self.label_combo.blockSignals(True)
             self.label_combo.setCurrentIndex(label_index)
             self.label_combo.blockSignals(False)
+            page = location.offset // self._page_size
+            changed = (
+                self._selected_label != location.label or self._page != page
+            )
             self._selected_label = location.label
-            self._page = location.offset // self._page_size
-            self._load_page()
+            self._page = page
+            if changed:
+                self._load_page()
 
             for row in range(self._model.rowCount()):
                 ref = self._model.ref_at(row)
                 if ref is None or self._model.identity_key(ref) != identity:
                     continue
                 index = self._model.index(row, 0)
-                self.view.clearSelection()
-                self.view.selectionModel().select(
+                self.view.selectionModel().setCurrentIndex(
                     index,
-                    QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect,
+                    QtCore.QItemSelectionModel.SelectionFlag.NoUpdate,
                 )
-                self.view.setCurrentIndex(index)
                 self.view.scrollTo(
                     index,
                     QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter,
@@ -648,6 +690,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self._page = 0
         self._current_total = 0
         self._render_generation = self._renderer.invalidate()
+        self._reset_render_progress()
         previous_guard = self._programmatic_selection
         self._programmatic_selection = True
         try:
@@ -665,6 +708,9 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
 
     def _set_unavailable_state(self) -> None:
         """Clear old data while the controller cannot serve safe queries."""
+        self._render_generation = self._renderer.invalidate()
+        self._reset_render_progress()
+        self.undo_button.setEnabled(False)
         previous_guard = self._programmatic_selection
         self._programmatic_selection = True
         try:
@@ -728,6 +774,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             )
         self._current_total = page.total
         self._render_generation = self._renderer.invalidate()
+        self._reset_render_progress()
         previous_guard = self._programmatic_selection
         self._programmatic_selection = True
         try:
@@ -745,22 +792,68 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         """Request only visible rows plus a small one-screen look-ahead."""
         if not self._model.rowCount():
             return
-        viewport = self.view.viewport().rect().adjusted(0, -220, 0, 220)
+        visible = self.view.viewport().rect()
+        viewport = visible.adjusted(0, -220, 0, 220)
         refs = []
+        prefetch = []
         for row in range(self._model.rowCount()):
             index = self._model.index(row, 0)
             if self.view.visualRect(index).intersects(viewport):
                 ref = self._model.ref_at(row)
                 if ref is not None:
-                    refs.append(ref)
-        self._renderer.request(refs, generation=self._render_generation)
+                    if self.view.visualRect(index).intersects(visible):
+                        refs.append(ref)
+                    else:
+                        prefetch.append(ref)
+        for ref in refs:
+            self._render_requested.add(self._model.item_key(ref))
+        self._renderer.request(
+            refs, generation=self._render_generation, prefetch=prefetch
+        )
+        self._update_render_progress()
 
     def _on_render_result(self, result: ThumbnailRenderResult) -> None:
         """Apply only results belonging to the renderer's current generation."""
         if result.generation != self._renderer.generation:
             return
+        started = time.perf_counter()
         self._model.set_render_result(result)
+        self._render_finished[self._model.item_key(result.ref)] = bool(
+            result.error
+        )
+        self._update_render_progress()
         self._update_selection_summary()
+        result.timings_ms["gui_apply"] = (time.perf_counter() - started) * 1000
+
+    def _reset_render_progress(self) -> None:
+        """Reset counts when the current page generation changes."""
+        self._render_requested.clear()
+        self._render_finished.clear()
+        self._update_render_progress()
+
+    def _update_render_progress(self) -> None:
+        """Report visible requests only; prefetch cannot inflate progress."""
+        ended = self._render_requested.intersection(self._render_finished)
+        failed = sum(self._render_finished[key] for key in ended)
+        self.render_progress_label.setText(
+            self.tr("Thumbnails: %1/%2 finished, %3 failed (current view)")
+            .replace("%1", str(len(ended)))
+            .replace("%2", str(len(self._render_requested)))
+            .replace("%3", str(failed))
+        )
+        self.retry_button.setEnabled(any(self._render_finished.values()))
+
+    def _retry_failed_images(self) -> None:
+        """Forget failed requests and retry them without changing selection."""
+        refs = [
+            ref
+            for ref in self._model._items
+            if self._render_finished.get(self._model.item_key(ref))
+        ]
+        for ref in refs:
+            self._render_finished.pop(self._model.item_key(ref), None)
+        self._renderer.retry(refs)
+        self._request_visible()
 
     def _update_page_controls(self) -> None:
         """Update page text and navigation enablement."""
@@ -791,6 +884,15 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             self._model.set_focus_identity(None)
             self._page += 1
             self._load_page()
+            self.view.doItemsLayout()
+            self.view.scrollToTop()
+            for row in range(self._model.rowCount()):
+                if self._model.is_selectable(row):
+                    self.view.selectionModel().setCurrentIndex(
+                        self._model.index(row, 0),
+                        QtCore.QItemSelectionModel.SelectionFlag.NoUpdate,
+                    )
+                    break
 
     def _on_view_selection_changed(self, *_args) -> None:
         """Clear navigation focus only after a user selection change."""
@@ -826,6 +928,9 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
     def _update_selection_summary(self) -> None:
         """Update selected object/file counts and button state."""
         refs = self._selected_refs()
+        self.undo_button.setEnabled(
+            self._single_undo is not None and self._mutation_is_available()
+        )
         files = {ref.image_path for ref in refs}
         self.summary_label.setText(
             self.tr("Selected: %1 objects in %2 files")
@@ -872,6 +977,8 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
 
     def apply_relabel_result(self, result) -> None:
         """Retain failed objects and coalesce successful index refreshes."""
+        if result.committed_annotation_paths:
+            self._single_undo = getattr(result, "undo_record", None)
         self._show_relabel_result(result)
         if result.committed_annotation_paths:
             self._set_relabel_refresh_pending(True)
@@ -907,6 +1014,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
 
     def apply_restore_result(self, result) -> None:
         """Show file-level recovery feedback and wait for a fresh model."""
+        self.clear_single_undo()
         counts = result.counts
         restored = counts.get("succeeded", 0)
         conflict = counts.get("conflict", 0)
@@ -1077,6 +1185,9 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
     def _set_relabel_refresh_pending(self, pending: bool) -> None:
         """Gate mutations and expose whether the derived view is refreshing."""
         self._relabel_refresh_pending = pending
+        self.undo_button.setEnabled(
+            self._single_undo is not None and self._mutation_is_available()
+        )
         if self._result_base_summary:
             summary = self._result_base_summary
             if pending:
@@ -1099,12 +1210,23 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         if manifest_path:
             self.restore_requested.emit(manifest_path)
 
+    def clear_single_undo(self) -> None:
+        """Invalidate the one-step inverse after another successful write."""
+        self._single_undo = None
+        self.undo_button.setEnabled(False)
+
+    def _request_single_undo(self) -> None:
+        """Request a guarded inverse without sharing the canvas undo stack."""
+        if self._single_undo is not None and self._mutation_is_available():
+            self.undo_requested.emit(self._single_undo)
+
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """Stop accepting render results when the window closes."""
         if self._closed:
             super().closeEvent(event)
             return
         self._closed = True
+        self.clear_single_undo()
         self._visible_timer.stop()
         self._reload_timer.stop()
         self._renderer.close()

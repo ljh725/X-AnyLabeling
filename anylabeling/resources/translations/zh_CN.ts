@@ -3665,7 +3665,23 @@ This warning will only be shown once. Do you want to continue?</source>
     <message><source>false</source><translation>false</translation></message>
     <message><source>Restore files from this recovery manifest? Files changed after the relabel commit will be left unchanged. This is a file-level recovery operation, not a normal undo step.</source><translation>要从此恢复清单还原文件吗？改标提交后又被修改的文件将保持不变。这是文件级事务恢复，不是普通撤销操作。</translation></message>
     <message><source>Restore finished — restored: {restored}, conflict: {conflict}, failed: {failed}.</source><translation>恢复完成——已恢复：{restored}，冲突：{conflict}，失败：{failed}。</translation></message>
-  </context>
+      <message>
+        <source>Locate in label thumbnails</source>
+        <translation>在标签缩略图中定位</translation>
+    </message>
+    <message>
+        <source>Undo last single-object relabel</source>
+        <translation>撤销上次单对象改标</translation>
+    </message>
+    <message>
+        <source>Source labels: {labels}</source>
+        <translation>原标签：{labels}</translation>
+    </message>
+    <message>
+        <source>One object: the thumbnail window offers one guarded undo after a successful label change.</source>
+        <translation>单个对象：成功改标后，可在缩略图窗口撤销一次；撤销前会检查后续修改冲突。</translation>
+    </message>
+</context>
   <context>
     <name>Model</name>
     <message>
@@ -6693,5 +6709,21 @@ Files — succeeded: %7, skipped: %8, conflict: %9, failed: %10
 Recovery manifest: %11</source><translation>对象——成功：%1，无变化：%2，已删除：%3，冲突：%4，失败：%5，取消：%6
 文件——成功：%7，跳过：%8，冲突：%9，失败：%10
 恢复清单：%11</translation></message>
-  </context>
+      <message>
+        <source>Undo last single-object relabel</source>
+        <translation>撤销上次单对象改标</translation>
+    </message>
+    <message>
+        <source>Scanning indexes annotations; thumbnails load on demand.</source>
+        <translation>扫描用于建立标注索引；缩略图按需生成。</translation>
+    </message>
+    <message>
+        <source>Retry failed images</source>
+        <translation>重试失败图片</translation>
+    </message>
+    <message>
+        <source>Thumbnails: %1/%2 finished, %3 failed (current view)</source>
+        <translation>缩略图：已完成 %1/%2，失败 %3（当前视图）</translation>
+    </message>
+</context>
 </TS>

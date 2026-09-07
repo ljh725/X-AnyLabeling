@@ -8,6 +8,7 @@ import re
 import shutil
 import time
 import uuid
+from dataclasses import replace
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -1485,6 +1486,13 @@ class LabelingWidget(LabelDialog):
                 "relabel selected thumbnails"
             ),
         )
+        locate_in_thumbnails = action(
+            self.tr("Locate in label thumbnails"),
+            self.locate_selected_thumbnail,
+            shortcuts.get("locate_in_thumbnails", "Ctrl+Alt+T"),
+            icon="edit",
+            enabled=False,
+        )
         self.object_mark_actions = utils.Struct(
             batch_mark_mode=batch_mark_mode,
             clear_batch_marks=clear_batch_marks,
@@ -1492,6 +1500,7 @@ class LabelingWidget(LabelDialog):
             edit_marked_object_fields=edit_marked_object_fields,
             restore_object_relabel=restore_object_relabel,
             dataset_label_thumbnails=dataset_label_thumbnails,
+            locate_in_thumbnails=locate_in_thumbnails,
         )
         copy_coordinates = action(
             self.tr("Copy Coordinates"),
@@ -2757,6 +2766,7 @@ class LabelingWidget(LabelDialog):
                 edit_marked_object_fields,
                 restore_object_relabel,
                 dataset_label_thumbnails,
+                locate_in_thumbnails,
                 None,
                 shape_converter,
                 assign_shape_ids,
@@ -4459,6 +4469,7 @@ class LabelingWidget(LabelDialog):
         on_result=None,
         prepared: bool = False,
         show_result_dialog: bool = True,
+        undo_record=None,
     ) -> bool:
         """Run the shared object relabel flow for any immutable ref snapshot."""
         if not prepared and not LabelingWidget._prepare_object_relabel(
@@ -4477,6 +4488,8 @@ class LabelingWidget(LabelDialog):
         except ObjectRelabelPlanError as exc:
             self.error_message(title, str(exc))
             return False
+        if undo_record is not None:
+            plan = replace(plan, undo_record=undo_record)
         batch_root = self._batch_write_root()
         action = self.object_mark_actions.relabel_marked_objects
         thumbnail_action = getattr(
@@ -4546,8 +4559,10 @@ class LabelingWidget(LabelDialog):
             self._candidate_target_labels,
             self._thumbnail_digit_label,
             parent=self,
+            defer_initial_load=True,
         )
         window.relabel_requested.connect(self._relabel_from_thumbnail)
+        window.undo_requested.connect(self._undo_from_thumbnail)
         window.restore_requested.connect(
             self._restore_object_relabel_from_thumbnail
         )
@@ -4585,6 +4600,30 @@ class LabelingWidget(LabelDialog):
         """Refresh the thumbnail browser after the shared flow terminates."""
         if self._dataset_thumbnail_window is not None:
             self._dataset_thumbnail_window.apply_relabel_result(result)
+
+    def _undo_from_thumbnail(self, record) -> None:
+        """Run one guarded label inverse through the shared transaction."""
+        if self._object_relabel_running:
+            return
+        self._launch_object_relabel(
+            (record.ref,),
+            record.old_label,
+            self.tr("Undo last single-object relabel"),
+            on_result=self._on_thumbnail_relabel_result,
+            show_result_dialog=False,
+            undo_record=record,
+        )
+
+    def locate_selected_thumbnail(self) -> None:
+        """Explicitly reveal a unique canvas object in label thumbnails."""
+        selected = self.canvas.selected_shapes
+        if len(selected) != 1 or not self.filename:
+            return
+        if not getattr(selected[0], "xanylabeling_shape_id", ""):
+            return
+        self.open_dataset_label_thumbnails()
+        self._thumbnail_last_synced_identity = None
+        self._sync_dataset_thumbnail_selection(selected)
 
     def _restore_object_relabel_from_thumbnail(
         self, manifest_path: str
@@ -4669,7 +4708,7 @@ class LabelingWidget(LabelDialog):
     def _sync_dataset_thumbnail_selection(
         self, selected_shapes: list[Shape]
     ) -> None:
-        """Reveal one main-canvas selection in the open thumbnail browser."""
+        """Reveal one object only from the explicit navigation command."""
         window = self._dataset_thumbnail_window
         if window is None or not window.isVisible():
             return
@@ -4850,6 +4889,9 @@ class LabelingWidget(LabelDialog):
         """Sync marks with per-object results and refresh bounded state."""
         self.marked_object_store.apply_relabel_result(result)
         committed = set(result.committed_annotation_paths)
+        window = getattr(self, "_dataset_thumbnail_window", None)
+        if committed and window is not None:
+            window.clear_single_undo()
         committed_images = {
             osp.abspath(self._annotation_path_for_image(item.key[1])): (
                 item.key[1]
@@ -7897,7 +7939,11 @@ class LabelingWidget(LabelDialog):
             # A valid single three-box rectangle selection updates focus.
             self._rect_refine_forward_selection(selected_shapes)
 
-        self._sync_dataset_thumbnail_selection(selected_shapes)
+        self.object_mark_actions.locate_in_thumbnails.setEnabled(
+            len(selected_shapes) == 1
+            and bool(getattr(selected_shapes[0], "xanylabeling_shape_id", ""))
+            and bool(self.filename)
+        )
 
     def add_label(self, shape, update_last_label=True, refresh_filters=True):
         if shape.group_id is None:

@@ -3639,7 +3639,23 @@ This warning will only be shown once. Do you want to continue?</source>
     <message><source>Focus the previous virtual review task</source><translation>이전 대상 검토 작업에 초점</translation></message>
     <message><source>Restore files from this recovery manifest? Files changed after the relabel commit will be left unchanged. This is a file-level recovery operation, not a normal undo step.</source><translation type="unfinished"></translation></message>
     <message><source>Restore finished — restored: {restored}, conflict: {conflict}, failed: {failed}.</source><translation type="unfinished"></translation></message>
-  </context>
+      <message>
+        <source>Locate in label thumbnails</source>
+        <translation>라벨 썸네일에서 찾기</translation>
+    </message>
+    <message>
+        <source>Undo last single-object relabel</source>
+        <translation>마지막 단일 객체 라벨 변경 실행 취소</translation>
+    </message>
+    <message>
+        <source>Source labels: {labels}</source>
+        <translation>원본 라벨: {labels}</translation>
+    </message>
+    <message>
+        <source>One object: the thumbnail window offers one guarded undo after a successful label change.</source>
+        <translation>단일 객체: 라벨 변경 성공 후 썸네일 창에서 충돌 확인을 거쳐 한 번 실행 취소할 수 있습니다.</translation>
+    </message>
+</context>
   <context>
     <name>Model</name>
     <message>
@@ -6665,5 +6681,21 @@ Do you want to continue?</source>
     <message><source>Objects — succeeded: %1, unchanged: %2, deleted: %3, conflict: %4, failed: %5, cancelled: %6
 Files — succeeded: %7, skipped: %8, conflict: %9, failed: %10
 Recovery manifest: %11</source><translation type="unfinished"></translation></message>
-  </context>
+      <message>
+        <source>Undo last single-object relabel</source>
+        <translation>마지막 단일 객체 라벨 변경 실행 취소</translation>
+    </message>
+    <message>
+        <source>Scanning indexes annotations; thumbnails load on demand.</source>
+        <translation>스캔은 주석 색인을 만들고 썸네일은 필요할 때 생성합니다.</translation>
+    </message>
+    <message>
+        <source>Retry failed images</source>
+        <translation>실패한 이미지 다시 시도</translation>
+    </message>
+    <message>
+        <source>Thumbnails: %1/%2 finished, %3 failed (current view)</source>
+        <translation>썸네일: %1/%2 완료, %3 실패 (현재 보기)</translation>
+    </message>
+</context>
 </TS>

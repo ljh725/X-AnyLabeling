@@ -3637,7 +3637,23 @@ This warning will only be shown once. Do you want to continue?</source>
     <message><source>Focus the previous virtual review task</source><translation>前のターゲット確認タスクにフォーカス</translation></message>
     <message><source>Restore files from this recovery manifest? Files changed after the relabel commit will be left unchanged. This is a file-level recovery operation, not a normal undo step.</source><translation type="unfinished"></translation></message>
     <message><source>Restore finished — restored: {restored}, conflict: {conflict}, failed: {failed}.</source><translation type="unfinished"></translation></message>
-  </context>
+      <message>
+        <source>Locate in label thumbnails</source>
+        <translation>ラベルサムネイルで表示</translation>
+    </message>
+    <message>
+        <source>Undo last single-object relabel</source>
+        <translation>直前の単一オブジェクトのラベル変更を元に戻す</translation>
+    </message>
+    <message>
+        <source>Source labels: {labels}</source>
+        <translation>元のラベル：{labels}</translation>
+    </message>
+    <message>
+        <source>One object: the thumbnail window offers one guarded undo after a successful label change.</source>
+        <translation>単一オブジェクト：変更成功後、サムネイルウィンドウで競合を確認して一度元に戻せます。</translation>
+    </message>
+</context>
   <context>
     <name>Model</name>
     <message>
@@ -6663,5 +6679,21 @@ Do you want to continue?</source>
     <message><source>Objects — succeeded: %1, unchanged: %2, deleted: %3, conflict: %4, failed: %5, cancelled: %6
 Files — succeeded: %7, skipped: %8, conflict: %9, failed: %10
 Recovery manifest: %11</source><translation type="unfinished"></translation></message>
-  </context>
+      <message>
+        <source>Undo last single-object relabel</source>
+        <translation>直前の単一オブジェクトのラベル変更を元に戻す</translation>
+    </message>
+    <message>
+        <source>Scanning indexes annotations; thumbnails load on demand.</source>
+        <translation>スキャンは注釈を索引化し、サムネイルは必要に応じて生成します。</translation>
+    </message>
+    <message>
+        <source>Retry failed images</source>
+        <translation>失敗した画像を再試行</translation>
+    </message>
+    <message>
+        <source>Thumbnails: %1/%2 finished, %3 failed (current view)</source>
+        <translation>サムネイル：%1/%2 完了、%3 失敗（現在の表示）</translation>
+    </message>
+</context>
 </TS>

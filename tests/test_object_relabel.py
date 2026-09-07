@@ -2,6 +2,7 @@
 
 import json
 import os.path as osp
+from dataclasses import replace
 
 import pytest
 
@@ -79,6 +80,75 @@ def _resolver(root):
     return resolve
 
 
+@pytest.mark.parametrize(
+    "edit", [None, "label", "geometry", "delete", "duplicate"]
+)
+def test_single_undo_rejects_later_changes(tmp_path, edit: str) -> None:
+    """Undo touches only label and refuses all ambiguous later versions."""
+    source = tmp_path / "img.json"
+    _write_annotation(source, [_shape("sid-1"), _shape("sid-2")])
+    original = json.loads(source.read_text(encoding="utf-8"))
+    plan = _plan_for(tmp_path, [_ref(image_id="img.png", shape_id="sid-1")])
+    engine = _engine(tmp_path)
+    result = engine.commit(engine.stage(plan), str(tmp_path))
+    assert result.undo_record is not None
+    inverse = replace(
+        plan, target_label="person", undo_record=result.undo_record
+    )
+    data = json.loads(source.read_text(encoding="utf-8"))
+    if edit == "label":
+        data["shapes"][0]["label"] = "head"
+    elif edit == "geometry":
+        data["shapes"][0]["points"][0][0] = 99
+    elif edit == "delete":
+        data["shapes"].pop(0)
+    elif edit == "duplicate":
+        data["shapes"].append(data["shapes"][0].copy())
+    source.write_text(json.dumps(data), encoding="utf-8")
+    before_undo = source.read_bytes()
+    undone = engine.commit(engine.stage(inverse), str(tmp_path))
+    if edit is None:
+        assert undone.counts[STATUS_SUCCEEDED] == 1
+        assert json.loads(source.read_text(encoding="utf-8")) == original
+        assert undone.undo_record is None
+    else:
+        assert undone.counts[STATUS_CONFLICT] == 1
+        assert source.read_bytes() == before_undo
+
+
+def test_multi_object_in_one_file_has_no_single_undo(tmp_path) -> None:
+    """Object count, not file count, determines undo eligibility."""
+    _write_annotation(
+        tmp_path / "img.json", [_shape("sid-1"), _shape("sid-2")]
+    )
+    plan = _plan_for(
+        tmp_path,
+        [_ref(image_id="img.png", shape_id=sid) for sid in ("sid-1", "sid-2")],
+    )
+    engine = _engine(tmp_path)
+    result = engine.commit(engine.stage(plan), str(tmp_path))
+    assert result.counts[STATUS_SUCCEEDED] == 2
+    assert result.undo_record is None
+
+
+def test_inverse_commit_preserves_change_after_staging(tmp_path) -> None:
+    """The shared commit guard remains active for label inverses."""
+    source = tmp_path / "img.json"
+    _write_annotation(source, [_shape("sid-1")])
+    plan = _plan_for(tmp_path, [_ref(image_id="img.png", shape_id="sid-1")])
+    engine = _engine(tmp_path)
+    result = engine.commit(engine.stage(plan), str(tmp_path))
+    inverse = replace(
+        plan, target_label="person", undo_record=result.undo_record
+    )
+    staged = engine.stage(inverse)
+    _write_annotation(source, [_shape("sid-1", label="external-new-label")])
+    before = source.read_bytes()
+    undone = engine.commit(staged, str(tmp_path))
+    assert undone.counts[STATUS_FAILED] == 1
+    assert source.read_bytes() == before
+
+
 # ---------------------------------------------------------------- plan
 
 
@@ -148,8 +218,7 @@ def test_plan_groups_split_directory_dataset_and_dedupes(tmp_path):
     assert plan.file_count == 2
     grouped = plan.targets_by_annotation_path
     assert [
-        ref.shape_id
-        for ref in grouped[osp.join(str(json_dir), "a.json")]
+        ref.shape_id for ref in grouped[osp.join(str(json_dir), "a.json")]
     ] == ["sid-1"]
 
 
@@ -232,9 +301,7 @@ def test_classification_treats_illegal_ids_as_conflict():
             _shape(""),
         ]
     }
-    file_status, statuses = classify_file_objects(
-        data, {"123", ""}, "target"
-    )
+    file_status, statuses = classify_file_objects(data, {"123", ""}, "target")
     assert file_status == STATUS_CONFLICT
     assert statuses == {"123": STATUS_CONFLICT, "": STATUS_CONFLICT}
 
@@ -290,14 +357,14 @@ def test_transform_only_touches_target_label_and_preserves_everything():
 
 def test_transform_keeps_array_order_and_input_untouched():
     """Shape order is preserved and the input mapping is never mutated."""
-    data = {
-        "shapes": [_shape("sid-2"), _shape("sid-1"), _shape("sid-3")]
-    }
+    data = {"shapes": [_shape("sid-2"), _shape("sid-1"), _shape("sid-3")]}
     original = json.dumps(data, sort_keys=True)
     outcome = transform_objects_by_id(data, {"sid-1"}, "face")
-    assert [
-        s["xanylabeling_shape_id"] for s in outcome.data["shapes"]
-    ] == ["sid-2", "sid-1", "sid-3"]
+    assert [s["xanylabeling_shape_id"] for s in outcome.data["shapes"]] == [
+        "sid-2",
+        "sid-1",
+        "sid-3",
+    ]
     assert json.dumps(data, sort_keys=True) == original
     assert data["shapes"][1]["label"] == "person"
 
@@ -337,7 +404,9 @@ def _engine(tmp_path):
 def _plan_for(tmp_path, refs, label="face", root=None):
     """Build a plan resolving images next to jsons under ``root``."""
     root = str(root if root is not None else tmp_path)
-    return build_object_relabel_plan(refs, "proj", label, root, _resolver(root))
+    return build_object_relabel_plan(
+        refs, "proj", label, root, _resolver(root)
+    )
 
 
 def test_object_commit_updates_only_target_objects(tmp_path):
@@ -404,15 +473,11 @@ def test_object_stage_preserves_illegal_identity_conflict_from_preflight(
     """An illegal id remains conflict through stage and commit."""
     source = tmp_path / "illegal.json"
     _write_annotation(source, [_shape(7)])
-    plan = _plan_for(
-        tmp_path, [_ref(image_id="illegal.json", shape_id="7")]
-    )
+    plan = _plan_for(tmp_path, [_ref(image_id="illegal.json", shape_id="7")])
     engine = _engine(tmp_path)
     assert engine.preflight(plan).conflict == 1
     staged = engine.stage(plan)
-    assert (
-        staged.file_object_statuses[str(source)]["7"] == STATUS_CONFLICT
-    )
+    assert staged.file_object_statuses[str(source)]["7"] == STATUS_CONFLICT
     result = engine.commit(staged, str(tmp_path))
     assert result.counts[STATUS_CONFLICT] == 1
     assert result.counts[STATUS_DELETED] == 0

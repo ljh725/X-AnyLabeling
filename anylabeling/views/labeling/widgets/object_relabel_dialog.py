@@ -119,10 +119,10 @@ class ObjectRelabelThread(QtCore.QThread):
         self.progress.emit(phase, index, total, path)
 
 
-def _preflight_message(summary) -> str:
+def _preflight_message(summary, plan=None, single_undo: bool = False) -> str:
     """Build the confirmation text for one preflight summary."""
 
-    return QtCore.QCoreApplication.translate(
+    message = QtCore.QCoreApplication.translate(
         "LabelingWidget",
         "Target label: {label}\n"
         "Marked objects: {objects} in {files} file(s)\n"
@@ -145,6 +145,25 @@ def _preflight_message(summary) -> str:
         conflict=summary.conflict,
         failed=summary.failed,
     )
+    if plan is not None:
+        labels = sorted(
+            {
+                ref.display_summary
+                for refs in plan.targets_by_annotation_path.values()
+                for ref in refs
+                if ref.display_summary
+            }
+        )
+        message += "\n" + QtCore.QCoreApplication.translate(
+            "LabelingWidget", "Source labels: {labels}"
+        ).format(labels=", ".join(labels))
+    if single_undo:
+        message += "\n" + QtCore.QCoreApplication.translate(
+            "LabelingWidget",
+            "One object: the thumbnail window offers one guarded undo "
+            "after a successful label change.",
+        )
+    return message
 
 
 def _result_message(result: ObjectRelabelResult) -> str:
@@ -281,16 +300,35 @@ def run_object_relabel_flow(
 
     def on_preflight(summary) -> None:
         dialog.hide()
-        answer = QtWidgets.QMessageBox.question(
-            parent,
+        message = _preflight_message(
+            summary,
+            plan,
+            single_undo=(
+                not show_result_dialog
+                and plan.total_objects == 1
+                and plan.undo_record is None
+            ),
+        )
+        confirmation = QtWidgets.QMessageBox(
+            QtWidgets.QMessageBox.Icon.Question,
             QtCore.QCoreApplication.translate(
                 "LabelingWidget", "Confirm object relabel"
             ),
-            _preflight_message(summary),
+            message,
             QtWidgets.QMessageBox.StandardButton.Yes
             | QtWidgets.QMessageBox.StandardButton.No,
-            QtWidgets.QMessageBox.StandardButton.No,
+            parent,
         )
+        confirmation.setDefaultButton(QtWidgets.QMessageBox.StandardButton.No)
+        confirmation.setTextFormat(QtCore.Qt.TextFormat.PlainText)
+        confirmation.setDetailedText(
+            "\n".join(
+                f"{ref.image_id}  #{ref.shape_id}  {ref.display_summary}"
+                for refs in plan.targets_by_annotation_path.values()
+                for ref in refs
+            )
+        )
+        answer = confirmation.exec()
         if (
             answer == QtWidgets.QMessageBox.StandardButton.Yes
             and not state["committing"]

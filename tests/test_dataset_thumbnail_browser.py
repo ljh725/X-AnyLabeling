@@ -2,6 +2,7 @@
 
 import json
 import time
+import threading
 
 import pytest
 
@@ -146,6 +147,146 @@ def test_renderer_groups_and_renders_visible_source(qapp, tmp_path):
     assert results[0].error == ""
     assert results[0].image_bytes
     renderer.close()
+
+
+def test_slow_cache_is_background_and_close_does_not_wait(
+    qapp, tmp_path
+) -> None:
+    """A blocked worker cannot block request dispatch or window closure."""
+    ref = _ref(tmp_path)
+    renderer = ThumbnailRenderer(str(tmp_path / "cache"), max_concurrency=1)
+    entered, resume = threading.Event(), threading.Event()
+    gui_thread = threading.get_ident()
+    calls = []
+
+    def slow_get(_key):
+        """Hold I/O until the GUI has exercised cancellation."""
+        calls.append(threading.get_ident())
+        entered.set()
+        resume.wait(3)
+        return None
+
+    renderer.disk.get = slow_get
+    start = time.monotonic()
+    renderer.request([ref])
+    assert time.monotonic() - start < 0.1
+    assert entered.wait(2)
+    start = time.monotonic()
+    renderer.close()
+    assert time.monotonic() - start < 0.1
+    resume.set()
+    assert calls and calls[0] != gui_thread
+    QtTest.QTest.qWait(100)
+
+
+def test_new_page_cancels_old_queue(qapp, tmp_path) -> None:
+    """Only the newest generation is emitted after a slow old task."""
+    refs = [_ref(tmp_path, i) for i in range(5)]
+    renderer = ThumbnailRenderer(str(tmp_path / "cache"), max_concurrency=1)
+    entered, resume = threading.Event(), threading.Event()
+    original = renderer.disk.get
+
+    def delayed(key):
+        """Delay the first image, leaving other old images queued."""
+        if key.shape_id == refs[0].shape_id:
+            entered.set()
+            resume.wait(3)
+        return original(key)
+
+    renderer.disk.get = delayed
+    results = []
+    renderer.result_ready.connect(results.append)
+    renderer.request(refs[:4])
+    assert entered.wait(2)
+    generation = renderer.request(refs[4:])
+    resume.set()
+    _wait_for_results(qapp, results, 1)
+    assert [r.ref for r in results] == refs[4:]
+    assert results[0].generation == generation
+    assert renderer.cancelled_requests >= 3
+    assert renderer.queue_peak <= 100
+    renderer.close()
+
+
+def test_same_source_decoded_once_per_batch(qapp, tmp_path) -> None:
+    """Stage metrics prove grouping and supply per-crop timing evidence."""
+    from dataclasses import replace
+
+    ref = _ref(tmp_path)
+    refs = [replace(ref, shape_id=f"{i:032x}") for i in range(10)]
+    renderer = ThumbnailRenderer(str(tmp_path / "cache"))
+    results = []
+    renderer.result_ready.connect(results.append)
+    renderer.request(refs)
+    _wait_for_results(qapp, results, 10)
+    assert len(results) == 10
+    assert sum("source_read_decode" in r.timings_ms for r in results) == 1
+    assert all("crop" in r.timings_ms for r in results)
+    renderer.close()
+
+
+def test_visible_progress_retry_and_same_page_selection(
+    qapp, tmp_path
+) -> None:
+    """Missing images end progress; retry succeeds without resetting choice."""
+    refs = [_ref(tmp_path, i) for i in range(2)]
+    from pathlib import Path
+
+    source = Path(refs[1].image_path)
+    content = source.read_bytes()
+    source.unlink()
+    window = DatasetLabelThumbnailWindow(
+        FakeController(refs), "p", str(tmp_path)
+    )
+    window.show()
+    QtTest.QTest.qWait(150)
+    window._request_visible()
+    QtTest.QTest.qWait(100)
+    assert "1 failed" in window.render_progress_label.text()
+    window.view.selectionModel().select(
+        window._model.index(0, 0),
+        QtCore.QItemSelectionModel.SelectionFlag.Select,
+    )
+    before = window._selected_refs()
+    assert window.focus_object(refs[1].image_path, refs[1].shape_id)
+    assert window._selected_refs() == before
+    source.write_bytes(content)
+    window._retry_failed_images()
+    QtTest.QTest.qWait(150)
+    assert "0 failed" in window.render_progress_label.text()
+    assert window._model.is_selectable(1)
+    assert window._selected_refs() == before
+    window.close()
+
+
+def test_next_page_scrolls_top_without_selecting(qapp, tmp_path) -> None:
+    """Paging changes the current index but never silently selects it."""
+    refs = [_ref(tmp_path, i) for i in range(130)]
+    window = DatasetLabelThumbnailWindow(
+        FakeController(refs), "p", str(tmp_path)
+    )
+    window.show()
+    QtTest.QTest.qWait(30)
+    window.view.scrollToBottom()
+    window._next_page()
+    qapp.processEvents()
+    assert window.view.verticalScrollBar().value() == 0
+    assert window.view.currentIndex().row() == 0
+    assert not window._selected_refs()
+    window.close()
+
+
+def test_deferred_initialization_waits_for_event_loop(qapp, tmp_path) -> None:
+    """Production can show a window before the first index query."""
+    controller = FakeController([_ref(tmp_path)])
+    window = DatasetLabelThumbnailWindow(
+        controller, "p", str(tmp_path), defer_initial_load=True
+    )
+    assert controller.query_calls == 0
+    window.show()
+    qapp.processEvents()
+    assert controller.query_calls == 1
+    window.close()
 
 
 def test_renderer_uses_bounded_pool_and_deduplicates_inflight(qapp, tmp_path):
@@ -432,15 +573,15 @@ def test_explicit_activation_requests_navigation_but_selection_does_not(
     qapp.processEvents()
 
 
-def test_focus_object_switches_to_owning_page_and_selects_card(qapp, tmp_path):
-    """Main-canvas selection reveals the matching thumbnail across pages."""
+def test_focus_object_switches_page_without_selecting_card(qapp, tmp_path):
+    """Explicit location reveals a card without adding a relabel target."""
     refs = [_ref(tmp_path, index) for index in range(150)]
     controller = FakeController(refs)
     window = DatasetLabelThumbnailWindow(controller, "project", str(tmp_path))
 
     assert window.focus_object(refs[123].image_path, refs[123].shape_id)
     assert window._page == 1
-    assert window._selected_refs() == (refs[123],)
+    assert window._selected_refs() == ()
     focused = window._model.index(23, 0)
     assert focused.data(window._model.FocusRole) is True
 

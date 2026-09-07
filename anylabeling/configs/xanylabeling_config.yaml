@@ -189,6 +189,7 @@ canvas:
     opacity: 80  # transparency value (0-255), 0 is fully transparent, 255 is fully opaque
 
 shortcuts:
+  locate_in_thumbnails: Ctrl+Alt+T
   close: Ctrl+W
   open: Ctrl+I
   open_video: Ctrl+O
