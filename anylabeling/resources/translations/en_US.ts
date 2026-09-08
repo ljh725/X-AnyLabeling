@@ -6705,6 +6705,30 @@ Recovery manifest: %11</translation></message>
         <source>Could not save thumbnail review positions.</source>
         <translation>Could not save thumbnail review positions.</translation>
     </message>
+    <message>
+        <source>Saved object no longer matches; restored a valid page.</source>
+        <translation>Saved object no longer matches; restored a valid page.</translation>
+    </message>
+    <message>
+        <source>(none)</source>
+        <translation>(none)</translation>
+    </message>
+    <message>
+        <source>This object is hidden by current filters. Clear filters to locate it.</source>
+        <translation>This object is hidden by current filters. Clear filters to locate it.</translation>
+    </message>
+    <message>
+        <source>Review state was not saved: %1</source>
+        <translation>Review state was not saved: %1</translation>
+    </message>
+    <message>
+        <source>Marked %1 object(s): %2</source>
+        <translation>Marked %1 object(s): %2</translation>
+    </message>
+    <message>
+        <source>Could not query thumbnails: %1</source>
+        <translation>Could not query thumbnails: %1</translation>
+    </message>
 </context>
 <context>
     <name>ThumbnailReviewState</name>
@@ -6715,6 +6739,194 @@ Recovery manifest: %11</translation></message>
     <message>
         <source> · object #%1 · ID: %2</source>
         <translation> · object #%1 · ID: %2</translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailReview</name>
+    <message>
+        <source>Unreviewed</source>
+        <translation>Unreviewed</translation>
+    </message>
+    <message>
+        <source>Confirmed</source>
+        <translation>Confirmed</translation>
+    </message>
+    <message>
+        <source>Needs editing</source>
+        <translation>Needs editing</translation>
+    </message>
+    <message>
+        <source>Skipped</source>
+        <translation>Skipped</translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailFiltersDialog</name>
+    <message>
+        <source>Thumbnail filters</source>
+        <translation>Thumbnail filters</translation>
+    </message>
+    <message>
+        <source>Pixels squared</source>
+        <translation>Pixels squared</translation>
+    </message>
+    <message>
+        <source>Percent of original image</source>
+        <translation>Percent of original image</translation>
+    </message>
+    <message>
+        <source>Area unit</source>
+        <translation>Area unit</translation>
+    </message>
+    <message>
+        <source>Difficult</source>
+        <translation>Difficult</translation>
+    </message>
+    <message>
+        <source>Blank means no limit. Missing scores or image sizes do not count as zero. Width / height outliers are ranked automatically; no threshold is required.</source>
+        <translation>Blank means no limit. Missing scores or image sizes do not count as zero. Width / height outliers are ranked automatically; no threshold is required.</translation>
+    </message>
+    <message>
+        <source>Box area</source>
+        <translation>Box area</translation>
+    </message>
+    <message>
+        <source>Width / height</source>
+        <translation>Width / height</translation>
+    </message>
+    <message>
+        <source>Score (scoring)</source>
+        <translation>Score (scoring)</translation>
+    </message>
+    <message>
+        <source>Group ID (exact; -1 = missing)</source>
+        <translation>Group ID (exact; -1 = missing)</translation>
+    </message>
+    <message>
+        <source>Description contains</source>
+        <translation>Description contains</translation>
+    </message>
+    <message>
+        <source>Shape type (exact)</source>
+        <translation>Shape type (exact)</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>All</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>Yes</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>No</translation>
+    </message>
+    <message>
+        <source>Minimum (optional)</source>
+        <translation>Minimum (optional)</translation>
+    </message>
+    <message>
+        <source>Maximum (optional)</source>
+        <translation>Maximum (optional)</translation>
+    </message>
+    <message>
+        <source>Enter valid numbers; minimum must not exceed maximum.</source>
+        <translation>Enter valid numbers; minimum must not exceed maximum.</translation>
+    </message>
+</context>
+<context>
+    <name>AdvancedThumbnailControls</name>
+    <message>
+        <source>Search image filename</source>
+        <translation>Search image filename</translation>
+    </message>
+    <message>
+        <source>Outliers deviate from the same label's median width / height. This is a ranking, not a quality verdict.</source>
+        <translation>Outliers deviate from the same label's median width / height. This is a ranking, not a quality verdict.</translation>
+    </message>
+    <message>
+        <source>All review states</source>
+        <translation>All review states</translation>
+    </message>
+    <message>
+        <source>Attributes / ranges…</source>
+        <translation>Attributes / ranges…</translation>
+    </message>
+    <message>
+        <source>Clear filters</source>
+        <translation>Clear filters</translation>
+    </message>
+    <message>
+        <source>Set review state</source>
+        <translation>Set review state</translation>
+    </message>
+    <message>
+        <source>With context</source>
+        <translation>With context</translation>
+    </message>
+    <message>
+        <source>Tight crop</source>
+        <translation>Tight crop</translation>
+    </message>
+    <message>
+        <source>Padding on each side, relative to the target box</source>
+        <translation>Padding on each side, relative to the target box</translation>
+    </message>
+    <message>
+        <source>Show target boundary</source>
+        <translation>Show target boundary</translation>
+    </message>
+    <message>
+        <source>Image / Shape order</source>
+        <translation>Image / Shape order</translation>
+    </message>
+    <message>
+        <source>Small targets: pixels</source>
+        <translation>Small targets: pixels</translation>
+    </message>
+    <message>
+        <source>Small targets: image percent</source>
+        <translation>Small targets: image percent</translation>
+    </message>
+    <message>
+        <source>Aspect outliers first</source>
+        <translation>Aspect outliers first</translation>
+    </message>
+    <message>
+        <source>Mark selected:</source>
+        <translation>Mark selected:</translation>
+    </message>
+    <message>
+        <source>Card size</source>
+        <translation>Card size</translation>
+    </message>
+    <message>
+        <source>Space: large preview</source>
+        <translation>Space: large preview</translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailPreview</name>
+    <message>
+        <source>Object preview</source>
+        <translation>Object preview</translation>
+    </message>
+    <message>
+        <source>Target crop</source>
+        <translation>Target crop</translation>
+    </message>
+    <message>
+        <source>Whole image with target</source>
+        <translation>Whole image with target</translation>
+    </message>
+    <message>
+        <source>Loading preview…</source>
+        <translation>Loading preview…</translation>
+    </message>
+    <message>
+        <source>Preview unavailable: %1</source>
+        <translation>Preview unavailable: %1</translation>
     </message>
 </context>
 </TS>

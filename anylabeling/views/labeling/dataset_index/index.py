@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from .json_stream import JsonStreamError, read_top_level_array
+from .thumbnail_query import ThumbnailQuery, query_review_page, review_metadata
 from .types import (
     DatasetThumbnailLocation,
     DatasetThumbnailPage,
@@ -58,7 +59,7 @@ def _points_bbox(points: object) -> tuple[Optional[float], ...]:
 # 常量
 # ---------------------------------------------------------------------------
 
-SCHEMA_VERSION = "3"
+SCHEMA_VERSION = "4"
 CACHE_DIR = osp.expanduser("~/.cache/xanylabeling/dataset_index")
 INDEX_STATUS_OK = "ok"
 INDEX_STATUS_MISSING = "missing"
@@ -235,7 +236,7 @@ class DatasetFilterIndex:
             return False
         try:
             self._conn = sqlite3.connect(
-                self.db_path, timeout=SQLITE_BUSY_TIMEOUT_MS / 1000
+                self.db_path, timeout=SQLITE_BUSY_TIMEOUT_MS / 1000, uri=True
             )
             self._conn.execute(
                 f"PRAGMA busy_timeout = {SQLITE_BUSY_TIMEOUT_MS}"
@@ -829,6 +830,22 @@ class DatasetFilterIndex:
                 normalized_label, 0, page_limit, page_offset, ()
             )
 
+    def query_thumbnail_review(
+        self,
+        label: str,
+        limit: int = 100,
+        offset: int = 0,
+        options: Optional[ThumbnailQuery] = None,
+        review_db: Optional[str] = None,
+        anchor: Optional[tuple[str, str]] = None,
+    ) -> DatasetThumbnailPage:
+        """Query all matching objects before applying the bounded page."""
+        if self._conn is None:
+            return DatasetThumbnailPage(label, 0, min(100, limit), offset, ())
+        return query_review_page(
+            self._conn, label, limit, offset, options, review_db, anchor
+        )
+
     def query_thumbnail_location(
         self, image_path: str, shape_id: str
     ) -> Optional[DatasetThumbnailLocation]:
@@ -953,6 +970,12 @@ class DatasetFilterIndex:
                 bbox_y_min REAL,
                 bbox_x_max REAL,
                 bbox_y_max REAL,
+                score REAL,
+                description TEXT,
+                difficult INTEGER,
+                image_width REAL,
+                image_height REAL,
+                signature TEXT,
                 FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
             );
             """)
@@ -1370,7 +1393,7 @@ class DatasetFilterIndex:
                 read_seconds=time.perf_counter() - read_started,
             )
         shapes, error_message = cls._read_shapes(
-            json_path, include_geometry=True
+            json_path, include_geometry=True, include_metadata=True
         )
         status = INDEX_STATUS_ERROR if error_message else INDEX_STATUS_OK
         return PreparedIndexFile(
@@ -1439,8 +1462,9 @@ class DatasetFilterIndex:
             """
             INSERT INTO shapes
             (file_id, shape_index, shape_id, label, group_id, shape_type,
-             bbox_x_min, bbox_y_min, bbox_x_max, bbox_y_max)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             bbox_x_min, bbox_y_min, bbox_x_max, bbox_y_max,
+             score, description, difficult, image_width, image_height, signature)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 (
@@ -1508,7 +1532,7 @@ class DatasetFilterIndex:
             return INDEX_STATUS_MISSING
 
         shapes, error_message = self._read_shapes(
-            json_path, include_geometry=True
+            json_path, include_geometry=True, include_metadata=True
         )
         status = INDEX_STATUS_ERROR if error_message else INDEX_STATUS_OK
 
@@ -1538,8 +1562,9 @@ class DatasetFilterIndex:
             """
             INSERT INTO shapes
             (file_id, shape_index, shape_id, label, group_id, shape_type,
-             bbox_x_min, bbox_y_min, bbox_x_max, bbox_y_max)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             bbox_x_min, bbox_y_min, bbox_x_max, bbox_y_max,
+             score, description, difficult, image_width, image_height, signature)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 (
@@ -1695,7 +1720,9 @@ class DatasetFilterIndex:
 
     @staticmethod
     def _read_shapes(
-        json_path: str, include_geometry: bool = False
+        json_path: str,
+        include_geometry: bool = False,
+        include_metadata: bool = False,
     ) -> Tuple[List[tuple], str]:
         """从 JSON 文件中读取轻量 shape 字段。
 
@@ -1712,8 +1739,11 @@ class DatasetFilterIndex:
             shapes 为空，error_message 保存失败原因。
         """
         try:
+            dimensions = {}
             with open(json_path, "r", encoding="utf-8") as f:
-                shape_values = read_top_level_array(f, "shapes")
+                shape_values = read_top_level_array(
+                    f, "shapes", metadata=dimensions
+                )
             results = []
             for shape in shape_values:
                 if not isinstance(shape, dict):
@@ -1730,7 +1760,12 @@ class DatasetFilterIndex:
                     str(shape_id_value) if shape_id_value is not None else ""
                 )
                 bbox = _points_bbox(shape.get("points"))
-                results.append((label, gid, stype, shape_id, *bbox))
+                extra = (
+                    review_metadata(shape, dimensions)
+                    if include_metadata
+                    else ()
+                )
+                results.append((label, gid, stype, shape_id, *bbox, *extra))
         except (JsonStreamError, OSError, AttributeError) as exc:
             logger.warning(
                 f"Failed to read JSON index fields {json_path}: {exc}"

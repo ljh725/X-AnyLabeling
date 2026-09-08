@@ -69,6 +69,16 @@ class DatasetThumbnailRef:
     shape_id: str
     label: str
     bbox: Optional[tuple[float, float, float, float]] = None
+    score: Optional[float] = None
+    description: str = ""
+    difficult: bool = False
+    group_id: str = "-1"
+    shape_type: str = ""
+    image_width: Optional[float] = None
+    image_height: Optional[float] = None
+    signature: str = ""
+    review_status: str = "unreviewed"
+    unique_identity: bool = True
 
 
 @dataclass(frozen=True)

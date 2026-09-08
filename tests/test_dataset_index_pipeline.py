@@ -44,6 +44,12 @@ class PipelineProbeIndex(DatasetFilterIndex):
                     0.0,
                     10.0,
                     10.0,
+                    None,
+                    "",
+                    False,
+                    None,
+                    None,
+                    "test-signature",
                 )
             ],
             status=INDEX_STATUS_OK,

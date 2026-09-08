@@ -25,6 +25,7 @@ from .types import (
     DatasetThumbnailPage,
 )
 from .worker import DatasetIndexWorker
+from .thumbnail_query import ThumbnailQuery
 
 logger = logging.getLogger(__name__)
 
@@ -498,6 +499,22 @@ class DatasetIndexController(QtCore.QObject):
             )
         return self._index.query_thumbnail_objects(
             label, page_limit, page_offset
+        )
+
+    def query_thumbnail_review(
+        self,
+        label: str,
+        limit: int = 100,
+        offset: int = 0,
+        options: Optional[ThumbnailQuery] = None,
+        review_db: Optional[str] = None,
+        anchor: Optional[tuple[str, str]] = None,
+    ) -> DatasetThumbnailPage:
+        """Expose advanced thumbnail queries only for a verified index."""
+        if not self.is_query_ready:
+            return DatasetThumbnailPage(label, 0, min(100, limit), offset, ())
+        return self._index.query_thumbnail_review(
+            label, limit, offset, options, review_db, anchor
         )
 
     def query_thumbnail_location(

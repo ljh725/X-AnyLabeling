@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import os.path as osp
 from dataclasses import asdict, dataclass
 
@@ -56,6 +57,7 @@ class ThumbnailReviewState:
         self.card_width = 220
         self.page_end = None
         self.last_click = None
+        self.view_state = {}
         if settings is not None:
             self._load(settings.value(self.key, ""))
 
@@ -72,6 +74,8 @@ class ThumbnailReviewState:
             self.card_width = max(160, min(520, width))
         self.page_end = ReviewPosition.parse(value.get("page_end"))
         self.last_click = ReviewPosition.parse(value.get("last_click"))
+        view = value.get("view_state")
+        self.view_state = view if isinstance(view, dict) else {}
 
     def save(self) -> bool:
         """Flush to disk before window destruction and report failures."""
@@ -82,6 +86,7 @@ class ThumbnailReviewState:
             card_width=self.card_width,
             page_end=asdict(self.page_end) if self.page_end else None,
             last_click=asdict(self.last_click) if self.last_click else None,
+            view_state=self.view_state,
         )
         self.settings.setValue(self.key, json.dumps(value, ensure_ascii=False))
         self.settings.sync()
@@ -112,3 +117,27 @@ class ThumbnailReviewState:
                 .replace("%2", position.shape_id)
             )
         return result
+
+
+def review_database_path(
+    root: str, settings: QtCore.QSettings | None
+) -> str | None:
+    """Keep explicit review data outside disposable thumbnail/index caches."""
+    if settings is None:
+        return None
+    if settings.format() == QtCore.QSettings.Format.IniFormat:
+        directory = osp.join(
+            osp.dirname(settings.fileName()), "thumbnail_reviews"
+        )
+    else:
+        directory = osp.join(
+            QtCore.QStandardPaths.writableLocation(
+                QtCore.QStandardPaths.StandardLocation.AppDataLocation
+            ),
+            "thumbnail_reviews",
+        )
+    os.makedirs(directory, exist_ok=True)
+    token = hashlib.sha256(
+        osp.normcase(osp.abspath(root)).encode("utf-8")
+    ).hexdigest()
+    return osp.join(directory, token + ".sqlite")

@@ -6713,6 +6713,30 @@ Recovery manifest: %11</source><translation type="unfinished"></translation></me
         <source>Could not save thumbnail review positions.</source>
         <translation>썸네일 검토 위치를 저장하지 못했습니다.</translation>
     </message>
+    <message>
+        <source>Saved object no longer matches; restored a valid page.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>(none)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This object is hidden by current filters. Clear filters to locate it.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Review state was not saved: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Marked %1 object(s): %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not query thumbnails: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>ThumbnailReviewState</name>
@@ -6723,6 +6747,194 @@ Recovery manifest: %11</source><translation type="unfinished"></translation></me
     <message>
         <source> · object #%1 · ID: %2</source>
         <translation> · 객체 #%1 · ID: %2</translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailReview</name>
+    <message>
+        <source>Unreviewed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Confirmed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Needs editing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Skipped</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailFiltersDialog</name>
+    <message>
+        <source>Thumbnail filters</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pixels squared</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Percent of original image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Area unit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Difficult</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Blank means no limit. Missing scores or image sizes do not count as zero. Width / height outliers are ranked automatically; no threshold is required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Box area</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Width / height</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Score (scoring)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Group ID (exact; -1 = missing)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Description contains</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Shape type (exact)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Minimum (optional)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum (optional)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter valid numbers; minimum must not exceed maximum.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>AdvancedThumbnailControls</name>
+    <message>
+        <source>Search image filename</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Outliers deviate from the same label's median width / height. This is a ranking, not a quality verdict.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>All review states</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Attributes / ranges…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clear filters</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set review state</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>With context</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tight crop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Padding on each side, relative to the target box</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show target boundary</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Image / Shape order</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small targets: pixels</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Small targets: image percent</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Aspect outliers first</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Mark selected:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Card size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Space: large preview</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailPreview</name>
+    <message>
+        <source>Object preview</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Target crop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Whole image with target</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Loading preview…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Preview unavailable: %1</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 </TS>

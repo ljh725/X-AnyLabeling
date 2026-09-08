@@ -6741,6 +6741,30 @@ Recovery manifest: %11</source><translation>对象——成功：%1，无变化�
         <source>Could not save thumbnail review positions.</source>
         <translation>无法保存缩略图检查位置。</translation>
     </message>
+    <message>
+        <source>Saved object no longer matches; restored a valid page.</source>
+        <translation>上次位置的对象已不符合条件，已恢复到有效页面。</translation>
+    </message>
+    <message>
+        <source>(none)</source>
+        <translation>（无）</translation>
+    </message>
+    <message>
+        <source>This object is hidden by current filters. Clear filters to locate it.</source>
+        <translation>当前筛选条件隐藏了此对象，请清除筛选后再定位。</translation>
+    </message>
+    <message>
+        <source>Review state was not saved: %1</source>
+        <translation>复核状态未保存：%1</translation>
+    </message>
+    <message>
+        <source>Marked %1 object(s): %2</source>
+        <translation>已标记 %1 个对象：%2</translation>
+    </message>
+    <message>
+        <source>Could not query thumbnails: %1</source>
+        <translation>无法查询缩略图：%1</translation>
+    </message>
 </context>
 <context>
     <name>ThumbnailReviewState</name>
@@ -6751,6 +6775,194 @@ Recovery manifest: %11</source><translation>对象——成功：%1，无变化�
     <message>
         <source> · object #%1 · ID: %2</source>
         <translation> · 对象 #%1 · ID：%2</translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailReview</name>
+    <message>
+        <source>Unreviewed</source>
+        <translation>未检查</translation>
+    </message>
+    <message>
+        <source>Confirmed</source>
+        <translation>已确认</translation>
+    </message>
+    <message>
+        <source>Needs editing</source>
+        <translation>待修改</translation>
+    </message>
+    <message>
+        <source>Skipped</source>
+        <translation>暂跳过</translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailFiltersDialog</name>
+    <message>
+        <source>Thumbnail filters</source>
+        <translation>缩略图筛选</translation>
+    </message>
+    <message>
+        <source>Pixels squared</source>
+        <translation>像素面积（px²）</translation>
+    </message>
+    <message>
+        <source>Percent of original image</source>
+        <translation>占原图面积百分比</translation>
+    </message>
+    <message>
+        <source>Area unit</source>
+        <translation>面积单位</translation>
+    </message>
+    <message>
+        <source>Difficult</source>
+        <translation>困难样本（difficult）</translation>
+    </message>
+    <message>
+        <source>Blank means no limit. Missing scores or image sizes do not count as zero. Width / height outliers are ranked automatically; no threshold is required.</source>
+        <translation>留空表示不限。缺失的分数或原图尺寸不会当成零。异常宽高比按同类对象自动排序，无需填写阈值。</translation>
+    </message>
+    <message>
+        <source>Box area</source>
+        <translation>包围框面积</translation>
+    </message>
+    <message>
+        <source>Width / height</source>
+        <translation>宽高比（宽 ÷ 高）</translation>
+    </message>
+    <message>
+        <source>Score (scoring)</source>
+        <translation>分数（score / scoring）</translation>
+    </message>
+    <message>
+        <source>Group ID (exact; -1 = missing)</source>
+        <translation>Group ID（精确匹配；-1 为缺失）</translation>
+    </message>
+    <message>
+        <source>Description contains</source>
+        <translation>描述包含</translation>
+    </message>
+    <message>
+        <source>Shape type (exact)</source>
+        <translation>Shape 类型（精确匹配）</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>全部</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>是</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>否</translation>
+    </message>
+    <message>
+        <source>Minimum (optional)</source>
+        <translation>最小值（可留空）</translation>
+    </message>
+    <message>
+        <source>Maximum (optional)</source>
+        <translation>最大值（可留空）</translation>
+    </message>
+    <message>
+        <source>Enter valid numbers; minimum must not exceed maximum.</source>
+        <translation>请输入有效数值，最小值不能大于最大值。面积与宽高比不能为负数。</translation>
+    </message>
+</context>
+<context>
+    <name>AdvancedThumbnailControls</name>
+    <message>
+        <source>Search image filename</source>
+        <translation>搜索图片文件名</translation>
+    </message>
+    <message>
+        <source>Outliers deviate from the same label's median width / height. This is a ranking, not a quality verdict.</source>
+        <translation>按偏离同类对象宽高比中位数的程度排序，仅用于优先浏览，不代表质检结论。</translation>
+    </message>
+    <message>
+        <source>All review states</source>
+        <translation>全部复核状态</translation>
+    </message>
+    <message>
+        <source>Attributes / ranges…</source>
+        <translation>属性／范围…</translation>
+    </message>
+    <message>
+        <source>Clear filters</source>
+        <translation>清除筛选</translation>
+    </message>
+    <message>
+        <source>Set review state</source>
+        <translation>设置复核状态</translation>
+    </message>
+    <message>
+        <source>With context</source>
+        <translation>带周边环境</translation>
+    </message>
+    <message>
+        <source>Tight crop</source>
+        <translation>紧贴目标</translation>
+    </message>
+    <message>
+        <source>Padding on each side, relative to the target box</source>
+        <translation>四周各自扩展的比例，以目标包围框的宽、高为基准</translation>
+    </message>
+    <message>
+        <source>Show target boundary</source>
+        <translation>显示目标边界</translation>
+    </message>
+    <message>
+        <source>Image / Shape order</source>
+        <translation>原图片／Shapes 顺序</translation>
+    </message>
+    <message>
+        <source>Small targets: pixels</source>
+        <translation>小目标优先：像素面积</translation>
+    </message>
+    <message>
+        <source>Small targets: image percent</source>
+        <translation>小目标优先：占图比例</translation>
+    </message>
+    <message>
+        <source>Aspect outliers first</source>
+        <translation>异常宽高比优先</translation>
+    </message>
+    <message>
+        <source>Mark selected:</source>
+        <translation>将选中对象标为：</translation>
+    </message>
+    <message>
+        <source>Card size</source>
+        <translation>卡片大小</translation>
+    </message>
+    <message>
+        <source>Space: large preview</source>
+        <translation>空格：大图预览</translation>
+    </message>
+</context>
+<context>
+    <name>ThumbnailPreview</name>
+    <message>
+        <source>Object preview</source>
+        <translation>对象大图预览</translation>
+    </message>
+    <message>
+        <source>Target crop</source>
+        <translation>目标裁剪图</translation>
+    </message>
+    <message>
+        <source>Whole image with target</source>
+        <translation>整张原图与目标框</translation>
+    </message>
+    <message>
+        <source>Loading preview…</source>
+        <translation>正在加载预览…</translation>
+    </message>
+    <message>
+        <source>Preview unavailable: %1</source>
+        <translation>无法预览：%1</translation>
     </message>
 </context>
 </TS>

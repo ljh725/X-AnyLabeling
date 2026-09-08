@@ -15,6 +15,7 @@ from PyQt6 import QtCore, QtGui
 from anylabeling.views.labeling.dataset_index import DatasetThumbnailRef
 
 from .cache import ThumbnailCacheKey, ThumbnailDiskCache, ThumbnailMemoryCache
+from .render_options import RenderOptions
 
 HORIZONTAL_PADDING_RATIO = 0.15
 VERTICAL_PADDING_RATIO = 0.15
@@ -24,28 +25,29 @@ _CLOSING_RENDERERS: set = set()
 def thumbnail_crop_rect(
     bbox: tuple[float, float, float, float],
     image_size: tuple[int, int],
+    padding: float = HORIZONTAL_PADDING_RATIO,
 ) -> Optional[tuple[int, int, int, int]]:
     """Return a bounded crop with per-axis object padding."""
     left, top, right, bottom = bbox
     width, height = right - left, bottom - top
     if width <= 0 or height <= 0:
         return None
-    x = max(0, math.floor(left - width * HORIZONTAL_PADDING_RATIO))
-    y = max(0, math.floor(top - height * VERTICAL_PADDING_RATIO))
-    x2 = min(
-        image_size[0], math.ceil(right + width * HORIZONTAL_PADDING_RATIO)
-    )
-    y2 = min(
-        image_size[1], math.ceil(bottom + height * VERTICAL_PADDING_RATIO)
-    )
+    x = max(0, math.floor(left - width * padding))
+    y = max(0, math.floor(top - height * padding))
+    x2 = min(image_size[0], math.ceil(right + width * padding))
+    y2 = min(image_size[1], math.ceil(bottom + height * padding))
     if x2 <= x or y2 <= y:
         return None
     return x, y, x2 - x, y2 - y
 
 
-def _request_key(ref: DatasetThumbnailRef, size: tuple) -> tuple:
+def _request_key(
+    ref: DatasetThumbnailRef,
+    size: tuple,
+    policy: str = RenderOptions().cache_policy,
+) -> tuple:
     """Identify a page request without synchronous filesystem access."""
-    return ref.image_path, ref.shape_id, ref.bbox, size
+    return ref.image_path, ref.shape_id, ref.bbox, size, policy
 
 
 @dataclass(frozen=True)
@@ -74,7 +76,9 @@ class _RenderTask(QtCore.QRunnable):
     def __init__(
         self,
         generation: int,
-        entries: list[tuple[DatasetThumbnailRef, tuple[int, int]]],
+        entries: list[
+            tuple[DatasetThumbnailRef, tuple[int, int], RenderOptions]
+        ],
         memory: ThumbnailMemoryCache,
         disk: ThumbnailDiskCache,
         cancelled: threading.Event,
@@ -106,7 +110,7 @@ class _RenderTask(QtCore.QRunnable):
         except OSError:
             source_error = "image file is missing"
         stat_ms = (time.perf_counter() - start) * 1000
-        for position, (ref, size) in enumerate(self.entries):
+        for position, (ref, size, options) in enumerate(self.entries):
             if self.cancelled.is_set():
                 return
             metrics = {"stat": stat_ms if position == 0 else 0.0}
@@ -115,7 +119,11 @@ class _RenderTask(QtCore.QRunnable):
                 if source_error:
                     raise ValueError(source_error)
                 key = ThumbnailCacheKey.for_ref(
-                    ref, stat.st_mtime_ns, stat.st_size, size
+                    ref,
+                    stat.st_mtime_ns,
+                    stat.st_size,
+                    size,
+                    options.cache_policy,
                 )
                 if key is None or not ref.shape_id.strip():
                     raise ValueError("object has no valid bbox or Shape ID")
@@ -138,7 +146,9 @@ class _RenderTask(QtCore.QRunnable):
                         ) * 1000
                     if source.isNull():
                         raise ValueError("image could not be read")
-                    value, image = self._render(source, ref, key, metrics)
+                    value, image = self._render(
+                        source, ref, key, metrics, options
+                    )
                 else:
                     metrics["cache_hit"] = 1.0
                 self.memory.put(key, value)
@@ -167,10 +177,17 @@ class _RenderTask(QtCore.QRunnable):
         ref: DatasetThumbnailRef,
         key: ThumbnailCacheKey,
         metrics: dict[str, float],
+        options: RenderOptions,
     ) -> tuple[bytes, QtGui.QImage]:
         """Measure crop, scale, PNG encoding and atomic cache writing."""
         start = time.perf_counter()
-        rect = thumbnail_crop_rect(ref.bbox, (source.width(), source.height()))
+        rect = (
+            (0, 0, source.width(), source.height())
+            if options.mode == "full"
+            else thumbnail_crop_rect(
+                ref.bbox, (source.width(), source.height()), options.padding
+            )
+        )
         if rect is None:
             raise ValueError("bbox has no visible area")
         crop = source.copy(QtCore.QRect(*rect))
@@ -182,6 +199,23 @@ class _RenderTask(QtCore.QRunnable):
             QtCore.Qt.TransformationMode.SmoothTransformation,
         )
         metrics["scale"] = (time.perf_counter() - start) * 1000
+        if options.show_box:
+            painter = QtGui.QPainter(image)
+            painter.setPen(QtGui.QPen(QtGui.QColor("#ffcb30"), 2))
+            left, top, right, bottom = ref.bbox
+            sx, sy = image.width() / rect[2], image.height() / rect[3]
+            target = QtCore.QRectF(
+                (left - rect[0]) * sx,
+                (top - rect[1]) * sy,
+                (right - left) * sx,
+                (bottom - top) * sy,
+            )
+            painter.drawRect(
+                target.intersected(
+                    QtCore.QRectF(1, 1, image.width() - 2, image.height() - 2)
+                )
+            )
+            painter.end()
         start = time.perf_counter()
         buffer = QtCore.QBuffer()
         buffer.open(QtCore.QIODevice.OpenModeFlag.WriteOnly)
@@ -246,6 +280,7 @@ class ThumbnailRenderer(QtCore.QObject):
         size: tuple[int, int] = (180, 140),
         generation: Optional[int] = None,
         prefetch: Iterable[DatasetThumbnailRef] = (),
+        options: RenderOptions = RenderOptions(),
     ) -> int:
         """Queue lightweight refs; all file access happens in workers."""
         if self._closed:
@@ -257,12 +292,14 @@ class ThumbnailRenderer(QtCore.QObject):
         visible = tuple(refs)
         size = tuple(size)
         for ref in (*visible, *prefetch):
-            key = _request_key(ref, size)
+            key = _request_key(ref, size, options.cache_policy)
             if key in self._requested or len(self._requested) >= 100:
                 continue
             self._requested.add(key)
             self._inflight.add((generation, key))
-            self._pending.setdefault(ref.image_path, []).append((ref, size))
+            self._pending.setdefault(ref.image_path, []).append(
+                (ref, size, options)
+            )
         for ref in reversed(visible):
             if ref.image_path in self._pending:
                 self._pending.move_to_end(ref.image_path, last=False)
@@ -305,7 +342,9 @@ class ThumbnailRenderer(QtCore.QObject):
         if self._closed or result.generation != self._generation:
             return
         if result.key is not None:
-            key = _request_key(result.ref, result.key.size)
+            key = _request_key(
+                result.ref, result.key.size, result.key.crop_policy
+            )
             self._inflight.discard((result.generation, key))
         self.result_ready.emit(result)
 
@@ -313,8 +352,13 @@ class ThumbnailRenderer(QtCore.QObject):
     def _on_task_finished(self, task: _RenderTask) -> None:
         """Release a slot and continue the newest page after cancellation."""
         self._tasks.pop(id(task), None)
-        for ref, size in task.entries:
-            self._inflight.discard((task.generation, _request_key(ref, size)))
+        for ref, size, options in task.entries:
+            self._inflight.discard(
+                (
+                    task.generation,
+                    _request_key(ref, size, options.cache_policy),
+                )
+            )
         if self._closed:
             if not self._tasks:
                 self._pool.deleteLater()

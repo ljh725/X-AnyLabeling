@@ -214,6 +214,7 @@ def read_top_level_array(
     key: str,
     *,
     chunk_size: int = 64 * 1024,
+    metadata: Optional[dict] = None,
 ) -> List[Any]:
     """Read one top-level array while streaming past all other JSON fields.
 
@@ -246,6 +247,11 @@ def read_top_level_array(
                 if reader.peek() != "[":
                     raise JsonStreamError(f"Property {key!r} is not an array")
                 result = _read_array(reader)
+            elif metadata is not None and property_name in {
+                "imageWidth",
+                "imageHeight",
+            }:
+                metadata[property_name] = reader.read_value()
             else:
                 reader.skip_value()
             reader.skip_whitespace()
