@@ -270,6 +270,16 @@ shortcuts:
   toggle_compare_view: Ctrl+Alt+C
   toggle_rect_edge_align: Ctrl+Shift+E
   toggle_precision_mode_lock: Ctrl+Alt+F
+  rectangle_extreme: ""
+  rectangle_submit: ""
+  rectangle_back: ""
+  rectangle_refine: ""
+  rectangle_continue: ""
+  rectangle_local_focus: ""
+  rectangle_finish: ""
+  rectangle_next: ""
+  rectangle_surroundings: ""
+  rectangle_fit_object: ""
 
   auto_label: Ctrl+A
   auto_run: Ctrl+Shift+B
@@ -300,6 +310,13 @@ auto_person_instance: false  # auto-create new group_id when drawing person rect
 canvas_precision_mode: zoom  # fixed | zoom
 canvas_precision_max_factor: 2.0  # max slowdown factor for zoom precision mode
 canvas_precision_factor: 4  # mouse drag slowdown factor in precision mode
+
+# Optional creation/refinement workbench; image coordinates are unchanged.
+rectangle_workflow:
+  enabled: false
+  auto_zoom: false
+  target_pixels: 400
+  max_scale: 8.0
 
 # Low-fatigue rectangle review refinement (rollout flags are intentionally off).
 rectangle_review_refinement:

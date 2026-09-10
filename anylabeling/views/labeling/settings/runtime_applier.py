@@ -183,6 +183,14 @@ class SettingsRuntimeApplier:
                 ),
             )
         )
+        workflow = getattr(self._widget, "rectangle_workflow", None)
+        if workflow is not None:
+            shortcut_map.update(
+                {
+                    "shortcuts." + key: action
+                    for key, action in workflow.commands.items()
+                }
+            )
         self._shortcut_action_map = shortcut_map
         for key, action in shortcut_map.items():
             short_key = key.split(".", 1)[1]
@@ -250,8 +258,10 @@ class SettingsRuntimeApplier:
         if key == "canvas_precision_factor":
             self._widget.canvas.set_precision_factor(value)
             return
-        if key.startswith("rectangle_review_refinement."):
-            self.apply_rectangle_review_refinement()
+        if key.startswith(
+            ("rectangle_workflow.", "rectangle_review_refinement.")
+        ):
+            getattr(self, "apply_" + key.split(".", 1)[0])()
             return
         if key == "shift_auto_shape_color":
             self._widget._runtime_shape_color_shift = int(
@@ -355,6 +365,12 @@ class SettingsRuntimeApplier:
             wheel_config["adjust_step"]
         )
         self._widget.canvas.rect_scale_step = float(wheel_config["scale_step"])
+
+    def apply_rectangle_workflow(self) -> None:
+        """Apply optional rectangle workbench preferences."""
+        workflow = getattr(self._widget, "rectangle_workflow", None)
+        if workflow is not None:
+            workflow.apply_preferences()
 
     def apply_rectangle_review_refinement(self) -> None:
         """Apply rectangle review refinement settings to the canvas."""

@@ -85,8 +85,8 @@ class RectEdgeInteractionController:
 
     def refresh_active(self, edge: RectEdgeRef) -> None:
         """Replace the active edge geometry without changing drag phase."""
-        if not self.is_dragging:
-            raise RuntimeError("Cannot refresh an edge outside dragging phase")
+        if self.active_edge is None:
+            raise RuntimeError("Cannot refresh an edge without an active edge")
         self.active_edge = edge
 
     def clear_pending(self) -> None:

@@ -6,7 +6,7 @@ import hashlib
 import os.path as osp
 import time
 import sqlite3
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from typing import Callable, Iterable, Optional
 
 from PyQt6 import QtCore, QtGui, QtWidgets
@@ -413,18 +413,37 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self.setWindowTitle(self.tr("Dataset Label Thumbnails"))
         self.resize(980, 760)
         root = QtWidgets.QVBoxLayout(self)
+        root.setContentsMargins(6, 6, 6, 6)
+        root.setSpacing(3)
         controls = QtWidgets.QHBoxLayout()
         controls.addWidget(QtWidgets.QLabel(self.tr("Label:")))
         self.label_combo = QtWidgets.QComboBox()
+        self.label_combo.setSizeAdjustPolicy(
+            QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.label_combo.setMinimumContentsLength(12)
+        self.label_combo.setMaximumWidth(260)
         self.label_combo.currentIndexChanged.connect(self._on_label_changed)
         controls.addWidget(self.label_combo, 1)
         self.summary_label = QtWidgets.QLabel()
         controls.addWidget(self.summary_label)
+        self.history_button = QtWidgets.QToolButton()
+        self.history_button.setText(self.tr("History"))
+        self.history_button.setCheckable(True)
+        self.history_button.setArrowType(QtCore.Qt.ArrowType.RightArrow)
+        self.history_button.setToolButtonStyle(
+            QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        )
+        controls.addWidget(self.history_button)
         self.scan_button = QtWidgets.QPushButton(self.tr("Start scan"))
         self.scan_button.clicked.connect(self._start_scan)
         controls.addWidget(self.scan_button)
         root.addLayout(controls)
 
+        self.history_frame = QtWidgets.QWidget()
+        history_layout = QtWidgets.QVBoxLayout(self.history_frame)
+        history_layout.setContentsMargins(0, 0, 0, 0)
+        history_layout.setSpacing(2)
         self.page_bookmark_label = QtWidgets.QLabel()
         self.click_bookmark_label = QtWidgets.QLabel()
         for label in (self.page_bookmark_label, self.click_bookmark_label):
@@ -433,7 +452,10 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             label.setTextInteractionFlags(
                 QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
             )
-            root.addWidget(label)
+            history_layout.addWidget(label)
+        root.addWidget(self.history_frame)
+        self.history_frame.hide()
+        self.history_button.toggled.connect(self._toggle_history)
         self._update_review_labels()
 
         self.advanced = AdvancedThumbnailControls(
@@ -442,6 +464,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self.advanced.query_changed.connect(self._on_query_changed)
         self.advanced.status_requested.connect(self._set_review_status)
         self.advanced.display_changed.connect(self._refresh_display_policy)
+        self.advanced.locate_button.clicked.connect(self._locate_search_result)
         root.addWidget(self.advanced)
 
         self.result_frame = QtWidgets.QFrame()
@@ -484,19 +507,21 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         root.addLayout(progress_row)
         self._set_scan_progress_visible(False)
 
-        render_row = QtWidgets.QHBoxLayout()
         self.render_progress_label = QtWidgets.QLabel()
+        self.render_progress_label.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Ignored,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
         self.render_progress_label.setToolTip(
             self.tr("Scanning indexes annotations; thumbnails load on demand.")
         )
-        render_row.addWidget(self.render_progress_label, 1)
+        controls.insertWidget(3, self.render_progress_label, 1)
         self.retry_button = QtWidgets.QPushButton(
             self.tr("Retry failed images")
         )
         self.retry_button.clicked.connect(self._retry_failed_images)
         self.retry_button.setEnabled(False)
-        render_row.addWidget(self.retry_button)
-        root.addLayout(render_row)
+        controls.insertWidget(4, self.retry_button)
 
         self.view = ResizableThumbnailView()
         self.view.card_width = self._review_state.card_width
@@ -533,12 +558,37 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self.page_label = QtWidgets.QLabel()
         footer.addWidget(self.page_label)
         footer.addStretch(1)
+        self.first_button = QtWidgets.QPushButton(self.tr("First page"))
+        self.first_button.clicked.connect(lambda: self._go_to_page(0))
+        footer.addWidget(self.first_button)
         self.previous_button = QtWidgets.QPushButton(self.tr("Previous"))
         self.previous_button.clicked.connect(self._previous_page)
         footer.addWidget(self.previous_button)
         self.next_button = QtWidgets.QPushButton(self.tr("Next"))
         self.next_button.clicked.connect(self._next_page)
         footer.addWidget(self.next_button)
+        self.last_button = QtWidgets.QPushButton(self.tr("Last page"))
+        self.last_button.clicked.connect(
+            lambda: self._go_to_page(
+                max(0, (self._current_total - 1) // self._page_size)
+            )
+        )
+        footer.addWidget(self.last_button)
+        self.page_input = QtWidgets.QSpinBox()
+        self.page_input.setRange(1, 1)
+        self.page_input.setKeyboardTracking(False)
+        self.page_input.setButtonSymbols(
+            QtWidgets.QAbstractSpinBox.ButtonSymbols.NoButtons
+        )
+        self.page_input.setToolTip(
+            self.tr("Page number (press Enter to jump)")
+        )
+        self.page_input.setAccessibleName(self.tr("Page number"))
+        self.page_input.lineEdit().returnPressed.connect(self._jump_to_page)
+        footer.addWidget(self.page_input)
+        self.jump_button = QtWidgets.QPushButton(self.tr("Go"))
+        self.jump_button.clicked.connect(self._jump_to_page)
+        footer.addWidget(self.jump_button)
         self.relabel_button = QtWidgets.QPushButton(
             self.tr("Relabel selected")
         )
@@ -552,6 +602,15 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         root.addLayout(footer)
         self._install_digit_shortcuts()
         self._update_selection_summary()
+
+    def _toggle_history(self, expanded: bool) -> None:
+        """Show historical positions only when requested."""
+        self.history_frame.setVisible(expanded)
+        self.history_button.setArrowType(
+            QtCore.Qt.ArrowType.DownArrow
+            if expanded
+            else QtCore.Qt.ArrowType.RightArrow
+        )
 
     def _install_digit_shortcuts(self) -> None:
         """Install window-local relabel shortcuts for configured digits."""
@@ -625,6 +684,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         limit: int,
         offset: int,
         anchor: Optional[tuple[str, str]] = None,
+        options: Optional[ThumbnailQuery] = None,
     ) -> DatasetThumbnailPage:
         """Use advanced queries when the controller provides the new contract."""
         query = getattr(self._controller, "query_thumbnail_review", None)
@@ -633,11 +693,81 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
                 label,
                 limit,
                 offset,
-                self._query_options,
+                options if options is not None else self._query_options,
                 self._review_store.path,
                 anchor,
             )
         return self._controller.query_thumbnail_objects(label, limit, offset)
+
+    def _locate_search_result(self) -> None:
+        """Confirm one search result and reveal its page without filename filtering."""
+        refs = self._selected_refs()
+        if (
+            len(refs) != 1
+            or not self._query_options.filename
+            or not self._index_is_ready()
+        ):
+            return
+        ref = refs[0]
+        identity = self._model.identity_key(ref)
+        options = replace(self._query_options, filename="")
+        try:
+            location = self._controller.query_thumbnail_location(
+                ref.image_path, ref.shape_id
+            )
+            if location is None:
+                self.advanced.feedback.setText(
+                    self.tr(
+                        "Selected object no longer exists. Refresh and search again."
+                    )
+                )
+                return
+            page = self._query_page(
+                self._selected_label,
+                self._page_size,
+                location.offset // self._page_size * self._page_size,
+                identity,
+                options,
+            )
+        except (ValueError, sqlite3.Error) as exc:
+            self.advanced.feedback.setText(
+                self.tr("Could not query thumbnails: %1").replace(
+                    "%1", str(exc)
+                )
+            )
+            return
+        if not any(
+            self._model.identity_key(r) == identity for r in page.items
+        ):
+            self.advanced.feedback.setText(
+                self.tr(
+                    "Selected object no longer matches the current filters."
+                )
+            )
+            return
+        self.advanced.clear_filename()
+        self.advanced.feedback.clear()
+        self._query_options = options
+        self._restore_view = {}
+        self._retained_selection.clear()
+        self._page = page.offset // self._page_size
+        self._load_page()
+        self.view.doItemsLayout()
+        for row in range(self._model.rowCount()):
+            item = self._model.ref_at(row)
+            if item is not None and self._model.identity_key(item) == identity:
+                index = self._model.index(row, 0)
+                self.view.selectionModel().setCurrentIndex(
+                    index,
+                    QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect,
+                )
+                self._model.set_focus_identity(identity)
+                self.view.scrollTo(
+                    index,
+                    QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter,
+                )
+                self.view.setFocus()
+                break
 
     def _set_review_status(self, status: str) -> None:
         """Persist explicit current-page decisions with an index freshness guard."""
@@ -914,6 +1044,8 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             self._programmatic_selection = previous_guard
         self.summary_label.setText(self.tr("No labeled objects in the index"))
         self.page_label.setText("")
+        self._update_page_controls()
+        self.advanced.locate_button.setEnabled(False)
         self.relabel_button.setEnabled(False)
         self.scan_button.show()
         self.scan_button.setEnabled(True)
@@ -933,11 +1065,14 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         finally:
             self._programmatic_selection = previous_guard
         self._current_total = 0
+        self._page = 0
         state = getattr(self._controller, "state_value", "unavailable")
         self.summary_label.setText(
             self.tr("Index unavailable: %1").replace("%1", str(state))
         )
         self.page_label.setText("")
+        self._update_page_controls()
+        self.advanced.locate_button.setEnabled(False)
         self.relabel_button.setEnabled(False)
         busy = bool(getattr(self._controller, "is_busy", False))
         self.scan_button.setEnabled(not busy)
@@ -1126,6 +1261,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             .replace("%3", str(failed))
         )
         self.retry_button.setEnabled(any(self._render_finished.values()))
+        self.retry_button.setVisible(self.retry_button.isEnabled())
 
     def _retry_failed_images(self) -> None:
         """Forget failed requests and retry them without changing selection."""
@@ -1150,33 +1286,50 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             .replace("%2", str(pages))
             .replace("%3", str(self._current_total))
         )
-        self.previous_button.setEnabled(self._page > 0)
-        self.next_button.setEnabled(
-            (self._page + 1) * self._page_size < self._current_total
-        )
+        available = self._index_is_ready() and self._current_total > 0
+        self.first_button.setEnabled(available and self._page > 0)
+        self.previous_button.setEnabled(available and self._page > 0)
+        self.next_button.setEnabled(available and self._page < pages - 1)
+        self.last_button.setEnabled(available and self._page < pages - 1)
+        self.page_input.setRange(1, pages)
+        self.page_input.setValue(self._page + 1)
+        self.page_input.setEnabled(available)
+        self.jump_button.setEnabled(available)
+
+    def _jump_to_page(self) -> None:
+        """Commit the one-based input only on Enter or explicit confirmation."""
+        self.page_input.interpretText()
+        self._go_to_page(self.page_input.value() - 1)
+
+    def _go_to_page(self, page: int) -> None:
+        """Navigate within valid bounds and discard the previous page selection."""
+        if not self._index_is_ready() or self._current_total <= 0:
+            return
+        last = (self._current_total - 1) // self._page_size
+        page = max(0, min(page, last))
+        if page == self._page:
+            return
+        self._restore_view = {}
+        self._model.set_focus_identity(None)
+        self._page = page
+        self._load_page()
+        self.view.doItemsLayout()
+        self.view.scrollToTop()
+        for row in range(self._model.rowCount()):
+            if self._model.is_selectable(row):
+                self.view.selectionModel().setCurrentIndex(
+                    self._model.index(row, 0),
+                    QtCore.QItemSelectionModel.SelectionFlag.NoUpdate,
+                )
+                break
 
     def _previous_page(self) -> None:
         """Navigate to the previous result page."""
-        if self._page > 0:
-            self._model.set_focus_identity(None)
-            self._page -= 1
-            self._load_page()
+        self._go_to_page(self._page - 1)
 
     def _next_page(self) -> None:
         """Navigate to the next result page."""
-        if (self._page + 1) * self._page_size < self._current_total:
-            self._model.set_focus_identity(None)
-            self._page += 1
-            self._load_page()
-            self.view.doItemsLayout()
-            self.view.scrollToTop()
-            for row in range(self._model.rowCount()):
-                if self._model.is_selectable(row):
-                    self.view.selectionModel().setCurrentIndex(
-                        self._model.index(row, 0),
-                        QtCore.QItemSelectionModel.SelectionFlag.NoUpdate,
-                    )
-                    break
+        self._go_to_page(self._page + 1)
 
     def _on_view_selection_changed(self, *_args) -> None:
         """Clear navigation focus only after a user selection change."""
@@ -1212,6 +1365,11 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
     def _update_selection_summary(self) -> None:
         """Update selected object/file counts and button state."""
         refs = self._selected_refs()
+        self.advanced.locate_button.setEnabled(
+            len(refs) == 1
+            and bool(self._query_options.filename)
+            and self._index_is_ready()
+        )
         self.undo_button.setEnabled(
             self._single_undo is not None and self._mutation_is_available()
         )

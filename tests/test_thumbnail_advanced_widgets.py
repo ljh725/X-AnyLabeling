@@ -6,6 +6,7 @@ from typing import Any, Callable
 import pytest
 from PyQt6 import QtCore, QtGui, QtTest, QtWidgets
 
+import anylabeling.resources.resources  # noqa: F401
 from tests import test_thumbnail_scaling_bookmarks as fixture_tools
 from tests.test_thumbnail_scaling_bookmarks import click_card
 from anylabeling.views.labeling.dataset_index.thumbnail_query import (
@@ -198,12 +199,12 @@ def test_render_policy_cache_and_boundary(
         renderer.close()
 
 
-def test_chinese_advanced_layout(browser: Any, qapp: Any) -> None:
+def test_chinese_advanced_layout(
+    browser: Any, qapp: Any, tmp_path: Path
+) -> None:
     """Render translated controls and preview for visual inspection."""
     translator = QtCore.QTranslator()
-    assert translator.load(
-        str(Path("anylabeling/resources/translations/zh_CN.qm").resolve())
-    )
+    assert translator.load(":/languages/translations/zh_CN.qm")
     old_font = qapp.font()
     font_id = QtGui.QFontDatabase.addApplicationFont(
         "C:/Windows/Fonts/msyh.ttc"
@@ -221,13 +222,19 @@ def test_chinese_advanced_layout(browser: Any, qapp: Any) -> None:
             settings=browser._review_state.settings,
         )
         window._renderer.disk.root = browser._renderer.disk.root
-        window.resize(1180, 850)
+        window.resize(980, 760)
         window.show()
+        qapp.processEvents()
+        assert window.width() == 980
+        assert window.view.y() < 130
+        assert window.first_button.text() == "首页"
+        assert window.last_button.text() == "末尾页"
+        assert window.advanced.locate_button.text() == "定位所选卡片"
         window.advanced.box.setChecked(True)
         click_card(window, 0)
         window.advanced.mark_button.click()
-        QtTest.QTest.qWait(250)
-        output = Path("openspec/changes/add-advanced-thumbnail-review")
+        wait_until(lambda: bool(window._model._images))
+        output = tmp_path
         assert window.grab().save(str(output / "preview-browser.png"))
         dialog = ThumbnailFiltersDialog(ThumbnailQuery(), window)
         dialog.show()
@@ -245,3 +252,150 @@ def test_chinese_advanced_layout(browser: Any, qapp: Any) -> None:
             window.close()
         qapp.removeTranslator(translator)
         qapp.setFont(old_font)
+
+
+def test_page_jump_and_navigation_boundaries(browser: Any) -> None:
+    """Explicit page input and endpoint buttons navigate bounded real pages."""
+    window = browser
+    assert window.page_input.maximum() == 3
+    assert not window.first_button.isEnabled()
+    click_card(window, 0)
+    window.page_input.setFocus()
+    window.page_input.lineEdit().selectAll()
+    QtTest.QTest.keyClicks(window.page_input, "2")
+    assert window._page == 0
+    QtTest.QTest.keyClick(window.page_input, QtCore.Qt.Key.Key_Return)
+    assert window._page == 1 and not window._selected_refs()
+    window.last_button.click()
+    assert window._page == 2 and window._model.rowCount() == 40
+    assert not window.last_button.isEnabled()
+    assert not window.next_button.isEnabled()
+    window.first_button.click()
+    assert window._page == 0 and window.page_input.value() == 1
+    window.page_input.setValue(2)
+    window.jump_button.click()
+    assert window._page == 1
+    window.page_input.setValue(999)
+    window.jump_button.click()
+    assert window._page == 2
+    window.page_input.setValue(0)
+    window.jump_button.click()
+    assert window._page == 0
+
+
+@pytest.mark.parametrize("sort_index", [0, 1, 3])
+def test_search_locates_exact_card_in_unsearched_page(
+    browser: Any, sort_index: int
+) -> None:
+    """Filename confirmation keeps sorting and review filters and the exact ID."""
+    window = browser
+    controls = window.advanced
+    controls.sort.setCurrentIndex(sort_index)
+    controls.review_filter.setCurrentIndex(1)
+    controls.filename.setText("s0010")
+    controls.apply_query()
+    assert window._current_total == 20
+    assert not controls.locate_button.isEnabled()
+    click_card(window, 13)
+    ref = window._selected_refs()[0]
+    bookmark = window._review_state.last_click
+    original = Path(ref.json_path).read_bytes()
+    navigation = []
+    window.navigate_requested.connect(navigation.append)
+    controls.locate_button.click()
+    assert window._page == 2 and window.page_input.value() == 3
+    assert window._current_total == 240
+    assert not controls.filename.text() and not window._query_options.filename
+    assert window._query_options.sort == controls.sort.currentData()
+    assert window._query_options.review == "unreviewed"
+    assert window._selected_refs()[0].shape_id == ref.shape_id
+    assert window.view.currentIndex().row() == 13
+    assert window.view.visualRect(window.view.currentIndex()).intersects(
+        window.view.viewport().rect()
+    )
+    assert window._review_state.last_click == bookmark
+    assert not navigation and Path(ref.json_path).read_bytes() == original
+    QtTest.QTest.qWait(300)
+    assert (
+        window._page == 2
+        and window._selected_refs()[0].shape_id == ref.shape_id
+    )
+
+
+def test_search_location_requires_one_card_and_cancels_pending_typing(
+    browser: Any,
+) -> None:
+    """Multiple cards cannot locate; pending search typing cannot undo a jump."""
+    controls = browser.advanced
+    controls.filename.setText("s0006")
+    controls.apply_query()
+    click_card(browser, 0)
+    click_card(browser, 1, QtCore.Qt.KeyboardModifier.ControlModifier)
+    assert not controls.locate_button.isEnabled()
+    click_card(browser, 7)
+    controls.filename.setText("s0007")
+    controls.locate_button.click()
+    QtTest.QTest.qWait(300)
+    assert browser._page == 1
+    assert browser._selected_refs()[0].shape_index == 7
+    assert Path(browser._selected_refs()[0].image_path).stem == "s0006"
+
+
+def test_empty_and_unavailable_results_disable_page_controls(
+    browser: Any,
+) -> None:
+    """A stale or empty result cannot navigate using an old page range."""
+    browser.last_button.click()
+    browser.advanced.filename.setText("no-matching-file")
+    browser.advanced.apply_query()
+    assert browser._page == 0 and browser._current_total == 0
+    controls = (
+        browser.first_button,
+        browser.previous_button,
+        browser.next_button,
+        browser.last_button,
+        browser.page_input,
+        browser.jump_button,
+        browser.advanced.locate_button,
+    )
+    assert all(not control.isEnabled() for control in controls)
+    browser.advanced.clear_query()
+    browser.last_button.click()
+    browser._controller.is_query_ready = False
+    browser._set_unavailable_state()
+    assert browser._page == 0
+    assert all(not control.isEnabled() for control in controls)
+
+
+def test_history_collapses_without_losing_records(browser: Any) -> None:
+    """Long historical identities take no grid space until expanded."""
+    browser.resize(980, 760)
+    QtTest.QTest.qWait(20)
+    top = browser.view.y()
+    assert top < 130
+    assert browser.width() == 980
+    assert not browser.history_frame.isVisible()
+    browser.history_button.click()
+    QtTest.QTest.qWait(20)
+    assert browser.history_frame.isVisible() and browser.view.y() > top
+    browser.history_button.click()
+    QtTest.QTest.qWait(20)
+    assert browser.view.y() == top
+
+
+def test_disappeared_search_result_keeps_search_and_selection(
+    browser: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A missing identity reports the problem without clearing search context."""
+    controls = browser.advanced
+    controls.filename.setText("s0010")
+    controls.apply_query()
+    click_card(browser, 3)
+    refs = browser._selected_refs()
+    monkeypatch.setattr(
+        browser._controller, "query_thumbnail_location", lambda *_args: None
+    )
+    controls.locate_button.click()
+    assert browser._selected_refs() == refs
+    assert controls.filename.text() == "s0010"
+    assert controls.feedback.isVisible() and controls.feedback.text()

@@ -6658,6 +6658,14 @@ Do you want to continue?</source>
   </context>
   <context>
     <name>DatasetLabelThumbnailWindow</name>
+    <message><source>History</source><translation>历史记录</translation></message>
+    <message><source>First page</source><translation>首页</translation></message>
+    <message><source>Last page</source><translation>末尾页</translation></message>
+    <message><source>Page number (press Enter to jump)</source><translation>输入页码，按 Enter 跳转</translation></message>
+    <message><source>Page number</source><translation>页码</translation></message>
+    <message><source>Go</source><translation>跳转</translation></message>
+    <message><source>Selected object no longer exists. Refresh and search again.</source><translation>所选对象已不存在，请刷新后重新搜索。</translation></message>
+    <message><source>Selected object no longer matches the current filters.</source><translation>所选对象已不符合当前筛选条件。</translation></message>
     <message><source>Dataset Label Thumbnails</source><translation>数据集标签缩略图</translation></message>
     <message><source>Label:</source><translation>标签：</translation></message>
     <message><source>Previous</source><translation>上一页</translation></message>
@@ -6873,6 +6881,8 @@ Recovery manifest: %11</source><translation>对象——成功：%1，无变化�
 </context>
 <context>
     <name>AdvancedThumbnailControls</name>
+    <message><source>Locate selected</source><translation>定位所选卡片</translation></message>
+    <message><source>Select one search result, then confirm to clear the filename search and jump to its page. Other filters and sorting stay.</source><translation>选中一个搜索结果，点击此按钮确认：清除文件名搜索并跳转到该卡片所在页，保留其他筛选和排序。</translation></message>
     <message>
         <source>Search image filename</source>
         <translation>搜索图片文件名</translation>
@@ -6965,4 +6975,240 @@ Recovery manifest: %11</source><translation>对象——成功：%1，无变化�
         <translation>无法预览：%1</translation>
     </message>
 </context>
+  <context>
+    <name>RectangleWorkflow</name>
+    <message>
+      <source>Rectangle workbench</source>
+      <translation>矩形工作台</translation>
+    </message>
+    <message>
+      <source>Four extremes</source>
+      <translation>四极值画框</translation>
+    </message>
+    <message>
+      <source>Submit draft</source>
+      <translation>提交草稿</translation>
+    </message>
+    <message>
+      <source>Back one boundary</source>
+      <translation>回退一条边</translation>
+    </message>
+    <message>
+      <source>Refine rectangle</source>
+      <translation>修正框</translation>
+    </message>
+    <message>
+      <source>Continue drawing</source>
+      <translation>继续新建</translation>
+    </message>
+    <message>
+      <source>Local focus</source>
+      <translation>局部聚焦</translation>
+    </message>
+    <message>
+      <source>Top</source>
+      <translation>上</translation>
+    </message>
+    <message>
+      <source>Right</source>
+      <translation>右</translation>
+    </message>
+    <message>
+      <source>Bottom</source>
+      <translation>下</translation>
+    </message>
+    <message>
+      <source>Left</source>
+      <translation>左</translation>
+    </message>
+    <message>
+      <source>Finish refinement</source>
+      <translation>完成修正</translation>
+    </message>
+    <message>
+      <source>Next object</source>
+      <translation>下一个对象</translation>
+    </message>
+    <message>
+      <source>Fit object on entry</source>
+      <translation>进入时按对象放大</translation>
+    </message>
+    <message>
+      <source>Fit object</source>
+      <translation>按对象放大</translation>
+    </message>
+    <message>
+      <source>View surroundings</source>
+      <translation>查看周围</translation>
+    </message>
+    <message>
+      <source>Draft ready: submit or go back.</source>
+      <translation>四边已齐：可提交或回退。</translation>
+    </message>
+    <message>
+      <source>Click boundary {step}/4: {edge}</source>
+      <translation>点击第 {step}/4 条边的极值：{edge}</translation>
+    </message>
+    <message>
+      <source>Choose a drawing tool or select one rectangle to refine.</source>
+      <translation>选择画框工具，或选中一个矩形后修正。</translation>
+    </message>
+    <message>
+      <source>Click a boundary point to adjust. Use buttons or Tab for 1px/5px nudges.</source>
+      <translation>点击目标边界点即可修边；用按钮或 Tab 选边后，可进行 1px/5px 微调。</translation>
+    </message>
+    <message>
+      <source>right</source>
+      <translation>向右</translation>
+    </message>
+    <message>
+      <source>down</source>
+      <translation>向下</translation>
+    </message>
+    <message>
+      <source>{edge}: delta {delta:+.1f}px | 1px / Shift 5px | Wheel up: {direction}</source>
+      <translation>{edge}边：位移 {delta:+.1f} 像素｜1 像素 / Shift 5 像素｜上滚：{direction}</translation>
+    </message>
+    <message>
+      <source>Rejected: image bounds or minimum size.</source>
+      <translation>未移动：超出图像边界或不满足最小尺寸。</translation>
+    </message>
+    <message>
+      <source>Navigation failed; current edits restored.</source>
+      <translation>切图失败，已恢复当前修改。</translation>
+    </message>
+    <message>
+      <source>Invalid rectangle: redraw it with the rectangle tool.</source>
+      <translation>当前矩形几何无效，请使用矩形工具重新绘制。</translation>
+    </message>
+    <message>
+      <source>Object display size</source>
+      <translation>对象显示长边</translation>
+    </message>
+    <message>
+      <source>Maximum object zoom</source>
+      <translation>对象最大放大倍率</translation>
+    </message>
+    <message>
+      <source>Workflow</source>
+      <translation>操作流程</translation>
+    </message>
+  </context>
+  <context>
+    <name>SettingsDialog</name>
+    <message>
+      <source>Four extremes</source>
+      <translation>四极值画框</translation>
+    </message>
+    <message>
+      <source>Submit draft</source>
+      <translation>提交草稿</translation>
+    </message>
+    <message>
+      <source>Back one boundary</source>
+      <translation>回退一条边</translation>
+    </message>
+    <message>
+      <source>Refine rectangle</source>
+      <translation>修正框</translation>
+    </message>
+    <message>
+      <source>Continue drawing</source>
+      <translation>继续新建</translation>
+    </message>
+    <message>
+      <source>Local focus</source>
+      <translation>局部聚焦</translation>
+    </message>
+    <message>
+      <source>Finish refinement</source>
+      <translation>完成修正</translation>
+    </message>
+    <message>
+      <source>Next object</source>
+      <translation>下一个对象</translation>
+    </message>
+    <message>
+      <source>View surroundings</source>
+      <translation>查看周围</translation>
+    </message>
+    <message>
+      <source>Fit object</source>
+      <translation>按对象放大</translation>
+    </message>
+    <message>
+      <source>Rectangle workbench</source>
+      <translation>矩形工作台</translation>
+    </message>
+    <message>
+      <source>Fit object on entry</source>
+      <translation>进入时按对象放大</translation>
+    </message>
+    <message>
+      <source>Object display size</source>
+      <translation>对象显示长边</translation>
+    </message>
+    <message>
+      <source>Maximum object zoom</source>
+      <translation>对象最大放大倍率</translation>
+    </message>
+    <message>
+      <source>Workflow</source>
+      <translation>操作流程</translation>
+    </message>
+  </context>
+  <context>
+    <name>SettingsDialog</name>
+    <message>
+      <source>Enable four-extreme creation and explicit single-edge refinement.</source>
+      <translation>启用四极值画框和明确选边的矩形修正。</translation>
+    </message>
+    <message>
+      <source>Adjust the view once when entering a rectangle; preserve manual zoom during edits.</source>
+      <translation>进入矩形时调整一次视图，修正期间保留手动缩放。</translation>
+    </message>
+    <message>
+      <source>Desired display length of the object's longest side in logical pixels.</source>
+      <translation>对象最长边期望显示的逻辑像素数。</translation>
+    </message>
+    <message>
+      <source>Limit automatic object magnification while retaining surrounding context.</source>
+      <translation>限制对象自动放大的倍率，并保留周围区域。</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleEdgeClick</name>
+    <message>
+      <source>Top</source>
+      <translation>上</translation>
+    </message>
+    <message>
+      <source>Right</source>
+      <translation>右</translation>
+    </message>
+    <message>
+      <source>Bottom</source>
+      <translation>下</translation>
+    </message>
+    <message>
+      <source>Left</source>
+      <translation>左</translation>
+    </message>
+    <message>
+      <source>Click to move the {edge} edge here.</source>
+      <translation>单击将把{edge}边移动到此位置。</translation>
+    </message>
+    <message>
+      <source>Rejected: image bounds or minimum size.</source>
+      <translation>已拒绝：超出图像边界或小于最小尺寸。</translation>
+    </message>
+    <message>
+      <source>Region boundary; rectangle unchanged.</source>
+      <translation>点击位于分区交界，未修改。</translation>
+    </message>
+    <message>
+      <source>{edge} edge moved to click (delta {delta:+.1f}px).</source>
+      <translation>{edge}边已移动到点击位置（位移 {delta:+.1f}px）。</translation>
+    </message>
+  </context>
 </TS>

@@ -24,6 +24,7 @@ from .. import utils
 from .. import rect_edge_alignment as rea
 from ..logger import logger
 from ..rect_edge_interaction import RectEdgeInteractionController
+from .rect_edge_click_controller import RectEdgeClickController
 from ..rectangle_size import RectangleSizeIssue, pick_overlay_anchor
 from ..review_refinement.gain import (
     DEFAULT_TARGET_GAIN,
@@ -549,6 +550,7 @@ class Canvas(
         # that is never written into ``Shape.other_data``.
         self.rect_edge_align_enabled = False
         self.rect_edge_state = RectEdgeInteractionController()
+        self.rect_edge_click = RectEdgeClickController(self)
         # A selected rectangle edge becomes pending on press and is promoted
         # to an edit target after a screen-space drag threshold.
 
@@ -801,6 +803,7 @@ class Canvas(
         # and app.py::load_shapes and our own Canvas::load_shapes function.
         if not self.is_shape_restorable:
             return
+        self.clear_rect_edge_alignment()
         self.shapes_backups.pop()  # latest
 
         # The application will eventually call Canvas.load_shapes which will
@@ -818,9 +821,17 @@ class Canvas(
 
     def leaveEvent(self, _):
         """Mouse leave event"""
+        had_click_preview = bool(
+            self.rect_edge_click.preview
+            or self.rect_edge_click.preview_box
+        )
         self._clear_crosshair_cursor()
         self.store_moving_shape()
         self.un_highlight()
+        self.rect_edge_click.preview = None
+        self.rect_edge_click.preview_box = None
+        if had_click_preview:
+            self.update()
         self.restore_cursor()
         self.shape_hover_changed.emit()
 
@@ -1457,6 +1468,10 @@ class Canvas(
         except AttributeError:
             return
 
+        self.rect_edge_click.pointer = QtCore.QPointF(pos)
+        if self.rect_edge_click.move(ev):
+            return
+
         if self._selection_gesture.active:
             if self._selection_gesture.update(
                 pos, self._selection_drag_threshold()
@@ -1783,6 +1798,10 @@ class Canvas(
         # What remains here is only the hover candidate computation (run
         # while no drag is in progress). No-op when the mode is off.
         # --------------------------------------------------------------
+        if not ev.buttons() and self.rect_edge_click.hover(
+            pos, ev.modifiers()
+        ):
+            return
         if self.rect_edge_align_enabled:
             # Hover candidate computation. ``rect_edge_dragging`` is always
             # False here because an active drag was already handled by the
@@ -2107,6 +2126,8 @@ class Canvas(
             # target a removed, hidden or deselected shape. A valid edge press
             # keeps the current rectangle formally selected.
             # ----------------------------------------------------------
+            if self.rect_edge_click.press(pos, ev):
+                return
             hover = self._rect_edge_press_candidate(pos)
             self.rect_edge_state.set_hover(hover)
             if hover is not None:
@@ -2371,6 +2392,8 @@ class Canvas(
         elif ev.button() == QtCore.Qt.MouseButton.LeftButton:
             if self._finish_selection_gesture():
                 return
+            if self.rect_edge_click.release(ev):
+                return
             # ----------------------------------------------------------
             # Rectangle edge editing: commit on release.
             # One release forms exactly one undo granularity and only
@@ -2416,6 +2439,12 @@ class Canvas(
                     else self._rect_edge_hit_candidate(release_pos)
                 )
                 self.rect_edge_state.set_hover(hover)
+                if (
+                    getattr(self, "rectangle_workflow_refining", False)
+                    and active is not None
+                    and active.shape in self.selected_shapes
+                ):
+                    self._activate_rect_edge_for_nudge(active)
                 if self.rect_edge_hover_edge is not None:
                     self.override_cursor(
                         self._rect_edge_cursor(self.rect_edge_hover_edge)
@@ -2514,6 +2543,13 @@ class Canvas(
     def mouseDoubleClickEvent(self, ev):
         """Mouse double click event"""
         if self.is_loading:
+            return
+        if (
+            ev.button() == QtCore.Qt.MouseButton.LeftButton
+            and self.rect_edge_click.active(ev.modifiers())
+            and self.rect_edge_click.double_click(ev)
+        ):
+            self.rect_edge_click.consume_release = True
             return
 
         # Handle auto decode mode double click to finish
@@ -4111,6 +4147,7 @@ class Canvas(
         # space, matching the convention used by the cross-line below.
         if self.rect_edge_align_enabled:
             self._draw_rect_edge_alignment_overlay(p)
+            self.rect_edge_click.draw(p)
         self._draw_rectangle_review_feedback_hud(p)
         self._draw_rectangle_review_loupe(p)
 
@@ -4118,6 +4155,9 @@ class Canvas(
         # rectangle (person small-target warning). Pure transient drawing;
         # never mutates Shape data, undo stack, dirty, or JSON.
         self._draw_size_overlay(p)
+        workflow = getattr(self, "rectangle_workflow", None)
+        if workflow is not None:
+            workflow.paint_draft(p)
 
         self._draw_crosshair(p)
 
@@ -4907,6 +4947,8 @@ class Canvas(
             step * abs(notches),
             (self.pixmap.width(), self.pixmap.height()),
         )
+        if valid:
+            self._ensure_rectangle_nudge_baseline()
         if valid and rea.apply_edge_coord(
             active.shape, active.edge_name, candidate
         ):
@@ -4924,11 +4966,7 @@ class Canvas(
                 self._set_rectangle_review_feedback(
                     refreshed_edge, "nudge", original_coord
                 )
-            if self._rectangle_review_nudge_burst.begin(
-                (id(active.shape), active.edge_name, direction, "wheel"),
-                time.monotonic(),
-            ):
-                self.store_shapes()
+            self._store_rectangle_nudge(active, direction)
             self.notify_shape_changed(active.shape)
             self.shape_moved.emit()
             self.semantic_burst_requested.emit(
@@ -5139,7 +5177,37 @@ class Canvas(
             coord = pos.x()
         else:
             coord = pos.y()
-        coord = self._rect_edge_clamp_coord_to_image(active.axis, coord)
+        if getattr(self, "rectangle_workflow_refining", False):
+            geometry = rea.geometry_from_shape(active.shape)
+            coords = {
+                "left": geometry.x_min,
+                "top": geometry.y_min,
+                "right": geometry.x_max,
+                "bottom": geometry.y_max,
+            }
+            coords[active.edge_name] = coord
+            valid = (
+                0
+                <= coords["left"]
+                < coords["right"]
+                <= self.pixmap.width() - 1
+                and 0
+                <= coords["top"]
+                < coords["bottom"]
+                <= self.pixmap.height() - 1
+                and coords["right"] - coords["left"] >= 1
+                and coords["bottom"] - coords["top"] >= 1
+            )
+            if not valid:
+                self._set_rectangle_review_feedback(
+                    active,
+                    "rejected",
+                    self.rectangle_review_feedback_snapshot.original_coord,
+                    "boundary_or_min_size",
+                )
+                return
+        else:
+            coord = self._rect_edge_clamp_coord_to_image(active.axis, coord)
 
         # Live edit: mutate the target shape in place. The drag start
         # points are preserved so Esc can restore them.
@@ -5211,6 +5279,7 @@ class Canvas(
             edge: Rectangle edge reference to edit.
             press_pos: Original press position in image coordinates.
         """
+        self.rect_edge_click.promote()
         self.prev_point = QtCore.QPointF(press_pos)
         self.rect_edge_state.start_drag(edge, edge.shape.points)
         self._rectangle_review_nudge_burst.reset()
@@ -5243,6 +5312,7 @@ class Canvas(
 
     def clear_rect_edge_alignment(self):
         """Clear transient edge-editing interaction state."""
+        self.rect_edge_click.clear()
         self.rect_edge_state.clear_mouse()
         self.rectangle_review_feedback_snapshot = None
         self._rectangle_review_nudge_burst.reset()
@@ -5310,6 +5380,7 @@ class Canvas(
                 self.rect_edge_hover_edge,
                 self.rect_edge_active_edge,
                 self.rect_edge_pending_edge,
+                self.rect_edge_click.preview_box,
             )
         )
         if not had_state:
@@ -5581,6 +5652,32 @@ class Canvas(
             return
         painter.save()
         try:
+            if getattr(self, "rectangle_workflow_refining", False):
+                # The workbench carries text outside the image. Keep only
+                # a cosmetic reference line beside the active boundary.
+                pen = QtGui.QPen(QtGui.QColor(255, 220, 80))
+                pen.setCosmetic(True)
+                pen.setStyle(QtCore.Qt.PenStyle.DashLine)
+                painter.setPen(pen)
+                if active.axis == rea.RECT_EDGE_AXIS_X:
+                    painter.drawLine(
+                        QtCore.QPointF(
+                            snapshot.original_coord, geometry.y_min
+                        ),
+                        QtCore.QPointF(
+                            snapshot.original_coord, geometry.y_max
+                        ),
+                    )
+                else:
+                    painter.drawLine(
+                        QtCore.QPointF(
+                            geometry.x_min, snapshot.original_coord
+                        ),
+                        QtCore.QPointF(
+                            geometry.x_max, snapshot.original_coord
+                        ),
+                    )
+                return
             start_points = self.rect_edge_drag_start_points or []
             if len(start_points) >= 2:
                 start_x = [point.x() for point in start_points]
@@ -6145,8 +6242,7 @@ class Canvas(
             if (
                 shape is None
                 or not any(current is shape for current in self.shapes)
-                or not self.main_visible(shape)
-                or not self._should_draw_geometry(shape)
+                or not self.base_visible(shape)
             ):
                 continue
             requests.append(
@@ -6374,6 +6470,10 @@ class Canvas(
     def keyPressEvent(self, ev):
         """Key press event"""
         key = ev.key()
+        if key == QtCore.Qt.Key.Key_Alt:
+            self.rect_edge_click.modifiers_changed(
+                ev.modifiers() | QtCore.Qt.KeyboardModifier.AltModifier
+            )
         if key == QtCore.Qt.Key.Key_Tab and self._cycle_rect_edge(
             bool(ev.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier)
         ):
@@ -6457,6 +6557,8 @@ class Canvas(
             return False
         if self._rectangle_review_nudge_key(key, modifiers):
             return True
+        if getattr(self, "rectangle_workflow_refining", False):
+            return True
         step = (
             MOVE_SPEED
             if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier
@@ -6473,13 +6575,30 @@ class Canvas(
         self.input_burst_requested.emit("micro_adjust", "keyboard")
         return True
 
+    def _ensure_rectangle_nudge_baseline(self) -> None:
+        """Capture pre-edit geometry when an image has no undo baseline."""
+        if not self.shapes_backups or getattr(
+            self, "_pending_initial_backup", False
+        ):
+            self.store_shapes()
+
+    def _store_rectangle_nudge(
+        self, edge: rea.RectEdgeRef, direction: int
+    ) -> None:
+        """Keep the latest burst snapshot current while retaining its baseline."""
+        new_burst = self._rectangle_review_nudge_burst.begin(
+            (id(edge.shape), edge.edge_name, direction), time.monotonic()
+        )
+        if not new_burst and self.shapes_backups:
+            self.shapes_backups.pop()
+        self.store_shapes()
+
     def _activate_rect_edge_for_nudge(self, edge: rea.RectEdgeRef) -> None:
         """Promote a clicked edge to the keyboard/wheel nudge target."""
         self._rectangle_review_nudge_burst.reset()
         self.rect_edge_state.active_edge = edge
-        self.rect_edge_state.drag_start_points = [
-            QtCore.QPointF(point) for point in edge.shape.points
-        ]
+        self.rect_edge_state.drag_start_points = None
+        self._rectangle_review_wheel.reset()
         self.rect_edge_state.set_hover(edge)
         self.rectangle_review_edge_drag_started.emit(edge.edge_name)
         self._set_rectangle_review_feedback(edge, "nudge", edge.coord)
@@ -6504,7 +6623,7 @@ class Canvas(
             rea.RECT_EDGE_BOTTOM,
             rea.RECT_EDGE_LEFT,
         ]
-        current = self.rect_edge_active_edge or self.rect_edge_hover_edge
+        current = self.rect_edge_active_edge
         current_name = current.edge_name if current is not None else None
         index = (
             edge_names.index(current_name)
@@ -6512,6 +6631,8 @@ class Canvas(
             else -1
         )
         step = -1 if reverse else 1
+        if current is None and reverse:
+            index = 0
         edge_name = edge_names[(index + step) % len(edge_names)]
         if current is not None:
             self.clear_rect_edge_alignment()
@@ -6530,16 +6651,12 @@ class Canvas(
             and self.pixmap is not None
         ):
             return False
-        active = self.rect_edge_active_edge or self.rect_edge_hover_edge
+        active = self.rect_edge_active_edge
         if active is None or active.shape not in self.selected_shapes:
-            return False
-        if self.rect_edge_active_edge is None:
-            self.rect_edge_state.active_edge = active
-            self.rect_edge_state.drag_start_points = [
-                QtCore.QPointF(point) for point in active.shape.points
-            ]
-            self.rectangle_review_edge_drag_started.emit(active.edge_name)
-            self._set_rectangle_review_feedback(active, "nudge", active.coord)
+            return bool(getattr(self, "rectangle_workflow_refining", False))
+        horizontal = key in (QtCore.Qt.Key.Key_Left, QtCore.Qt.Key.Key_Right)
+        if horizontal != (active.axis == rea.RECT_EDGE_AXIS_X):
+            return True
         direction = 1
         if key in (QtCore.Qt.Key.Key_Left, QtCore.Qt.Key.Key_Up):
             direction = -1
@@ -6575,6 +6692,7 @@ class Canvas(
                 "boundary_or_min_size",
             )
             return True
+        self._ensure_rectangle_nudge_baseline()
         if not rea.apply_edge_coord(active.shape, active.edge_name, candidate):
             return True
         refreshed = rea.geometry_from_shape(active.shape)
@@ -6592,11 +6710,7 @@ class Canvas(
                     else refreshed_edge.coord
                 ),
             )
-        if self._rectangle_review_nudge_burst.begin(
-            (id(active.shape), active.edge_name, direction, "keyboard"),
-            time.monotonic(),
-        ):
-            self.store_shapes()
+        self._store_rectangle_nudge(active, direction)
         self.notify_shape_changed(active.shape)
         self.shape_moved.emit()
         self.update()
@@ -6608,6 +6722,10 @@ class Canvas(
         if ev.isAutoRepeat():
             return
         modifiers = ev.modifiers()
+        if ev.key() == QtCore.Qt.Key.Key_Alt:
+            self.rect_edge_click.modifiers_changed(
+                modifiers & ~QtCore.Qt.KeyboardModifier.AltModifier
+            )
         if self.drawing():
             if modifiers == QtCore.Qt.KeyboardModifier.NoModifier:
                 self.snapping = True
@@ -6821,6 +6939,9 @@ class Canvas(
 
     def reset_state(self):
         """Clear shapes and pixmap"""
+        workflow = getattr(self, "rectangle_workflow", None)
+        if workflow is not None:
+            workflow.reset()
         self._keyboard_edit_before = None
         self.moving_shape = False
         self.rotating_shape = False

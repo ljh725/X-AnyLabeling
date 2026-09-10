@@ -3343,6 +3343,13 @@ class LabelingWidget(LabelDialog):
         self.fit_window = False
         self.brightness_contrast_values = {}
         self.viewport_controller = ViewportController()
+        from .widgets.rectangle_workflow import RectangleWorkflow
+
+        self.rectangle_workflow = RectangleWorkflow(self)
+        central_layout.insertWidget(
+            central_layout.indexOf(self._central_widget),
+            self.rectangle_workflow,
+        )
 
         if filename is not None and osp.isdir(filename):
             self.import_image_folder(filename, load=False)
@@ -4124,6 +4131,11 @@ class LabelingWidget(LabelDialog):
         self.canvas._rectangle_review_wheel.reset()
 
     def undo_shape_edit(self):
+        workflow = getattr(self, "rectangle_workflow", None)
+        if workflow is not None and workflow.draft is not None:
+            workflow.back()
+            return
+        undo_state = workflow.undo_state() if workflow is not None else None
         collector = self._review_metrics
         target = (
             self.canvas.selected_shapes[0]
@@ -4184,6 +4196,8 @@ class LabelingWidget(LabelDialog):
             and self.keypoint_fill_mode.is_active
         ):
             self.keypoint_fill_mode.refresh()
+        if workflow is not None:
+            workflow.restore_after_undo(undo_state)
 
     def get_label_file_list(self):
         label_file_list = []
@@ -5509,6 +5523,9 @@ class LabelingWidget(LabelDialog):
     def toggle_draw_mode(
         self, edit=True, create_mode="rectangle", disable_auto_labeling=True
     ):
+        workflow = getattr(self, "rectangle_workflow", None)
+        if workflow is not None:
+            workflow.before_tool_change(edit, create_mode)
         telemetry = self._behavior_telemetry
         if edit and self._behavior_creation_token and telemetry is not None:
             telemetry.cancel_creation(self._behavior_creation_token)
@@ -7941,11 +7958,16 @@ class LabelingWidget(LabelDialog):
             # A valid single three-box rectangle selection updates focus.
             self._rect_refine_forward_selection(selected_shapes)
 
-        self.object_mark_actions.locate_in_thumbnails.setEnabled(
-            len(selected_shapes) == 1
-            and bool(getattr(selected_shapes[0], "xanylabeling_shape_id", ""))
-            and bool(self.filename)
-        )
+        object_mark_actions = getattr(self, "object_mark_actions", None)
+        locate_action = getattr(object_mark_actions, "locate_in_thumbnails", None)
+        if locate_action is not None:
+            locate_action.setEnabled(
+                len(selected_shapes) == 1
+                and bool(
+                    getattr(selected_shapes[0], "xanylabeling_shape_id", "")
+                )
+                and bool(self.filename)
+            )
 
     def add_label(self, shape, update_last_label=True, refresh_filters=True):
         if shape.group_id is None:

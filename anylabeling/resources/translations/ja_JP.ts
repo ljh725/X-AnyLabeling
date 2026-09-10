@@ -6630,6 +6630,14 @@ Do you want to continue?</source>
   </context>
   <context>
     <name>DatasetLabelThumbnailWindow</name>
+    <message><source>History</source><translation>履歴</translation></message>
+    <message><source>First page</source><translation>最初のページ</translation></message>
+    <message><source>Last page</source><translation>最後のページ</translation></message>
+    <message><source>Page number (press Enter to jump)</source><translation>ページ番号（Enterで移動）</translation></message>
+    <message><source>Page number</source><translation>ページ番号</translation></message>
+    <message><source>Go</source><translation>移動</translation></message>
+    <message><source>Selected object no longer exists. Refresh and search again.</source><translation>選択した対象は存在しません。更新して再検索してください。</translation></message>
+    <message><source>Selected object no longer matches the current filters.</source><translation>選択した対象は現在の条件に一致しません。</translation></message>
     <message><source>Dataset Label Thumbnails</source><translation type="unfinished"></translation></message>
     <message><source>Label:</source><translation type="unfinished"></translation></message>
     <message><source>Previous</source><translation type="unfinished"></translation></message>
@@ -6843,6 +6851,8 @@ Recovery manifest: %11</source><translation type="unfinished"></translation></me
 </context>
 <context>
     <name>AdvancedThumbnailControls</name>
+    <message><source>Locate selected</source><translation>選択カードへ移動</translation></message>
+    <message><source>Select one search result, then confirm to clear the filename search and jump to its page. Other filters and sorting stay.</source><translation>検索結果を1つ選んで確認すると、ファイル名検索を解除してそのページに移動します。他の条件と並び順は維持されます。</translation></message>
     <message>
         <source>Search image filename</source>
         <translation type="unfinished"></translation>
@@ -6935,4 +6945,240 @@ Recovery manifest: %11</source><translation type="unfinished"></translation></me
         <translation type="unfinished"></translation>
     </message>
 </context>
+  <context>
+    <name>RectangleWorkflow</name>
+    <message>
+      <source>Rectangle workbench</source>
+      <translation>矩形ワークベンチ</translation>
+    </message>
+    <message>
+      <source>Four extremes</source>
+      <translation>4極点で矩形作成</translation>
+    </message>
+    <message>
+      <source>Submit draft</source>
+      <translation>下書きを確定</translation>
+    </message>
+    <message>
+      <source>Back one boundary</source>
+      <translation>1辺戻す</translation>
+    </message>
+    <message>
+      <source>Refine rectangle</source>
+      <translation>矩形を調整</translation>
+    </message>
+    <message>
+      <source>Continue drawing</source>
+      <translation>続けて作成</translation>
+    </message>
+    <message>
+      <source>Local focus</source>
+      <translation>局所拡大</translation>
+    </message>
+    <message>
+      <source>Top</source>
+      <translation>上</translation>
+    </message>
+    <message>
+      <source>Right</source>
+      <translation>右</translation>
+    </message>
+    <message>
+      <source>Bottom</source>
+      <translation>下</translation>
+    </message>
+    <message>
+      <source>Left</source>
+      <translation>左</translation>
+    </message>
+    <message>
+      <source>Finish refinement</source>
+      <translation>調整を完了</translation>
+    </message>
+    <message>
+      <source>Next object</source>
+      <translation>次の対象</translation>
+    </message>
+    <message>
+      <source>Fit object on entry</source>
+      <translation>開始時に対象を拡大</translation>
+    </message>
+    <message>
+      <source>Fit object</source>
+      <translation>対象を拡大</translation>
+    </message>
+    <message>
+      <source>View surroundings</source>
+      <translation>周囲を表示</translation>
+    </message>
+    <message>
+      <source>Draft ready: submit or go back.</source>
+      <translation>4辺を指定済み：確定または戻る。</translation>
+    </message>
+    <message>
+      <source>Click boundary {step}/4: {edge}</source>
+      <translation>極点をクリック {step}/4：{edge}</translation>
+    </message>
+    <message>
+      <source>Choose a drawing tool or select one rectangle to refine.</source>
+      <translation>作成ツールを選ぶか、調整する矩形を1つ選択します。</translation>
+    </message>
+    <message>
+      <source>Click a boundary point to adjust. Use buttons or Tab for 1px/5px nudges.</source>
+      <translation>境界点をクリックして調整。ボタンまたは Tab で辺を選ぶと 1px/5px ずつ調整できます。</translation>
+    </message>
+    <message>
+      <source>right</source>
+      <translation>右へ</translation>
+    </message>
+    <message>
+      <source>down</source>
+      <translation>下へ</translation>
+    </message>
+    <message>
+      <source>{edge}: delta {delta:+.1f}px | 1px / Shift 5px | Wheel up: {direction}</source>
+      <translation>{edge}辺：変位 {delta:+.1f}px | 1px / Shift 5px | 上スクロール：{direction}</translation>
+    </message>
+    <message>
+      <source>Rejected: image bounds or minimum size.</source>
+      <translation>変更不可：画像境界または最小サイズの制限。</translation>
+    </message>
+    <message>
+      <source>Navigation failed; current edits restored.</source>
+      <translation>画像切替に失敗。現在の編集を復元しました。</translation>
+    </message>
+    <message>
+      <source>Invalid rectangle: redraw it with the rectangle tool.</source>
+      <translation>無効な矩形です。矩形ツールで描き直してください。</translation>
+    </message>
+    <message>
+      <source>Object display size</source>
+      <translation>対象の表示長辺</translation>
+    </message>
+    <message>
+      <source>Maximum object zoom</source>
+      <translation>対象の最大拡大倍率</translation>
+    </message>
+    <message>
+      <source>Workflow</source>
+      <translation>操作フロー</translation>
+    </message>
+  </context>
+  <context>
+    <name>SettingsDialog</name>
+    <message>
+      <source>Four extremes</source>
+      <translation>4極点で矩形作成</translation>
+    </message>
+    <message>
+      <source>Submit draft</source>
+      <translation>下書きを確定</translation>
+    </message>
+    <message>
+      <source>Back one boundary</source>
+      <translation>1辺戻す</translation>
+    </message>
+    <message>
+      <source>Refine rectangle</source>
+      <translation>矩形を調整</translation>
+    </message>
+    <message>
+      <source>Continue drawing</source>
+      <translation>続けて作成</translation>
+    </message>
+    <message>
+      <source>Local focus</source>
+      <translation>局所拡大</translation>
+    </message>
+    <message>
+      <source>Finish refinement</source>
+      <translation>調整を完了</translation>
+    </message>
+    <message>
+      <source>Next object</source>
+      <translation>次の対象</translation>
+    </message>
+    <message>
+      <source>View surroundings</source>
+      <translation>周囲を表示</translation>
+    </message>
+    <message>
+      <source>Fit object</source>
+      <translation>対象を拡大</translation>
+    </message>
+    <message>
+      <source>Rectangle workbench</source>
+      <translation>矩形ワークベンチ</translation>
+    </message>
+    <message>
+      <source>Fit object on entry</source>
+      <translation>開始時に対象を拡大</translation>
+    </message>
+    <message>
+      <source>Object display size</source>
+      <translation>対象の表示長辺</translation>
+    </message>
+    <message>
+      <source>Maximum object zoom</source>
+      <translation>対象の最大拡大倍率</translation>
+    </message>
+    <message>
+      <source>Workflow</source>
+      <translation>操作フロー</translation>
+    </message>
+  </context>
+  <context>
+    <name>SettingsDialog</name>
+    <message>
+      <source>Enable four-extreme creation and explicit single-edge refinement.</source>
+      <translation>4極点での作成と明示的な単辺調整を有効にします。</translation>
+    </message>
+    <message>
+      <source>Adjust the view once when entering a rectangle; preserve manual zoom during edits.</source>
+      <translation>矩形に入る時だけ表示を調整し、編集中の手動ズームを維持します。</translation>
+    </message>
+    <message>
+      <source>Desired display length of the object's longest side in logical pixels.</source>
+      <translation>対象の長辺に対する表示上の目標論理ピクセル数です。</translation>
+    </message>
+    <message>
+      <source>Limit automatic object magnification while retaining surrounding context.</source>
+      <translation>周囲を残しながら対象の自動拡大倍率を制限します。</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleEdgeClick</name>
+    <message>
+      <source>Top</source>
+      <translation>上</translation>
+    </message>
+    <message>
+      <source>Right</source>
+      <translation>右</translation>
+    </message>
+    <message>
+      <source>Bottom</source>
+      <translation>下</translation>
+    </message>
+    <message>
+      <source>Left</source>
+      <translation>左</translation>
+    </message>
+    <message>
+      <source>Click to move the {edge} edge here.</source>
+      <translation>クリックすると{edge}辺をこの位置に移動します。</translation>
+    </message>
+    <message>
+      <source>Rejected: image bounds or minimum size.</source>
+      <translation>拒否：画像の範囲外、または最小サイズ未満です。</translation>
+    </message>
+    <message>
+      <source>Region boundary; rectangle unchanged.</source>
+      <translation>領域の境界上のため、変更しません。</translation>
+    </message>
+    <message>
+      <source>{edge} edge moved to click (delta {delta:+.1f}px).</source>
+      <translation>{edge}辺をクリック位置へ移動しました（変位 {delta:+.1f}px）。</translation>
+    </message>
+  </context>
 </TS>

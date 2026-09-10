@@ -308,6 +308,36 @@ def set_nested_value(data: dict[str, Any], key_path: str, value: Any) -> None:
 
 def _shortcut_label(short_key: str) -> str:
     label_overrides = {
+        "rectangle_extreme": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Four extremes"
+        ),
+        "rectangle_submit": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Submit draft"
+        ),
+        "rectangle_back": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Back one boundary"
+        ),
+        "rectangle_refine": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Refine rectangle"
+        ),
+        "rectangle_continue": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Continue drawing"
+        ),
+        "rectangle_local_focus": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Local focus"
+        ),
+        "rectangle_finish": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Finish refinement"
+        ),
+        "rectangle_next": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Next object"
+        ),
+        "rectangle_surroundings": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "View surroundings"
+        ),
+        "rectangle_fit_object": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Fit object"
+        ),
         "open_classifier": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Open Classifier Dialog"
         ),
@@ -963,6 +993,66 @@ def _non_shortcut_fields() -> list[SettingField]:
             ),
         ),
         SettingField(
+            "rectangle_workflow.enabled",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Rectangle workbench"
+            ),
+            "bool",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Workflow",
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Enable four-extreme creation and explicit single-edge refinement.",
+            ),
+        ),
+        SettingField(
+            "rectangle_workflow.auto_zoom",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Fit object on entry"
+            ),
+            "bool",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Workflow",
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Adjust the view once when entering a rectangle; preserve manual zoom during edits.",
+            ),
+        ),
+        SettingField(
+            "rectangle_workflow.target_pixels",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Object display size"
+            ),
+            "int",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Workflow",
+            minimum=100,
+            maximum=1200,
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Desired display length of the object's longest side in logical pixels.",
+            ),
+        ),
+        SettingField(
+            "rectangle_workflow.max_scale",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Maximum object zoom"
+            ),
+            "float",
+            "Canvas",
+            "Rectangle Review Refinement",
+            "Workflow",
+            minimum=1.0,
+            maximum=16.0,
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Limit automatic object magnification while retaining surrounding context.",
+            ),
+        ),
+        SettingField(
             "rectangle_review_refinement.enabled",
             QT_TRANSLATE_NOOP(
                 SETTINGS_TRANSLATION_CONTEXT,
@@ -1386,6 +1476,16 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "toggle_annotation_checked",
         ),
         "Shape": (
+            "rectangle_extreme",
+            "rectangle_submit",
+            "rectangle_back",
+            "rectangle_refine",
+            "rectangle_continue",
+            "rectangle_local_focus",
+            "rectangle_finish",
+            "rectangle_next",
+            "rectangle_surroundings",
+            "rectangle_fit_object",
             "add_point_to_edge",
             "copy_polygon",
             "create_brush_polygon",

@@ -6622,6 +6622,14 @@ Do you want to continue?</source>
   </context>
   <context>
     <name>DatasetLabelThumbnailWindow</name>
+    <message><source>History</source><translation>History</translation></message>
+    <message><source>First page</source><translation>First page</translation></message>
+    <message><source>Last page</source><translation>Last page</translation></message>
+    <message><source>Page number (press Enter to jump)</source><translation>Page number (press Enter to jump)</translation></message>
+    <message><source>Page number</source><translation>Page number</translation></message>
+    <message><source>Go</source><translation>Go</translation></message>
+    <message><source>Selected object no longer exists. Refresh and search again.</source><translation>Selected object no longer exists. Refresh and search again.</translation></message>
+    <message><source>Selected object no longer matches the current filters.</source><translation>Selected object no longer matches the current filters.</translation></message>
     <message><source>Dataset Label Thumbnails</source><translation>Dataset Label Thumbnails</translation></message>
     <message><source>Label:</source><translation>Label:</translation></message>
     <message><source>Previous</source><translation>Previous</translation></message>
@@ -6837,6 +6845,8 @@ Recovery manifest: %11</translation></message>
 </context>
 <context>
     <name>AdvancedThumbnailControls</name>
+    <message><source>Locate selected</source><translation>Locate selected</translation></message>
+    <message><source>Select one search result, then confirm to clear the filename search and jump to its page. Other filters and sorting stay.</source><translation>Select one search result, then confirm to clear the filename search and jump to its page. Other filters and sorting stay.</translation></message>
     <message>
         <source>Search image filename</source>
         <translation>Search image filename</translation>
@@ -6929,4 +6939,240 @@ Recovery manifest: %11</translation></message>
         <translation>Preview unavailable: %1</translation>
     </message>
 </context>
+  <context>
+    <name>RectangleWorkflow</name>
+    <message>
+      <source>Rectangle workbench</source>
+      <translation>Rectangle workbench</translation>
+    </message>
+    <message>
+      <source>Four extremes</source>
+      <translation>Four extremes</translation>
+    </message>
+    <message>
+      <source>Submit draft</source>
+      <translation>Submit draft</translation>
+    </message>
+    <message>
+      <source>Back one boundary</source>
+      <translation>Back one boundary</translation>
+    </message>
+    <message>
+      <source>Refine rectangle</source>
+      <translation>Refine rectangle</translation>
+    </message>
+    <message>
+      <source>Continue drawing</source>
+      <translation>Continue drawing</translation>
+    </message>
+    <message>
+      <source>Local focus</source>
+      <translation>Local focus</translation>
+    </message>
+    <message>
+      <source>Top</source>
+      <translation>Top</translation>
+    </message>
+    <message>
+      <source>Right</source>
+      <translation>Right</translation>
+    </message>
+    <message>
+      <source>Bottom</source>
+      <translation>Bottom</translation>
+    </message>
+    <message>
+      <source>Left</source>
+      <translation>Left</translation>
+    </message>
+    <message>
+      <source>Finish refinement</source>
+      <translation>Finish refinement</translation>
+    </message>
+    <message>
+      <source>Next object</source>
+      <translation>Next object</translation>
+    </message>
+    <message>
+      <source>Fit object on entry</source>
+      <translation>Fit object on entry</translation>
+    </message>
+    <message>
+      <source>Fit object</source>
+      <translation>Fit object</translation>
+    </message>
+    <message>
+      <source>View surroundings</source>
+      <translation>View surroundings</translation>
+    </message>
+    <message>
+      <source>Draft ready: submit or go back.</source>
+      <translation>Draft ready: submit or go back.</translation>
+    </message>
+    <message>
+      <source>Click boundary {step}/4: {edge}</source>
+      <translation>Click boundary {step}/4: {edge}</translation>
+    </message>
+    <message>
+      <source>Choose a drawing tool or select one rectangle to refine.</source>
+      <translation>Choose a drawing tool or select one rectangle to refine.</translation>
+    </message>
+    <message>
+      <source>Click a boundary point to adjust. Use buttons or Tab for 1px/5px nudges.</source>
+      <translation>Click a boundary point to adjust. Use buttons or Tab for 1px/5px nudges.</translation>
+    </message>
+    <message>
+      <source>right</source>
+      <translation>right</translation>
+    </message>
+    <message>
+      <source>down</source>
+      <translation>down</translation>
+    </message>
+    <message>
+      <source>{edge}: delta {delta:+.1f}px | 1px / Shift 5px | Wheel up: {direction}</source>
+      <translation>{edge}: delta {delta:+.1f}px | 1px / Shift 5px | Wheel up: {direction}</translation>
+    </message>
+    <message>
+      <source>Rejected: image bounds or minimum size.</source>
+      <translation>Rejected: image bounds or minimum size.</translation>
+    </message>
+    <message>
+      <source>Navigation failed; current edits restored.</source>
+      <translation>Navigation failed; current edits restored.</translation>
+    </message>
+    <message>
+      <source>Invalid rectangle: redraw it with the rectangle tool.</source>
+      <translation>Invalid rectangle: redraw it with the rectangle tool.</translation>
+    </message>
+    <message>
+      <source>Object display size</source>
+      <translation>Object display size</translation>
+    </message>
+    <message>
+      <source>Maximum object zoom</source>
+      <translation>Maximum object zoom</translation>
+    </message>
+    <message>
+      <source>Workflow</source>
+      <translation>Workflow</translation>
+    </message>
+  </context>
+  <context>
+    <name>SettingsDialog</name>
+    <message>
+      <source>Four extremes</source>
+      <translation>Four extremes</translation>
+    </message>
+    <message>
+      <source>Submit draft</source>
+      <translation>Submit draft</translation>
+    </message>
+    <message>
+      <source>Back one boundary</source>
+      <translation>Back one boundary</translation>
+    </message>
+    <message>
+      <source>Refine rectangle</source>
+      <translation>Refine rectangle</translation>
+    </message>
+    <message>
+      <source>Continue drawing</source>
+      <translation>Continue drawing</translation>
+    </message>
+    <message>
+      <source>Local focus</source>
+      <translation>Local focus</translation>
+    </message>
+    <message>
+      <source>Finish refinement</source>
+      <translation>Finish refinement</translation>
+    </message>
+    <message>
+      <source>Next object</source>
+      <translation>Next object</translation>
+    </message>
+    <message>
+      <source>View surroundings</source>
+      <translation>View surroundings</translation>
+    </message>
+    <message>
+      <source>Fit object</source>
+      <translation>Fit object</translation>
+    </message>
+    <message>
+      <source>Rectangle workbench</source>
+      <translation>Rectangle workbench</translation>
+    </message>
+    <message>
+      <source>Fit object on entry</source>
+      <translation>Fit object on entry</translation>
+    </message>
+    <message>
+      <source>Object display size</source>
+      <translation>Object display size</translation>
+    </message>
+    <message>
+      <source>Maximum object zoom</source>
+      <translation>Maximum object zoom</translation>
+    </message>
+    <message>
+      <source>Workflow</source>
+      <translation>Workflow</translation>
+    </message>
+  </context>
+  <context>
+    <name>SettingsDialog</name>
+    <message>
+      <source>Enable four-extreme creation and explicit single-edge refinement.</source>
+      <translation>Enable four-extreme creation and explicit single-edge refinement.</translation>
+    </message>
+    <message>
+      <source>Adjust the view once when entering a rectangle; preserve manual zoom during edits.</source>
+      <translation>Adjust the view once when entering a rectangle; preserve manual zoom during edits.</translation>
+    </message>
+    <message>
+      <source>Desired display length of the object's longest side in logical pixels.</source>
+      <translation>Desired display length of the object's longest side in logical pixels.</translation>
+    </message>
+    <message>
+      <source>Limit automatic object magnification while retaining surrounding context.</source>
+      <translation>Limit automatic object magnification while retaining surrounding context.</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleEdgeClick</name>
+    <message>
+      <source>Top</source>
+      <translation>Top</translation>
+    </message>
+    <message>
+      <source>Right</source>
+      <translation>Right</translation>
+    </message>
+    <message>
+      <source>Bottom</source>
+      <translation>Bottom</translation>
+    </message>
+    <message>
+      <source>Left</source>
+      <translation>Left</translation>
+    </message>
+    <message>
+      <source>Click to move the {edge} edge here.</source>
+      <translation>Click to move the {edge} edge here.</translation>
+    </message>
+    <message>
+      <source>Rejected: image bounds or minimum size.</source>
+      <translation>Rejected: image bounds or minimum size.</translation>
+    </message>
+    <message>
+      <source>Region boundary; rectangle unchanged.</source>
+      <translation>Region boundary; rectangle unchanged.</translation>
+    </message>
+    <message>
+      <source>{edge} edge moved to click (delta {delta:+.1f}px).</source>
+      <translation>{edge} edge moved to click (delta {delta:+.1f}px).</translation>
+    </message>
+  </context>
 </TS>

@@ -4,6 +4,7 @@ from typing import Dict, Optional
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from ..utils.qt import new_icon_path
+from ..utils.theme import get_theme
 from ..utils.style import (
     get_cancel_btn_style,
     get_dialog_style,
@@ -15,23 +16,21 @@ LABEL_OPACITY = 128
 
 
 class _CellLineEdit(QtWidgets.QLineEdit):
-    """QLineEdit subclass that intercepts Enter/Return to prevent
-    the parent QDialog from auto-accepting when the user presses Enter
-    inside a table cell.  Instead, focus moves to the next row."""
+    """Edit a label with native selection and explicit row navigation."""
+
+    next_row_requested = QtCore.pyqtSignal()
+
+    def focusNextPrevChild(self, next: bool) -> bool:
+        """Use the dialog's tab order instead of the table's cell navigation."""
+        return self.window().focusNextPrevChild(next)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        """Request the next row instead of accepting the dialog on Enter."""
         if event.key() in (
             QtCore.Qt.Key.Key_Return,
             QtCore.Qt.Key.Key_Enter,
         ):
-            table = self.parent()
-            if isinstance(table, QtWidgets.QTableWidget):
-                row = table.indexAt(self.pos()).row()
-                next_row = (row + 1) % table.rowCount()
-                next_widget = table.cellWidget(next_row, 1)
-                if next_widget is not None:
-                    next_widget.setFocus()
-                    next_widget.selectAll()
+            self.next_row_requested.emit()
             event.accept()
             return
         super().keyPressEvent(event)
@@ -219,6 +218,7 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
         self._load_from_parent()
         self._build_ui()
         self._update_table()
+        self._resize_to_contents()
 
     def _load_from_parent(self) -> None:
         """Load existing relabel mappings from the parent widget."""
@@ -267,6 +267,7 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
         layout.addWidget(header_label)
 
         self._table = QtWidgets.QTableWidget(self.PAGE_SIZE, 2, self)
+        self._table.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
         self._table.setHorizontalHeaderLabels(
             [self.tr("数字键"), self.tr("标签")]
         )
@@ -289,9 +290,22 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
             QtWidgets.QHeaderView.ResizeMode.Stretch,
         )
 
+        theme = get_theme()
+        editor_style = f"""
+            QLineEdit {{
+                height: {self.fontMetrics().height() + 2}px;
+                padding: 2px 8px;
+                border: 1px solid {theme['border']};
+                selection-color: {theme['selection_text']};
+            }}
+            QLineEdit:hover {{
+                border: 1px solid {theme['border_light']};
+            }}
+            QLineEdit:focus {{
+                border: 1px solid {theme['highlight']};
+            }}
+        """
         for row in range(self.PAGE_SIZE):
-            self._table.setRowHeight(row, self._ROW_HEIGHT)
-
             digit_item = QtWidgets.QTableWidgetItem(str(row))
             digit_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             digit_item.setFlags(
@@ -300,17 +314,30 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
             self._table.setItem(row, 0, digit_item)
 
             label_edit = _CellLineEdit(self)
+            label_edit.setStyleSheet(editor_style)
             label_edit.setPlaceholderText(self.tr("输入标签"))
+            label_edit.next_row_requested.connect(
+                lambda index=row: self._focus_next_row(index)
+            )
             label_edit.textChanged.connect(
                 lambda text, index=row: self._on_label_changed(index, text)
             )
             self._table.setCellWidget(row, 1, label_edit)
+            label_edit.ensurePolished()
+            self._table.setRowHeight(
+                row, max(self._ROW_HEIGHT, label_edit.sizeHint().height() + 1)
+            )
+            if row:
+                self.setTabOrder(
+                    self._table.cellWidget(row - 1, 1), label_edit
+                )
 
         layout.addWidget(self._table)
 
         button_layout = QtWidgets.QHBoxLayout()
         reset_button = QtWidgets.QPushButton(self.tr("重置"))
         reset_button.setStyleSheet(get_cancel_btn_style())
+        reset_button.setAutoDefault(False)
         reset_button.clicked.connect(self._on_reset)
 
         cancel_button = QtWidgets.QPushButton(self.tr("取消"))
@@ -330,6 +357,52 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
         button_layout.addWidget(cancel_button)
         button_layout.addWidget(ok_button)
         layout.addLayout(button_layout)
+        self.setTabOrder(label_edit, reset_button)
+        self.setTabOrder(reset_button, cancel_button)
+        self.setTabOrder(cancel_button, ok_button)
+
+    def _resize_to_contents(self) -> None:
+        """Fit the initial mappings and rows within the available screen."""
+        self.ensurePolished()
+        self.layout().activate()
+        text_width = max(
+            self._table.cellWidget(row, 1)
+            .fontMetrics()
+            .horizontalAdvance(self._table.cellWidget(row, 1).text())
+            for row in range(self.PAGE_SIZE)
+        )
+        margins = self.layout().contentsMargins()
+        width = max(
+            520,
+            self.sizeHint().width(),
+            text_width
+            + self._table.columnWidth(0)
+            + margins.left()
+            + margins.right()
+            + self._table.verticalScrollBar().sizeHint().width()
+            + 36,
+        )
+        height = (
+            self.sizeHint().height()
+            - self._table.sizeHint().height()
+            + self._table.verticalHeader().length()
+            + self._table.horizontalHeader().height()
+            + 2 * self._table.frameWidth()
+            + 4
+        )
+        available = self.screen().availableGeometry()
+        self.resize(
+            min(width, int(available.width() * 0.9)),
+            min(height, int(available.height() * 0.9)),
+        )
+
+    def _focus_next_row(self, row: int) -> None:
+        """Focus and select the next label, wrapping after digit nine."""
+        next_row = (row + 1) % self.PAGE_SIZE
+        self._table.scrollToItem(self._table.item(next_row, 0))
+        editor = self._table.cellWidget(next_row, 1)
+        editor.setFocus(QtCore.Qt.FocusReason.TabFocusReason)
+        editor.selectAll()
 
     def _update_table(self) -> None:
         """Update input widgets from current shortcut mappings."""
@@ -341,10 +414,15 @@ class DigitRenameShortcutDialog(QtWidgets.QDialog):
             label_edit.blockSignals(True)
             data = self.rename_shortcuts.get(row)
             label_edit.setText(data.get("label", "") if data else "")
+            label_edit.setCursorPosition(0)
+            label_edit.setToolTip(f"<qt>{html.escape(label_edit.text())}</qt>")
             label_edit.blockSignals(False)
 
     def _on_label_changed(self, index: int, text: str) -> None:
         """Update the in-memory mapping when a label field changes."""
+        self._table.cellWidget(index, 1).setToolTip(
+            f"<qt>{html.escape(text)}</qt>"
+        )
         text = (text or "").strip()
         if text:
             self.rename_shortcuts[index] = {"label": text}

@@ -136,6 +136,19 @@ class ThumbnailFiltersDialog(QtWidgets.QDialog):
         super().accept()
 
 
+class ThumbnailFeedbackLabel(QtWidgets.QLabel):
+    """Reserve space for feedback only while a message is present."""
+
+    def setText(self, text: str) -> None:
+        """Display a complete message without stretching the search toolbar."""
+        super().setText(text)
+        self.setVisible(bool(text))
+
+    def clear(self) -> None:
+        """Remove both the message and its layout space."""
+        self.setText("")
+
+
 class AdvancedThumbnailControls(QtWidgets.QWidget):
     """Keep query changes, manual review actions and rendering separate."""
 
@@ -146,15 +159,26 @@ class AdvancedThumbnailControls(QtWidgets.QWidget):
     def __init__(
         self, query: ThumbnailQuery, width: int, parent: QtWidgets.QWidget
     ) -> None:
-        """Create three compact control rows above the thumbnail view."""
+        """Create two compact control rows above the thumbnail view."""
         super().__init__(parent)
         self.query = query
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(3)
         search = QtWidgets.QHBoxLayout()
         self.filename = QtWidgets.QLineEdit(query.filename)
         self.filename.setPlaceholderText(self.tr("Search image filename"))
+        self.filename.setClearButtonEnabled(True)
         search.addWidget(self.filename, 1)
+        self.locate_button = QtWidgets.QPushButton(self.tr("Locate selected"))
+        self.locate_button.setToolTip(
+            self.tr(
+                "Select one search result, then confirm to clear the filename "
+                "search and jump to its page. Other filters and sorting stay."
+            )
+        )
+        self.locate_button.setEnabled(False)
+        search.addWidget(self.locate_button)
         self.sort = QtWidgets.QComboBox()
         for text, key in (
             (self.tr("Image / Shape order"), "original"),
@@ -207,16 +231,16 @@ class AdvancedThumbnailControls(QtWidgets.QWidget):
             lambda: self.status_requested.emit(self.state_choice.currentData())
         )
         row.addWidget(self.mark_button)
-        self.feedback = QtWidgets.QLabel()
+        self.feedback = ThumbnailFeedbackLabel()
         self.feedback.setWordWrap(True)
-        row.addWidget(self.feedback, 1)
-        root.addLayout(row)
-        display = QtWidgets.QHBoxLayout()
+        self.feedback.hide()
+        display = row
+        display.addSpacing(12)
         display.addWidget(QtWidgets.QLabel(self.tr("Card size")))
         self.size_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.size_slider.setRange(160, 520)
         self.size_slider.setValue(width)
-        self.size_slider.setMaximumWidth(180)
+        self.size_slider.setFixedWidth(100)
         display.addWidget(self.size_slider)
         self.context_mode = QtWidgets.QComboBox()
         self.context_mode.addItem(self.tr("With context"), "context")
@@ -233,8 +257,8 @@ class AdvancedThumbnailControls(QtWidgets.QWidget):
         self.box = QtWidgets.QCheckBox(self.tr("Show target boundary"))
         display.addWidget(self.box)
         display.addStretch(1)
-        display.addWidget(QtWidgets.QLabel(self.tr("Space: large preview")))
         root.addLayout(display)
+        root.addWidget(self.feedback)
         self.context_mode.currentIndexChanged.connect(self._display_changed)
         self.padding.valueChanged.connect(self._display_changed)
         self.box.toggled.connect(self._display_changed)
@@ -265,6 +289,13 @@ class AdvancedThumbnailControls(QtWidgets.QWidget):
             review=self.review_filter.currentData(),
         )
         self.query_changed.emit(self.query)
+
+    def clear_filename(self) -> None:
+        """Clear filename typing without triggering a page-one reload."""
+        self._search_timer.stop()
+        with QtCore.QSignalBlocker(self.filename):
+            self.filename.clear()
+        self.query = replace(self.query, filename="")
 
     def edit_filters(self) -> None:
         """Apply an accepted attribute dialog as a single query change."""

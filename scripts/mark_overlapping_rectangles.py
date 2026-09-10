@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
-"""Mark nested and near-duplicate rectangles with the label ``dele``.
+"""Mark overlapping near-duplicate rectangles in annotation JSON files.
 
-The marker follows three deterministic rules:
+The marker flags a rectangle pair as a duplicate annotation when both
+conditions hold:
 
-1. When the smaller rectangle is at least 98 percent contained by the
-   larger rectangle, mark the larger rectangle.
-2. When two rectangles have IoU greater than or equal to 0.95, mark the
-   larger rectangle. Equal-area ties mark the later JSON entry.
-3. When rectangles align at the top and horizontally, have similar widths,
-   and the larger rectangle extends downward substantially, mark it.
+1. Containment: the smaller rectangle is at least 70 percent contained
+   by the larger rectangle (intersection over smaller-box area).
+2. Comparable size: the smaller-box area is at least 20 percent of the
+   larger-box area, which excludes legitimate deep hierarchies such as
+   a face box inside a person box.
 
-All shapes and their metadata are retained; only marked labels change.
-Rectangles already labeled ``dele`` do not participate in comparisons.
+The larger rectangle of a flagged pair gets its ``label`` rewritten to
+``dele`` (configurable). Shapes are never deleted and coordinates are
+never touched. Equal-area ties mark the later JSON entry.
 
-Images are scanned first. Their filename stems are matched to JSON filename
-stems under a separate annotation directory. Only JSON files whose ``shapes``
-arrays actually change are written to the output directory; source JSON files
-are never modified.
+Images are scanned first. Their filename stems are matched to JSON
+filename stems under a separate annotation directory. Only JSON files
+whose ``shapes`` arrays actually change are written to the output
+directory; source JSON files are never modified.
 """
 
 from __future__ import annotations
@@ -34,16 +35,19 @@ IMAGE_SUFFIXES = frozenset(
     {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
 )
 
+DEFAULT_CONTAINMENT_THRESHOLD = 0.70
+DEFAULT_MIN_AREA_RATIO = 0.20
+DEFAULT_MARK_LABEL = "dele"
+
 
 @dataclass(frozen=True)
-class MarkingEvidence:
-    """Explain why one rectangle is labeled dele relative to another."""
+class MarkEvidence:
+    """Explain why one rectangle is marked in favor of another."""
 
     marked_index: int
     kept_index: int
-    reason: str
     containment: float
-    iou: float
+    area_ratio: float
     marked_label: str
     kept_label: str
 
@@ -80,85 +84,56 @@ def intersection_area(left: BBox, right: BBox) -> float:
 
 
 def pair_metrics(left: BBox, right: BBox) -> Tuple[float, float]:
-    """Return smaller-box containment and IoU for a bbox pair."""
+    """Return smaller-box containment and area ratio for a bbox pair."""
     left_area = bbox_area(left)
     right_area = bbox_area(right)
     intersection = intersection_area(left, right)
     smaller_area = min(left_area, right_area)
-    union = left_area + right_area - intersection
+    larger_area = max(left_area, right_area)
     containment = intersection / smaller_area if smaller_area > 0.0 else 0.0
-    iou = intersection / union if union > 0.0 else 0.0
-    return containment, iou
+    area_ratio = smaller_area / larger_area if larger_area > 0.0 else 0.0
+    return containment, area_ratio
 
 
-def top_aligned_downward(small: BBox, large: BBox) -> bool:
-    """Check for a top-aligned small box above a taller body-like box.
-
-    Args:
-        small: The rectangle with smaller area.
-        large: The rectangle with larger area.
-
-    Returns:
-        Whether all alignment, width, and downward-extension limits pass.
-    """
-    small_width = small[2] - small[0]
-    small_height = small[3] - small[1]
-    large_width = large[2] - large[0]
-    large_height = large[3] - large[1]
-    overlap_width = max(0.0, min(small[2], large[2]) - max(small[0], large[0]))
-    center_offset = abs((small[0] + small[2] - large[0] - large[2]) / 2.0)
-    return (
-        abs(large[1] - small[1]) / small_height <= 0.10
-        and center_offset / max(small_width, large_width) <= 0.15
-        and overlap_width / small_width >= 0.80
-        and 0.75 <= large_width / small_width <= 1.60
-        and large_height / small_height >= 1.80
-        and (large[3] - small[3]) / small_height >= 0.70
-    )
-
-
-def _kept_and_marked(
+def _marked_and_kept(
     left_index: int,
     left_bbox: BBox,
     right_index: int,
     right_bbox: BBox,
 ) -> Tuple[int, int]:
-    """Choose a reference and marking target, preferring the smaller bbox."""
+    """Choose a deterministic duplicate, marking the larger bbox."""
     left_key = (bbox_area(left_bbox), left_index)
     right_key = (bbox_area(right_bbox), right_index)
     if left_key <= right_key:
-        return left_index, right_index
-    return right_index, left_index
+        return right_index, left_index
+    return left_index, right_index
 
 
 def find_marks(
     shapes: Sequence[Dict[str, Any]],
-    containment_threshold: float = 0.98,
-    iou_threshold: float = 0.95,
+    containment_threshold: float = DEFAULT_CONTAINMENT_THRESHOLD,
+    min_area_ratio: float = DEFAULT_MIN_AREA_RATIO,
     same_label: bool = False,
-) -> Tuple[List[int], List[MarkingEvidence]]:
-    """Find rectangle indexes to label dele using the configured rules.
+) -> Tuple[List[int], List[MarkEvidence]]:
+    """Find rectangle indexes to mark using the configured rules.
 
     Args:
         shapes: Annotation shapes in their original JSON order.
         containment_threshold: Minimum smaller-box containment ratio.
-        iou_threshold: Minimum intersection-over-union ratio.
+        min_area_ratio: Minimum smaller-to-larger area ratio.
         same_label: When true, compare only rectangles with equal labels.
 
     Returns:
-        Sorted unique marking indexes and evidence for every triggering pair.
+        Sorted unique mark indexes and evidence for every triggering
+        pair.
     """
     rectangles = [
         (index, shape, rectangle_bbox(shape))
         for index, shape in enumerate(shapes)
     ]
-    valid = [
-        item
-        for item in rectangles
-        if item[2] is not None and item[1].get("label") != "dele"
-    ]
+    valid = [item for item in rectangles if item[2] is not None]
     marked_indexes = set()
-    evidence: List[MarkingEvidence] = []
+    evidence: List[MarkEvidence] = []
 
     for position, (left_index, left_shape, left_bbox) in enumerate(valid):
         assert left_bbox is not None
@@ -168,41 +143,26 @@ def find_marks(
                 "label"
             ):
                 continue
-            containment, iou = pair_metrics(left_bbox, right_bbox)
-            nested = containment >= containment_threshold
-            high_iou = iou >= iou_threshold
-            kept_index, marked_index = _kept_and_marked(
+            containment, area_ratio = pair_metrics(left_bbox, right_bbox)
+            if containment < containment_threshold:
+                continue
+            if area_ratio < min_area_ratio:
+                continue
+            marked_index, kept_index = _marked_and_kept(
                 left_index,
                 left_bbox,
                 right_index,
                 right_bbox,
             )
-            small_bbox, large_bbox = (
-                (left_bbox, right_bbox)
-                if kept_index == left_index
-                else (right_bbox, left_bbox)
-            )
-            downward = top_aligned_downward(small_bbox, large_bbox)
-            if not nested and not high_iou and not downward:
-                continue
             marked_indexes.add(marked_index)
-            kept_shape = shapes[kept_index]
             marked_shape = shapes[marked_index]
-            if nested and high_iou:
-                reason = "nested_and_iou"
-            elif nested:
-                reason = "nested"
-            elif high_iou:
-                reason = "iou"
-            else:
-                reason = "top_aligned_downward"
+            kept_shape = shapes[kept_index]
             evidence.append(
-                MarkingEvidence(
+                MarkEvidence(
                     marked_index=marked_index,
                     kept_index=kept_index,
-                    reason=reason,
                     containment=containment,
-                    iou=iou,
+                    area_ratio=area_ratio,
                     marked_label=str(marked_shape.get("label", "")),
                     kept_label=str(kept_shape.get("label", "")),
                 )
@@ -211,35 +171,39 @@ def find_marks(
     return sorted(marked_indexes), evidence
 
 
-def clean_shapes(
+def mark_shapes(
     shapes: Sequence[Dict[str, Any]],
-    containment_threshold: float = 0.98,
-    iou_threshold: float = 0.95,
+    containment_threshold: float = DEFAULT_CONTAINMENT_THRESHOLD,
+    min_area_ratio: float = DEFAULT_MIN_AREA_RATIO,
     same_label: bool = False,
-) -> Tuple[List[Dict[str, Any]], List[int], List[MarkingEvidence]]:
-    """Return shapes with matching larger rectangles labeled ``dele``.
-
-    Input shapes are not mutated. Shape order, count, and all other fields
-    are preserved. The second return value contains changed shape indexes.
-    """
+    mark_label: str = DEFAULT_MARK_LABEL,
+) -> Tuple[List[Dict[str, Any]], List[int], List[MarkEvidence]]:
+    """Return shapes with duplicate labels rewritten and mark indexes."""
     marked, evidence = find_marks(
         shapes,
         containment_threshold=containment_threshold,
-        iou_threshold=iou_threshold,
+        min_area_ratio=min_area_ratio,
         same_label=same_label,
     )
-    marked_set = set(marked)
-    cleaned = [
-        dict(shape, label="dele") if index in marked_set else shape
-        for index, shape in enumerate(shapes)
+    changed = [
+        index for index in marked if shapes[index].get("label") != mark_label
     ]
-    return cleaned, marked, evidence
+    if not changed:
+        return list(shapes), [], evidence
+    changed_set = set(changed)
+    updated: List[Dict[str, Any]] = []
+    for index, shape in enumerate(shapes):
+        if index in changed_set:
+            shape = dict(shape)
+            shape["label"] = mark_label
+        updated.append(shape)
+    return updated, changed, evidence
 
 
 def _write_json_atomically(path: Path, data: Dict[str, Any]) -> None:
     """Write one generated JSON through a temporary sibling file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(str(path) + ".cleanup.tmp")
+    temporary = Path(str(path) + ".mark.tmp")
     temporary.write_text(
         json.dumps(data, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
@@ -251,11 +215,12 @@ def process_file(
     source: Path,
     destination: Path,
     containment_threshold: float,
-    iou_threshold: float,
+    min_area_ratio: float,
     same_label: bool,
+    mark_label: str,
     overwrite: bool,
-) -> Tuple[int, List[MarkingEvidence]]:
-    """Write a marked copy only when at least one label changes."""
+) -> Tuple[int, List[MarkEvidence]]:
+    """Write a marked copy only when at least one label is rewritten."""
     if source.resolve() == destination.resolve():
         raise ValueError("输出路径与源文件相同: {}".format(destination))
     data = json.loads(source.read_text(encoding="utf-8"))
@@ -264,21 +229,22 @@ def process_file(
     shapes = data.get("shapes")
     if not isinstance(shapes, list):
         return 0, []
-    cleaned, marked, evidence = clean_shapes(
+    updated, changed, evidence = mark_shapes(
         shapes,
         containment_threshold=containment_threshold,
-        iou_threshold=iou_threshold,
+        min_area_ratio=min_area_ratio,
         same_label=same_label,
+        mark_label=mark_label,
     )
-    if not marked:
+    if not changed:
         return 0, evidence
     if destination.exists() and not overwrite:
         raise FileExistsError(
             "输出已存在；使用 --overwrite 允许覆盖: {}".format(destination)
         )
-    data["shapes"] = cleaned
+    data["shapes"] = updated
     _write_json_atomically(destination, data)
-    return len(marked), evidence
+    return len(changed), evidence
 
 
 def collect_image_paths(input_path: Path) -> Iterable[Path]:
@@ -322,9 +288,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     """Parse command-line options."""
     parser = argparse.ArgumentParser(
         description=(
-            "先按图片文件名匹配同名 JSON，将嵌套、顶部对齐且向下延伸"
-            "或 IoU>=阈值的较大框标签改为 dele；保留所有框及其他字段，"
-            "仅为发生变化的标注生成新 JSON。"
+            "先按图片文件名匹配同名 JSON，再将 containment 达标且面积比 "
+            "达标的重叠对中较大框的 label 改为标记值；仅为发生变化的标注"
+            "生成新 JSON，源 JSON 永不修改。"
         )
     )
     parser.add_argument("--images", required=True, help="图片文件或目录")
@@ -337,14 +303,21 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--containment-threshold",
         type=float,
-        default=0.98,
-        help="较小框的最小包含率，默认 0.98",
+        default=DEFAULT_CONTAINMENT_THRESHOLD,
+        help="较小框的最小包含率，默认 0.70",
     )
     parser.add_argument(
-        "--iou-threshold",
+        "--min-area-ratio",
         type=float,
-        default=0.95,
-        help="重复框 IoU 阈值，默认 0.95",
+        default=DEFAULT_MIN_AREA_RATIO,
+        help="较小框与大框的最小面积比，默认 0.20",
+    )
+    parser.add_argument(
+        "--mark-label",
+        default=DEFAULT_MARK_LABEL,
+        help='重叠对中较大框替换后的 label，默认 "{}"'.format(
+            DEFAULT_MARK_LABEL
+        ),
     )
     parser.add_argument(
         "--same-label",
@@ -366,7 +339,7 @@ def _validate_threshold(value: float, name: str) -> None:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    """Run the cleaner and return a process exit code."""
+    """Run the marker and return a process exit code."""
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")
@@ -375,7 +348,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         _validate_threshold(
             args.containment_threshold, "--containment-threshold"
         )
-        _validate_threshold(args.iou_threshold, "--iou-threshold")
+        _validate_threshold(args.min_area_ratio, "--min-area-ratio")
     except ValueError as exc:
         print("错误：{}".format(exc), file=sys.stderr)
         return 2
@@ -428,8 +401,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 source,
                 destination,
                 containment_threshold=args.containment_threshold,
-                iou_threshold=args.iou_threshold,
+                min_area_ratio=args.min_area_ratio,
                 same_label=args.same_label,
+                mark_label=args.mark_label,
                 overwrite=args.overwrite,
             )
         except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
@@ -440,16 +414,19 @@ def main(argv: Optional[List[str]] = None) -> int:
             continue
         changed_files += 1
         marked_shapes += count
-        print("生成 {}: 标记 {} 个框为 dele".format(destination, count))
+        print(
+            "生成 {}: 标记 {} 个框为 {}".format(
+                destination, count, args.mark_label
+            )
+        )
         for item in evidence:
             print(
-                "  标记 #{} 为 dele, 参照 #{} | {} | containment={:.4f} "
-                "IoU={:.4f} | 原标签 {} -> dele | 参照标签 {}".format(
+                "  标记 #{}, 保留 #{} | containment={:.4f} "
+                "area_ratio={:.4f} | {} -> {}".format(
                     item.marked_index,
                     item.kept_index,
-                    item.reason,
                     item.containment,
-                    item.iou,
+                    item.area_ratio,
                     item.marked_label,
                     item.kept_label,
                 )
@@ -467,13 +444,14 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     print(
         "扫描 {} 张图片（{} 个唯一文件名） | 匹配 {} 个 JSON | "
-        "生成 {} 个新 JSON | 标记 {} 个框为 dele | 缺失 {} 个 | "
+        "生成 {} 个新 JSON | 标记 {} 个框为 {} | 缺失 {} 个 | "
         "同名冲突 {} 个 | 失败 {} 个".format(
             len(image_paths),
             len(image_stems),
             matched_files,
             changed_files,
             marked_shapes,
+            args.mark_label,
             len(missing_stems),
             len(ambiguous_stems),
             failures,

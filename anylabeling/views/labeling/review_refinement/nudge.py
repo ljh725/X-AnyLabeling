@@ -57,7 +57,7 @@ class NudgeBurstTracker:
         is_new = (
             self._key != key
             or self._timestamp is None
-            or now - self._timestamp > self.burst_seconds
+            or now - self._timestamp >= self.burst_seconds
         )
         self._key = key
         self._timestamp = now

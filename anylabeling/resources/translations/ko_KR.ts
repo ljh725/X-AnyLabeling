@@ -6632,6 +6632,14 @@ Do you want to continue?</source>
   </context>
   <context>
     <name>DatasetLabelThumbnailWindow</name>
+    <message><source>History</source><translation>기록</translation></message>
+    <message><source>First page</source><translation>첫 페이지</translation></message>
+    <message><source>Last page</source><translation>마지막 페이지</translation></message>
+    <message><source>Page number (press Enter to jump)</source><translation>페이지 번호 (Enter로 이동)</translation></message>
+    <message><source>Page number</source><translation>페이지 번호</translation></message>
+    <message><source>Go</source><translation>이동</translation></message>
+    <message><source>Selected object no longer exists. Refresh and search again.</source><translation>선택한 객체가 없습니다. 새로 고친 후 다시 검색하세요.</translation></message>
+    <message><source>Selected object no longer matches the current filters.</source><translation>선택한 객체가 현재 필터와 일치하지 않습니다.</translation></message>
     <message><source>Dataset Label Thumbnails</source><translation type="unfinished"></translation></message>
     <message><source>Label:</source><translation type="unfinished"></translation></message>
     <message><source>Previous</source><translation type="unfinished"></translation></message>
@@ -6845,6 +6853,8 @@ Recovery manifest: %11</source><translation type="unfinished"></translation></me
 </context>
 <context>
     <name>AdvancedThumbnailControls</name>
+    <message><source>Locate selected</source><translation>선택 카드로 이동</translation></message>
+    <message><source>Select one search result, then confirm to clear the filename search and jump to its page. Other filters and sorting stay.</source><translation>검색 결과 하나를 선택하고 확인하면 파일명 검색을 지우고 해당 페이지로 이동합니다. 다른 필터와 정렬은 유지됩니다.</translation></message>
     <message>
         <source>Search image filename</source>
         <translation type="unfinished"></translation>
@@ -6937,4 +6947,240 @@ Recovery manifest: %11</source><translation type="unfinished"></translation></me
         <translation type="unfinished"></translation>
     </message>
 </context>
+  <context>
+    <name>RectangleWorkflow</name>
+    <message>
+      <source>Rectangle workbench</source>
+      <translation>사각형 작업대</translation>
+    </message>
+    <message>
+      <source>Four extremes</source>
+      <translation>네 극점으로 그리기</translation>
+    </message>
+    <message>
+      <source>Submit draft</source>
+      <translation>초안 확정</translation>
+    </message>
+    <message>
+      <source>Back one boundary</source>
+      <translation>한 변 되돌리기</translation>
+    </message>
+    <message>
+      <source>Refine rectangle</source>
+      <translation>상자 수정</translation>
+    </message>
+    <message>
+      <source>Continue drawing</source>
+      <translation>계속 그리기</translation>
+    </message>
+    <message>
+      <source>Local focus</source>
+      <translation>부분 확대</translation>
+    </message>
+    <message>
+      <source>Top</source>
+      <translation>위</translation>
+    </message>
+    <message>
+      <source>Right</source>
+      <translation>오른쪽</translation>
+    </message>
+    <message>
+      <source>Bottom</source>
+      <translation>아래</translation>
+    </message>
+    <message>
+      <source>Left</source>
+      <translation>왼쪽</translation>
+    </message>
+    <message>
+      <source>Finish refinement</source>
+      <translation>수정 완료</translation>
+    </message>
+    <message>
+      <source>Next object</source>
+      <translation>다음 객체</translation>
+    </message>
+    <message>
+      <source>Fit object on entry</source>
+      <translation>진입 시 객체 확대</translation>
+    </message>
+    <message>
+      <source>Fit object</source>
+      <translation>객체 확대</translation>
+    </message>
+    <message>
+      <source>View surroundings</source>
+      <translation>주변 보기</translation>
+    </message>
+    <message>
+      <source>Draft ready: submit or go back.</source>
+      <translation>네 변 지정 완료: 확정하거나 되돌리세요.</translation>
+    </message>
+    <message>
+      <source>Click boundary {step}/4: {edge}</source>
+      <translation>극점을 클릭하세요 {step}/4: {edge}</translation>
+    </message>
+    <message>
+      <source>Choose a drawing tool or select one rectangle to refine.</source>
+      <translation>그리기 도구를 선택하거나 수정할 사각형 하나를 선택하세요.</translation>
+    </message>
+    <message>
+      <source>Click a boundary point to adjust. Use buttons or Tab for 1px/5px nudges.</source>
+      <translation>경계점을 클릭하여 조정하세요. 버튼이나 Tab으로 변을 선택하면 1px/5px씩 미세 조정할 수 있습니다.</translation>
+    </message>
+    <message>
+      <source>right</source>
+      <translation>오른쪽</translation>
+    </message>
+    <message>
+      <source>down</source>
+      <translation>아래쪽</translation>
+    </message>
+    <message>
+      <source>{edge}: delta {delta:+.1f}px | 1px / Shift 5px | Wheel up: {direction}</source>
+      <translation>{edge} 변: 이동 {delta:+.1f}px | 1px / Shift 5px | 위로 스크롤: {direction}</translation>
+    </message>
+    <message>
+      <source>Rejected: image bounds or minimum size.</source>
+      <translation>변경 거부: 이미지 경계 또는 최소 크기 제한.</translation>
+    </message>
+    <message>
+      <source>Navigation failed; current edits restored.</source>
+      <translation>이미지 전환 실패. 현재 수정 내용을 복원했습니다.</translation>
+    </message>
+    <message>
+      <source>Invalid rectangle: redraw it with the rectangle tool.</source>
+      <translation>잘못된 사각형입니다. 사각형 도구로 다시 그리세요.</translation>
+    </message>
+    <message>
+      <source>Object display size</source>
+      <translation>객체 표시 긴 변</translation>
+    </message>
+    <message>
+      <source>Maximum object zoom</source>
+      <translation>객체 최대 확대 배율</translation>
+    </message>
+    <message>
+      <source>Workflow</source>
+      <translation>작업 흐름</translation>
+    </message>
+  </context>
+  <context>
+    <name>SettingsDialog</name>
+    <message>
+      <source>Four extremes</source>
+      <translation>네 극점으로 그리기</translation>
+    </message>
+    <message>
+      <source>Submit draft</source>
+      <translation>초안 확정</translation>
+    </message>
+    <message>
+      <source>Back one boundary</source>
+      <translation>한 변 되돌리기</translation>
+    </message>
+    <message>
+      <source>Refine rectangle</source>
+      <translation>상자 수정</translation>
+    </message>
+    <message>
+      <source>Continue drawing</source>
+      <translation>계속 그리기</translation>
+    </message>
+    <message>
+      <source>Local focus</source>
+      <translation>부분 확대</translation>
+    </message>
+    <message>
+      <source>Finish refinement</source>
+      <translation>수정 완료</translation>
+    </message>
+    <message>
+      <source>Next object</source>
+      <translation>다음 객체</translation>
+    </message>
+    <message>
+      <source>View surroundings</source>
+      <translation>주변 보기</translation>
+    </message>
+    <message>
+      <source>Fit object</source>
+      <translation>객체 확대</translation>
+    </message>
+    <message>
+      <source>Rectangle workbench</source>
+      <translation>사각형 작업대</translation>
+    </message>
+    <message>
+      <source>Fit object on entry</source>
+      <translation>진입 시 객체 확대</translation>
+    </message>
+    <message>
+      <source>Object display size</source>
+      <translation>객체 표시 긴 변</translation>
+    </message>
+    <message>
+      <source>Maximum object zoom</source>
+      <translation>객체 최대 확대 배율</translation>
+    </message>
+    <message>
+      <source>Workflow</source>
+      <translation>작업 흐름</translation>
+    </message>
+  </context>
+  <context>
+    <name>SettingsDialog</name>
+    <message>
+      <source>Enable four-extreme creation and explicit single-edge refinement.</source>
+      <translation>네 극점 생성 및 명시적인 단일 변 수정을 활성화합니다.</translation>
+    </message>
+    <message>
+      <source>Adjust the view once when entering a rectangle; preserve manual zoom during edits.</source>
+      <translation>사각형 진입 시 한 번만 뷰를 조정하고 편집 중 수동 확대를 유지합니다.</translation>
+    </message>
+    <message>
+      <source>Desired display length of the object's longest side in logical pixels.</source>
+      <translation>객체의 가장 긴 변에 대한 목표 논리 픽셀 길이입니다.</translation>
+    </message>
+    <message>
+      <source>Limit automatic object magnification while retaining surrounding context.</source>
+      <translation>주변 영역을 유지하면서 객체의 자동 확대 배율을 제한합니다.</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleEdgeClick</name>
+    <message>
+      <source>Top</source>
+      <translation>위</translation>
+    </message>
+    <message>
+      <source>Right</source>
+      <translation>오른쪽</translation>
+    </message>
+    <message>
+      <source>Bottom</source>
+      <translation>아래</translation>
+    </message>
+    <message>
+      <source>Left</source>
+      <translation>왼쪽</translation>
+    </message>
+    <message>
+      <source>Click to move the {edge} edge here.</source>
+      <translation>클릭하면 {edge} 변을 이 위치로 이동합니다.</translation>
+    </message>
+    <message>
+      <source>Rejected: image bounds or minimum size.</source>
+      <translation>거부됨: 이미지 범위를 벗어나거나 최소 크기보다 작습니다.</translation>
+    </message>
+    <message>
+      <source>Region boundary; rectangle unchanged.</source>
+      <translation>영역 경계이므로 사각형을 변경하지 않았습니다.</translation>
+    </message>
+    <message>
+      <source>{edge} edge moved to click (delta {delta:+.1f}px).</source>
+      <translation>{edge} 변을 클릭 위치로 이동했습니다（변위 {delta:+.1f}px）.</translation>
+    </message>
+  </context>
 </TS>
