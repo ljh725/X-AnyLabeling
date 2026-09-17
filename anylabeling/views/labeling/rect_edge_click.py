@@ -1,5 +1,7 @@
 """Classify finite rectangle click regions without depending on Qt."""
 
+from __future__ import annotations
+
 import math
 from dataclasses import dataclass
 
@@ -7,12 +9,33 @@ Box = tuple[float, float, float, float]
 Point = tuple[float, float]
 
 # Trial values: outer width/height multiplier and screen-space band half-width.
-EFFECTIVE_RANGE_FACTOR = 2.0
+EFFECTIVE_RANGE_FACTOR = 3.0
 DEAD_BAND_SCREEN_PX = 6.0
 DEAD_BAND_SHORT_SIDE_CAP = 0.05
 REASON_DEAD_ZONE = "dead_zone"
 REASON_OUT_OF_RANGE = "out_of_range"
 REASON_INVALID_BOX = "invalid_box"
+
+
+def classify_axis(box: Box, point: Point, axis: str) -> ClickDecision:
+    """Classify a click by the selected axis and the box center half.
+
+    The axis shortcut deliberately removes the old edge hit area and center
+    dead-zone: X selects left/right from the committed center, while Y selects
+    top/bottom.  The caller still validates image bounds and minimum size.
+    """
+    left, top, right, bottom = box
+    if (
+        axis not in {"x", "y"}
+        or not all(math.isfinite(value) for value in box)
+        or right <= left
+        or bottom <= top
+    ):
+        return ClickDecision(None, REASON_INVALID_BOX)
+    x, y = point
+    if axis == "x":
+        return ClickDecision("left" if x <= (left + right) / 2 else "right")
+    return ClickDecision("top" if y <= (top + bottom) / 2 else "bottom")
 
 
 @dataclass(frozen=True)
@@ -82,3 +105,14 @@ def proposed_box(box: Box, edge: str, point: Point) -> Box:
     coordinates = list(box)
     coordinates[index] = point[index % 2]
     return tuple(coordinates)
+
+
+def proposed_corner_box(box: Box, corner: int, point: Point) -> Box:
+    """Move the explicitly selected canonical corner without flipping it."""
+    horizontal, vertical = (
+        ("left", "top"),
+        ("right", "top"),
+        ("right", "bottom"),
+        ("left", "bottom"),
+    )[corner]
+    return proposed_box(proposed_box(box, horizontal, point), vertical, point)

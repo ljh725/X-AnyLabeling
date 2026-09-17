@@ -13,7 +13,13 @@ from typing import Any
 from .types import DatasetThumbnailPage, DatasetThumbnailRef
 
 REVIEW_STATES = ("unreviewed", "confirmed", "needs_edit", "skipped")
-SORT_MODES = ("original", "small_pixels", "small_relative", "aspect_outliers")
+SORT_MODES = (
+    "original",
+    "spatial_adjacent",
+    "small_pixels",
+    "small_relative",
+    "aspect_outliers",
+)
 
 
 def finite_number(value: Any) -> float | None:
@@ -130,6 +136,92 @@ def _path(value: str) -> str:
     return osp.normcase(osp.abspath(value))
 
 
+def _bbox_iou(first: tuple[float, ...], second: tuple[float, ...]) -> float:
+    """Return IoU for two valid axis-aligned boxes."""
+    left = max(first[0], second[0])
+    top = max(first[1], second[1])
+    right = min(first[2], second[2])
+    bottom = min(first[3], second[3])
+    intersection = max(0.0, right - left) * max(0.0, bottom - top)
+    first_area = max(0.0, first[2] - first[0]) * max(
+        0.0, first[3] - first[1]
+    )
+    second_area = max(0.0, second[2] - second[0]) * max(
+        0.0, second[3] - second[1]
+    )
+    union = first_area + second_area - intersection
+    return intersection / union if union > 0 else 0.0
+
+
+def _spatial_order(rows: list[tuple]) -> list[tuple]:
+    """Order rows by image, then a stable nearest-neighbour walk.
+
+    The result is a display order only.  It never changes Shape array order or
+    object identity.  Invalid boxes are retained at the end of their image
+    group in their original order.
+    """
+    groups: dict[tuple[int, str], list[tuple]] = {}
+    for row in rows:
+        groups.setdefault((int(row[2]), str(row[0])), []).append(row)
+
+    result: list[tuple] = []
+    for group in groups.values():
+        valid: list[tuple] = []
+        invalid: list[tuple] = []
+        for row in group:
+            bbox = row[6:10]
+            if all(finite_number(value) is not None for value in bbox):
+                box = tuple(float(value) for value in bbox)
+                if box[2] > box[0] and box[3] > box[1]:
+                    valid.append(row)
+                    continue
+            invalid.append(row)
+
+        ordered: list[tuple] = []
+        if valid:
+            current = min(
+                valid,
+                key=lambda row: (
+                    (float(row[7]) + float(row[9])) / 2.0,
+                    (float(row[6]) + float(row[8])) / 2.0,
+                    int(row[3]),
+                    str(row[4]),
+                ),
+            )
+            remaining = [row for row in valid if row is not current]
+            ordered.append(current)
+            while remaining:
+                previous = ordered[-1]
+                previous_box = tuple(float(value) for value in previous[6:10])
+
+                def rank(row: tuple) -> tuple[float, float, int, str]:
+                    box = tuple(float(value) for value in row[6:10])
+                    previous_center = (
+                        (previous_box[0] + previous_box[2]) / 2.0,
+                        (previous_box[1] + previous_box[3]) / 2.0,
+                    )
+                    center = (
+                        (box[0] + box[2]) / 2.0,
+                        (box[1] + box[3]) / 2.0,
+                    )
+                    distance = (
+                        center[0] - previous_center[0]
+                    ) ** 2 + (center[1] - previous_center[1]) ** 2
+                    return (
+                        distance,
+                        -_bbox_iou(previous_box, box),
+                        int(row[3]),
+                        str(row[4]),
+                    )
+
+                current = min(remaining, key=rank)
+                remaining.remove(current)
+                ordered.append(current)
+        result.extend(ordered)
+        result.extend(invalid)
+    return result
+
+
 def _query_base(
     conn: sqlite3.Connection, label: str, review_db: str | None
 ) -> tuple[str, list]:
@@ -227,21 +319,39 @@ def query_review_page(
         )
     cte = f"WITH objects AS ({base}), filtered AS (SELECT * FROM objects WHERE {where})"
     params += extra
-    total = conn.execute(
-        cte + " SELECT COUNT(*) FROM filtered", params
-    ).fetchone()[0]
-    if anchor:
-        ranked = (
-            cte
-            + f", ranked AS (SELECT *,row_number() OVER (ORDER BY {order})-1 AS pos FROM filtered) SELECT pos FROM ranked WHERE thumb_path(image_path)=thumb_path(?) AND shape_id=?"
-        )
-        matches = conn.execute(ranked, [*params, *anchor]).fetchall()
-        if len(matches) == 1:
-            offset = int(matches[0][0]) // limit * limit
-    rows = conn.execute(
-        cte + f" SELECT * FROM filtered ORDER BY {order} LIMIT ? OFFSET ?",
-        [*params, limit, offset],
-    ).fetchall()
+    if options.sort == "spatial_adjacent":
+        rows = conn.execute(
+            cte + " SELECT * FROM filtered ORDER BY sort_order,image_path,shape_index",
+            params,
+        ).fetchall()
+        rows = _spatial_order(rows)
+        total = len(rows)
+        if anchor:
+            matches = [
+                index
+                for index, row in enumerate(rows)
+                if _path(str(row[0])) == _path(str(anchor[0]))
+                and str(row[4]) == str(anchor[1])
+            ]
+            if len(matches) == 1:
+                offset = matches[0] // limit * limit
+        rows = rows[offset : offset + limit]
+    else:
+        total = conn.execute(
+            cte + " SELECT COUNT(*) FROM filtered", params
+        ).fetchone()[0]
+        if anchor:
+            ranked = (
+                cte
+                + f", ranked AS (SELECT *,row_number() OVER (ORDER BY {order})-1 AS pos FROM filtered) SELECT pos FROM ranked WHERE thumb_path(image_path)=thumb_path(?) AND shape_id=?"
+            )
+            matches = conn.execute(ranked, [*params, *anchor]).fetchall()
+            if len(matches) == 1:
+                offset = int(matches[0][0]) // limit * limit
+        rows = conn.execute(
+            cte + f" SELECT * FROM filtered ORDER BY {order} LIMIT ? OFFSET ?",
+            [*params, limit, offset],
+        ).fetchall()
     items = tuple(
         DatasetThumbnailRef(
             str(r[0]),

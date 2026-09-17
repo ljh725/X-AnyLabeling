@@ -7181,4 +7181,43 @@ Recovery manifest: %11</source><translation type="unfinished"></translation></me
       <translation>{edge}辺をクリック位置へ移動しました（変位 {delta:+.1f}px）。</translation>
     </message>
   </context>
+<context>
+    <name>DensityRoundReviewWindow</name>
+    <message><source>Density Round Review</source><translation>密度ラウンドレビュー</translation></message>
+    <message><source>No image</source><translation>画像なし</translation></message>
+    <message><source>Previous</source><translation>前へ</translation></message>
+    <message><source>Next</source><translation>次へ</translation></message>
+    <message><source>0 instances</source><translation>0 インスタンス</translation></message>
+    <message><source>New rectangle</source><translation>矩形を作成</translation></message>
+    <message><source>Edit label</source><translation>ラベルを編集</translation></message>
+    <message><source>Duplicate</source><translation>複製</translation></message>
+    <message><source>Delete</source><translation>削除</translation></message>
+    <message><source>Close</source><translation>閉じる</translation></message>
+    <message><source>Round</source><translation>ラウンド</translation></message>
+    <message><source>Limit</source><translation>上限</translation></message>
+    <message><source>Last closed: %s</source><translation>前回終了時: %s</translation></message>
+    <message><source>%d instances</source><translation>%d インスタンス</translation></message>
+    <message><source>Current %d · Next %d</source><translation>現在 %d · 次回 %d</translation></message>
+</context>
+<context>
+    <name>DensityRoundReviewCoordinator</name>
+    <message><source>Finish the current edit first</source><translation>現在の編集を先に完了してください</translation></message>
+    <message><source>Already at the first image</source><translation>先頭の画像です</translation></message>
+    <message><source>Already at the last image</source><translation>最後の画像です</translation></message>
+    <message><source>Select review rectangles first</source><translation>レビューする矩形を選択してください</translation></message>
+    <message><source>Selected objects belong to different rounds</source><translation>選択したオブジェクトは異なるラウンドに属しています</translation></message>
+    <message><source>Pending review-window selection: %d</source><translation>レビューウィンドウへの保留中の選択: %d</translation></message>
+    <message><source>Nothing to redo</source><translation>やり直す操作はありません</translation></message>
+    <message><source>Image change cancelled because annotations were not saved</source><translation>注釈を保存できなかったため画像の切り替えを中止しました</translation></message>
+</context>
+<context>
+    <name>LabelingWidget</name>
+    <message><source>Density Round Review</source><translation>密度ラウンドレビュー</translation></message>
+    <message><source>Toggle the focused density-round review window</source><translation>密度ラウンドレビューウィンドウを切り替えます</translation></message>
+    <message><source>Send Selection to Review Round</source><translation>選択をレビューラウンドへ送る</translation></message>
+    <message><source>Confirm the main selection in the review window</source><translation>メインの選択をレビューウィンドウで確定します</translation></message>
+    <message><source>Density round review is not active</source><translation>密度ラウンドレビューは有効ではありません</translation></message>
+    <message><source>Redo</source><translation>やり直す</translation></message>
+    <message><source>Redo the last density-round review edit</source><translation>直前の密度ラウンドレビュー編集をやり直します</translation></message>
+</context>
 </TS>

@@ -230,10 +230,36 @@ class _RenderTask(QtCore.QRunnable):
         return value, image
 
 
+class _SourceProbe(QtCore.QRunnable):
+    """Read saved-file image revisions outside the GUI thread."""
+
+    def __init__(self, generation: int, paths: tuple, serial: int) -> None:
+        """Retain lightweight paths and the owning query version."""
+        super().__init__()
+        self.generation, self.paths, self.serial = generation, paths, serial
+        self.entries = ()
+        self.signals = _RenderSignals()
+
+    def run(self) -> None:
+        """Report missing files as revisions and always release the worker."""
+        states = {}
+        try:
+            for path in self.paths:
+                try:
+                    stat = os.stat(path)
+                    states[path] = (stat.st_mtime_ns, stat.st_size)
+                except OSError:
+                    states[path] = None
+            self.signals.result.emit((self.generation, self.serial, states))
+        finally:
+            self.signals.finished.emit(self)
+
+
 class ThumbnailRenderer(QtCore.QObject):
     """Schedule at most one page of requests with visible items first."""
 
     result_ready = QtCore.pyqtSignal(object)
+    sources_changed = QtCore.pyqtSignal(object)
 
     def __init__(
         self,
@@ -253,6 +279,10 @@ class ThumbnailRenderer(QtCore.QObject):
         self._requested = set()
         self._pending = OrderedDict()
         self._tasks = {}
+        self._source_states = {}
+        self._probe_serial = 0
+        self._applied_probe = 0
+        self._probe_paths = set()
         self._pool = QtCore.QThreadPool(QtCore.QCoreApplication.instance())
         self._pool.setMaxThreadCount(max(1, int(max_concurrency)))
         self.queue_peak = 0
@@ -271,6 +301,8 @@ class ThumbnailRenderer(QtCore.QObject):
         self._pending.clear()
         self._inflight.clear()
         self._requested.clear()
+        self._source_states.clear()
+        self._probe_paths.clear()
         self._generation += 1
         return self._generation
 
@@ -316,6 +348,58 @@ class ThumbnailRenderer(QtCore.QObject):
             key for key in self._requested if key[:2] not in identities
         }
 
+    def retain(self, refs: Iterable[DatasetThumbnailRef]) -> None:
+        """Forget departed work so incremental pages stay bounded."""
+        identities = {(ref.image_path, ref.shape_id, ref.bbox) for ref in refs}
+        self._requested = {
+            key for key in self._requested if key[:3] in identities
+        }
+        for path in tuple(self._pending):
+            entries = [
+                entry
+                for entry in self._pending[path]
+                if (entry[0].image_path, entry[0].shape_id, entry[0].bbox)
+                in identities
+            ]
+            if entries:
+                self._pending[path] = entries
+            else:
+                del self._pending[path]
+
+    def check_sources(self, paths: Iterable[str]) -> None:
+        """Verify only notified source images without decoding their crops."""
+        self._probe_paths.update(paths)
+        if not self._probe_paths or self._closed or any(isinstance(task, _SourceProbe) for task in self._tasks.values()):
+            return
+        paths = tuple(self._probe_paths)[:100]
+        self._probe_paths.difference_update(paths)
+        self._probe_serial += 1
+        task = _SourceProbe(self._generation, paths, self._probe_serial)
+        self._tasks[id(task)] = task
+        task.signals.result.connect(self._on_sources)
+        task.signals.finished.connect(self._on_task_finished)
+        self._pool.start(task)
+
+    def _on_sources(self, payload: tuple) -> None:
+        """Invalidate only changed source content, ignoring old probes."""
+        generation, serial, states = payload
+        if (
+            self._closed
+            or generation != self._generation
+            or serial < self._applied_probe
+        ):
+            return
+        self._applied_probe = serial
+        changed = [
+            path
+            for path, state in states.items()
+            if path in self._source_states
+            and self._source_states[path] != state
+        ]
+        self._source_states.update(states)
+        if changed:
+            self.sources_changed.emit(changed)
+
     def _start_pending(self) -> None:
         """Submit only available worker slots, never an unbounded Qt queue."""
         while (
@@ -342,6 +426,14 @@ class ThumbnailRenderer(QtCore.QObject):
         if self._closed or result.generation != self._generation:
             return
         if result.key is not None:
+            state = (result.key.image_mtime_ns, result.key.image_size)
+            if (
+                result.ref.image_path in self._source_states
+                and self._source_states[result.ref.image_path] != state
+            ):
+                self.check_sources([result.ref.image_path])
+                return
+            self._source_states[result.ref.image_path] = state
             key = _request_key(
                 result.ref, result.key.size, result.key.crop_policy
             )
@@ -365,6 +457,7 @@ class ThumbnailRenderer(QtCore.QObject):
                 _CLOSING_RENDERERS.discard(self)
                 self.deleteLater()
         else:
+            self.check_sources(())
             self._start_pending()
 
     def close(self) -> None:

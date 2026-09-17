@@ -1,381 +1,389 @@
-language: en_US
-theme: auto  # auto, light, dark
-model_hub: github  # github, modelscope
-device: null  # CPU, GPU
-auto_save: true
-display_label_popup: true
-store_data: false
-keep_prev: false
-keep_prev_scale: false
-keep_prev_viewport: false
-keep_prev_brightness: false
-keep_prev_contrast: false
-auto_use_last_label: false
-auto_use_last_gid: false
-auto_highlight_shape: true
-auto_switch_to_edit_mode: true
+annotation_appearance:
+  color_mode: focus
+  high_contrast_outline: true
+  hover_fill_opacity: 18
+  normal_fill_opacity: 0
+  outline_width: 1.0
+  selected_fill_opacity: 28
+  semantic_width: 1.0
+  show_gid: focus
+  show_labels: true
+  unrelated_opacity: 0.28
 auto_activate_keypoint_fill: false
-exif_scan_enabled: true
-show_groups: false
-show_masks: true
-show_texts: true
-show_labels: true
-# Live rectangle pixel-size overlay toggle (design rev.1 §5).
-# Mirrors show_labels: View menu checkable action -> set_canvas_params.
-show_rectangle_pixels: true
-# Proactive current-image warnings for configured rectangle-size rules.
-show_rectangle_size_violations: false
-# A configured dimension is abnormal when actual_px <= threshold_px.
-# "all" preserves the legacy both-dimensions trigger while the new inclusive
-# boundary intentionally makes equality abnormal.
-rectangle_size_rules:
-  - label: person
-    min_width_px: 36.0
-    min_height_px: 36.0
-    trigger_mode: all
-    enabled: true
-label_display_mode: label
-show_scores: true
-show_degrees: false
-show_shapes: true
-show_linking: true
-label_on_selection: true  # ON=sparse(hover/selected/zoom); OFF=show all
-label_zoom_threshold: 2.0  # scale >= this reveals hovered group's all labels
-show_attributes: true
-logger_level: info
-system_clipboard: false
-switch_to_checked: false
-file_list_checkbox_editable: false
-
-# Local annotation behavior analytics. Disabled by default and never uploaded.
+auto_highlight_shape: true
+auto_person_instance: false
+auto_save: true
+auto_switch_to_edit_mode: true
+auto_use_last_gid: false
+auto_use_last_label: false
 behavior_analytics:
-  enabled: false
-  retention_days: 90
-  idle_threshold_ms: 120000
-  burst_silence_ms: 300
-  queue_max_events: 2048
-  max_event_bytes: 16384
-  representative_trace_limit: 24
-  max_bundle_bytes: 5242880
   action_schema_version: 2
-  analytics_algorithm_version: "2.0"
-  bundle_schema_version: "2.0"
   action_silence_ms: 300
-  feature_comparison_min_samples: 30
-  anomaly_episode_event_count: 100
+  analytics_algorithm_version: '2.0'
   anomaly_episode_active_ms: 600000
+  anomaly_episode_event_count: 100
+  bundle_schema_version: '2.0'
+  burst_silence_ms: 300
+  compact_table_bytes_limit: 1048576
+  compact_table_row_limit: 5000
+  comparison_min_samples: 30
+  enabled: false
+  feature_comparison_min_samples: 30
+  idle_threshold_ms: 120000
+  max_bundle_bytes: 5242880
+  max_event_bytes: 16384
+  measurement_duplicate_rate_max: 0.05
   measurement_duration_coverage_min: 0.95
   measurement_episode_closure_min: 0.99
-  measurement_duplicate_rate_max: 0.05
-  recording_flush_interval_ms: 500
-  recording_batch_size: 64
-  transition_gap_threshold_ms: 2000
-  compact_table_row_limit: 5000
-  compact_table_bytes_limit: 1048576
-  comparison_min_samples: 30
-  workflow_stage_version: '1.0'
   percentile_rule_version: '1.0'
-
-flags: null
-label_flags: null
-labels: null
-file_search: null
-sort_labels: true
-validate_label: null
-
-default_shape_color: [0, 255, 0]
-shape_color: auto  # null, 'auto', 'manual'
-shift_auto_shape_color: 0
-label_colors: null
-
-# Display-only annotation appearance.  These values never enter shape JSON.
-annotation_appearance:
-  color_mode: focus  # focus, label, group, instance, uniform
-  high_contrast_outline: true
-  normal_fill_opacity: 0
-  selected_fill_opacity: 28
-  hover_fill_opacity: 18
-  unrelated_opacity: 0.28
-  show_labels: true
-  show_gid: focus  # always, focus, never
-  # Selection/group isolation is transient and always starts disabled.
-  outline_width: 1.0
-  semantic_width: 1.0
-
-training:
-  ultralytics:
-    project_readonly: true
-
-shape:
-  # drawing
-  line_color: [0, 255, 0, 128]
-  fill_color: [220, 220, 220, 150]
-  vertex_fill_color: [0, 255, 0, 255]
-  # selecting / hovering
-  select_line_color: [255, 255, 255, 255]
-  select_fill_color: [0, 255, 0, 155]
-  hvertex_fill_color: [255, 255, 255, 255]
-  point_size: 10
-  line_width: 4
-
-# main
-flag_dock:
-  show: true
-  closable: false
-  movable: false
-  floatable: false
-label_dock:
-  show: true
-  closable: false
-  movable: false
-  floatable: false
-shape_dock:
-  show: true
-  closable: false
-  movable: false
-  floatable: false
+  queue_max_events: 2048
+  recording_batch_size: 64
+  recording_flush_interval_ms: 500
+  representative_trace_limit: 24
+  retention_days: 90
+  transition_gap_threshold_ms: 2000
+  workflow_stage_version: '1.0'
+canvas:
+  attributes:
+    background_color:
+    - 33
+    - 33
+    - 33
+    - 255
+    border_color:
+    - 66
+    - 66
+    - 66
+    - 255
+    text_color:
+    - 33
+    - 150
+    - 243
+    - 255
+  brush:
+    point_distance: 25.0
+  crosshair:
+    color: '#00FF00'
+    opacity: 0.5
+    show: true
+    width: 2.0
+  cuboid:
+    default_depth_vector:
+    - 24.0
+    - -24.0
+    min_depth: 5.0
+  double_click: close
+  double_click_edit_label: true
+  epsilon: 10.0
+  mask:
+    opacity: 80
+  num_backups: 10
+  rotation:
+    large_increment: 1.0
+    small_increment: 0.1
+  wheel_rectangle_editing:
+    adjust_step: 2.0
+    enable: true
+    scale_step: 0.05
+canvas_precision_factor: 4
+canvas_precision_max_factor: 2.0
+canvas_precision_mode: zoom
+custom_models: []
+## Temporary dual-window rectangle inspection; never persisted into labels.
+density_round_review:
+  instances_per_round: 10
+default_shape_color:
+- 0
+- 255
+- 0
 description_dock:
-  show: true
   closable: false
-  movable: false
   floatable: false
+  movable: false
+  show: true
+device: null
+digit_shortcut_mode: rename
+digit_shortcut_pages: 1
+digit_shortcuts: null
+display_label_popup: true
+exif_scan_enabled: true
 file_dock:
-  show: true
   closable: false
-  movable: false
   floatable: false
-
-# label_dialog
-show_label_text_field: true
-label_completion: startswith
-move_mode: auto  # 'auto', 'center'
+  movable: false
+  show: true
+file_list_checkbox_editable: false
+file_search: null
 fit_to_content:
   column: true
   row: false
-
-# canvas
-canvas:
-  epsilon: 10.0
-  # None: do nothing
-  # close: close polygon
-  double_click: close
-  # Double-click on a shape in edit mode to open the label editor
-  double_click_edit_label: true
-  # change mode
-  # The max number of edits we can undo
-  num_backups: 10
-  wheel_rectangle_editing:
-    enable: true
-    adjust_step: 2.0
-    scale_step: 0.05
-  crosshair:
-    show: true
-    width: 2.0
-    color: "#00FF00"
-    opacity: 0.5
-  attributes:
-    background_color: [33, 33, 33, 255]
-    border_color: [66, 66, 66, 255]
-    text_color: [33, 150, 243, 255]
-  rotation:
-    large_increment: 1.0  # degrees, corresponds to Z/V keys
-    small_increment: 0.1  # degrees, corresponds to X/C keys
-  brush:
-    point_distance: 25.0  # minimum screen pixel distance between auto-added points in brush drawing mode
-  cuboid:
-    default_depth_vector: [24.0, -24.0]
-    min_depth: 5.0
-  mask:
-    opacity: 80  # transparency value (0-255), 0 is fully transparent, 255 is fully opaque
-
-shortcuts:
-  locate_in_thumbnails: Ctrl+Alt+T
-  close: Ctrl+W
-  open: Ctrl+I
-  open_video: Ctrl+O
-  open_dir: Ctrl+U
-  open_chatbot: Ctrl+1
-  open_vqa: Ctrl+2
-  open_classifier: Ctrl+3
-  open_paddleocr: Ctrl+4
-  quit: Ctrl+Q
-  save: Ctrl+S
-  save_as: Ctrl+Shift+S
-  save_to: null
-  delete_file: Ctrl+Delete
-  delete_image_file: Ctrl+Shift+Delete
-
-  open_next: D
-  open_prev: A
-  open_next_unchecked: Ctrl+Shift+D
-  open_prev_unchecked: Ctrl+Shift+A
-  toggle_annotation_checked: Ctrl+Alt+K
-
-  zoom_in: [Ctrl++]
-  zoom_out: Ctrl+-
-  zoom_to_original: Ctrl+=
-  fit_window: Ctrl+F
-  fit_width: Ctrl+Shift+F
-  show_navigator: F9
-
-  create_polygon: P
-  create_brush_polygon: Ctrl+N
-  create_rectangle: R
-  create_cuboid: Ctrl+R
-  create_rotation: O
-  create_quadrilateral: T
-  create_circle: null
-  create_line: null
-  create_point: null
-  create_linestrip: null
-  edit_polygon: B
-  delete_polygon: Delete
-  duplicate_polygon: Ctrl+D
-  copy_polygon: Ctrl+C
-  paste_polygon: Ctrl+V
-  undo: Ctrl+Z
-  undo_last_point: Ctrl+Z
-  add_point_to_edge: Ctrl+Shift+P
-  edit_label: Ctrl+E
-  edit_digit_shortcut: Alt+D
-  edit_digit_relabel: Alt+R
-  switch_digit_page: F1
-  virtual_review_next: F2
-  virtual_review_prev: Shift+F2
-  edit_group_id: Alt+G
-  edit_labels: Alt+L
-  enter_keypoint_fill_mode: K
-  toggle_keypoint_tool_window: Ctrl+Shift+K
-  switch_to_prev_person: Ctrl+Shift+[
-  switch_to_next_person: Ctrl+Shift+]
-  edit_shapes: Alt+S
-  open_settings: Ctrl+0
-  toggle_keep_prev_mode: Ctrl+P
-  remove_selected_point: Backspace
-  group_selected_shapes: G
-  ungroup_selected_shapes: U
-  hide_selected_polygons: S
-  show_hidden_polygons: W
-  show_overview: Ctrl+G
-  show_masks: Ctrl+M
-  show_texts: Ctrl+T
-  show_labels: Ctrl+L
-  isolate_selection: Shift+I
-  show_linking: Ctrl+K
-  show_attributes: Ctrl+Shift+L
-  union_selected_shapes: Ctrl+Shift+M
-  toggle_auto_use_last_label: Ctrl+Y
-  toggle_auto_use_last_gid: Ctrl+Shift+G
-  toggle_visibility_shapes: Ctrl+H
-  toggle_compare_view: Ctrl+Alt+C
-  toggle_rect_edge_align: Ctrl+Shift+E
-  toggle_precision_mode_lock: Ctrl+Alt+F
-  rectangle_extreme: ""
-  rectangle_submit: ""
-  rectangle_back: ""
-  rectangle_refine: ""
-  rectangle_continue: ""
-  rectangle_local_focus: ""
-  rectangle_finish: ""
-  rectangle_next: ""
-  rectangle_surroundings: ""
-  rectangle_fit_object: ""
-
-  auto_label: Ctrl+A
-  auto_run: Ctrl+Shift+B
-  loop_thru_labels: Ctrl+Shift+N
-  loop_select_labels: Ctrl+Shift+C
-
-  auto_labeling_add_point: Q
-  auto_labeling_remove_point: E
-  auto_labeling_run: I
-  auto_labeling_clear: Ctrl+B
-  auto_labeling_finish_object: F
-
-# Auto labeling
-custom_models: []
-remote_server_settings:
-  server_url: http://127.0.0.1:8000
-  api_key: null
-  timeout: 180
-
-# Digit shortcuts
-digit_shortcuts: null
-rename_shortcuts: null
-digit_shortcut_pages: 1
-digit_shortcut_mode: rename  # rename | bind_draw
-
-# Manual person annotation refinement
-auto_person_instance: false  # auto-create new group_id when drawing person rectangle
-canvas_precision_mode: zoom  # fixed | zoom
-canvas_precision_max_factor: 2.0  # max slowdown factor for zoom precision mode
-canvas_precision_factor: 4  # mouse drag slowdown factor in precision mode
-
-# Optional creation/refinement workbench; image coordinates are unchanged.
-rectangle_workflow:
-  enabled: false
-  auto_zoom: false
-  target_pixels: 400
-  max_scale: 8.0
-
-# Low-fatigue rectangle review refinement (rollout flags are intentionally off).
-rectangle_review_refinement:
-  enabled: false
-  target_gain: 0.5  # maximum image pixels moved per screen pixel in edge refine
-  edge_drag_precision_default: true
-  nudge_step_px: 1
-  coarse_step_px: 5
-  feedback_enabled: true
-  persist_across_images: true
-  assistance:
-    loupe_enabled: false
-    candidate_enabled: false
-  telemetry:
-    enabled: false
-    idle_timeout_ms: 30000
-    zoom_burst_ms: 300
-    reversal_deadband_px: 0.5
-    reversal_confirm_px: 1.0
-
-# Pose keypoint label display
+flag_dock:
+  closable: false
+  floatable: false
+  movable: false
+  show: true
+flags: null
+keep_prev: false
+keep_prev_brightness: false
+keep_prev_contrast: false
+keep_prev_scale: false
+keep_prev_viewport: false
+label_colors: null
+label_completion: startswith
+label_display_mode: label
+label_dock:
+  closable: false
+  floatable: false
+  movable: false
+  show: true
+label_flags: null
+label_on_selection: true
+label_zoom_threshold: 2.0
+labels: null
+language: en_US
+logger_level: info
+model_hub: github
+move_mode: auto
 pose_view:
-  enabled: false
-  layout_mode: "anti"        # direct / anti / column / category
-  color_mode: "bodypart"     # bodypart / person
-  font_size: 11
-  opacity: 0.85
-  leader_length: 40
-  border_width: 1.5
-  column_gap: 8
-  pose_click_to_focus: true
-  show_skeleton: true
-  show_midline: false
-  show_bbox: true
-  occlusion_highlight: true
-  show_leader: true
-  font_shadow: true
-  font_color_mode: "white"   # white / black / auto / yellow / custom
-  custom_font_color: "#00ff88"
   body_colors:
-    head: "#e74c3c"
-    la: "#3498db"
-    ra: "#9b59b6"
-    ll: "#2ecc71"
-    rl: "#f39c12"
+    head: '#e74c3c'
+    la: '#3498db'
+    ll: '#2ecc71'
+    ra: '#9b59b6'
+    rl: '#f39c12'
+  border_width: 1.5
+  color_mode: bodypart
+  color_preset: default
+  column_gap: 8
+  custom_font_color: '#00ff88'
+  enabled: false
+  font_color_mode: white
+  font_shadow: true
+  font_size: 11
+  layout_mode: anti
+  leader_length: 40
+  occlusion_highlight: true
+  opacity: 0.85
   person_colors:
-    - "#e74c3c"
-    - "#3498db"
-    - "#2ecc71"
-  color_preset: "default"
-
-# Label roles used by three-box rectangle focus.
+  - '#e74c3c'
+  - '#3498db'
+  - '#2ecc71'
+  pose_click_to_focus: true
+  show_bbox: true
+  show_leader: true
+  show_midline: false
+  show_skeleton: true
 rect_refine:
   label_roles:
     body:
-      - person
-      - halfperson
-    head:
-      - head
+    - person
+    - halfperson
     face:
-      - face
-
+    - face
+    head:
+    - head
+rectangle_review_refinement:
+  assistance:
+    candidate_enabled: false
+    loupe_enabled: false
+  coarse_step_px: 5
+  edge_drag_precision_default: true
+  enabled: false
+  feedback_enabled: true
+  nudge_step_px: 1
+  persist_across_images: true
+  target_gain: 0.5
+  telemetry:
+    enabled: false
+    idle_timeout_ms: 30000
+    reversal_confirm_px: 1.0
+    reversal_deadband_px: 0.5
+    zoom_burst_ms: 300
+rectangle_size_rules:
+- enabled: true
+  label: person
+  min_height_px: 36.0
+  min_width_px: 36.0
+  trigger_mode: all
+rectangle_workflow:
+  auto_zoom: false
+  max_scale: 8.0
+  target_pixels: 400
+remote_server_settings:
+  api_key: null
+  server_url: http://127.0.0.1:8000
+  timeout: 180
+rename_shortcuts: null
+shape:
+  fill_color:
+  - 220
+  - 220
+  - 220
+  - 150
+  hvertex_fill_color:
+  - 255
+  - 255
+  - 255
+  - 255
+  line_color:
+  - 0
+  - 255
+  - 0
+  - 128
+  line_width: 4
+  point_size: 10
+  select_fill_color:
+  - 0
+  - 255
+  - 0
+  - 155
+  select_line_color:
+  - 255
+  - 255
+  - 255
+  - 255
+  vertex_fill_color:
+  - 0
+  - 255
+  - 0
+  - 255
+shape_color: auto
+shape_dock:
+  closable: false
+  floatable: false
+  movable: false
+  show: true
+shift_auto_shape_color: 0
+shortcuts:
+  add_point_to_edge: Ctrl+Shift+P
+  auto_label: Ctrl+A
+  auto_labeling_add_point: Q
+  auto_labeling_clear: Ctrl+B
+  auto_labeling_finish_object: F
+  auto_labeling_remove_point: E
+  auto_labeling_run: I
+  auto_run: Ctrl+Shift+B
+  close: Ctrl+W
+  copy_polygon: Ctrl+C
+  create_brush_polygon: Ctrl+N
+  create_circle: null
+  create_cuboid: Ctrl+R
+  create_line: null
+  create_linestrip: null
+  create_point: null
+  create_polygon: P
+  create_quadrilateral: T
+  create_rectangle: R
+  create_rotation: O
+  delete_file: Ctrl+Delete
+  delete_image_file: Ctrl+Shift+Delete
+  delete_polygon: Delete
+  density_review_next: ']'
+  density_review_preview_all: V
+  density_review_previous: '['
+  duplicate_polygon: Ctrl+D
+  edit_digit_relabel: Alt+R
+  edit_digit_shortcut: Alt+D
+  edit_group_id: Alt+G
+  edit_label: Ctrl+E
+  edit_labels: Alt+L
+  edit_polygon: B
+  edit_shapes: Alt+S
+  enter_keypoint_fill_mode: K
+  fit_width: Ctrl+Shift+F
+  fit_window: Ctrl+F
+  group_selected_shapes: G
+  hide_selected_polygons: S
+  isolate_selection: Shift+I
+  locate_in_thumbnails: Ctrl+Alt+T
+  loop_select_labels: Ctrl+Shift+C
+  loop_thru_labels: Ctrl+Shift+N
+  open: Ctrl+I
+  open_chatbot: Ctrl+1
+  open_classifier: Ctrl+3
+  open_dir: Ctrl+U
+  open_next: D
+  open_next_unchecked: Ctrl+Shift+D
+  open_paddleocr: Ctrl+4
+  open_prev: A
+  open_prev_unchecked: Ctrl+Shift+A
+  open_settings: Ctrl+0
+  open_video: Ctrl+O
+  open_vqa: Ctrl+2
+  paste_polygon: Ctrl+V
+  quit: Ctrl+Q
+  rectangle_back: null
+  rectangle_click_adjust_x: X
+  rectangle_click_adjust_y: Y
+  rectangle_continue: null
+  rectangle_extreme: null
+  rectangle_finish: null
+  rectangle_fit_object: null
+  rectangle_keyboard_fit: null
+  rectangle_local_focus: null
+  rectangle_next: null
+  rectangle_place_bottom: E
+  rectangle_place_left: R
+  rectangle_place_right: W
+  rectangle_place_top: Q
+  rectangle_refine: null
+  rectangle_submit: null
+  rectangle_surroundings: null
+  redo_density_round_review: Ctrl+Shift+Z
+  remove_selected_point: Backspace
+  save: Ctrl+S
+  save_as: Ctrl+Shift+S
+  save_to: null
+  show_attributes: Ctrl+Shift+L
+  show_hidden_polygons: W
+  show_labels: Ctrl+L
+  show_linking: Ctrl+K
+  show_masks: Ctrl+M
+  show_navigator: F9
+  show_overview: Ctrl+G
+  show_texts: Ctrl+T
+  switch_digit_page: F1
+  switch_to_next_person: Ctrl+Shift+]
+  switch_to_prev_person: Ctrl+Shift+[
+  sync_density_round_review_selection: Ctrl+J
+  toggle_annotation_checked: Ctrl+Alt+K
+  toggle_auto_use_last_gid: Ctrl+Shift+G
+  toggle_auto_use_last_label: Ctrl+Y
+  toggle_compare_view: Ctrl+Alt+C
+  toggle_density_round_review: F10
+  toggle_keep_prev_mode: Ctrl+P
+  toggle_keypoint_tool_window: Ctrl+Shift+K
+  toggle_precision_mode_lock: Ctrl+Alt+F
+  toggle_rect_edge_align: Ctrl+Shift+E
+  toggle_visibility_shapes: Ctrl+H
+  undo: Ctrl+Z
+  undo_last_point: Ctrl+Z
+  ungroup_selected_shapes: U
+  union_selected_shapes: Ctrl+Shift+M
+  virtual_review_next: F2
+  virtual_review_prev: Shift+F2
+  zoom_in:
+  - Ctrl++
+  zoom_out: Ctrl+-
+  zoom_to_original: Ctrl+=
+show_attributes: true
+show_degrees: false
+show_groups: false
+show_label_text_field: true
+show_labels: true
+show_linking: true
+show_masks: true
+show_rectangle_pixels: true
+show_rectangle_size_violations: false
+show_scores: true
+show_shapes: true
+show_texts: true
+sort_labels: true
+store_data: false
+switch_to_checked: false
+system_clipboard: false
+theme: auto
+training:
+  ultralytics:
+    project_readonly: true
+validate_label: null

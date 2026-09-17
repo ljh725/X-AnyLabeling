@@ -119,6 +119,8 @@ class SettingsRuntimeApplier:
             "shortcuts.toggle_visibility_shapes": self._widget.actions.visibility_shapes_mode,
             "shortcuts.toggle_compare_view": self._widget.actions.toggle_compare_view,
             "shortcuts.toggle_rect_edge_align": self._widget.actions.toggle_rect_edge_align,
+            "shortcuts.rectangle_click_adjust_x": self._widget.actions.rectangle_click_adjust_x,
+            "shortcuts.rectangle_click_adjust_y": self._widget.actions.rectangle_click_adjust_y,
             "shortcuts.toggle_precision_mode_lock": self._widget.actions.toggle_precision_mode_lock,
             "shortcuts.auto_label": self._widget.actions.toggle_auto_labeling_widget,
             "shortcuts.auto_run": self._widget.actions.run_all_images,
@@ -183,7 +185,7 @@ class SettingsRuntimeApplier:
                 ),
             )
         )
-        workflow = getattr(self._widget, "rectangle_workflow", None)
+        workflow = getattr(self._widget, "rectangle_creation", None)
         if workflow is not None:
             shortcut_map.update(
                 {
@@ -261,7 +263,7 @@ class SettingsRuntimeApplier:
         if key.startswith(
             ("rectangle_workflow.", "rectangle_review_refinement.")
         ):
-            getattr(self, "apply_" + key.split(".", 1)[0])()
+            # Retain legacy values for rollback, without restoring old tools.
             return
         if key == "shift_auto_shape_color":
             self._widget._runtime_shape_color_shift = int(
@@ -330,6 +332,11 @@ class SettingsRuntimeApplier:
         settings = load_user_appearance(self._widget._config)
         self._widget.appearance_settings = settings
         self._widget.canvas.set_appearance_settings(settings)
+        sync_review = getattr(
+            self._widget, "_sync_density_round_review_display", None
+        )
+        if callable(sync_review):
+            sync_review()
         action = getattr(
             getattr(self._widget, "actions", None), "isolate_selection", None
         )
@@ -365,12 +372,6 @@ class SettingsRuntimeApplier:
             wheel_config["adjust_step"]
         )
         self._widget.canvas.rect_scale_step = float(wheel_config["scale_step"])
-
-    def apply_rectangle_workflow(self) -> None:
-        """Apply optional rectangle workbench preferences."""
-        workflow = getattr(self._widget, "rectangle_workflow", None)
-        if workflow is not None:
-            workflow.apply_preferences()
 
     def apply_rectangle_review_refinement(self) -> None:
         """Apply rectangle review refinement settings to the canvas."""

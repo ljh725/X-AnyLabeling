@@ -143,6 +143,7 @@ class DigitRenameManager:
         for shape in shapes:
             shape.label = rename_label
             label_widget._update_shape_color(shape)
+            label_widget.canvas.notify_shape_changed(shape)
 
             item = label_widget.label_list.find_item_by_shape(shape)
             if item is not None:

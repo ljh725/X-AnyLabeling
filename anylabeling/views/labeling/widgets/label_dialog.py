@@ -195,7 +195,22 @@ class DigitShortcutDialog(QtWidgets.QDialog):
             mode_combo = ColoredComboBox()
             mode_combo.addItem(self.tr("None"), None)
             for mode in self.available_modes:
-                mode_combo.addModeItem(mode, mode)
+                if mode == "rectangle":
+                    mode_combo.addModeItem(
+                        self.tr("Rectangle (two points)"), mode
+                    )
+                    mode_combo.addModeItem(
+                        self.tr("Rectangle (four extremes)"),
+                        "rectangle:four_extremes",
+                    )
+                else:
+                    mode_combo.addModeItem(mode, mode)
+            mode_combo.setToolTip(
+                self.tr(
+                    "Selected objects use digit rename. Deselect to start drawing. "
+                    "Digit label actions pause during rectangle boundary input."
+                )
+            )
 
             # Connect mode change to enable/disable label field
             mode_combo.currentIndexChanged.connect(
@@ -353,10 +368,15 @@ class DigitShortcutDialog(QtWidgets.QDialog):
             label = label_edit.text().strip()
 
             if mode is not None:
-                self.digit_shortcuts[actual_index] = {
-                    "mode": mode,
-                    "label": label,
-                }
+                data = dict(self.digit_shortcuts.get(actual_index, {}))
+                data.update(mode=mode.split(":", 1)[0], label=label)
+                if data["mode"] == "rectangle":
+                    data["drawing_method"] = (
+                        mode.split(":", 1)[1] if ":" in mode else "two_points"
+                    )
+                else:
+                    data.pop("drawing_method", None)
+                self.digit_shortcuts[actual_index] = data
             elif actual_index in self.digit_shortcuts:
                 self.digit_shortcuts.pop(actual_index, None)
 
@@ -389,6 +409,15 @@ class DigitShortcutDialog(QtWidgets.QDialog):
             data = self.digit_shortcuts.get(actual_index)
             if data:
                 mode = data.get("mode")
+                method = data.get("drawing_method", "two_points")
+                if mode == "rectangle" and method != "two_points":
+                    mode = f"rectangle:{method}"
+                    if mode_combo.findData(mode) < 0:
+                        mode_combo.addItem(
+                            self.tr("Unknown rectangle drawing method")
+                            + f": {method}",
+                            mode,
+                        )
                 label_text = data.get("label", "") or ""
                 index = mode_combo.findData(mode)
                 if index < 0:

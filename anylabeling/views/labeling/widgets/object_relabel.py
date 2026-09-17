@@ -11,7 +11,7 @@ import hashlib
 import json
 import os.path as osp
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any, Callable, Iterable, Mapping, Optional, Sequence
 
@@ -101,6 +101,8 @@ class ObjectRelabelPlan:
     target_label: str
     targets_by_annotation_path: Mapping[str, tuple[MarkedObjectRef, ...]]
     undo_record: Optional["SingleObjectRelabelUndo"] = None
+    history_context: Optional[dict] = None
+    inverse_items: tuple = ()
 
     @property
     def total_objects(self) -> int:
@@ -420,6 +422,7 @@ class ObjectRelabelResult:
     target_label: str = ""
     cancellation_stage: str = ""
     undo_record: Optional[SingleObjectRelabelUndo] = None
+    history_record: Optional[dict] = None
 
     @property
     def counts(self) -> dict[str, int]:
@@ -472,6 +475,8 @@ class ObjectRelabelEngine:
     def __init__(self, transaction_root: str) -> None:
         """Initialize with the project-owned transaction directory."""
         self._engine = JsonTransactionEngine(transaction_root)
+        self._preflight_digests = {}
+        self._inverse_messages = {}
 
     def preflight(
         self,
@@ -492,9 +497,22 @@ class ObjectRelabelEngine:
             try:
                 data = read_annotation_data(path)
                 _check_undo(plan, data)
-                file_status, statuses = classify_file_objects(
-                    data, ids, plan.target_label
-                )
+                if plan.inverse_items:
+                    outcome = self._transform(plan, path, data)
+                    statuses = {
+                        k: STATUS_CHANGEABLE if v == STATUS_CHANGED else v
+                        for k, v in outcome.statuses.items()
+                    }
+                    file_status = "ok"
+                    from .dataset_thumbnail.history_store import (
+                        document_digest,
+                    )
+
+                    self._preflight_digests[path] = document_digest(data)
+                else:
+                    file_status, statuses = classify_file_objects(
+                        data, ids, plan.target_label
+                    )
                 message = ""
             except (OSError, ValueError) as exc:
                 file_status = STATUS_FAILED
@@ -549,12 +567,11 @@ class ObjectRelabelEngine:
             ids = _ids_for_path(plan, source)
             try:
                 _check_undo(plan, original)
-                outcome = transform_objects_by_id(
-                    original, ids, plan.target_label
-                )
+                outcome = self._transform(plan, source, original)
                 if (
                     plan.total_objects == 1
                     and plan.undo_record is None
+                    and not plan.inverse_items
                     and outcome.changed
                 ):
                     ref = plan.targets_by_annotation_path[source][0]
@@ -595,7 +612,9 @@ class ObjectRelabelEngine:
                 data=outcome.data,
                 changed=outcome.changed,
                 matched_shapes=matched,
-                metadata={"object_statuses": dict(records[source])},
+                metadata=self._history_metadata(
+                    plan, source, original, outcome.data, records[source]
+                ),
             )
 
         operation = self._engine.stage_files(
@@ -605,6 +624,12 @@ class ObjectRelabelEngine:
             progress,
             domain=self._plan_metadata(plan),
         )
+        if plan.history_context:
+            from .dataset_thumbnail.history_store import write_journal
+
+            context = dict(plan.history_context)
+            context["manifest_path"] = operation.manifest_path
+            write_journal(context)
         for path in plan.targets_by_annotation_path:
             if path in records:
                 continue
@@ -649,9 +674,12 @@ class ObjectRelabelEngine:
                     ObjectMutationResult(
                         key=ref.object_key,
                         status=_final_status(stage_status, file_status),
+                        message=self._inverse_messages.get(path, {}).get(
+                            ref.shape_id, ""
+                        ),
                     )
                 )
-        return ObjectRelabelResult(
+        result = ObjectRelabelResult(
             transaction_id=committed.transaction_id,
             phase=committed.phase,
             cancelled=False,
@@ -665,6 +693,7 @@ class ObjectRelabelEngine:
                 else None
             ),
         )
+        return self._record_history(result, staged.plan)
 
     def cancelled_result(
         self,
@@ -681,7 +710,7 @@ class ObjectRelabelEngine:
             for refs in active_plan.targets_by_annotation_path.values()
             for ref in refs
         )
-        return ObjectRelabelResult(
+        result = ObjectRelabelResult(
             transaction_id=(
                 staged.operation.transaction_id if staged is not None else ""
             ),
@@ -696,6 +725,78 @@ class ObjectRelabelEngine:
             target_label=active_plan.target_label,
             cancellation_stage=cancellation_stage,
         )
+        return self._record_history(result, active_plan)
+
+    @staticmethod
+    def _record_history(
+        result: ObjectRelabelResult, plan: ObjectRelabelPlan
+    ) -> ObjectRelabelResult:
+        """Leave recoverable terminal evidence even if the window was closed."""
+        if not plan.history_context:
+            return result
+        from .dataset_thumbnail.history_store import (
+            result_record,
+            write_journal,
+        )
+
+        record = result_record(plan.history_context, result)
+        try:
+            write_journal(record)
+        except OSError as exc:
+            record["history_error"] = str(exc)
+        return replace(result, history_record=record)
+
+    def _transform(
+        self, plan: ObjectRelabelPlan, source: str, original: dict
+    ) -> ObjectTransformation:
+        """Dispatch a guarded inverse through the same staging transaction."""
+        if not plan.inverse_items:
+            return transform_objects_by_id(
+                original, _ids_for_path(plan, source), plan.target_label
+            )
+        from .dataset_thumbnail.history_store import document_digest
+        from .dataset_thumbnail.history_inverse import transform_inverse
+
+        expected = self._preflight_digests.get(source)
+        if expected is not None and expected != document_digest(original):
+            raise ObjectIdentityConflict(
+                "File changed after inverse preflight"
+            )
+        outcome, messages = transform_inverse(plan, source, original)
+        self._inverse_messages[source] = messages
+        return outcome
+
+    @staticmethod
+    def _history_metadata(
+        plan: ObjectRelabelPlan,
+        source: str,
+        before: dict,
+        after: dict,
+        statuses: dict,
+    ) -> dict:
+        """Persist exact field values with the file transaction evidence."""
+        metadata = {"object_statuses": dict(statuses)}
+        if plan.history_context:
+            from .dataset_thumbnail.history_store import (
+                document_digest,
+                labels_of,
+            )
+
+            old, new = labels_of(before), labels_of(after)
+            metadata["history_changes"] = {
+                key: {
+                    "before": old.get(key),
+                    "after": new.get(key),
+                    "status": status,
+                }
+                for key, status in statuses.items()
+            }
+            metadata["history_document"] = {
+                "before_digest": document_digest(before),
+                "after_digest": document_digest(after),
+                "labels": new,
+            }
+        return metadata
 
     @staticmethod
     def _plan_metadata(plan: ObjectRelabelPlan) -> dict[str, Any]:
@@ -704,6 +805,7 @@ class ObjectRelabelEngine:
             "kind": "object-relabel",
             "project_id": plan.project_id,
             "target_label": plan.target_label,
+            "history": plan.history_context,
             "paths": {
                 path: sorted({ref.shape_id for ref in refs})
                 for path, refs in plan.targets_by_annotation_path.items()

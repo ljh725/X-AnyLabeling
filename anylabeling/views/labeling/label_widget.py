@@ -6,6 +6,7 @@ import os
 import os.path as osp
 import re
 import shutil
+import sqlite3
 import time
 import uuid
 from dataclasses import replace
@@ -181,6 +182,7 @@ from .widgets.object_field_edit_dialog import (
     run_object_field_edit_flow,
 )
 from .widgets.dataset_thumbnail import DatasetLabelThumbnailWindow
+from .widgets.density_round_review import DensityRoundReviewCoordinator
 from .widgets.pose_label import (
     PoseViewPanel,
 )
@@ -836,6 +838,9 @@ class LabelingWidget(LabelDialog):
             self,
             self.virtual_review_controller,
         )
+        self.density_round_review_controller = DensityRoundReviewCoordinator(
+            self
+        )
         self._wire_dataset_review_ui()
 
         features = QtWidgets.QDockWidget.DockWidgetFeature(0)
@@ -978,6 +983,22 @@ class LabelingWidget(LabelDialog):
             shortcuts.get("toggle_compare_view"),
             "compare",
             self.tr("Toggle split-screen compare view"),
+            enabled=True,
+        )
+        toggle_density_round_review = action(
+            self.tr("Density Round Review"),
+            self.toggle_density_round_review,
+            shortcuts.get("toggle_density_round_review", "F10"),
+            None,
+            self.tr("Toggle the focused density-round review window"),
+            enabled=True,
+        )
+        sync_density_round_review_selection = action(
+            self.tr("Send Selection to Review Round"),
+            self.sync_density_round_review_selection,
+            shortcuts.get("sync_density_round_review_selection", "Ctrl+J"),
+            None,
+            self.tr("Confirm the main selection in the review window"),
             enabled=True,
         )
 
@@ -1328,6 +1349,14 @@ class LabelingWidget(LabelDialog):
             "undo",
             self.tr("Undo last add and edit of shape"),
             enabled=False,
+        )
+        redo_density_round_review = action(
+            self.tr("Redo"),
+            self.redo_density_round_review,
+            shortcuts.get("redo_density_round_review", "Ctrl+Shift+Z"),
+            None,
+            self.tr("Redo the last density-round review edit"),
+            enabled=True,
         )
         hide_selected_polygons = action(
             self.tr("Hide Selected Polygons"),
@@ -1878,13 +1907,63 @@ class LabelingWidget(LabelDialog):
         toggle_rect_edge_align = action(
             self.tr("矩形单边调整"),
             self.toggle_rect_edge_align,
-            shortcut=shortcuts["toggle_rect_edge_align"],
+            shortcut=shortcuts.get("toggle_rect_edge_align"),
             tip=self.tr("启用已选中矩形单边调整"),
             icon=None,
             checkable=True,
             checked=False,  # Not persisted; always off at startup (per spec).
             enabled=True,
         )
+        rectangle_click_adjust_x = action(
+            self.tr("边点击调整：修改 X（左/右边）"),
+            lambda: self.canvas.begin_rect_click_axis("x"),
+            shortcut=shortcuts.get("rectangle_click_adjust_x"),
+            tip=self.tr("按下后点击目标横坐标"),
+            icon=None,
+            checkable=False,
+            enabled=True,
+        )
+        rectangle_click_adjust_y = action(
+            self.tr("边点击调整：修改 Y（上/下边）"),
+            lambda: self.canvas.begin_rect_click_axis("y"),
+            shortcut=shortcuts.get("rectangle_click_adjust_y"),
+            tip=self.tr("按下后点击目标纵坐标"),
+            icon=None,
+            checkable=False,
+            enabled=True,
+        )
+        toggle_rect_angle_click = action(
+            self.tr("角点击调整"),
+            self.toggle_rect_angle_click,
+            tip=self.tr("启用鼠标指定角并点击新角点"),
+            icon=None,
+            checkable=True,
+            checked=False,
+            enabled=True,
+        )
+        rectangle_click_adjust_x.setShortcutContext(
+            QtCore.Qt.ShortcutContext.WidgetShortcut
+        )
+        rectangle_click_adjust_y.setShortcutContext(
+            QtCore.Qt.ShortcutContext.WidgetShortcut
+        )
+        self.canvas.addAction(rectangle_click_adjust_x)
+        self.canvas.addAction(rectangle_click_adjust_y)
+        rectangle_click_adjust_x.setAutoRepeat(False)
+        rectangle_click_adjust_y.setAutoRepeat(False)
+        self.canvas.rect_click_mode_changed.connect(
+            self._sync_rect_click_actions
+        )
+        rectangle_click_menu = QtWidgets.QMenu(self.tr("矩形点击调整"), self)
+        utils.add_actions(
+            rectangle_click_menu,
+            (
+                rectangle_click_adjust_x,
+                rectangle_click_adjust_y,
+                toggle_rect_angle_click,
+            ),
+        )
+        rectangle_click_menu.aboutToShow.connect(self._sync_rect_click_actions)
 
         toggle_precision_mode_lock = action(
             self.tr("精修模式锁定"),
@@ -2420,6 +2499,10 @@ class LabelingWidget(LabelDialog):
             open_dir=opendir,
             close=close,
             toggle_compare_view=toggle_compare_view,
+            toggle_density_round_review=toggle_density_round_review,
+            sync_density_round_review_selection=(
+                sync_density_round_review_selection
+            ),
             delete_file=delete_file,
             delete_image_file=delete_image_file,
             toggle_annotation_checked=toggle_annotation_checked,
@@ -2441,6 +2524,7 @@ class LabelingWidget(LabelDialog):
             save_visualization_video=save_visualization_video,
             undo_last_point=undo_last_point,
             undo=undo,
+            redo_density_round_review=redo_density_round_review,
             remove_point=remove_point,
             create_mode=create_mode,
             create_brush_polygon_mode=create_brush_polygon_mode,
@@ -2533,6 +2617,9 @@ class LabelingWidget(LabelDialog):
             label_on_selection=label_on_selection,
             isolate_selection=isolate_selection,
             toggle_rect_edge_align=toggle_rect_edge_align,
+            rectangle_click_adjust_x=rectangle_click_adjust_x,
+            rectangle_click_adjust_y=rectangle_click_adjust_y,
+            toggle_rect_angle_click=toggle_rect_angle_click,
             toggle_precision_mode_lock=toggle_precision_mode_lock,
             toggle_rect_refine_mode=toggle_rect_refine_mode,
             show_navigator=show_navigator,
@@ -2585,6 +2672,7 @@ class LabelingWidget(LabelDialog):
                 paste,
                 None,
                 undo,
+                redo_density_round_review,
                 undo_last_point,
                 None,
                 copy_coordinates,
@@ -2867,6 +2955,9 @@ class LabelingWidget(LabelDialog):
                 show_navigator,
                 toggle_inspector,
                 behavior_analytics,
+                toggle_density_round_review,
+                sync_density_round_review_selection,
+                None,
                 toggle_global_filter_keep,
                 toggle_filter_navigation,
                 refresh_filter_navigation,
@@ -2907,6 +2998,7 @@ class LabelingWidget(LabelDialog):
                 isolate_selection,
                 pose_view,
                 toggle_rect_edge_align,
+                rectangle_click_menu,
                 toggle_precision_mode_lock,
                 toggle_rect_refine_mode,
                 show_groups,
@@ -3343,13 +3435,10 @@ class LabelingWidget(LabelDialog):
         self.fit_window = False
         self.brightness_contrast_values = {}
         self.viewport_controller = ViewportController()
-        from .widgets.rectangle_workflow import RectangleWorkflow
+        from .widgets.rectangle_creation import RectangleCreation
 
-        self.rectangle_workflow = RectangleWorkflow(self)
-        central_layout.insertWidget(
-            central_layout.indexOf(self._central_widget),
-            self.rectangle_workflow,
-        )
+        self.rectangle_creation = RectangleCreation(self)
+        self.rectangle_creation.hide()
 
         if filename is not None and osp.isdir(filename):
             self.import_image_folder(filename, load=False)
@@ -3451,6 +3540,17 @@ class LabelingWidget(LabelDialog):
         if self._config["language"] == language:
             return
         self._config["language"] = language
+
+        # Persist before asking for a restart.  Previously the process closed
+        # with the in-memory value only, so the next launch silently restored
+        # the old language.
+        if not save_config(self._config):
+            QMessageBox.warning(
+                self,
+                self.tr("Configuration"),
+                self.tr("Failed to save language preference."),
+            )
+            return
 
         # Show dialog to restart application
         msg_box = QMessageBox()
@@ -3689,7 +3789,9 @@ class LabelingWidget(LabelDialog):
             if self.output_dir:
                 label_file_without_path = osp.basename(label_file)
                 label_file = self.output_dir + "/" + label_file_without_path
-            self.save_labels(label_file)
+            saved = self.save_labels(label_file)
+            self.dirty = not saved
+            self.actions.save.setEnabled(not saved)
             if (
                 hasattr(self, "navigator_dialog")
                 and self.navigator_dialog.isVisible()
@@ -3764,6 +3866,9 @@ class LabelingWidget(LabelDialog):
 
     def toggle_actions(self, value=True):
         """Enable/Disable widgets which depend on an opened image."""
+        creation = getattr(self, "rectangle_creation", None)
+        if creation is not None:
+            creation.refresh()
         for action in self.actions.zoom_actions:
             action.setEnabled(value)
         for action in self.actions.on_load_active:
@@ -4131,11 +4236,10 @@ class LabelingWidget(LabelDialog):
         self.canvas._rectangle_review_wheel.reset()
 
     def undo_shape_edit(self):
-        workflow = getattr(self, "rectangle_workflow", None)
+        workflow = getattr(self, "rectangle_creation", None)
         if workflow is not None and workflow.draft is not None:
             workflow.back()
             return
-        undo_state = workflow.undo_state() if workflow is not None else None
         collector = self._review_metrics
         target = (
             self.canvas.selected_shapes[0]
@@ -4144,6 +4248,9 @@ class LabelingWidget(LabelDialog):
         )
         target_token = self._review_target_tokens.get(id(target), "")
         was_restorable = bool(self.canvas.is_shape_restorable)
+        density_review = getattr(self, "density_round_review_controller", None)
+        if density_review is not None:
+            density_review.before_shared_undo()
         target_index = (
             self.canvas.shapes.index(target)
             if target is not None and target in self.canvas.shapes
@@ -4164,6 +4271,8 @@ class LabelingWidget(LabelDialog):
         self.load_shapes(self.canvas.shapes, update_last_label=False)
         self.actions.undo.setEnabled(self.canvas.is_shape_restorable)
         self.set_dirty()
+        if density_review is not None:
+            density_review.after_shared_undo(was_restorable)
         if collector is not None:
             restored_target = (
                 self.canvas.shapes[target_index]
@@ -4196,8 +4305,6 @@ class LabelingWidget(LabelDialog):
             and self.keypoint_fill_mode.is_active
         ):
             self.keypoint_fill_mode.refresh()
-        if workflow is not None:
-            workflow.restore_after_undo(undo_state)
 
     def get_label_file_list(self):
         label_file_list = []
@@ -4504,6 +4611,17 @@ class LabelingWidget(LabelDialog):
             return False
         if undo_record is not None:
             plan = replace(plan, undo_record=undo_record)
+        history_window = getattr(self, "_dataset_thumbnail_window", None)
+        if not show_result_dialog and callable(
+            getattr(history_window, "begin_history", None)
+        ):
+            try:
+                plan = replace(
+                    plan, history_context=history_window.begin_history(plan)
+                )
+            except (OSError, ValueError, sqlite3.Error) as exc:
+                self.error_message(title, str(exc))
+                return False
         batch_root = self._batch_write_root()
         action = self.object_mark_actions.relabel_marked_objects
         thumbnail_action = getattr(
@@ -4527,6 +4645,8 @@ class LabelingWidget(LabelDialog):
 
         def on_flow_failed(message):
             self._object_relabel_running = False
+            if callable(getattr(history_window, "history_flow_stopped", None)):
+                history_window.history_flow_stopped(message)
             action.setEnabled(True)
             if thumbnail_action is not None:
                 thumbnail_action.setEnabled(True)
@@ -4543,6 +4663,10 @@ class LabelingWidget(LabelDialog):
         )
         if not started:
             self._object_relabel_running = False
+            if callable(getattr(history_window, "history_flow_stopped", None)):
+                history_window.history_flow_stopped(
+                    self.tr("Operation did not start."), cancelled=True
+                )
             action.setEnabled(True)
             if thumbnail_action is not None:
                 thumbnail_action.setEnabled(True)
@@ -4578,6 +4702,12 @@ class LabelingWidget(LabelDialog):
         )
         window.relabel_requested.connect(self._relabel_from_thumbnail)
         window.undo_requested.connect(self._undo_from_thumbnail)
+        window.history_revert_requested.connect(self._revert_thumbnail_history)
+        window.history_import_requested.connect(
+            lambda: window.import_history_backups(
+                self._batch_write_root(), self._image_for_annotation_path
+            )
+        )
         window.restore_requested.connect(
             self._restore_object_relabel_from_thumbnail
         )
@@ -4612,6 +4742,14 @@ class LabelingWidget(LabelDialog):
             show_result_dialog=False,
         )
 
+    def _revert_thumbnail_history(self, record: dict, items: list) -> None:
+        """Run an explicit historical field inverse through shared guards."""
+        from .widgets.dataset_thumbnail.history_flow import run_history_inverse
+
+        window = self._dataset_thumbnail_window
+        if window is not None:
+            run_history_inverse(self, window, record, items)
+
     def _on_thumbnail_relabel_result(self, result) -> None:
         """Refresh the thumbnail browser after the shared flow terminates."""
         if self._dataset_thumbnail_window is not None:
@@ -4645,12 +4783,18 @@ class LabelingWidget(LabelDialog):
         self, manifest_path: str
     ) -> None:
         """Restore the exact transaction exposed by the thumbnail result bar."""
-        self.restore_object_relabel_manifest(
+        window = getattr(self, "_dataset_thumbnail_window", None)
+        context = getattr(window, "_restoring_history", None)
+        options = {"history_context": context} if context else {}
+        outcome = self.restore_object_relabel_manifest(
             manifest_path,
             require_committed_fingerprint=True,
             on_result=self._on_thumbnail_restore_result,
             show_result_dialog=False,
+            **options,
         )
+        if context and window._restoring_history is not None:
+            window.abort_restore_history(outcome == "cancelled")
 
     def _on_thumbnail_restore_result(self, result) -> None:
         """Show direct recovery feedback inside the thumbnail window."""
@@ -4906,6 +5050,8 @@ class LabelingWidget(LabelDialog):
         self.marked_object_store.apply_relabel_result(result)
         committed = set(result.committed_annotation_paths)
         window = getattr(self, "_dataset_thumbnail_window", None)
+        if callable(getattr(window, "observe_transaction_result", None)):
+            window.observe_transaction_result(result)
         if committed and window is not None:
             window.clear_single_undo()
         committed_images = {
@@ -4932,6 +5078,9 @@ class LabelingWidget(LabelDialog):
         """Sync marks and bounded dataset state after field editing."""
         self.marked_object_store.apply_field_edit_result(result)
         committed = set(result.committed_annotation_paths)
+        window = getattr(self, "_dataset_thumbnail_window", None)
+        if callable(getattr(window, "observe_transaction_result", None)):
+            window.observe_transaction_result(result)
         committed_images = {
             osp.abspath(self._annotation_path_for_image(item.key[1])): (
                 item.key[1]
@@ -4971,6 +5120,7 @@ class LabelingWidget(LabelDialog):
         require_committed_fingerprint=False,
         on_result=None,
         show_result_dialog=True,
+        history_context=None,
     ):
         """Restore files from one object-relabel transaction manifest."""
         if not manifest_path or not osp.isfile(manifest_path):
@@ -5013,6 +5163,9 @@ class LabelingWidget(LabelDialog):
         if resolution == "discard" and self.filename:
             self.load_file(self.filename)
 
+        recovery_files = JsonTransactionEngine._read_manifest_payload(
+            manifest_path
+        ).get("entries", [])
         answer = QtWidgets.QMessageBox.question(
             self,
             self.tr("Restore object relabel"),
@@ -5020,13 +5173,15 @@ class LabelingWidget(LabelDialog):
                 "Restore files from this recovery manifest? Files changed "
                 "after the relabel commit will be left unchanged. This is "
                 "a file-level recovery operation, not a normal undo step."
-            ),
+            )
+            + "\n\n"
+            + "\n".join(entry["source_path"] for entry in recovery_files),
             QtWidgets.QMessageBox.StandardButton.Yes
             | QtWidgets.QMessageBox.StandardButton.No,
             QtWidgets.QMessageBox.StandardButton.No,
         )
         if answer != QtWidgets.QMessageBox.StandardButton.Yes:
-            return
+            return "cancelled"
 
         gate_owner = "object-relabel-restore"
         if not BatchWriteGate.try_acquire(manifest_root, gate_owner):
@@ -5046,6 +5201,7 @@ class LabelingWidget(LabelDialog):
                 manifest_path,
                 root=manifest_root,
                 require_committed_fingerprint=(require_committed_fingerprint),
+                history_context=history_context,
             )
         except (OSError, TypeError, ValueError, KeyError) as exc:
             self.error_message(
@@ -5095,6 +5251,17 @@ class LabelingWidget(LabelDialog):
         if not isinstance(entries, list) or not entries:
             raise ValueError("manifest has no source entries")
         root = JsonTransactionEngine._restore_root(entries)
+        declared = payload.get("domain", {}).get("project_id")
+        if declared:
+            declared = osp.normcase(osp.abspath(declared))
+            if all(
+                osp.commonpath(
+                    (declared, osp.normcase(osp.abspath(entry["source_path"])))
+                )
+                == declared
+                for entry in entries
+            ):
+                root = declared
         if not root or root == ".":
             raise ValueError("manifest source root is unavailable")
         return osp.normcase(osp.abspath(root))
@@ -5331,6 +5498,9 @@ class LabelingWidget(LabelDialog):
         self.actions.union_selection.setEnabled(not drawing)
 
     def create_digit_mode(self, digit_num):
+        workflow = getattr(self, "rectangle_creation", None)
+        if workflow is not None and workflow.draft is not None:
+            return
         if (
             self._config.get("digit_shortcut_mode") == "bind_draw"
             and self.digit_bind_draw_manager.is_active()
@@ -5357,7 +5527,22 @@ class LabelingWidget(LabelDialog):
             return
 
         self.digit_to_label = label
-        self.toggle_draw_mode(edit=False, create_mode=create_mode)
+        self.start_digit_drawing(data)
+
+    def start_digit_drawing(self, mapping: dict) -> bool:
+        """Start the configured geometry method without changing its type."""
+        from .review_refinement.keyboard_fitting import drawing_method
+
+        try:
+            method = drawing_method(mapping)
+        except ValueError:
+            self.status(self.tr("Unknown rectangle drawing method"), 3000)
+            return False
+        if method == "four_extremes":
+            self.rectangle_creation.start_extreme()
+        else:
+            self.toggle_draw_mode(edit=False, create_mode=mapping["mode"])
+        return True
 
     def switch_digit_shortcut_page(self):
         """Switch to the next digit shortcut page."""
@@ -5523,7 +5708,7 @@ class LabelingWidget(LabelDialog):
     def toggle_draw_mode(
         self, edit=True, create_mode="rectangle", disable_auto_labeling=True
     ):
-        workflow = getattr(self, "rectangle_workflow", None)
+        workflow = getattr(self, "rectangle_creation", None)
         if workflow is not None:
             workflow.before_tool_change(edit, create_mode)
         telemetry = self._behavior_telemetry
@@ -7898,6 +8083,17 @@ class LabelingWidget(LabelDialog):
         self.actions.copy.setEnabled(n_selected)
         self.actions.edit.setEnabled(n_selected >= 1 and same_type)
         self.actions.copy_coordinates.setEnabled(n_selected == 1)
+        angle_action = getattr(self.actions, "toggle_rect_angle_click", None)
+        valid_angle_selection = (
+            self.canvas.selected_rect_click_shape() is not None
+        )
+        if angle_action is not None:
+            angle_action.setEnabled(valid_angle_selection)
+            if not valid_angle_selection and angle_action.isChecked():
+                angle_action.blockSignals(True)
+                angle_action.setChecked(False)
+                angle_action.blockSignals(False)
+                self.canvas.set_rect_angle_click_enabled(False)
         self.actions.union_selection.setEnabled(
             not all(value > 0 for value in allow_merge_shape_type.values())
             and (
@@ -7959,7 +8155,9 @@ class LabelingWidget(LabelDialog):
             self._rect_refine_forward_selection(selected_shapes)
 
         object_mark_actions = getattr(self, "object_mark_actions", None)
-        locate_action = getattr(object_mark_actions, "locate_in_thumbnails", None)
+        locate_action = getattr(
+            object_mark_actions, "locate_in_thumbnails", None
+        )
         if locate_action is not None:
             locate_action.setEnabled(
                 len(selected_shapes) == 1
@@ -8243,6 +8441,12 @@ class LabelingWidget(LabelDialog):
         del blocker
 
     def save_labels(self, filename):
+        history_window = getattr(self, "_dataset_thumbnail_window", None)
+        history_before = (
+            history_window.history_save_snapshot(filename)
+            if callable(getattr(history_window, "history_save_snapshot", None))
+            else None
+        )
         label_file = LabelFile()
         # Get current shapes
         # Excluding auto labeling special shapes
@@ -8295,6 +8499,8 @@ class LabelingWidget(LabelDialog):
             # JSON is authoritative. A derived-index failure is isolated and
             # retried later; it must never turn a successful label save into a
             # failed save operation.
+            if history_before is not None:
+                history_window.history_observe_save(filename, history_before)
             self._dataset_index_controller.label_saved(self.image_path)
             self._behavior_action(
                 "labels_saved",
@@ -9139,6 +9345,13 @@ class LabelingWidget(LabelDialog):
         assert hasattr(self.canvas, key), f"Canvas has no attribute {key}"
         setattr(self.canvas, key, value)
         self.canvas.update()
+        self._sync_density_round_review_display()
+
+    def _sync_density_round_review_display(self) -> None:
+        """Mirror current display preferences into an active review window."""
+        controller = getattr(self, "density_round_review_controller", None)
+        if controller is not None and controller.active:
+            controller.sync_display_from_main()
 
     def toggle_isolation(self, enabled=None) -> None:
         """Toggle transient selection/group isolation on the canvas."""
@@ -9178,6 +9391,7 @@ class LabelingWidget(LabelDialog):
             enabled: Whether current-image issues should be monitored.
         """
         self.rectangle_size_controller.set_enabled(enabled)
+        self._sync_density_round_review_display()
 
     def configure_rectangle_size_rules(self) -> None:
         """Open the rule editor and atomically apply an accepted snapshot."""
@@ -9224,6 +9438,41 @@ class LabelingWidget(LabelDialog):
             self.status(self.tr("矩形单边调整已开启"))
         else:
             self.status(self.tr("矩形单边调整已关闭"))
+
+    def toggle_rect_angle_click(self, enabled: bool) -> None:
+        """Toggle the optional mouse corner-click rectangle adjustment."""
+        selected = self.canvas.selected_rect_click_shape()
+        if enabled and selected is None:
+            action = getattr(self.actions, "toggle_rect_angle_click", None)
+            if action is not None:
+                action.blockSignals(True)
+                action.setChecked(False)
+                action.blockSignals(False)
+            self.status(self.tr("请选择一个矩形后再开启角点击调整"))
+            return
+        if enabled and self.canvas.drawing():
+            self.set_edit_mode()
+        self.canvas.set_rect_angle_click_enabled(enabled)
+        self.status(
+            self.tr("角点击调整已开启" if enabled else "角点击调整已关闭")
+        )
+
+    def _sync_rect_click_actions(self) -> None:
+        """Mirror canvas-owned transient mode into the View menu."""
+        actions = getattr(self, "actions", None)
+        if actions is None:
+            return
+        action = getattr(actions, "toggle_rect_angle_click", None)
+        if action is not None:
+            with QtCore.QSignalBlocker(action):
+                action.setChecked(self.canvas.rect_angle_click_enabled)
+                action.setEnabled(
+                    self.canvas.selected_rect_click_shape() is not None
+                )
+        edge = getattr(actions, "toggle_rect_edge_align", None)
+        if edge is not None:
+            with QtCore.QSignalBlocker(edge):
+                edge.setChecked(self.canvas.rect_edge_align_enabled)
 
     def toggle_precision_mode_lock(self, enabled: bool) -> None:
         """Toggle the precision-drag lock (Feature 3, task 5.5/D6).
@@ -9387,7 +9636,8 @@ class LabelingWidget(LabelDialog):
                     self.update_navigator_shapes()
             else:
                 logger.warning(
-                    f"Shape associated with the hidden item was not found in label list, could not show."
+                    "Shape associated with the hidden item was not found in "
+                    "label list, could not show."
                 )
 
     def get_next_files(self, filename, num_files):
@@ -9858,6 +10108,8 @@ class LabelingWidget(LabelDialog):
         self.canvas.clear_main_visibility_predicate()
         if hasattr(self, "virtual_review_controller"):
             self.virtual_review_controller.on_image_loaded()
+        if hasattr(self, "density_round_review_controller"):
+            self.density_round_review_controller.on_image_loaded()
 
         return True
 
@@ -10223,6 +10475,8 @@ class LabelingWidget(LabelDialog):
                 event.ignore()
                 return
         self._close_dataset_thumbnail_window()
+        if hasattr(self, "density_round_review_controller"):
+            self.density_round_review_controller.disable()
         if self._review_metrics is not None:
             self._review_metrics.target_cleared(
                 EpisodeEndReason.APPLICATION_CLOSED
@@ -10645,6 +10899,8 @@ class LabelingWidget(LabelDialog):
     def close_file(self, _value=False):
         if not self.may_continue():
             return
+        if hasattr(self, "density_round_review_controller"):
+            self.density_round_review_controller.disable()
         self._close_dataset_thumbnail_window()
         self._stop_shape_identity_worker()
         self._clear_rect_refine_focus()
@@ -10681,6 +10937,29 @@ class LabelingWidget(LabelDialog):
 
         self.compare_view_manager.load_compare_for_file(self.filename)
         self.compare_view_slider.show_slider()
+
+    def toggle_density_round_review(self):
+        """Toggle the independent density-round rectangle review window."""
+        if not self.filename:
+            self.status(self.tr("Please open an image first"), 3000)
+            return
+        self.density_round_review_controller.toggle()
+
+    def sync_density_round_review_selection(self):
+        """Confirm the current main selection in the review window."""
+        controller = self.density_round_review_controller
+        if not controller.active:
+            self.status(self.tr("Density round review is not active"), 3000)
+            return
+        controller.sync_main_selection()
+
+    def redo_density_round_review(self):
+        """Redo from the shared review history when review mode is active."""
+        controller = self.density_round_review_controller
+        if not controller.active:
+            self.status(self.tr("Density round review is not active"), 3000)
+            return
+        controller.redo()
 
     def close_compare_view(self, confirm=True):
         """Close the compare view."""
@@ -10865,7 +11144,7 @@ class LabelingWidget(LabelDialog):
             return True
         if answer == mb.StandardButton.Save:
             self.save_file()
-            return True
+            return not self.dirty
         # answer == mb.Cancel
         return False
 
@@ -11877,8 +12156,10 @@ class LabelingWidget(LabelDialog):
         for key, btn in self._display_mode_buttons.items():
             btn.setChecked(key == mode)
         self.canvas.update()
+        self._sync_density_round_review_display()
 
     def _toggle_display_score(self, checked):
         self._config["show_scores"] = checked
         self.canvas.show_scores = checked
         self.canvas.update()
+        self._sync_density_round_review_display()

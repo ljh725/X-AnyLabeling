@@ -1,4 +1,4 @@
-"""Exercise click refinement through real Qt canvas mouse events."""
+"""Exercise explicit axis clicks through real Qt canvas mouse events."""
 
 from collections.abc import Iterator
 
@@ -10,7 +10,7 @@ from anylabeling.views.labeling.shape import Shape
 from anylabeling.views.labeling.widgets.canvas import Canvas
 
 NO_MOD = QtCore.Qt.KeyboardModifier.NoModifier
-ALT = QtCore.Qt.KeyboardModifier.AltModifier
+SHIFT = QtCore.Qt.KeyboardModifier.ShiftModifier
 LEFT = QtCore.Qt.MouseButton.LeftButton
 NO_BUTTON = QtCore.Qt.MouseButton.NoButton
 
@@ -85,19 +85,23 @@ def box(canvas: Canvas) -> tuple[float, float, float, float]:
 
 
 @pytest.mark.parametrize(
-    "point,expected",
+    "axis,point,expected",
     [
-        ((120, 20), (100, 20, 200, 300)),
-        ((180, 200), (100, 100, 180, 300)),
-        ((101, 200), (101, 100, 200, 300)),
-        ((150, 298), (100, 100, 200, 298)),
+        ("y", (120, 20), (100, 20, 200, 300)),
+        ("x", (180, 200), (100, 100, 180, 300)),
+        ("x", (101, 200), (101, 100, 200, 300)),
+        ("y", (150, 298), (100, 100, 200, 298)),
     ],
 )
 def test_one_click_one_coordinate_one_undo(
-    editor: Canvas, point: tuple[float, float], expected: tuple[float, ...]
+    editor: Canvas,
+    axis: str,
+    point: tuple[float, float],
+    expected: tuple[float, ...],
 ) -> None:
     """Include near-edge clicks, stable identity, feedback and full undo."""
     original = box(editor)
+    editor.begin_rect_click_axis(axis)
     shape = editor.shapes[0]
     identity = shape.xanylabeling_shape_id
     baseline = len(editor.shapes_backups)
@@ -117,6 +121,9 @@ def test_one_click_one_coordinate_one_undo(
     assert signals == ["start", "moved", True]
     assert editor.rectangle_review_feedback_snapshot.phase == "committed"
     assert editor.rect_edge_active_edge is None
+    assert editor.rect_edge_click.axis is None
+    assert editor.selected_shapes == [shape]
+    assert shape.selected is True
     editor.restore_shape()
     assert box(editor) == original
 
@@ -124,6 +131,7 @@ def test_one_click_one_coordinate_one_undo(
 def test_preview_never_mutates_and_tracks_same_region(editor: Canvas) -> None:
     """Preview follows coordinates even while the candidate edge is unchanged."""
     original = box(editor)
+    editor.begin_rect_click_axis("x")
     baseline = len(editor.shapes_backups)
     for x in (175, 185):
         send(editor, QtCore.QEvent.Type.MouseMove, (x, 200))
@@ -132,15 +140,16 @@ def test_preview_never_mutates_and_tracks_same_region(editor: Canvas) -> None:
         assert box(editor) == original
     assert len(editor.shapes_backups) == baseline
     send(editor, QtCore.QEvent.Type.MouseMove, (150, 200))
-    assert editor.rect_edge_click.preview is None
-    assert editor.rect_edge_hover_edge is None
+    assert editor.rect_edge_click.preview.left() == 150
+    assert editor.rect_edge_hover_edge.edge_name == "left"
 
 
-@pytest.mark.parametrize("point", [(150, 200), (125, 150), (100, 200)])
-def test_dead_zone_and_unchanged_edge_do_not_store(
+@pytest.mark.parametrize("point", [(100, 200), (200, 200), (-1, 200)])
+def test_invalid_and_unchanged_edge_do_not_store(
     editor: Canvas, point: tuple[float, float]
 ) -> None:
-    """Reject ambiguous clicks and skip identical coordinates."""
+    """Reject out-of-image clicks and skip identical coordinates."""
+    editor.begin_rect_click_axis("x")
     original = box(editor)
     baseline = len(editor.shapes_backups)
     click(editor, point)
@@ -149,25 +158,24 @@ def test_dead_zone_and_unchanged_edge_do_not_store(
     assert editor.rect_edge_click.lock is None
 
 
-def test_alt_activates_normal_mode_and_release_clears_preview(
+def test_shift_and_legacy_config_do_not_activate_click_mode(
     editor: Canvas,
 ) -> None:
-    """Ordinary selection stays unchanged and Alt temporarily enables clicks."""
-    editor.rectangle_review_refinement_enabled = False
-    click(editor, (180, 200))
-    assert box(editor) == (100, 100, 200, 300)
-    click(editor, (180, 200), ALT)
-    assert box(editor)[2] == 180
-    send(editor, QtCore.QEvent.Type.MouseMove, (170, 200), ALT)
-    assert editor.rect_edge_click.preview is not None
+    """Legacy preferences and Shift cannot revive the retired region mode."""
+    editor.rectangle_review_refinement_enabled = True
+    assert not editor.rect_edge_click.active(NO_MOD)
+    assert not editor.rect_edge_click.active(SHIFT)
+    editor.begin_rect_click_axis("x")
     QtWidgets.QApplication.sendEvent(
         editor,
         QtGui.QKeyEvent(
-            QtCore.QEvent.Type.KeyRelease, QtCore.Qt.Key.Key_Alt, NO_MOD
+            QtCore.QEvent.Type.KeyRelease, QtCore.Qt.Key.Key_Shift, NO_MOD
         ),
     )
-    assert editor.rect_edge_click.preview is None
-    assert editor.rect_edge_hover_edge is None
+    assert editor.rect_edge_click.axis == "x"
+    editor._handle_rect_edge_escape()
+    assert not editor.rect_edge_click.active(NO_MOD)
+    assert not editor.rect_edge_click.active(SHIFT)
 
 
 @pytest.mark.parametrize(
@@ -175,6 +183,7 @@ def test_alt_activates_normal_mode_and_release_clears_preview(
 )
 def test_activation_prerequisites(editor: Canvas, case: str) -> None:
     """Never infer an edge for a missing, hidden or ambiguous target."""
+    editor.begin_rect_click_axis("x")
     if case == "multi":
         other = editor.shapes[0].copy_for_new_object()
         editor.shapes.append(other)
@@ -187,22 +196,21 @@ def test_activation_prerequisites(editor: Canvas, case: str) -> None:
         editor.set_rect_edge_align_enabled(False)
     else:
         editor.set_shape_visible(editor.shapes[0], False)
-    assert not editor.rect_edge_click.active(ALT)
+    assert not editor.rect_edge_click.active(SHIFT)
 
 
 @pytest.mark.parametrize(
-    "cancel", ["escape", "focus", "selection", "load", "changed", "alt"]
+    "cancel", ["escape", "focus", "selection", "load", "changed", "mode"]
 )
 def test_interrupted_press_never_commits(editor: Canvas, cancel: str) -> None:
     """Invalidate pending clicks before a later release can edit stale state."""
-    if cancel == "alt":
-        editor.rectangle_review_refinement_enabled = False
-    send(editor, QtCore.QEvent.Type.MouseButtonPress, (180, 200), ALT)
+    editor.begin_rect_click_axis("x")
+    send(editor, QtCore.QEvent.Type.MouseButtonPress, (180, 200), SHIFT)
     assert editor.rect_edge_click.lock is not None
     if cancel == "escape":
         editor.keyPressEvent(
             QtGui.QKeyEvent(
-                QtCore.QEvent.Type.KeyPress, QtCore.Qt.Key.Key_Escape, ALT
+                QtCore.QEvent.Type.KeyPress, QtCore.Qt.Key.Key_Escape, SHIFT
             )
         )
     elif cancel == "focus":
@@ -214,27 +222,26 @@ def test_interrupted_press_never_commits(editor: Canvas, cancel: str) -> None:
     elif cancel == "changed":
         rea.apply_edge_coord(editor.shapes[0], "left", 105)
     else:
-        editor.keyReleaseEvent(
-            QtGui.QKeyEvent(
-                QtCore.QEvent.Type.KeyRelease, QtCore.Qt.Key.Key_Alt, NO_MOD
-            )
-        )
+        editor.set_rect_angle_click_enabled(True)
     baseline = len(editor.shapes_backups)
-    send(editor, QtCore.QEvent.Type.MouseButtonRelease, (180, 200), ALT)
+    send(editor, QtCore.QEvent.Type.MouseButtonRelease, (180, 200), SHIFT)
     assert len(editor.shapes_backups) == baseline
     if editor.shapes:
         assert box(editor)[2] == 200
     assert editor.rect_edge_click.lock is None
 
 
-def test_promotion_and_escape_use_existing_drag(editor: Canvas) -> None:
-    """Dragging promotes the locked side and Escape rolls it back."""
+def test_explicit_click_does_not_promote_to_native_drag(
+    editor: Canvas,
+) -> None:
+    """Moving a held click leaves geometry untouched; Escape cancels it."""
+    editor.begin_rect_click_axis("x")
     baseline = len(editor.shapes_backups)
     send(editor, QtCore.QEvent.Type.MouseButtonPress, (180, 200))
     send(editor, QtCore.QEvent.Type.MouseMove, (185, 200), held=True)
-    assert editor.rect_edge_dragging
-    assert editor.rect_edge_click.lock is None
-    assert box(editor)[2] == 185
+    assert not editor.rect_edge_dragging
+    assert editor.rect_edge_click.lock is not None
+    assert box(editor)[2] == 200
     editor.keyPressEvent(
         QtGui.QKeyEvent(
             QtCore.QEvent.Type.KeyPress, QtCore.Qt.Key.Key_Escape, NO_MOD
@@ -245,32 +252,35 @@ def test_promotion_and_escape_use_existing_drag(editor: Canvas) -> None:
     assert len(editor.shapes_backups) == baseline
 
 
-def test_release_without_move_event_cannot_commit_old_coordinate(
+def test_click_commits_the_locked_press_coordinate(
     editor: Canvas,
 ) -> None:
-    """A coalesced drag still uses its final release location."""
+    """Mouse jitter after a press cannot change the previewed click point."""
+    editor.begin_rect_click_axis("x")
     baseline = len(editor.shapes_backups)
     send(editor, QtCore.QEvent.Type.MouseButtonPress, (180, 200))
     send(editor, QtCore.QEvent.Type.MouseButtonRelease, (185, 200))
-    assert box(editor)[2] == 185
+    assert box(editor)[2] == 180
     assert len(editor.shapes_backups) == baseline + 1
 
 
-def test_double_click_suppressed_but_distant_click_allowed(
+def test_committed_click_requires_new_mode_before_another_adjustment(
     editor: Canvas,
 ) -> None:
-    """Block both Qt double-click events and repeated nearby press pairs."""
+    """A commit keeps selection but requires a new mode activation."""
+    editor.begin_rect_click_axis("x")
     baseline = len(editor.shapes_backups)
     click(editor, (230, 340))  # Right sector; after commit the point is below.
     first = box(editor)
-    send(editor, QtCore.QEvent.Type.MouseButtonDblClick, (230, 340))
-    send(editor, QtCore.QEvent.Type.MouseButtonRelease, (230, 340))
-    click(editor, (230, 340))
+    assert editor.selected_shapes == [editor.shapes[0]]
+    assert editor.rect_edge_click.axis is None
     assert box(editor) == first
     assert len(editor.shapes_backups) == baseline + 1
+    editor.begin_rect_click_axis("y")
     click(editor, (160, 80))
     assert box(editor)[1] == 80
     assert len(editor.shapes_backups) == baseline + 2
+    assert editor.selected_shapes == [editor.shapes[0]]
 
 
 def test_small_dimension_rejects_instead_of_clamping(editor: Canvas) -> None:
@@ -282,6 +292,7 @@ def test_small_dimension_rejects_instead_of_clamping(editor: Canvas) -> None:
         QtCore.QPointF(101, 300),
         QtCore.QPointF(100, 300),
     ]
+    editor.begin_rect_click_axis("x")
     baseline = len(editor.shapes_backups)
     click(editor, (100.8, 200))
     assert box(editor)[2] == 101
@@ -291,6 +302,7 @@ def test_small_dimension_rejects_instead_of_clamping(editor: Canvas) -> None:
 
 def test_ctrl_selection_is_not_region_edit(editor: Canvas) -> None:
     """Reserve Ctrl selection gestures even during refinement."""
+    editor.begin_rect_click_axis("x")
     assert not editor.rect_edge_click.active(
         QtCore.Qt.KeyboardModifier.ControlModifier
     )
@@ -298,6 +310,7 @@ def test_ctrl_selection_is_not_region_edit(editor: Canvas) -> None:
 
 def test_render_preview_offscreen(editor: Canvas) -> None:
     """Paint guides and a proposal through the real canvas painter."""
+    editor.begin_rect_click_axis("y")
     send(editor, QtCore.QEvent.Type.MouseMove, (120, 20))
     output = QtGui.QPixmap(editor.size())
     editor.render(output)

@@ -7183,4 +7183,43 @@ Recovery manifest: %11</source><translation type="unfinished"></translation></me
       <translation>{edge} 변을 클릭 위치로 이동했습니다（변위 {delta:+.1f}px）.</translation>
     </message>
   </context>
+<context>
+    <name>DensityRoundReviewWindow</name>
+    <message><source>Density Round Review</source><translation>밀도 라운드 검토</translation></message>
+    <message><source>No image</source><translation>이미지 없음</translation></message>
+    <message><source>Previous</source><translation>이전</translation></message>
+    <message><source>Next</source><translation>다음</translation></message>
+    <message><source>0 instances</source><translation>인스턴스 0개</translation></message>
+    <message><source>New rectangle</source><translation>새 사각형</translation></message>
+    <message><source>Edit label</source><translation>라벨 편집</translation></message>
+    <message><source>Duplicate</source><translation>복제</translation></message>
+    <message><source>Delete</source><translation>삭제</translation></message>
+    <message><source>Close</source><translation>닫기</translation></message>
+    <message><source>Round</source><translation>라운드</translation></message>
+    <message><source>Limit</source><translation>제한</translation></message>
+    <message><source>Last closed: %s</source><translation>마지막 종료: %s</translation></message>
+    <message><source>%d instances</source><translation>인스턴스 %d개</translation></message>
+    <message><source>Current %d · Next %d</source><translation>현재 %d · 다음 %d</translation></message>
+</context>
+<context>
+    <name>DensityRoundReviewCoordinator</name>
+    <message><source>Finish the current edit first</source><translation>현재 편집을 먼저 완료하세요</translation></message>
+    <message><source>Already at the first image</source><translation>첫 번째 이미지입니다</translation></message>
+    <message><source>Already at the last image</source><translation>마지막 이미지입니다</translation></message>
+    <message><source>Select review rectangles first</source><translation>검토할 사각형을 먼저 선택하세요</translation></message>
+    <message><source>Selected objects belong to different rounds</source><translation>선택한 객체가 서로 다른 라운드에 속합니다</translation></message>
+    <message><source>Pending review-window selection: %d</source><translation>검토 창에 동기화 대기 중인 선택: %d</translation></message>
+    <message><source>Nothing to redo</source><translation>다시 실행할 작업이 없습니다</translation></message>
+    <message><source>Image change cancelled because annotations were not saved</source><translation>주석을 저장하지 못해 이미지 전환을 취소했습니다</translation></message>
+</context>
+<context>
+    <name>LabelingWidget</name>
+    <message><source>Density Round Review</source><translation>밀도 라운드 검토</translation></message>
+    <message><source>Toggle the focused density-round review window</source><translation>밀도 라운드 검토 창을 전환합니다</translation></message>
+    <message><source>Send Selection to Review Round</source><translation>선택 항목을 검토 라운드로 보내기</translation></message>
+    <message><source>Confirm the main selection in the review window</source><translation>검토 창에서 기본 선택을 확인합니다</translation></message>
+    <message><source>Density round review is not active</source><translation>밀도 라운드 검토가 활성화되지 않았습니다</translation></message>
+    <message><source>Redo</source><translation>다시 실행</translation></message>
+    <message><source>Redo the last density-round review edit</source><translation>마지막 밀도 라운드 검토 편집을 다시 실행합니다</translation></message>
+</context>
 </TS>

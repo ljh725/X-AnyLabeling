@@ -421,6 +421,14 @@ class JsonTransactionEngine:
                     "matched_shapes": outcome.matched_shapes,
                     "domain_metadata": dict(outcome.metadata),
                 }
+                if isinstance(original.get("shapes"), list) and isinstance(outcome.data.get("shapes"), list):
+                    from .dataset_thumbnail.history_store import document_digest, labels_of
+
+                    entry["domain_metadata"].setdefault("history_document", {
+                        "before_digest": document_digest(original),
+                        "after_digest": document_digest(outcome.data),
+                        "labels": labels_of(outcome.data),
+                    })
                 entries.append(entry)
                 results.append(
                     FileOperationResult(
@@ -477,6 +485,13 @@ class JsonTransactionEngine:
                             backup_path=entry.get("backup_path"),
                         )
                     )
+                if domain and domain.get("history") and manifest_path:
+                    self._write_manifest(
+                        osp.dirname(manifest_path),
+                        staged.transaction_id,
+                        entries,
+                        domain,
+                    )
             if manifest_path:
                 self._write_manifest(
                     osp.dirname(manifest_path),
@@ -500,6 +515,7 @@ class JsonTransactionEngine:
         manifest_path: str,
         root: Optional[str] = None,
         require_committed_fingerprint: bool = False,
+        history_context: Optional[dict] = None,
     ) -> OperationResult:
         """Restore non-conflicting sources under the dataset write lock."""
         payload = self._read_manifest_payload(manifest_path)
@@ -511,6 +527,15 @@ class JsonTransactionEngine:
         with lock:
             for entry in entries:
                 try:
+                    if entry.get("status") == "restored":
+                        results.append(
+                            FileOperationResult(
+                                entry["source_path"],
+                                "skipped",
+                                "Already restored",
+                            )
+                        )
+                        continue
                     committed_fingerprint = entry.get("committed_fingerprint")
                     if (
                         require_committed_fingerprint
@@ -565,6 +590,15 @@ class JsonTransactionEngine:
                             entry["source_path"], "failed", str(exc)
                         )
                     )
+                finally:
+                    if history_context:
+                        from .dataset_thumbnail.history_store import (
+                            journal_restore,
+                        )
+
+                        journal_restore(
+                            history_context, results, completed=False
+                        )
             transaction_id = (
                 payload.get("transaction_id")
                 or (
@@ -577,6 +611,10 @@ class JsonTransactionEngine:
             self._write_manifest(
                 osp.dirname(manifest_path), transaction_id, entries, domain
             )
+            if history_context:
+                from .dataset_thumbnail.history_store import journal_restore
+
+                journal_restore(history_context, results, completed=True)
         return OperationResult(
             osp.basename(osp.dirname(manifest_path)),
             "restored",

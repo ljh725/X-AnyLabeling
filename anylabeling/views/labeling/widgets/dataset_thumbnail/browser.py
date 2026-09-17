@@ -21,6 +21,8 @@ from anylabeling.views.labeling.widgets.object_relabel import (
 )
 
 from .pipeline import ThumbnailRenderResult, ThumbnailRenderer
+from .incremental import IncrementalBrowser, IncrementalModel
+from .history_browser import HistoryBrowser
 from .resizable_view import ResizableThumbnailView
 from .review_state import (
     ReviewPosition,
@@ -48,7 +50,7 @@ def thumbnail_cache_root(dataset_root: str) -> str:
     return osp.join(cache_root, "dataset_thumbnails", token)
 
 
-class ThumbnailItemModel(QtCore.QAbstractListModel):
+class ThumbnailItemModel(IncrementalModel, QtCore.QAbstractListModel):
     """Model containing one bounded page of thumbnail references."""
 
     RefRole = QtCore.Qt.ItemDataRole.UserRole + 1
@@ -105,17 +107,19 @@ class ThumbnailItemModel(QtCore.QAbstractListModel):
             and self.item_key(ref) not in self._render_errors
         )
 
-    def set_render_result(self, result: ThumbnailRenderResult) -> None:
+    def set_render_result(self, result: ThumbnailRenderResult) -> Optional[DatasetThumbnailRef]:
         """Apply a render result to its matching row."""
         key = self.item_key(result.ref)
         try:
             row = next(
                 index
                 for index, ref in enumerate(self._items)
-                if self.item_key(ref) == key
+                if self.identity_key(ref) == self.identity_key(result.ref)
+                and ref.bbox == result.ref.bbox
             )
         except StopIteration:
             return
+        key = self.item_key(self._items[row])
         if result.error:
             self._render_errors[key] = result.error
         elif result.image_bytes:
@@ -132,6 +136,7 @@ class ThumbnailItemModel(QtCore.QAbstractListModel):
             self.index(row, 0),
             [self.ImageRole, self.ErrorRole, QtCore.Qt.ItemDataRole.UserRole],
         )
+        return self._items[row]
 
     def set_mutation_errors(self, errors: dict[tuple[str, str], str]) -> None:
         """Replace persistent relabel errors without resetting the page."""
@@ -306,12 +311,16 @@ class ThumbnailItemDelegate(QtWidgets.QStyledItemDelegate):
         return QtCore.QSize(220, 190)
 
 
-class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
+class DatasetLabelThumbnailWindow(
+    HistoryBrowser, IncrementalBrowser, QtWidgets.QWidget
+):
     """Non-modal label browser that emits selected objects for relabeling."""
 
     relabel_requested = QtCore.pyqtSignal(object, str)
     undo_requested = QtCore.pyqtSignal(object)
     restore_requested = QtCore.pyqtSignal(str)
+    history_revert_requested = QtCore.pyqtSignal(object, object)
+    history_import_requested = QtCore.pyqtSignal()
     navigate_requested = QtCore.pyqtSignal(object)
     state_save_failed = QtCore.pyqtSignal(str)
     closed = QtCore.pyqtSignal()
@@ -355,6 +364,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self._render_requested = set()
         self._render_finished = {}
         self._render_generation = 0
+        self._changed_files = set()
         self._mutation_errors: dict[tuple[str, str], str] = {}
         self._retained_selection: set[tuple[str, str]] = set()
         self._programmatic_selection = False
@@ -373,8 +383,9 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self._reload_timer = QtCore.QTimer(self)
         self._reload_timer.setSingleShot(True)
         self._reload_timer.setInterval(75)
-        self._reload_timer.timeout.connect(self._load_page)
+        self._reload_timer.timeout.connect(self._sync_page)
         self._renderer.result_ready.connect(self._on_render_result)
+        self._renderer.sources_changed.connect(self._on_source_images_changed)
         state_signal = getattr(self._controller, "state_changed", None)
         if state_signal is not None:
             state_signal.connect(self._on_controller_state_changed)
@@ -390,6 +401,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         if busy_signal is not None:
             busy_signal.connect(self._on_scan_busy_changed)
         self._build_ui()
+        self._init_history()
         if defer_initial_load:
             QtCore.QTimer.singleShot(0, self._initialize)
         else:
@@ -412,7 +424,14 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         """Construct the compact browser controls and grid."""
         self.setWindowTitle(self.tr("Dataset Label Thumbnails"))
         self.resize(980, 760)
-        root = QtWidgets.QVBoxLayout(self)
+        shell = QtWidgets.QVBoxLayout(self)
+        shell.setContentsMargins(0, 0, 0, 0)
+        self._history_host = QtWidgets.QMainWindow(self)
+        self._history_host.setWindowFlags(QtCore.Qt.WindowType.Widget)
+        shell.addWidget(self._history_host)
+        central = QtWidgets.QWidget(self._history_host)
+        self._history_host.setCentralWidget(central)
+        root = QtWidgets.QVBoxLayout(central)
         root.setContentsMargins(6, 6, 6, 6)
         root.setSpacing(3)
         controls = QtWidgets.QHBoxLayout()
@@ -775,7 +794,8 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             return
         refs = self._selected_refs()
         try:
-            self._review_store.set_status(refs, status)
+            self._review_store.set_status(refs, status, self.history_view())
+            self.operation_history.refresh()
         except (ValueError, sqlite3.Error) as exc:
             self.advanced.feedback.setText(
                 self.tr("Review state was not saved: %1").replace(
@@ -788,7 +808,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             .replace("%1", str(len(refs)))
             .replace("%2", review_text(status))
         )
-        self._load_page()
+        self._sync_page()
 
     def _open_preview(self) -> None:
         """Open the current card in an independent crop/full-image viewer."""
@@ -1018,6 +1038,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
     ) -> None:
         """Refresh after successful JSON-to-index synchronization."""
         if succeeded and self._index_is_ready():
+            self._changed_files.add(_image_path)
             self._reload_timer.start()
         elif not succeeded:
             self._reload_timer.stop()
@@ -1171,7 +1192,10 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
                         self._model.index(row, 0)
                     )
                     QtCore.QTimer.singleShot(
-                        0, lambda: self._restore_scroll_position(saved_index)
+                        0,
+                        lambda: self._restore_scroll_position(
+                            saved_index, int(restore.get("pixel_offset", 0))
+                        ),
                     )
                     found = True
                     break
@@ -1184,7 +1208,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         self._visible_timer.start(0)
 
     def _restore_scroll_position(
-        self, index: QtCore.QPersistentModelIndex
+        self, index: QtCore.QPersistentModelIndex, pixel_offset: int = 0
     ) -> None:
         """Restore after window layout, ignoring a replaced or closed page."""
         if self._closed or not index.isValid():
@@ -1194,6 +1218,8 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             QtCore.QModelIndex(index),
             QtWidgets.QAbstractItemView.ScrollHint.PositionAtTop,
         )
+        bar = self.view.verticalScrollBar()
+        bar.setValue(bar.value() - pixel_offset)
         self._visible_timer.start(0)
 
     def _request_visible(self) -> None:
@@ -1236,8 +1262,10 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
         if result.generation != self._renderer.generation:
             return
         started = time.perf_counter()
-        self._model.set_render_result(result)
-        self._render_finished[self._model.item_key(result.ref)] = bool(
+        current = self._model.set_render_result(result)
+        if current is None:
+            return
+        self._render_finished[self._model.item_key(current)] = bool(
             result.error
         )
         self._update_render_progress()
@@ -1424,6 +1452,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
 
     def apply_relabel_result(self, result) -> None:
         """Retain failed objects and coalesce successful index refreshes."""
+        self.finish_history(result)
         if result.committed_annotation_paths:
             self._single_undo = getattr(result, "undo_record", None)
         self._show_relabel_result(result)
@@ -1461,6 +1490,7 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
 
     def apply_restore_result(self, result) -> None:
         """Show file-level recovery feedback and wait for a fresh model."""
+        self.finish_restore_history(result)
         self.clear_single_undo()
         counts = result.counts
         restored = counts.get("succeeded", 0)
@@ -1491,6 +1521,18 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
 
     def _show_relabel_result(self, result) -> None:
         """Render one structured relabel result in the in-window result bar."""
+        history = getattr(result, "history_record", None)
+        if history and history.get("kind") == "revert":
+            count = result.counts.get("succeeded", 0)
+            self._set_result_bar(
+                "success" if history["state"] == "completed" else "warning",
+                self.tr(
+                    "Reverted %1 object(s). See operation history for details."
+                ).replace("%1", str(count)),
+                self._object_result_details(result),
+                result.manifest_path or "",
+            )
+            return
         counts = result.counts
         succeeded = counts.get("succeeded", 0)
         unchanged = counts.get("unchanged", 0)
@@ -1655,6 +1697,14 @@ class DatasetLabelThumbnailWindow(QtWidgets.QWidget):
             self.result_restore_button.property("manifestPath") or ""
         )
         if manifest_path:
+            row = self._history.connection.execute(
+                "SELECT id FROM thumbnail_history WHERE kind != 'restore' "
+                "AND json_extract(payload,'$.manifest_path')=? ORDER BY created DESC LIMIT 1",
+                (manifest_path,),
+            ).fetchone()
+            if row:
+                self._history_restore(self._history.get(row[0]))
+                return
             self.restore_requested.emit(manifest_path)
 
     def clear_single_undo(self) -> None:

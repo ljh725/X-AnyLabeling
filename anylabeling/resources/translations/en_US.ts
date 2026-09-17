@@ -475,7 +475,11 @@
       <source>Max edge %.1f px &lt; %g px</source>
       <translation>Max edge %.1f px &lt; %g px</translation>
     </message>
-  </context>
+      <message>
+      <source>Select a corner, then click its new position; Esc to exit.</source>
+      <translation>Select a corner, then click its new position; Esc to exit.</translation>
+    </message>
+</context>
   <context>
     <name>ChatMessage</name>
     <message>
@@ -1265,7 +1269,23 @@
       <source>Digit shortcuts saved successfully</source>
       <translation type="unfinished" />
     </message>
-  </context>
+      <message>
+        <source>Rectangle (two points)</source>
+        <translation>Rectangle (two points)</translation>
+    </message>
+    <message>
+        <source>Rectangle (four extremes)</source>
+        <translation>Rectangle (four extremes)</translation>
+    </message>
+    <message>
+        <source>Unknown rectangle drawing method</source>
+        <translation>Unknown rectangle drawing method</translation>
+    </message>
+    <message>
+        <source>Selected objects use digit rename. Deselect to start drawing. Digit label actions pause during rectangle boundary input.</source>
+        <translation>Selected objects use digit rename. Deselect to start drawing. Digit label actions pause during rectangle boundary input.</translation>
+    </message>
+</context>
   <context>
     <name>EditLabelDialog</name>
     <message>
@@ -3661,6 +3681,50 @@ This warning will only be shown once. Do you want to continue?</translation>
         <source>One object: the thumbnail window offers one guarded undo after a successful label change.</source>
         <translation>One object: the thumbnail window offers one guarded undo after a successful label change.</translation>
     </message>
+    <message>
+        <source>Unknown rectangle drawing method</source>
+        <translation>Unknown rectangle drawing method</translation>
+    </message>
+    <message>
+      <source>矩形点击调整</source>
+      <translation>Rectangle click adjustment</translation>
+    </message>
+    <message>
+      <source>角点击调整</source>
+      <translation>Corner click adjustment</translation>
+    </message>
+    <message>
+      <source>启用鼠标指定角并点击新角点</source>
+      <translation>Select a corner, then click its new position</translation>
+    </message>
+    <message>
+      <source>边点击调整：修改 X（左/右边）</source>
+      <translation>Edge click adjustment: modify X (left/right)</translation>
+    </message>
+    <message>
+      <source>边点击调整：修改 Y（上/下边）</source>
+      <translation>Edge click adjustment: modify Y (top/bottom)</translation>
+    </message>
+    <message>
+      <source>按下后点击目标横坐标</source>
+      <translation>Press once, then click the target X coordinate</translation>
+    </message>
+    <message>
+      <source>按下后点击目标纵坐标</source>
+      <translation>Press once, then click the target Y coordinate</translation>
+    </message>
+    <message>
+      <source>请选择一个矩形后再开启角点击调整</source>
+      <translation>Select one rectangle before enabling corner click adjustment</translation>
+    </message>
+    <message>
+      <source>角点击调整已开启</source>
+      <translation>Corner click adjustment enabled</translation>
+    </message>
+    <message>
+      <source>角点击调整已关闭</source>
+      <translation>Corner click adjustment disabled</translation>
+    </message>
 </context>
   <context>
     <name>Model</name>
@@ -5488,7 +5552,47 @@ Changes will not be saved until you click Save.</translation>
       <source>Show Group ID</source>
       <translation type="unfinished" />
     </message>
-  </context>
+      <message>
+        <source>Keyboard quick fitting</source>
+        <translation>Keyboard quick fitting</translation>
+    </message>
+    <message>
+        <source>Place top boundary (rectangle task only)</source>
+        <translation>Place top boundary (rectangle task only)</translation>
+    </message>
+    <message>
+        <source>Place right boundary (rectangle task only)</source>
+        <translation>Place right boundary (rectangle task only)</translation>
+    </message>
+    <message>
+        <source>Place bottom boundary (rectangle task only)</source>
+        <translation>Place bottom boundary (rectangle task only)</translation>
+    </message>
+    <message>
+        <source>Place left boundary (rectangle task only)</source>
+        <translation>Place left boundary (rectangle task only)</translation>
+    </message>
+    <message>
+        <source>Only during rectangle boundary input. Q/W/E/R temporarily override their ordinary actions; digits pause label actions.</source>
+        <translation>Only during rectangle boundary input. Q/W/E/R temporarily override their ordinary actions; digits pause label actions.</translation>
+    </message>
+    <message>
+        <source>Digits are reserved for label actions outside rectangle tasks</source>
+        <translation>Digits are reserved for label actions outside rectangle tasks</translation>
+    </message>
+    <message>
+        <source>Boundary keys cannot use task control keys or multi-stroke sequences</source>
+        <translation>Boundary keys cannot use task control keys or multi-stroke sequences</translation>
+    </message>
+    <message>
+      <source>Edge click adjustment: modify X (left/right)</source>
+      <translation>Edge click adjustment: modify X (left/right)</translation>
+    </message>
+    <message>
+      <source>Edge click adjustment: modify Y (top/bottom)</source>
+      <translation>Edge click adjustment: modify Y (top/bottom)</translation>
+    </message>
+</context>
   <context>
     <name>SettingsRuntimeApplier</name>
     <message>
@@ -7057,7 +7161,91 @@ Recovery manifest: %11</translation></message>
       <source>Workflow</source>
       <translation>Workflow</translation>
     </message>
-  </context>
+      <message>
+        <source>Rectangle tools</source>
+        <translation>Rectangle tools</translation>
+    </message>
+    <message>
+        <source>Keyboard quick fitting</source>
+        <translation>Keyboard quick fitting</translation>
+    </message>
+    <message>
+        <source>Boundary key preset</source>
+        <translation>Boundary key preset</translation>
+    </message>
+    <message>
+        <source>Rectangle shortcut settings</source>
+        <translation>Rectangle shortcut settings</translation>
+    </message>
+    <message>
+        <source>Could not save boundary key preset.</source>
+        <translation>Could not save boundary key preset.</translation>
+    </message>
+    <message>
+        <source>Keyboard fitting is active.</source>
+        <translation>Keyboard fitting is active.</translation>
+    </message>
+    <message>
+        <source>Move the pointer onto the image and release mouse buttons.</source>
+        <translation>Move the pointer onto the image and release mouse buttons.</translation>
+    </message>
+    <message>
+        <source>Fitting paused: select one valid rectangle.</source>
+        <translation>Fitting paused: select one valid rectangle.</translation>
+    </message>
+    <message>
+        <source>Use the key for the current boundary step.</source>
+        <translation>Use the key for the current boundary step.</translation>
+    </message>
+    <message>
+        <source>This boundary requires the pointer in its corresponding half.</source>
+        <translation>This boundary requires the pointer in its corresponding half.</translation>
+    </message>
+    <message>
+        <source>{edge}: moved {delta:+.2f}px</source>
+        <translation>{edge}: moved {delta:+.2f}px</translation>
+    </message>
+    <message>
+        <source>Digit label actions are paused during this task.</source>
+        <translation>Digit label actions are paused during this task.</translation>
+    </message>
+    <message>
+        <source>Boundary {step}/4: {edge}</source>
+        <translation>Boundary {step}/4: {edge}</translation>
+    </message>
+    <message>
+        <source>Available</source>
+        <translation>Available</translation>
+    </message>
+    <message>
+        <source>Unavailable</source>
+        <translation>Unavailable</translation>
+    </message>
+    <message>
+        <source>Center line</source>
+        <translation>Center line</translation>
+    </message>
+    <message>
+        <source>Click to select the edge; press its key on the image to place it.</source>
+        <translation>Click to select the edge; press its key on the image to place it.</translation>
+    </message>
+    <message>
+        <source>Cancel draft</source>
+        <translation>Cancel draft</translation>
+    </message>
+    <message>
+        <source>Exit keyboard fitting</source>
+        <translation>Exit keyboard fitting</translation>
+    </message>
+    <message>
+        <source>Digit label actions paused. Esc exits; Ctrl+Z undoes.</source>
+        <translation>Digit label actions paused. Esc exits; Ctrl+Z undoes.</translation>
+    </message>
+    <message>
+        <source>Arrow keys: 1px; Shift: 5px</source>
+        <translation>Arrow keys: 1px; Shift: 5px</translation>
+    </message>
+</context>
   <context>
     <name>SettingsDialog</name>
     <message>
@@ -7174,5 +7362,63 @@ Recovery manifest: %11</translation></message>
       <source>{edge} edge moved to click (delta {delta:+.1f}px).</source>
       <translation>{edge} edge moved to click (delta {delta:+.1f}px).</translation>
     </message>
-  </context>
+      <message>
+      <source>Select one valid rectangle first.</source>
+      <translation>Select one valid rectangle first.</translation>
+    </message>
+    <message>
+      <source>Modify {axis}: click a boundary; Esc to exit.</source>
+      <translation>Modify {axis}: click a boundary; Esc to exit.</translation>
+    </message>
+</context>
+<context>
+    <name>RectangleFitHud</name>
+    <message>
+        <source>Rectangle tools</source>
+        <translation>Rectangle tools</translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation>Undo</translation>
+    </message>
+</context>
+<context>
+    <name>DensityRoundReviewWindow</name>
+    <message><source>Density Round Review</source><translation>Density Round Review</translation></message>
+    <message><source>No image</source><translation>No image</translation></message>
+    <message><source>Previous</source><translation>Previous</translation></message>
+    <message><source>Next</source><translation>Next</translation></message>
+    <message><source>0 instances</source><translation>0 instances</translation></message>
+    <message><source>New rectangle</source><translation>New rectangle</translation></message>
+    <message><source>Edit label</source><translation>Edit label</translation></message>
+    <message><source>Duplicate</source><translation>Duplicate</translation></message>
+    <message><source>Delete</source><translation>Delete</translation></message>
+    <message><source>Close</source><translation>Close</translation></message>
+    <message><source>Round</source><translation>Round</translation></message>
+    <message><source>Limit</source><translation>Limit</translation></message>
+    <message><source>Last closed: %s</source><translation>Last closed: %s</translation></message>
+    <message><source>%d instances</source><translation>%d instances</translation></message>
+    <message><source>Current %d · Next %d</source><translation>Current %d · Next %d</translation></message>
+</context>
+<context>
+    <name>DensityRoundReviewCoordinator</name>
+    <message><source>Finish the current edit first</source><translation>Finish the current edit first</translation></message>
+    <message><source>Already at the first image</source><translation>Already at the first image</translation></message>
+    <message><source>Already at the last image</source><translation>Already at the last image</translation></message>
+    <message><source>Select review rectangles first</source><translation>Select review rectangles first</translation></message>
+    <message><source>Selected objects belong to different rounds</source><translation>Selected objects belong to different rounds</translation></message>
+    <message><source>Pending review-window selection: %d</source><translation>Pending review-window selection: %d</translation></message>
+    <message><source>Nothing to redo</source><translation>Nothing to redo</translation></message>
+    <message><source>Image change cancelled because annotations were not saved</source><translation>Image change cancelled because annotations were not saved</translation></message>
+</context>
+<context>
+    <name>LabelingWidget</name>
+    <message><source>Density Round Review</source><translation>Density Round Review</translation></message>
+    <message><source>Toggle the focused density-round review window</source><translation>Toggle the focused density-round review window</translation></message>
+    <message><source>Send Selection to Review Round</source><translation>Send Selection to Review Round</translation></message>
+    <message><source>Confirm the main selection in the review window</source><translation>Confirm the main selection in the review window</translation></message>
+    <message><source>Density round review is not active</source><translation>Density round review is not active</translation></message>
+    <message><source>Redo</source><translation>Redo</translation></message>
+    <message><source>Redo the last density-round review edit</source><translation>Redo the last density-round review edit</translation></message>
+</context>
 </TS>

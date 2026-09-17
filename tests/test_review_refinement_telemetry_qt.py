@@ -76,8 +76,8 @@ def test_canvas_telemetry_signal_episode_persists(tmp_path, qapp) -> None:
     assert path.read_text(encoding="utf-8").count("\n") == 1
 
 
-def test_loupe_overlay_does_not_change_canvas_geometry(qapp) -> None:
-    """Enabled loupe drawing is read-only and keeps the active edge intact."""
+def test_retired_loupe_config_does_not_change_canvas_geometry(qapp) -> None:
+    """Legacy assistance cannot reactivate the retired refinement mode."""
     canvas = Canvas()
     canvas.pixmap = QtGui.QPixmap(100, 100)
     canvas.pixmap.fill(QtGui.QColor("black"))
@@ -96,6 +96,7 @@ def test_loupe_overlay_does_not_change_canvas_geometry(qapp) -> None:
     painter = QtGui.QPainter(target)
     canvas._draw_rectangle_review_loupe(painter)
     painter.end()
+    assert not canvas.rectangle_review_refinement_enabled
     assert [(point.x(), point.y()) for point in shape.points] == [
         (20.0, 20.0),
         (80.0, 20.0),
@@ -104,10 +105,10 @@ def test_loupe_overlay_does_not_change_canvas_geometry(qapp) -> None:
     ]
 
 
-def test_candidate_preview_is_explicit_and_accept_is_transactional(
+def test_retired_candidate_config_cannot_edit_geometry(
     qapp,
 ) -> None:
-    """Candidate request/reject/accept keep preview separate from geometry."""
+    """Legacy candidate settings cannot create or accept an old proposal."""
     canvas = Canvas()
     canvas.pixmap = QtGui.QPixmap(100, 100)
     shape = _rectangle()
@@ -123,10 +124,10 @@ def test_candidate_preview_is_explicit_and_accept_is_transactional(
     )
     before = [(point.x(), point.y()) for point in shape.points]
     candidate = canvas.request_rectangle_review_candidate([0, 0, 8])
-    assert candidate is not None
+    assert candidate is None
     assert [(point.x(), point.y()) for point in shape.points] == before
     canvas.reject_rectangle_review_candidate()
     assert [(point.x(), point.y()) for point in shape.points] == before
     canvas.request_rectangle_review_candidate([0, 0, 8])
-    assert canvas.accept_rectangle_review_candidate()
-    assert [(point.x(), point.y()) for point in shape.points] != before
+    assert not canvas.accept_rectangle_review_candidate()
+    assert [(point.x(), point.y()) for point in shape.points] == before

@@ -2,6 +2,7 @@ import os
 import os.path as osp
 import shutil
 import copy
+import tempfile
 import yaml
 import importlib.resources as pkg_resources
 
@@ -51,6 +52,17 @@ def update_dict(target_dict, new_dict, validate_item=None):
             update_dict(target_dict[key], value, validate_item=validate_item)
         else:
             target_dict[key] = value
+
+
+def _merge_unknown(target_dict, source_dict):
+    """Recursively retain user fields absent from the bundled defaults."""
+    if not isinstance(target_dict, dict) or not isinstance(source_dict, dict):
+        return
+    for key, value in source_dict.items():
+        if key not in target_dict:
+            target_dict[key] = copy.deepcopy(value)
+        elif isinstance(target_dict[key], dict) and isinstance(value, dict):
+            _merge_unknown(target_dict[key], value)
 
 
 def _set_nested_value(target_dict, key_path, value):
@@ -122,14 +134,44 @@ def normalize_user_config(config):
     return normalized
 
 
+def _config_path() -> str:
+    """Return the single user configuration path used for read and write."""
+    if current_config_file and isinstance(
+        current_config_file, (str, os.PathLike)
+    ):
+        candidate = osp.abspath(osp.expanduser(os.fspath(current_config_file)))
+        if candidate.lower().endswith((".yaml", ".yml", ".xanylabelingrc")):
+            return candidate
+    return osp.join(get_work_directory(), ".xanylabelingrc")
+
+
 def save_config(config):
-    user_config_file = osp.join(get_work_directory(), ".xanylabelingrc")
+    """Atomically save configuration and return whether the write succeeded."""
+    user_config_file = _config_path()
+    temp_path = None
     try:
         os.makedirs(osp.dirname(user_config_file), exist_ok=True)
-        with open(user_config_file, "w", encoding="utf-8") as f:
+        fd, temp_path = tempfile.mkstemp(
+            prefix=".xanylabelingrc.",
+            suffix=".tmp",
+            dir=osp.dirname(user_config_file),
+        )
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             yaml.safe_dump(config, f, allow_unicode=True)
-    except Exception:  # noqa
-        logger.warning(f"Failed to save config: {user_config_file}")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_path, user_config_file)
+        temp_path = None
+        return True
+    except Exception as exc:  # noqa
+        logger.warning(f"Failed to save config: {user_config_file}: {exc}")
+        return False
+    finally:
+        if temp_path and osp.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
 
 
 def get_default_config():
@@ -143,7 +185,7 @@ def get_default_config():
     with pkg_resources.open_text(anylabeling_configs, config_file) as f:
         config = yaml.safe_load(f)
 
-    if not osp.exists(osp.join(work_dir, ".xanylabelingrc")):
+    if not osp.exists(_config_path()):
         save_config(config)
 
     return config
@@ -174,12 +216,29 @@ def get_config(
     if not config_file_or_yaml:
         config_file_or_yaml = current_config_file
 
-    config_from_yaml = yaml.safe_load(config_file_or_yaml)
+    config_from_yaml = None
+    if isinstance(config_file_or_yaml, dict):
+        config_from_yaml = config_file_or_yaml
+    elif config_file_or_yaml:
+        try:
+            config_from_yaml = yaml.safe_load(config_file_or_yaml)
+        except (OSError, yaml.YAMLError):
+            config_from_yaml = None
+        if (
+            not isinstance(config_from_yaml, dict)
+            and isinstance(config_file_or_yaml, (str, os.PathLike))
+            and osp.exists(osp.expanduser(os.fspath(config_file_or_yaml)))
+        ):
+            with open(config_file_or_yaml, encoding="utf-8") as f:
+                config_from_yaml = yaml.safe_load(f)
     if not isinstance(config_from_yaml, dict):
-        with open(config_file_or_yaml, encoding="utf-8") as f:
-            config_from_yaml = yaml.safe_load(f)
+        config_from_yaml = {}
     config_from_yaml = normalize_user_config(config_from_yaml)
     update_dict(config, config_from_yaml, validate_item=validate_config_item)
+    # Keep user-defined extension fields through upgrades. Known keys have
+    # already been validated and merged above; unknown values remain available
+    # to plugins and are written back on the next save.
+    _merge_unknown(config, config_from_yaml)
     if show_msg:
         logger.info(
             f"🔧️ Initializing config from local file: {config_file_or_yaml}"
@@ -191,6 +250,7 @@ def get_config(
         update_dict(
             config, config_from_args, validate_item=validate_config_item
         )
+        _merge_unknown(config, config_from_args)
         if show_msg:
             logger.info(
                 f"🔄 Updated config from CLI arguments: {config_from_args}"

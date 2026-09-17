@@ -163,6 +163,27 @@ def _preflight_message(summary, plan=None, single_undo: bool = False) -> str:
             "One object: the thumbnail window offers one guarded undo "
             "after a successful label change.",
         )
+    if plan is not None and plan.inverse_items:
+        message = (
+            QtCore.QCoreApplication.translate(
+                "LabelingWidget",
+                "Revert only the selected historical label changes? Other fields are preserved.",
+            )
+            + "\n"
+            + "\n".join(
+                f'{item["image_path"]} #{item["shape_id"]}: {item.get("after")} → {item.get("before")}'
+                for item in plan.inverse_items
+            )
+            + "\n"
+            + QtCore.QCoreApplication.translate(
+                "LabelingWidget",
+                "Changeable: {changeable}; conflicts: {conflicts}; failures: {failed}",
+            ).format(
+                changeable=summary.changeable,
+                conflicts=summary.conflict,
+                failed=summary.failed,
+            )
+        )
     return message
 
 
@@ -307,6 +328,7 @@ def run_object_relabel_flow(
                 not show_result_dialog
                 and plan.total_objects == 1
                 and plan.undo_record is None
+                and not plan.inverse_items
             ),
         )
         confirmation = QtWidgets.QMessageBox(

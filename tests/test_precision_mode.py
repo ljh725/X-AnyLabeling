@@ -115,8 +115,8 @@ def test_7_17_continuous_precision_drag_no_drift(canvas):
     assert c.prev_point.x() == 0.0
 
 
-def test_rectangle_review_gain_is_screen_scale_independent(canvas):
-    """An 8px screen drag maps to at most 4 image pixels at low zoom."""
+def test_retired_rectangle_config_does_not_enable_precision(canvas):
+    """Old workflow preferences cannot alter ordinary drag coordinates."""
     c = canvas
     c.set_rectangle_review_refinement_config(
         {"enabled": True, "target_gain": 0.5}
@@ -127,7 +127,8 @@ def test_rectangle_review_gain_is_screen_scale_independent(canvas):
     c.scale = 0.5
     raw = QtCore.QPointF(116, 100)
     eff = c._effective_drag_pos(raw, ev=None)
-    assert eff.x() == 104.0
+    assert not c.rectangle_review_refinement_enabled
+    assert eff.x() == 116.0
 
 
 def test_shift_disables_default_edge_refinement_gain(canvas):
@@ -140,8 +141,10 @@ def test_shift_disables_default_edge_refinement_gain(canvas):
     c.rect_edge_state.drag_start_points = []
     c.prev_point = QtCore.QPointF(100, 100)
     c.scale = 0.5
-    event = type("Event", (), {
-        "modifiers": lambda self: QtCore.Qt.KeyboardModifier.ShiftModifier
-    })()
+    event = type(
+        "Event",
+        (),
+        {"modifiers": lambda self: QtCore.Qt.KeyboardModifier.ShiftModifier},
+    )()
     eff = c._effective_drag_pos(QtCore.QPointF(116, 100), event)
     assert eff.x() == 116.0

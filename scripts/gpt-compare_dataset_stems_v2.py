@@ -74,13 +74,6 @@ GROUP_A_DIRS: list[str] = [
 GROUP_B_DIRS: list[str] = [
     # 示例: "/path/to/labels",
     # 示例: "/path/to/more_labels",
-    # "\\\\192.168.3.248\opt\chengdu\images2\images"
-    # r"D:\A0_part1_kps_3_class_dataset\sort_jsons_35100",
-    # r"D:\A0_part1_kps_3_class_dataset\hard-111\json-converted",
-    # r"D:\A0_part1_kps_3_class_dataset\HK-Hard\json-converted",
-    # r"D:\A0_part1_kps_3_class_dataset\HK-Sample\json-converted",
-    # r"D:\A0_part1_kps_3_class_dataset\images\json-converted"
-    # r"\\192.168.3.248\opt\chengdu\cls3pose_cly\cls3pose_v1\train\output\images"
     r"D:\A0_part1_kps_3_class_dataset\sort_jsons_35100"
 ]
 

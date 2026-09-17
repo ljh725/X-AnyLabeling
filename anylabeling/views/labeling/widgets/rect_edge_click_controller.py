@@ -1,4 +1,4 @@
-"""Bridge finite click regions to the existing canvas edge transactions."""
+"""Bridge explicit axis clicks to the existing canvas edge transactions."""
 
 from __future__ import annotations
 
@@ -45,9 +45,36 @@ class RectEdgeClickController:
         self.consume_release = False
         self.last_commit: tuple[object, QtCore.QPointF, float] | None = None
         self.message = ""
+        self.axis: str | None = None
+        self.target = None
+
+    def begin_axis(self, axis: str) -> bool:
+        """Enter X/Y edge-click mode and clear any pending gesture."""
+        if (
+            axis not in {"x", "y"}
+            or self.canvas.selected_rect_click_shape() is None
+        ):
+            self.notify(translate("Select one valid rectangle first."))
+            return False
+        pointer = self.pointer
+        self.canvas._cancel_rect_edge_interaction()
+        self.canvas.set_rect_angle_click_enabled(False)
+        self.clear()
+        self.axis = axis
+        self.target = self.canvas.selected_rect_click_shape()
+        self.canvas.set_rect_edge_align_enabled(True)
+        self.notify(
+            translate("Modify {axis}: click a boundary; Esc to exit.").format(
+                axis=axis.upper()
+            )
+        )
+        if pointer is not None:
+            self.hover(pointer, QtCore.Qt.KeyboardModifier.NoModifier)
+        self.canvas.update()
+        return True
 
     def active(self, modifiers: QtCore.Qt.KeyboardModifier) -> bool:
-        """Require a selected editable rectangle and refinement or Alt."""
+        """Require an explicitly selected axis and the original target."""
         canvas = self.canvas
         reserved = (
             QtCore.Qt.KeyboardModifier.ControlModifier
@@ -58,13 +85,12 @@ class RectEdgeClickController:
             and canvas._selected_rect_edge_shape() is not None
             and canvas.pixmap is not None
             and not canvas.pixmap.isNull()
-            and (
-                canvas.rectangle_review_refinement_enabled
-                or modifiers & QtCore.Qt.KeyboardModifier.AltModifier
-            )
+            and not canvas.rect_angle_click_enabled
+            and self.target is canvas._selected_rect_edge_shape()
+            and self.axis in {"x", "y"}
         )
 
-    def clear(self) -> None:
+    def clear(self, reset_axis: bool = True) -> None:
         """Cancel transient state while swallowing an interrupted release."""
         self.consume_release |= self.lock is not None
         self.lock = None
@@ -73,6 +99,9 @@ class RectEdgeClickController:
         self.preview_shape = None
         self.last_commit = None
         self.pointer = None
+        if reset_axis:
+            self.axis = None
+            self.target = None
         if self.message:
             self.notify("")
 
@@ -103,10 +132,9 @@ class RectEdgeClickController:
             return rec.ClickDecision(None, rec.REASON_INVALID_BOX), geometry
         if not self.in_image(pos):
             return rec.ClickDecision(None, rec.REASON_OUT_OF_RANGE), geometry
-        return (
-            rec.classify(self.box(geometry), (pos.x(), pos.y()), canvas.scale),
-            geometry,
-        )
+        box = self.box(geometry)
+        decision = rec.classify_axis(box, (pos.x(), pos.y()), self.axis)
+        return decision, geometry
 
     @staticmethod
     def box(geometry: rea.RectGeometry) -> rec.Box:
@@ -132,16 +160,6 @@ class RectEdgeClickController:
             and self.in_image(QtCore.QPointF(right, bottom))
         )
 
-    def at_vertex(self, pos: QtCore.QPointF) -> bool:
-        """Preserve the original selected rectangle's vertex drag handles."""
-        canvas = self.canvas
-        shape = canvas._selected_rect_edge_shape()
-        return bool(
-            shape is not None
-            and shape.nearest_vertex(pos, canvas.epsilon / canvas.scale)
-            is not None
-        )
-
     def hover(
         self, pos: QtCore.QPointF, modifiers: QtCore.Qt.KeyboardModifier
     ) -> bool:
@@ -152,7 +170,7 @@ class RectEdgeClickController:
         self.preview = None
         self.preview_box = None
         self.preview_shape = None
-        if not self.active(modifiers) or self.at_vertex(pos):
+        if not self.active(modifiers):
             self.notify("")
             if previous is not None:
                 canvas.update()
@@ -234,22 +252,17 @@ class RectEdgeClickController:
         if self.double_click(event):
             self.consume_release = True
             return True
-        if self.at_vertex(pos):
-            return False
         decision, geometry = self.decision(pos)
         if decision.reason == rec.REASON_OUT_OF_RANGE:
-            return False
+            self.consume_release = True
+            return True
         if decision.edge is None:
             self.consume_release = True
-            self.notify(
-                translate("Region boundary; rectangle unchanged.")
-                if decision.reason == rec.REASON_DEAD_ZONE
-                else translate("Rejected: image bounds or minimum size.")
-            )
+            self.notify(translate("Rejected: image bounds or minimum size."))
             return True
         canvas = self.canvas
         shape = canvas._selected_rect_edge_shape()
-        canvas.clear_rect_edge_alignment()
+        canvas.clear_rect_edge_alignment(preserve_click_mode=True)
         edge = rea.edge_from_geometry(shape, geometry, decision.edge)
         self.lock = ClickLock(
             edge,
@@ -288,10 +301,13 @@ class RectEdgeClickController:
             self.canvas.clear_rect_edge_alignment()
             self.canvas.update()
             return True
+        if self.lock is not None:
+            # Explicit click adjustment never promotes to a drag mutation.
+            return True
         return False
 
     def release(self, event: QtGui.QMouseEvent) -> bool:
-        """Commit the locked coordinate, or let a promoted drag finish."""
+        """Commit the locked coordinate as one independent transaction."""
         canvas = self.canvas
         if self.consume_release:
             self.consume_release = False
@@ -304,13 +320,6 @@ class RectEdgeClickController:
             canvas.update()
             return True
         lock = self.lock
-        if canvas._rect_edge_pending_has_moved(event.position()):
-            canvas._start_rect_edge_drag(lock.edge, lock.point)
-            pos = canvas.transform_pos(event.position())
-            canvas._rect_edge_drag_update(
-                canvas._effective_drag_pos(pos, event)
-            )
-            return False
         self.commit(lock, event.position())
         return True
 
@@ -321,7 +330,7 @@ class RectEdgeClickController:
         point = (lock.point.x(), lock.point.y())
         proposal = rec.proposed_box(lock.box, edge.edge_name, point)
         self.lock = None
-        canvas.clear_rect_edge_alignment()
+        canvas.clear_rect_edge_alignment(preserve_click_mode=True)
         if not self.valid_box(proposal):
             self.notify(translate("Rejected: image bounds or minimum size."))
             canvas.update()
@@ -354,18 +363,21 @@ class RectEdgeClickController:
             QtCore.QPointF(screen_pos),
             time.monotonic(),
         )
-        self.notify(
-            translate(
-                "{edge} edge moved to click (delta {delta:+.1f}px)."
-            ).format(
-                edge=self.edge_label(edge.edge_name), delta=coord - edge.coord
-            )
+        success_message = translate(
+            "{edge} edge moved to click (delta {delta:+.1f}px)."
+        ).format(
+            edge=self.edge_label(edge.edge_name), delta=coord - edge.coord
         )
+        # Edge-click adjustment is a one-shot operation. Exit its explicit
+        # axis/target while retaining the rectangle's formal selection.
+        self.clear()
+        canvas.rect_click_mode_changed.emit()
+        self.notify(success_message)
         canvas.override_cursor(QtCore.Qt.CursorShape.ArrowCursor)
         canvas.update()
 
     def modifiers_changed(self, modifiers: QtCore.Qt.KeyboardModifier) -> None:
-        """Refresh Alt previews without requiring an extra mouse movement."""
+        """Refresh reserved-modifier previews without extra mouse movement."""
         if self.lock is not None and not self.active(modifiers):
             self.canvas.clear_rect_edge_alignment()
         if self.lock is not None or self.canvas.rect_edge_dragging:
@@ -380,7 +392,7 @@ class RectEdgeClickController:
         self.canvas.update()
 
     def draw(self, painter: QtGui.QPainter) -> None:
-        """Draw bounded diagonal guides and the exact uncommitted rectangle."""
+        """Draw a full-work-area axis guide and the uncommitted rectangle."""
         canvas = self.canvas
         if (
             self.preview_box is None
@@ -389,19 +401,42 @@ class RectEdgeClickController:
         ):
             return
         painter.save()
-        painter.setClipRect(QtCore.QRectF(canvas.pixmap.rect()))
         painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-        pen = QtGui.QPen(QtGui.QColor(160, 160, 160, 130))
+        pen = QtGui.QPen(QtGui.QColor(0, 150, 230, 240))
         pen.setCosmetic(True)
-        pen.setStyle(QtCore.Qt.PenStyle.DotLine)
+        pen.setWidthF(1.5)
+        pen.setStyle(QtCore.Qt.PenStyle.DashLine)
         painter.setPen(pen)
-        outer = self.rect(rec.effective_box(self.preview_box))
-        painter.drawRect(outer)
-        painter.drawLine(outer.topLeft(), outer.bottomRight())
-        painter.drawLine(outer.topRight(), outer.bottomLeft())
+        if self.pointer is not None:
+            viewport = canvas.rect_click_work_area()
+            if self.axis == "x":
+                painter.drawLine(
+                    QtCore.QPointF(self.pointer.x(), viewport.top()),
+                    QtCore.QPointF(self.pointer.x(), viewport.bottom()),
+                )
+            else:
+                painter.drawLine(
+                    QtCore.QPointF(viewport.left(), self.pointer.y()),
+                    QtCore.QPointF(viewport.right(), self.pointer.y()),
+                )
         if self.preview is not None:
-            pen.setColor(QtGui.QColor(255, 220, 80, 230))
+            pen.setColor(QtGui.QColor(220, 130, 0, 255))
             pen.setStyle(QtCore.Qt.PenStyle.DashLine)
             painter.setPen(pen)
             painter.drawRect(self.preview)
+        if self.pointer is not None:
+            decision, _ = self.decision(self.pointer)
+            left, top, right, bottom = self.preview_box
+            segment = {
+                "left": (left, top, left, bottom),
+                "right": (right, top, right, bottom),
+                "top": (left, top, right, top),
+                "bottom": (left, bottom, right, bottom),
+            }.get(decision.edge)
+            if segment is not None:
+                pen.setColor(QtGui.QColor(0, 150, 230, 255))
+                pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
+                pen.setWidthF(2.5)
+                painter.setPen(pen)
+                painter.drawLine(QtCore.QLineF(*segment))
         painter.restore()

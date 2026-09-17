@@ -308,6 +308,33 @@ def set_nested_value(data: dict[str, Any], key_path: str, value: Any) -> None:
 
 def _shortcut_label(short_key: str) -> str:
     label_overrides = {
+        "rectangle_click_adjust_x": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Edge click adjustment: modify X (left/right)",
+        ),
+        "rectangle_click_adjust_y": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Edge click adjustment: modify Y (top/bottom)",
+        ),
+        "rectangle_keyboard_fit": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Keyboard quick fitting"
+        ),
+        "rectangle_place_top": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Place top boundary (rectangle task only)",
+        ),
+        "rectangle_place_right": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Place right boundary (rectangle task only)",
+        ),
+        "rectangle_place_bottom": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Place bottom boundary (rectangle task only)",
+        ),
+        "rectangle_place_left": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Place left boundary (rectangle task only)",
+        ),
         "rectangle_extreme": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Four extremes"
         ),
@@ -993,20 +1020,6 @@ def _non_shortcut_fields() -> list[SettingField]:
             ),
         ),
         SettingField(
-            "rectangle_workflow.enabled",
-            QT_TRANSLATE_NOOP(
-                SETTINGS_TRANSLATION_CONTEXT, "Rectangle workbench"
-            ),
-            "bool",
-            "Canvas",
-            "Rectangle Review Refinement",
-            "Workflow",
-            description=QT_TRANSLATE_NOOP(
-                SETTINGS_TRANSLATION_CONTEXT,
-                "Enable four-extreme creation and explicit single-edge refinement.",
-            ),
-        ),
-        SettingField(
             "rectangle_workflow.auto_zoom",
             QT_TRANSLATE_NOOP(
                 SETTINGS_TRANSLATION_CONTEXT, "Fit object on entry"
@@ -1476,6 +1489,11 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "toggle_annotation_checked",
         ),
         "Shape": (
+            "rectangle_keyboard_fit",
+            "rectangle_place_top",
+            "rectangle_place_right",
+            "rectangle_place_bottom",
+            "rectangle_place_left",
             "rectangle_extreme",
             "rectangle_submit",
             "rectangle_back",
@@ -1530,6 +1548,8 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "toggle_keep_prev_mode",
             "toggle_visibility_shapes",
             "toggle_rect_edge_align",
+            "rectangle_click_adjust_x",
+            "rectangle_click_adjust_y",
             "toggle_precision_mode_lock",
             "zoom_in",
             "zoom_out",
@@ -1561,6 +1581,14 @@ def _shortcut_fields() -> list[SettingField]:
                     secondary=secondary,
                     group="Binding",
                     allow_none=True,
+                    description=(
+                        QT_TRANSLATE_NOOP(
+                            SETTINGS_TRANSLATION_CONTEXT,
+                            "Only during rectangle boundary input. Q/W/E/R temporarily override their ordinary actions; digits pause label actions.",
+                        )
+                        if short_key.startswith("rectangle_place_")
+                        else ""
+                    ),
                 )
             )
     for short_key in shortcuts.keys():
@@ -1583,7 +1611,27 @@ def _shortcut_fields() -> list[SettingField]:
 
 def _build_fields() -> tuple[SettingField, ...]:
     fields = _non_shortcut_fields() + _shortcut_fields()
-    return tuple(fields)
+    retired_shortcuts = {
+        "rectangle_keyboard_fit",
+        "rectangle_place_top",
+        "rectangle_place_right",
+        "rectangle_place_bottom",
+        "rectangle_place_left",
+        "rectangle_refine",
+        "rectangle_local_focus",
+        "rectangle_finish",
+        "rectangle_next",
+        "rectangle_surroundings",
+        "rectangle_fit_object",
+    }
+    return tuple(
+        field
+        for field in fields
+        if not field.key.startswith(
+            ("rectangle_workflow.", "rectangle_review_refinement.")
+        )
+        and field.key.removeprefix("shortcuts.") not in retired_shortcuts
+    )
 
 
 SETTING_FIELDS = _build_fields()

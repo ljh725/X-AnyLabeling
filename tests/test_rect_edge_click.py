@@ -46,8 +46,8 @@ def test_diagonals_and_finite_extensions(box: rec.Box, factor: float) -> None:
 def test_range_precedes_infinite_line_rejection() -> None:
     """A diagonal beyond the finite range is no longer a dead zone."""
     box = (100, 100, 200, 300)
-    assert rec.effective_box(box) == (50, 0, 250, 400)
-    for point in ((49.9, 200), (250.1, 200), (0, -100)):
+    assert rec.effective_box(box) == (0, -100, 300, 500)
+    for point in ((-0.1, 200), (300.1, 200), (150, -100.1)):
         assert rec.classify(box, point).reason == rec.REASON_OUT_OF_RANGE
 
 

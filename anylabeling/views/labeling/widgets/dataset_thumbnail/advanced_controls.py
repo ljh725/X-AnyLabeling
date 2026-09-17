@@ -185,6 +185,10 @@ class AdvancedThumbnailControls(QtWidgets.QWidget):
             (self.tr("Small targets: pixels"), "small_pixels"),
             (self.tr("Small targets: image percent"), "small_relative"),
             (self.tr("Aspect outliers first"), "aspect_outliers"),
+            (
+                self.tr("Spatially adjacent within each image"),
+                "spatial_adjacent",
+            ),
         ):
             self.sort.addItem(text, key)
         self.sort.setCurrentIndex(self.sort.findData(query.sort))

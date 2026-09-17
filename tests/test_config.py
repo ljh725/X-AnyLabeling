@@ -2,8 +2,9 @@ import unittest
 import importlib.util
 import sys
 import types
+import tempfile
+import yaml
 from pathlib import Path
-
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "anylabeling/config.py"
 INSERTED_MODULES = []
@@ -13,6 +14,7 @@ def _inject_module(name, module):
     if name not in sys.modules:
         sys.modules[name] = module
         INSERTED_MODULES.append(name)
+
 
 fake_anylabeling = types.ModuleType("anylabeling")
 fake_anylabeling_configs = types.ModuleType("anylabeling.configs")
@@ -79,6 +81,23 @@ class TestConfigNormalization(unittest.TestCase):
         }
         normalized = normalize_user_config(user_config)
         self.assertFalse(normalized["canvas"]["crosshair"]["show"])
+
+
+class TestConfigPersistence(unittest.TestCase):
+    def test_explicit_source_is_used_for_atomic_save_and_unknown_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "prefs.yaml"
+            CONFIG_MODULE.current_config_file = str(path)
+            self.assertTrue(
+                CONFIG_MODULE.save_config(
+                    {"language": "zh_CN", "plugin": {"future": True}}
+                )
+            )
+            loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+            self.assertEqual(loaded["language"], "zh_CN")
+            merged = {"language": "en_US"}
+            CONFIG_MODULE._merge_unknown(merged, loaded)
+            self.assertTrue(merged["plugin"]["future"])
 
 
 if __name__ == "__main__":

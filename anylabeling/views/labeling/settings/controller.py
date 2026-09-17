@@ -6,6 +6,11 @@ from typing import Any, Callable
 from PyQt6 import QtCore, QtGui
 
 from anylabeling.config import save_config
+from ..review_refinement.keyboard_shortcuts import (
+    BOUNDARY_PATHS,
+    boundary_key_valid,
+    controlled_reuse,
+)
 
 from .schema import (
     SETTING_FIELD_MAP,
@@ -184,6 +189,19 @@ class SettingsController(QtCore.QObject):
             sorted(self._dirty_keys) if self._defer_runtime_apply else []
         )
         try:
+            if self._defer_runtime_apply:
+                # Merge only fields edited in this settings session onto the
+                # live shared mapping. Other managers (digit bindings,
+                # language, plugins) may have updated unrelated keys since
+                # the session snapshot was created.
+                merged_config = copy.deepcopy(self._config)
+                for key in changed_keys:
+                    set_nested_value(
+                        merged_config,
+                        key,
+                        copy.deepcopy(get_nested_value(pending_config, key)),
+                    )
+                pending_config = merged_config
             result = self._save_callback(pending_config)
             if result is False:
                 raise RuntimeError("save callback returned False")
@@ -400,11 +418,33 @@ class SettingsController(QtCore.QObject):
                 override_key,
                 override_value,
             ):
+                if (
+                    key not in BOUNDARY_PATHS
+                    and len(sequence) == 1
+                    and sequence.isdigit()
+                ):
+                    raise SettingsValidationError(
+                        QtCore.QCoreApplication.translate(
+                            "SettingsDialog",
+                            "Digits are reserved for label actions outside rectangle tasks",
+                        ),
+                        conflict_keys=[key],
+                    )
+                if key in BOUNDARY_PATHS and not boundary_key_valid(sequence):
+                    raise SettingsValidationError(
+                        QtCore.QCoreApplication.translate(
+                            "SettingsDialog",
+                            "Boundary keys cannot use task control keys or multi-stroke sequences",
+                        ),
+                        conflict_keys=[key],
+                    )
                 sequence_to_keys.setdefault(sequence, []).append(key)
 
         for sequence, assigned_keys in sequence_to_keys.items():
             unique_keys = sorted(set(assigned_keys))
             if len(unique_keys) <= 1:
+                continue
+            if controlled_reuse(sequence, unique_keys):
                 continue
             if frozenset(unique_keys) in SHORTCUT_DUPLICATE_WHITELIST:
                 continue

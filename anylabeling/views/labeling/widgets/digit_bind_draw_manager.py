@@ -127,6 +127,13 @@ class DigitBindDrawManager:
 
         # Resolve target from the existing digit shortcuts mapping.
         target_label, target_shape_type = self._resolve_target(digit_num)
+        from ..review_refinement.keyboard_fitting import drawing_method
+
+        try:
+            drawing_method(self._mapping_for_digit(digit_num))
+        except ValueError:
+            self._status("Unknown rectangle drawing method")
+            return True
         if target_label is None:
             self._hint_no_mapping(digit_num)
             return True
@@ -175,7 +182,7 @@ class DigitBindDrawManager:
 
         # Enter draw mode with the pending label.
         lw.digit_to_label = target_label
-        lw.toggle_draw_mode(edit=False, create_mode=target_shape_type)
+        self._start_target_draw(digit_num, target_shape_type)
 
         self._hint_entered_draw(
             digit_num, source, gid, target_label, need_backfill
@@ -280,6 +287,25 @@ class DigitBindDrawManager:
             return None, None
         return label, shape_type
 
+    def _mapping_for_digit(self, digit: int) -> dict:
+        """Return the current page mapping including the rectangle method."""
+        lw = self._label_widget
+        manager = getattr(lw, "digit_page_manager", None)
+        index = manager.get_actual_index(digit) if manager else digit
+        return (getattr(lw, "drawing_digit_shortcuts", None) or {}).get(
+            index, {}
+        )
+
+    def _start_target_draw(self, digit: int, shape_type: str) -> None:
+        """Dispatch the method after binding validation without clearing it."""
+        from ..review_refinement.keyboard_fitting import drawing_method
+
+        lw = self._label_widget
+        if drawing_method(self._mapping_for_digit(digit)) == "four_extremes":
+            lw.rectangle_creation.start_extreme()
+        else:
+            lw.toggle_draw_mode(edit=False, create_mode=shape_type)
+
     @staticmethod
     def _is_valid_target(label: str, shape_type: str) -> bool:
         """Return True only for rectangle + person/head/face targets."""
@@ -372,7 +398,7 @@ class DigitBindDrawManager:
         lw = self._label_widget
         self._pending = None
         lw.digit_to_label = target_label
-        lw.toggle_draw_mode(edit=False, create_mode=target_shape_type)
+        self._start_target_draw(digit, target_shape_type)
         self._hint_unbound_person_draw(digit)
 
     # ------------------------------------------------------------------

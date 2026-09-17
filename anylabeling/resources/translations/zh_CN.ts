@@ -475,7 +475,11 @@
       <source>Max edge %.1f px &lt; %g px</source>
       <translation>最大边 %.1f px &lt; %g px</translation>
     </message>
-  </context>
+      <message>
+      <source>Select a corner, then click its new position; Esc to exit.</source>
+      <translation>先选中一个角，再点击新角点；Esc 退出。</translation>
+    </message>
+</context>
   <context>
     <name>ChatMessage</name>
     <message>
@@ -1266,7 +1270,23 @@
       <source>Digit shortcuts saved successfully</source>
       <translation>保存成功</translation>
     </message>
-  </context>
+      <message>
+        <source>Rectangle (two points)</source>
+        <translation>矩形（两点）</translation>
+    </message>
+    <message>
+        <source>Rectangle (four extremes)</source>
+        <translation>矩形（四极值）</translation>
+    </message>
+    <message>
+        <source>Unknown rectangle drawing method</source>
+        <translation>未知矩形绘制方式</translation>
+    </message>
+    <message>
+        <source>Selected objects use digit rename. Deselect to start drawing. Digit label actions pause during rectangle boundary input.</source>
+        <translation>选中对象时数字键用于重命名；取消选择后可启动绘制。矩形边界输入期间暂停数字键标签操作。</translation>
+    </message>
+</context>
   <context>
     <name>EditLabelDialog</name>
     <message>
@@ -3681,6 +3701,50 @@ This warning will only be shown once. Do you want to continue?</source>
         <source>One object: the thumbnail window offers one guarded undo after a successful label change.</source>
         <translation>单个对象：成功改标后，可在缩略图窗口撤销一次；撤销前会检查后续修改冲突。</translation>
     </message>
+    <message>
+        <source>Unknown rectangle drawing method</source>
+        <translation>未知矩形绘制方式</translation>
+    </message>
+    <message>
+      <source>矩形点击调整</source>
+      <translation>矩形点击调整</translation>
+    </message>
+    <message>
+      <source>角点击调整</source>
+      <translation>角点击调整</translation>
+    </message>
+    <message>
+      <source>启用鼠标指定角并点击新角点</source>
+      <translation>启用鼠标指定角并点击新角点</translation>
+    </message>
+    <message>
+      <source>边点击调整：修改 X（左/右边）</source>
+      <translation>边点击调整：修改 X（左/右边）</translation>
+    </message>
+    <message>
+      <source>边点击调整：修改 Y（上/下边）</source>
+      <translation>边点击调整：修改 Y（上/下边）</translation>
+    </message>
+    <message>
+      <source>按下后点击目标横坐标</source>
+      <translation>按下后点击目标横坐标</translation>
+    </message>
+    <message>
+      <source>按下后点击目标纵坐标</source>
+      <translation>按下后点击目标纵坐标</translation>
+    </message>
+    <message>
+      <source>请选择一个矩形后再开启角点击调整</source>
+      <translation>请选择一个矩形后再开启角点击调整</translation>
+    </message>
+    <message>
+      <source>角点击调整已开启</source>
+      <translation>角点击调整已开启</translation>
+    </message>
+    <message>
+      <source>角点击调整已关闭</source>
+      <translation>角点击调整已关闭</translation>
+    </message>
 </context>
   <context>
     <name>Model</name>
@@ -5515,7 +5579,47 @@ Changes will not be saved until you click Save.</source>
       <source>Show Group ID</source>
       <translation>显示组 ID</translation>
     </message>
-  </context>
+      <message>
+        <source>Keyboard quick fitting</source>
+        <translation>键盘快速拟合</translation>
+    </message>
+    <message>
+        <source>Place top boundary (rectangle task only)</source>
+        <translation>定位顶边（仅矩形操作期间）</translation>
+    </message>
+    <message>
+        <source>Place right boundary (rectangle task only)</source>
+        <translation>定位右边（仅矩形操作期间）</translation>
+    </message>
+    <message>
+        <source>Place bottom boundary (rectangle task only)</source>
+        <translation>定位底边（仅矩形操作期间）</translation>
+    </message>
+    <message>
+        <source>Place left boundary (rectangle task only)</source>
+        <translation>定位左边（仅矩形操作期间）</translation>
+    </message>
+    <message>
+        <source>Only during rectangle boundary input. Q/W/E/R temporarily override their ordinary actions; digits pause label actions.</source>
+        <translation>仅矩形边界输入期间生效。Q/W/E/R 暂时替代原操作；数字键标签操作暂停。</translation>
+    </message>
+    <message>
+        <source>Digits are reserved for label actions outside rectangle tasks</source>
+        <translation>普通状态的数字键保留给标签操作，请为工具入口选择其他快捷键。</translation>
+    </message>
+    <message>
+        <source>Boundary keys cannot use task control keys or multi-stroke sequences</source>
+        <translation>边界键不能占用任务控制键，也不能使用多段按键序列。</translation>
+    </message>
+    <message>
+      <source>Edge click adjustment: modify X (left/right)</source>
+      <translation>边点击调整：修改 X（左／右边）</translation>
+    </message>
+    <message>
+      <source>Edge click adjustment: modify Y (top/bottom)</source>
+      <translation>边点击调整：修改 Y（上／下边）</translation>
+    </message>
+</context>
   <context>
     <name>SettingsRuntimeApplier</name>
     <message>
@@ -7093,7 +7197,91 @@ Recovery manifest: %11</source><translation>对象——成功：%1，无变化�
       <source>Workflow</source>
       <translation>操作流程</translation>
     </message>
-  </context>
+      <message>
+        <source>Rectangle tools</source>
+        <translation>矩形工具</translation>
+    </message>
+    <message>
+        <source>Keyboard quick fitting</source>
+        <translation>键盘快速拟合</translation>
+    </message>
+    <message>
+        <source>Boundary key preset</source>
+        <translation>边界按键预设</translation>
+    </message>
+    <message>
+        <source>Rectangle shortcut settings</source>
+        <translation>矩形快捷键设置</translation>
+    </message>
+    <message>
+        <source>Could not save boundary key preset.</source>
+        <translation>无法保存边界按键预设。</translation>
+    </message>
+    <message>
+        <source>Keyboard fitting is active.</source>
+        <translation>键盘拟合已开启</translation>
+    </message>
+    <message>
+        <source>Move the pointer onto the image and release mouse buttons.</source>
+        <translation>请将光标移回图像并松开鼠标按键。</translation>
+    </message>
+    <message>
+        <source>Fitting paused: select one valid rectangle.</source>
+        <translation>拟合暂停：请选择一个有效的普通矩形。</translation>
+    </message>
+    <message>
+        <source>Use the key for the current boundary step.</source>
+        <translation>请按当前步骤对应的边界键。</translation>
+    </message>
+    <message>
+        <source>This boundary requires the pointer in its corresponding half.</source>
+        <translation>该边只能在对应半区定位，请移动光标后重试。</translation>
+    </message>
+    <message>
+        <source>{edge}: moved {delta:+.2f}px</source>
+        <translation>{edge}：本次位移 {delta:+.2f} 像素</translation>
+    </message>
+    <message>
+        <source>Digit label actions are paused during this task.</source>
+        <translation>当前操作期间，数字键标签功能已暂停。</translation>
+    </message>
+    <message>
+        <source>Boundary {step}/4: {edge}</source>
+        <translation>第 {step}/4 步：{edge}</translation>
+    </message>
+    <message>
+        <source>Available</source>
+        <translation>可按</translation>
+    </message>
+    <message>
+        <source>Unavailable</source>
+        <translation>不可按</translation>
+    </message>
+    <message>
+        <source>Center line</source>
+        <translation>中心线</translation>
+    </message>
+    <message>
+        <source>Click to select the edge; press its key on the image to place it.</source>
+        <translation>点击仅选边；光标移到图像后按对应键定位。</translation>
+    </message>
+    <message>
+        <source>Cancel draft</source>
+        <translation>取消画框</translation>
+    </message>
+    <message>
+        <source>Exit keyboard fitting</source>
+        <translation>退出键盘拟合</translation>
+    </message>
+    <message>
+        <source>Digit label actions paused. Esc exits; Ctrl+Z undoes.</source>
+        <translation>数字键标签功能暂停。Esc 退出，Ctrl+Z 撤销。</translation>
+    </message>
+    <message>
+        <source>Arrow keys: 1px; Shift: 5px</source>
+        <translation>方向键：1 像素；配合 Shift：5 像素</translation>
+    </message>
+</context>
   <context>
     <name>SettingsDialog</name>
     <message>
@@ -7210,5 +7398,63 @@ Recovery manifest: %11</source><translation>对象——成功：%1，无变化�
       <source>{edge} edge moved to click (delta {delta:+.1f}px).</source>
       <translation>{edge}边已移动到点击位置（位移 {delta:+.1f}px）。</translation>
     </message>
-  </context>
+      <message>
+      <source>Select one valid rectangle first.</source>
+      <translation>请先选中一个有效矩形。</translation>
+    </message>
+    <message>
+      <source>Modify {axis}: click a boundary; Esc to exit.</source>
+      <translation>修改 {axis}：点击目标边界；Esc 退出。</translation>
+    </message>
+</context>
+<context>
+    <name>RectangleFitHud</name>
+    <message>
+        <source>Rectangle tools</source>
+        <translation>矩形工具</translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation>撤销</translation>
+    </message>
+</context>
+<context>
+    <name>DensityRoundReviewWindow</name>
+    <message><source>Density Round Review</source><translation>密度分轮巡检</translation></message>
+    <message><source>No image</source><translation>未打开图片</translation></message>
+    <message><source>Previous</source><translation>上一轮</translation></message>
+    <message><source>Next</source><translation>下一轮</translation></message>
+    <message><source>0 instances</source><translation>0 个实例</translation></message>
+    <message><source>New rectangle</source><translation>新建矩形</translation></message>
+    <message><source>Edit label</source><translation>修改标签</translation></message>
+    <message><source>Duplicate</source><translation>复制</translation></message>
+    <message><source>Delete</source><translation>删除</translation></message>
+    <message><source>Close</source><translation>关闭</translation></message>
+    <message><source>Round</source><translation>轮次</translation></message>
+    <message><source>Limit</source><translation>每轮上限</translation></message>
+    <message><source>Last closed: %s</source><translation>上次关闭时：%s</translation></message>
+    <message><source>%d instances</source><translation>%d 个实例</translation></message>
+    <message><source>Current %d · Next %d</source><translation>当前 %d · 待生效 %d</translation></message>
+</context>
+<context>
+    <name>DensityRoundReviewCoordinator</name>
+    <message><source>Finish the current edit first</source><translation>请先完成当前编辑</translation></message>
+    <message><source>Already at the first image</source><translation>已到数据集第一张图片</translation></message>
+    <message><source>Already at the last image</source><translation>已到数据集最后一张图片</translation></message>
+    <message><source>Select review rectangles first</source><translation>请先选择待巡检矩形</translation></message>
+    <message><source>Selected objects belong to different rounds</source><translation>所选对象属于不同轮次，无法同步</translation></message>
+    <message><source>Pending review-window selection: %d</source><translation>待同步到巡检窗口：%d 个对象</translation></message>
+    <message><source>Nothing to redo</source><translation>没有可重做的操作</translation></message>
+    <message><source>Image change cancelled because annotations were not saved</source><translation>标注未能保存，已取消切换图片</translation></message>
+</context>
+<context>
+    <name>LabelingWidget</name>
+    <message><source>Density Round Review</source><translation>密度分轮巡检</translation></message>
+    <message><source>Toggle the focused density-round review window</source><translation>开启或关闭密度分轮巡检窗口</translation></message>
+    <message><source>Send Selection to Review Round</source><translation>将选择确认到巡检轮次</translation></message>
+    <message><source>Confirm the main selection in the review window</source><translation>在巡检窗口中确认主窗口所选对象</translation></message>
+    <message><source>Density round review is not active</source><translation>密度分轮巡检尚未开启</translation></message>
+    <message><source>Redo</source><translation>重做</translation></message>
+    <message><source>Redo the last density-round review edit</source><translation>重做上一次密度分轮巡检编辑</translation></message>
+</context>
 </TS>

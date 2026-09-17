@@ -46,7 +46,7 @@ class TestSettingsSchema(unittest.TestCase):
         self.assertIn(
             "shortcuts.rectangle_extreme", {f.key for f in shortcut_fields}
         )
-        self.assertIn(
+        self.assertNotIn(
             "shortcuts.rectangle_next", {f.key for f in shortcut_fields}
         )
 
@@ -123,13 +123,13 @@ class TestSettingsSchema(unittest.TestCase):
         self.assertIn("shape.line_color", shape_keys)
         self.assertIn("shape.point_size", shape_keys)
         self.assertIn("shape.line_width", shape_keys)
-        self.assertIn(
+        self.assertNotIn(
             "shortcuts.rectangle_refine",
             {field.key for field in shortcut_fields},
         )
         for key in SETTINGS_SHORTCUT_KEYS_CORE:
             self.assertIn(key, [field.key for field in shortcut_fields])
-        self.assertIn(
+        self.assertNotIn(
             "rectangle_workflow.enabled", {f.key for f in canvas_fields}
         )
         canvas_keys = {field.key for field in canvas_fields}
@@ -141,8 +141,8 @@ class TestSettingsSchema(unittest.TestCase):
         self.assertIn("canvas_precision_max_factor", canvas_keys)
         self.assertIn("canvas_precision_factor", canvas_keys)
 
-    def test_visible_fields_have_labels_and_workflow_help(self) -> None:
-        """New workflow settings provide readable labels and help."""
+    def test_visible_fields_have_labels_and_no_retired_workflow(self) -> None:
+        """Independent tools do not expose retired workflow settings."""
         fields = (
             fields_for_primary("General")
             + fields_for_primary("Shape")
@@ -152,5 +152,10 @@ class TestSettingsSchema(unittest.TestCase):
         workflow = [
             f for f in fields if f.key.startswith("rectangle_workflow.")
         ]
-        self.assertTrue(workflow)
-        self.assertTrue(all(field.description for field in workflow))
+        self.assertFalse(workflow)
+        self.assertFalse(
+            any(
+                field.key.startswith("rectangle_review_refinement.")
+                for field in fields
+            )
+        )
