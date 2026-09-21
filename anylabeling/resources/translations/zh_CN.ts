@@ -7441,4 +7441,943 @@ Recovery manifest: %11</source><translation>对象——成功：%1，无变化�
     <message><source>Redo</source><translation>重做</translation></message>
     <message><source>Redo the last density-round review edit</source><translation>重做上一次密度分轮巡检编辑</translation></message>
 </context>
+<context>
+    <name>AdvancedThumbnailControls</name>
+    <message>
+        <source>Spatially adjacent within each image</source>
+        <translation>同一图片内按空间邻近排序</translation>
+    </message>
+</context>
+<context>
+    <name>BehaviorAnalyticsDialog</name>
+    <message>
+        <source>Local Behavior Analytics</source>
+        <translation>本地行为分析</translation>
+    </message>
+    <message>
+        <source>Enable local behavior recording (default off)</source>
+        <translation>启用本地行为记录（默认关闭）</translation>
+    </message>
+    <message>
+        <source>Only local JSONL events are read. No model call, upload, image pixels, free text or absolute paths are included in the analysis.</source>
+        <translation>仅读取本地 JSONL 事件。不调用模型、不上传数据，分析中不包含图像像素、自由文本或绝对路径。</translation>
+    </message>
+    <message>
+        <source>Range</source>
+        <translation>范围</translation>
+    </message>
+    <message>
+        <source>Current project session</source>
+        <translation>当前项目会话</translation>
+    </message>
+    <message>
+        <source>Preset or custom local range</source>
+        <translation>预设或自定义本地时间范围</translation>
+    </message>
+    <message>
+        <source>Baseline vs comparison</source>
+        <translation>基线与对照</translation>
+    </message>
+    <message>
+        <source>Recent 1 day</source>
+        <translation>最近 1 天</translation>
+    </message>
+    <message>
+        <source>Recent 7 days</source>
+        <translation>最近 7 天</translation>
+    </message>
+    <message>
+        <source>Recent 30 days</source>
+        <translation>最近 30 天</translation>
+    </message>
+    <message>
+        <source>Custom local range</source>
+        <translation>自定义本地时间范围</translation>
+    </message>
+    <message>
+        <source>All local data</source>
+        <translation>全部本地数据</translation>
+    </message>
+    <message>
+        <source>Local time uses the system timezone and is converted to UTC.</source>
+        <translation>本地时间使用系统时区，并转换为 UTC。</translation>
+    </message>
+    <message>
+        <source>Custom start</source>
+        <translation>自定义开始时间</translation>
+    </message>
+    <message>
+        <source>end</source>
+        <translation>结束时间</translation>
+    </message>
+    <message>
+        <source>Baseline</source>
+        <translation>基线</translation>
+    </message>
+    <message>
+        <source>Comparison</source>
+        <translation>对照</translation>
+    </message>
+    <message>
+        <source>Output</source>
+        <translation>输出</translation>
+    </message>
+    <message>
+        <source>Choose an analysis bundle folder</source>
+        <translation>选择分析包目录</translation>
+    </message>
+    <message>
+        <source>Browse</source>
+        <translation>浏览</translation>
+    </message>
+    <message>
+        <source>Recording status: disabled or not started.</source>
+        <translation>记录状态：已禁用或尚未开始。</translation>
+    </message>
+    <message>
+        <source>Measurement quality: not evaluated. v2 exports add image_metrics.csv, rework_metrics.csv and measurement_quality.json. Duration conclusions require 95% coverage; feature comparisons require two groups with 30 valid episodes each.</source>
+        <translation>测量质量：尚未评估。v2 导出会增加 image_metrics.csv、rework_metrics.csv 和 measurement_quality.json。时长结论要求覆盖率达到 95%；功能对比要求两组各有 30 个有效片段。</translation>
+    </message>
+    <message>
+        <source>Export deterministic analysis</source>
+        <translation>导出可复现分析</translation>
+    </message>
+    <message>
+        <source>Clean retained logs</source>
+        <translation>清理保留日志</translation>
+    </message>
+    <message>
+        <source>Recording status: enabled | accepted=%1, written=%2, dropped=%3, errors=%4, gaps=%5, current=%6</source>
+        <translation>记录状态：已启用 | 已接收=%1，已写入=%2，已丢弃=%3，错误=%4，缺口=%5，当前=%6</translation>
+    </message>
+    <message>
+        <source>passed</source>
+        <translation>通过</translation>
+    </message>
+    <message>
+        <source>low confidence</source>
+        <translation>低置信度</translation>
+    </message>
+    <message>
+        <source>context unavailable for comparison</source>
+        <translation>缺少可用于对照的上下文</translation>
+    </message>
+    <message>
+        <source>object boundary incomplete</source>
+        <translation>对象边界不完整</translation>
+    </message>
+    <message>
+        <source>focus/idle boundaries unavailable</source>
+        <translation>聚焦/空闲边界不可用</translation>
+    </message>
+    <message>
+        <source>action duration boundary incomplete</source>
+        <translation>操作时长边界不完整</translation>
+    </message>
+    <message>
+        <source>insufficient samples</source>
+        <translation>样本不足</translation>
+    </message>
+    <message>
+        <source>Measurement quality: %1</source>
+        <translation>测量质量：%1</translation>
+    </message>
+    <message>
+        <source>Choose analysis output directory</source>
+        <translation>选择分析输出目录</translation>
+    </message>
+    <message>
+        <source>Choose an output directory first.</source>
+        <translation>请先选择输出目录。</translation>
+    </message>
+</context>
+<context>
+    <name>DatasetLabelThumbnailWindow</name>
+    <message>
+        <source>Reverted %1 object(s). See operation history for details.</source>
+        <translation>已恢复 %1 个对象。详情请查看操作历史。</translation>
+    </message>
+</context>
+<context>
+    <name>HistoryBrowser</name>
+    <message>
+        <source>Operation history</source>
+        <translation>操作历史</translation>
+    </message>
+    <message>
+        <source>Imported %1 backup operation(s).</source>
+        <translation>已导入 %1 条备份操作。</translation>
+    </message>
+    <message>
+        <source>Annotations saved; history needs reconciliation.</source>
+        <translation>标注已保存；历史记录需要重新协调。</translation>
+    </message>
+    <message>
+        <source>History revision could not be verified.</source>
+        <translation>无法验证历史版本。</translation>
+    </message>
+    <message>
+        <source>Scan the index before locating history objects.</source>
+        <translation>定位历史对象前请先扫描索引。</translation>
+    </message>
+    <message>
+        <source>Object missing or identity is not unique.</source>
+        <translation>对象缺失或标识不唯一。</translation>
+    </message>
+    <message>
+        <source>Preview current image</source>
+        <translation>预览当前图片</translation>
+    </message>
+    <message>
+        <source>No verified backup recovery is available.</source>
+        <translation>没有可用的已验证备份恢复。</translation>
+    </message>
+    <message>
+        <source>File-level recovery:</source>
+        <translation>文件级恢复：</translation>
+    </message>
+    <message>
+        <source>Revert selected changes</source>
+        <translation>恢复所选更改</translation>
+    </message>
+</context>
+<context>
+    <name>HistoryPanel</name>
+    <message>
+        <source>Operation history</source>
+        <translation>操作历史</translation>
+    </message>
+    <message>
+        <source>Search file, old/new label or operation</source>
+        <translation>搜索文件、旧/新标签或操作</translation>
+    </message>
+    <message>
+        <source>From date (YYYY-MM-DD)</source>
+        <translation>起始日期（YYYY-MM-DD）</translation>
+    </message>
+    <message>
+        <source>To date (YYYY-MM-DD)</source>
+        <translation>结束日期（YYYY-MM-DD）</translation>
+    </message>
+    <message>
+        <source>Time / object</source>
+        <translation>时间 / 对象</translation>
+    </message>
+    <message>
+        <source>Operation / before</source>
+        <translation>操作 / 更改前</translation>
+    </message>
+    <message>
+        <source>Result / after</source>
+        <translation>结果 / 更改后</translation>
+    </message>
+    <message>
+        <source>Import existing backups</source>
+        <translation>导入现有备份</translation>
+    </message>
+    <message>
+        <source>Relabel</source>
+        <translation>改标</translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation>撤销</translation>
+    </message>
+    <message>
+        <source>Review state</source>
+        <translation>复核状态</translation>
+    </message>
+    <message>
+        <source>Revert</source>
+        <translation>恢复</translation>
+    </message>
+    <message>
+        <source>Revert review state</source>
+        <translation>恢复复核状态</translation>
+    </message>
+    <message>
+        <source>File recovery</source>
+        <translation>文件恢复</translation>
+    </message>
+    <message>
+        <source>Imported backup; time is manifest modification time.</source>
+        <translation>已导入备份；时间取自清单修改时间。</translation>
+    </message>
+    <message>
+        <source>Already reverted</source>
+        <translation>已恢复</translation>
+    </message>
+    <message>
+        <source>Select objects from one operation.</source>
+        <translation>请选择同一次操作中的对象。</translation>
+    </message>
+</context>
+<context>
+    <name>IncrementalBrowser</name>
+    <message>
+        <source>Reading position adjusted to the nearest available page.</source>
+        <translation>读取位置已调整到最近的可用页面。</translation>
+    </message>
+</context>
+<context>
+    <name>InspectorPanel</name>
+    <message>
+        <source>Result Files (*.txt *.tsv *.csv *.json);;All Files (*)</source>
+        <translation>结果文件 (*.txt *.tsv *.csv *.json);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>Quality Report (*.json *.tsv);;All Files (*)</source>
+        <translation>质检报告 (*.json *.tsv);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>TSV (*.tsv)</source>
+        <translation>TSV 文件 (*.tsv)</translation>
+    </message>
+    <message>
+        <source>JSON (*.json)</source>
+        <translation>JSON 文件 (*.json)</translation>
+    </message>
+    <message>
+        <source>0/%d (0%%)</source>
+        <translation>0/%d (0%%)</translation>
+    </message>
+    <message>
+        <source>%d/%d (%d%%)</source>
+        <translation>%d/%d (%d%%)</translation>
+    </message>
+</context>
+<context>
+    <name>KeypointToolWindow</name>
+    <message>
+        <source>Keypoint Fill Tool</source>
+        <translation>关键点补标工具</translation>
+    </message>
+</context>
+<context>
+    <name>LabelingWidget</name>
+    <message>
+        <source>Enter Keypoint Fill Mode</source>
+        <translation>进入关键点补标模式</translation>
+    </message>
+    <message>
+        <source>Fill missing keypoints for selected person</source>
+        <translation>为选中的 person 补齐缺失关键点</translation>
+    </message>
+    <message>
+        <source>Toggle Keypoint Tool Window</source>
+        <translation>切换关键点工具窗口</translation>
+    </message>
+    <message>
+        <source>Open keypoint fill tool window</source>
+        <translation>打开关键点补标工具窗口</translation>
+    </message>
+    <message>
+        <source>Switch to Previous Person</source>
+        <translation>切换到上一个人物</translation>
+    </message>
+    <message>
+        <source>Switch to previous person in keypoint tool</source>
+        <translation>在关键点工具中切换到上一个人物</translation>
+    </message>
+    <message>
+        <source>Switch to Next Person</source>
+        <translation>切换到下一个人物</translation>
+    </message>
+    <message>
+        <source>Switch to next person in keypoint tool</source>
+        <translation>在关键点工具中切换到下一个人物</translation>
+    </message>
+    <message>
+        <source>Digit Relabel Manager</source>
+        <translation>数字快捷改标管理器</translation>
+    </message>
+    <message>
+        <source>Manage Digit Relabel Shortcuts: Assign Labels to Number Keys for Edit Mode</source>
+        <translation>管理数字快捷改标：为编辑模式的数字键分配标签</translation>
+    </message>
+    <message>
+        <source>Switch Digit Shortcut Page</source>
+        <translation>切换数字快捷键页</translation>
+    </message>
+    <message>
+        <source>Switch to the next digit shortcut page</source>
+        <translation>切换到下一页数字快捷键</translation>
+    </message>
+    <message>
+        <source>Cross-Image Object Marking</source>
+        <translation>跨图对象标记</translation>
+    </message>
+    <message>
+        <source>Toggle cross-image object marking mode; marking alone never modifies annotation files</source>
+        <translation>切换跨图对象标记模式；仅标记不会修改标注文件</translation>
+    </message>
+    <message>
+        <source>Clear Cross-Image Marks</source>
+        <translation>清除跨图标记</translation>
+    </message>
+    <message>
+        <source>Remove all active cross-image object marks</source>
+        <translation>移除所有当前跨图标记</translation>
+    </message>
+    <message>
+        <source>Relabel Marked Objects...</source>
+        <translation>批量重标已标记对象...</translation>
+    </message>
+    <message>
+        <source>Change the label of every cross-image marked object after a strict preflight</source>
+        <translation>严格预检后修改所有跨图标记对象的标签</translation>
+    </message>
+    <message>
+        <source>Edit selected fields on every cross-image marked object after a strict preflight</source>
+        <translation>严格预检后编辑所有跨图标记对象的选定字段</translation>
+    </message>
+    <message>
+        <source>Restore Object Relabel from Manifest...</source>
+        <translation>从清单恢复对象改标...</translation>
+    </message>
+    <message>
+        <source>Roll back a committed object relabel transaction</source>
+        <translation>回滚已提交的对象改标事务</translation>
+    </message>
+    <message>
+        <source>Dataset Label Thumbnails...</source>
+        <translation>数据集标签缩略图...</translation>
+    </message>
+    <message>
+        <source>Browse objects by label across the current dataset and relabel selected thumbnails</source>
+        <translation>按标签浏览当前数据集对象，并对所选缩略图改标</translation>
+    </message>
+    <message>
+        <source>Assign Shape IDs to Project</source>
+        <translation>为项目分配 Shape ID</translation>
+    </message>
+    <message>
+        <source>Assign persistent unique IDs to every Shape in this project</source>
+        <translation>为本项目中的每个 Shape 分配持久化唯一 ID</translation>
+    </message>
+    <message>
+        <source>Keep Previous Viewport</source>
+        <translation>保持上一视口</translation>
+    </message>
+    <message>
+        <source>Keep previous zoom scale and view position when switching images</source>
+        <translation>切换图片时保持上一张的缩放比例和视图位置</translation>
+    </message>
+    <message>
+        <source>Label on Selection</source>
+        <translation>仅选中时显示标签</translation>
+    </message>
+    <message>
+        <source>Show labels only for selected shapes</source>
+        <translation>只显示所选形状的标签</translation>
+    </message>
+    <message>
+        <source>Isolate Selection/Group</source>
+        <translation>隔离选中对象/组</translation>
+    </message>
+    <message>
+        <source>Show only the selected object or its group</source>
+        <translation>只显示选中的对象或其所在组</translation>
+    </message>
+    <message>
+        <source>Pose View</source>
+        <translation>姿态视图</translation>
+    </message>
+    <message>
+        <source>Toggle pose keypoint label rendering (colored boxes, skeleton, anti-occlusion layout)</source>
+        <translation>切换姿态关键点标签渲染（彩色框、骨架、防遮挡布局）</translation>
+    </message>
+    <message>
+        <source>Data Inspector</source>
+        <translation>数据检查</translation>
+    </message>
+    <message>
+        <source>Show/hide the data inspector panel</source>
+        <translation>显示/隐藏数据检查面板</translation>
+    </message>
+    <message>
+        <source>Local Behavior Analytics</source>
+        <translation>本地行为分析</translation>
+    </message>
+    <message>
+        <source>Record locally and export deterministic behavior statistics</source>
+        <translation>在本地记录并导出可复现的行为统计</translation>
+    </message>
+    <message>
+        <source>Enable Global Filter</source>
+        <translation>启用全局筛选</translation>
+    </message>
+    <message>
+        <source>When enabled, filter values persist across images</source>
+        <translation>启用后，筛选值会跨图片保留</translation>
+    </message>
+    <message>
+        <source>Filter Result Navigation</source>
+        <translation>筛选结果导航</translation>
+    </message>
+    <message>
+        <source>Enable/disable filter result navigation</source>
+        <translation>启用/禁用筛选结果导航</translation>
+    </message>
+    <message>
+        <source>Refresh Filter Result Navigation</source>
+        <translation>刷新筛选结果导航</translation>
+    </message>
+    <message>
+        <source>Refresh files matched by the current filter</source>
+        <translation>刷新与当前筛选条件匹配的文件</translation>
+    </message>
+    <message>
+        <source>Refresh Dataset Index</source>
+        <translation>增量刷新数据集索引</translation>
+    </message>
+    <message>
+        <source>Incremental refresh of the dataset filter index</source>
+        <translation>增量刷新数据集筛选索引</translation>
+    </message>
+    <message>
+        <source>Rebuild Dataset Index</source>
+        <translation>重建数据集索引</translation>
+    </message>
+    <message>
+        <source>Rebuild the dataset filter index from scratch</source>
+        <translation>从头重建数据集筛选索引</translation>
+    </message>
+    <message>
+        <source>Cancel Dataset Index Build</source>
+        <translation>取消构建数据集索引</translation>
+    </message>
+    <message>
+        <source>Cancel the running dataset index task</source>
+        <translation>取消正在运行的数据集索引任务</translation>
+    </message>
+    <message>
+        <source>Scan EXIF Orientation</source>
+        <translation>扫描 EXIF 方向</translation>
+    </message>
+    <message>
+        <source>Scan EXIF orientation for all images in the list</source>
+        <translation>扫描列表中所有图片的 EXIF 方向</translation>
+    </message>
+    <message>
+        <source>Configuration</source>
+        <translation>配置</translation>
+    </message>
+    <message>
+        <source>Failed to save language preference.</source>
+        <translation>保存语言偏好失败。</translation>
+    </message>
+    <message>
+        <source>Cleared %d cross-image mark(s)</source>
+        <translation>已清除 %d 个跨图标记</translation>
+    </message>
+    <message>
+        <source>Relabel Marked Objects</source>
+        <translation>重标已标记对象</translation>
+    </message>
+    <message>
+        <source>No marked objects yet. Enable cross-image object marking and click objects to mark them first.</source>
+        <translation>尚未标记对象。请先启用跨图对象标记并点击对象进行标记。</translation>
+    </message>
+    <message>
+        <source>Target label for {objects} marked object(s) in {files} file(s):</source>
+        <translation>为 {files} 个文件中的 {objects} 个已标记对象选择目标标签：</translation>
+    </message>
+    <message>
+        <source>Failed to save the current file. Relabeling aborted; all marks are kept.</source>
+        <translation>保存当前文件失败。已中止改标；所有标记均已保留。</translation>
+    </message>
+    <message>
+        <source>Operation did not start.</source>
+        <translation>操作未启动。</translation>
+    </message>
+    <message>
+        <source>Dataset Label Thumbnails</source>
+        <translation>数据集标签缩略图</translation>
+    </message>
+    <message>
+        <source>Open a dataset before using label thumbnails.</source>
+        <translation>请先打开数据集再使用标签缩略图。</translation>
+    </message>
+    <message>
+        <source>Relabel Thumbnail Objects</source>
+        <translation>重标缩略图对象</translation>
+    </message>
+    <message>
+        <source>Image not found: %s</source>
+        <translation>找不到图片：%s</translation>
+    </message>
+    <message>
+        <source>Batch Edit Marked Objects</source>
+        <translation>批量编辑已标记对象</translation>
+    </message>
+    <message>
+        <source>Failed to save the current file. Field editing was aborted; all marks are kept.</source>
+        <translation>保存当前文件失败。已中止字段编辑；所有标记均已保留。</translation>
+    </message>
+    <message>
+        <source>Relabel Marked Objects (%d objects, %d files)...</source>
+        <translation>正在重标已标记对象（%d 个对象，%d 个文件）...</translation>
+    </message>
+    <message>
+        <source>Select a recovery manifest</source>
+        <translation>选择恢复清单</translation>
+    </message>
+    <message>
+        <source>Transaction manifests (*.json)</source>
+        <translation>事务清单 (*.json)</translation>
+    </message>
+    <message>
+        <source>Restore object relabel</source>
+        <translation>恢复对象改标</translation>
+    </message>
+    <message>
+        <source>Manifest file not found: {path}</source>
+        <translation>找不到清单文件：{path}</translation>
+    </message>
+    <message>
+        <source>Invalid recovery manifest: {error}</source>
+        <translation>无效的恢复清单：{error}</translation>
+    </message>
+    <message>
+        <source>The recovery manifest belongs to another dataset.</source>
+        <translation>此恢复清单属于另一个数据集。</translation>
+    </message>
+    <message>
+        <source>Failed to save the current file; restore aborted.</source>
+        <translation>保存当前文件失败；已中止恢复。</translation>
+    </message>
+    <message>
+        <source>Another batch write is already running for this dataset.</source>
+        <translation>此数据集已有另一项批量写入任务在运行。</translation>
+    </message>
+    <message>
+        <source>Restore failed: {error}</source>
+        <translation>恢复失败：{error}</translation>
+    </message>
+    <message>
+        <source>No objects with group_id found in the image</source>
+        <translation>当前图片中没有带 group_id 的对象</translation>
+    </message>
+    <message>
+        <source>Filter by Shape Type</source>
+        <translation>按形状类型筛选</translation>
+    </message>
+    <message>
+        <source>No active filter for result navigation</source>
+        <translation>当前没有用于结果导航的筛选条件</translation>
+    </message>
+    <message>
+        <source>Dataset index not ready. Please wait or rebuild index.</source>
+        <translation>数据集索引尚未就绪。请等待或重建索引。</translation>
+    </message>
+    <message>
+        <source>No files match the current filter</source>
+        <translation>没有文件匹配当前筛选条件</translation>
+    </message>
+    <message>
+        <source>Filter result navigation enabled</source>
+        <translation>已启用筛选结果导航</translation>
+    </message>
+    <message>
+        <source>Filter result navigation cleared</source>
+        <translation>已清除筛选结果导航</translation>
+    </message>
+    <message>
+        <source>Filter result navigation refreshed</source>
+        <translation>已刷新筛选结果导航</translation>
+    </message>
+    <message>
+        <source>No images to scan. Open a directory first.</source>
+        <translation>没有可扫描的图片。请先打开目录。</translation>
+    </message>
+    <message>
+        <source>Scanning EXIF orientation for %d images...</source>
+        <translation>正在扫描 %d 张图片的 EXIF 方向...</translation>
+    </message>
+    <message>
+        <source>Dataset index task is already running</source>
+        <translation>数据集索引任务已在运行</translation>
+    </message>
+    <message>
+        <source>No images to index. Open a directory first.</source>
+        <translation>没有可索引的图片。请先打开目录。</translation>
+    </message>
+    <message>
+        <source>Dataset index task could not be started</source>
+        <translation>无法启动数据集索引任务</translation>
+    </message>
+    <message>
+        <source>Cancelling dataset index build...</source>
+        <translation>正在取消数据集索引构建...</translation>
+    </message>
+    <message>
+        <source>Building dataset index: {current}/{total} {filename}</source>
+        <translation>正在构建数据集索引：{current}/{total} {filename}</translation>
+    </message>
+    <message>
+        <source>Dataset index build cancelled</source>
+        <translation>数据集索引构建已取消</translation>
+    </message>
+    <message>
+        <source>Dataset index build failed: {message}</source>
+        <translation>数据集索引构建失败：{message}</translation>
+    </message>
+    <message>
+        <source>Remaining {remaining} / initial {initial}</source>
+        <translation>剩余 {remaining} / 初始 {initial}</translation>
+    </message>
+    <message>
+        <source>Filter result navigation completed</source>
+        <translation>筛选结果导航已完成</translation>
+    </message>
+    <message>
+        <source>Current file completed</source>
+        <translation>当前文件已完成</translation>
+    </message>
+    <message>
+        <source>Already at the last filter result</source>
+        <translation>已经是最后一个筛选结果</translation>
+    </message>
+    <message>
+        <source>Already at the first filter result</source>
+        <translation>已经是第一个筛选结果</translation>
+    </message>
+    <message>
+        <source>All Types</source>
+        <translation>全部类型</translation>
+    </message>
+    <message>
+        <source>No items match the filter criteria</source>
+        <translation>没有项目匹配筛选条件</translation>
+    </message>
+    <message>
+        <source>Cannot find image for: %s</source>
+        <translation>找不到对应图片：%s</translation>
+    </message>
+    <message>
+        <source>Export refused: there is no active project session.</source>
+        <translation>拒绝导出：当前没有活动的项目会话。</translation>
+    </message>
+    <message>
+        <source>Export refused: %1</source>
+        <translation>拒绝导出：%1</translation>
+    </message>
+    <message>
+        <source>Comparison refused: %1</source>
+        <translation>拒绝比较：%1</translation>
+    </message>
+    <message>
+        <source>Exporting local behavior facts...</source>
+        <translation>正在导出本地行为数据...</translation>
+    </message>
+    <message>
+        <source>%1: processed %2 events; accepted %3.</source>
+        <translation>%1：已处理 %2 条事件；已接受 %3 条。</translation>
+    </message>
+    <message>
+        <source>Analysis bundle created: %1</source>
+        <translation>分析包已创建：%1</translation>
+    </message>
+    <message>
+        <source>Analysis failed: %1</source>
+        <translation>分析失败：%1</translation>
+    </message>
+    <message>
+        <source>Analysis export cancelled; no bundle was published.</source>
+        <translation>分析导出已取消；未发布任何分析包。</translation>
+    </message>
+    <message>
+        <source>Cleaned %1 events from %2 shards.</source>
+        <translation>已从 %2 个分片中清理 %1 条事件。</translation>
+    </message>
+    <message>
+        <source>Cleanup failed: %1</source>
+        <translation>清理失败：%1</translation>
+    </message>
+    <message>
+        <source>Group ID</source>
+        <translation>群组编号</translation>
+    </message>
+    <message>
+        <source>Difficult</source>
+        <translation>困难样本（difficult）</translation>
+    </message>
+    <message>
+        <source>Could not reset image views</source>
+        <translation>无法重置图像视图</translation>
+    </message>
+    <message>
+        <source>A relabel transaction is still committing; close was cancelled.</source>
+        <translation>改标事务仍在提交，已取消关闭。</translation>
+    </message>
+    <message>
+        <source>A field-edit transaction is still committing; close was cancelled.</source>
+        <translation>字段编辑事务仍在提交，已取消关闭。</translation>
+    </message>
+    <message>
+        <source>Output directory changed: dataset review queue closed</source>
+        <translation>输出目录已更改：数据集复核队列已关闭</translation>
+    </message>
+    <message>
+        <source>No JSON annotation files found</source>
+        <translation>未找到 JSON 标注文件</translation>
+    </message>
+    <message>
+        <source>Assign Shape IDs</source>
+        <translation>分配 Shape ID</translation>
+    </message>
+    <message>
+        <source>Scan this project and assign persistent unique IDs to every Shape that needs one?</source>
+        <translation>是否扫描此项目，并为每个需要 ID 的 Shape 分配持久化唯一 ID？</translation>
+    </message>
+    <message>
+        <source>Scanning project JSON files...</source>
+        <translation>正在扫描项目 JSON 文件...</translation>
+    </message>
+    <message>
+        <source>Assigning Shape IDs: %d/%d files</source>
+        <translation>正在分配 Shape ID：%d/%d 个文件</translation>
+    </message>
+    <message>
+        <source>Shape ID assignment complete: %d files changed, %d Shapes assigned, %d files failed</source>
+        <translation>Shape ID 分配完成：已更改 %d 个文件，已分配 %d 个 Shape，%d 个文件失败</translation>
+    </message>
+    <message>
+        <source>Shape ID Assignment Incomplete</source>
+        <translation>Shape ID 分配未完成</translation>
+    </message>
+    <message>
+        <source>Some files could not be updated:
+%s</source>
+        <translation>部分文件无法更新：
+%s</translation>
+    </message>
+    <message>
+        <source>Shape ID assignment cancelled</source>
+        <translation>Shape ID 分配已取消</translation>
+    </message>
+    <message>
+        <source>Fields: {fields}
+Objects: {objects} in {files} file(s)
+Created: {created}
+Updated: {updated}
+Unchanged: {unchanged}
+Conflicts: {conflict}
+Deleted: {deleted}
+Failed: {failed}
+
+{warnings}
+Proceed with the commit?</source>
+        <translation>字段：{fields}
+对象：{objects} 个，分布于 {files} 个文件
+已创建：{created}
+已更新：{updated}
+未更改：{unchanged}
+冲突：{conflict}
+已删除：{deleted}
+失败：{failed}
+
+{warnings}
+是否继续提交？</translation>
+    </message>
+    <message>
+        <source>No warnings.</source>
+        <translation>没有警告。</translation>
+    </message>
+    <message>
+        <source>Fields — created: {created}, updated: {updated}, unchanged: {unchanged}, conflict: {conflict}
+Objects — succeeded: {succeeded}, unchanged: {unchanged_objects}, deleted: {deleted}, conflict: {object_conflict}, failed: {failed}, cancelled: {cancelled}
+Files — succeeded: {fs}, skipped: {skipped}, failed: {ff}
+Recovery manifest: {manifest}</source>
+        <translation>字段——已创建：{created}，已更新：{updated}，未更改：{unchanged}，冲突：{conflict}
+对象——成功：{succeeded}，未更改：{unchanged_objects}，已删除：{deleted}，冲突：{object_conflict}，失败：{failed}，已取消：{cancelled}
+文件——成功：{fs}，已跳过：{skipped}，失败：{ff}
+恢复清单：{manifest}</translation>
+    </message>
+    <message>
+        <source>(none)</source>
+        <translation>（无）</translation>
+    </message>
+    <message>
+        <source>Revert only the selected historical label changes? Other fields are preserved.</source>
+        <translation>只恢复所选的历史标签更改吗？其他字段将保持不变。</translation>
+    </message>
+    <message>
+        <source>Changeable: {changeable}; conflicts: {conflicts}; failures: {failed}</source>
+        <translation>可更改：{changeable}；冲突：{conflicts}；失败：{failed}</translation>
+    </message>
+    <message>
+        <source>Objects — succeeded: {succeeded}, unchanged: {unchanged}, deleted: {deleted}, conflict: {conflict}, failed: {failed}, cancelled: {cancelled}
+Files — succeeded: {fs}, skipped: {fk}, failed: {ff}
+Recovery manifest: {manifest}</source>
+        <translation>对象——成功：{succeeded}，未更改：{unchanged}，已删除：{deleted}，冲突：{conflict}，失败：{failed}，已取消：{cancelled}
+文件——成功：{fs}，已跳过：{fk}，失败：{ff}
+恢复清单：{manifest}</translation>
+    </message>
+    <message>
+        <source>Relabel cancelled. No files were written; all marks kept.</source>
+        <translation>改标已取消。未写入任何文件；所有标记均已保留。</translation>
+    </message>
+    <message>
+        <source>Preflighting marked objects...</source>
+        <translation>正在预检已标记对象...</translation>
+    </message>
+    <message>
+        <source>{phase}: {index}/{total}
+{path}</source>
+        <translation>{phase}：{index}/{total}
+{path}</translation>
+    </message>
+    <message>
+        <source>Confirm object relabel</source>
+        <translation>确认对象改标</translation>
+    </message>
+    <message>
+        <source>Staging changed files...</source>
+        <translation>正在暂存已更改文件...</translation>
+    </message>
+    <message>
+        <source>Committing atomically — this stage cannot be cancelled.</source>
+        <translation>正在原子提交——此阶段无法取消。</translation>
+    </message>
+</context>
+<context>
+    <name>ObjectFieldEditDialog</name>
+    <message>
+        <source>Batch Edit Marked Objects</source>
+        <translation>批量编辑已标记对象</translation>
+    </message>
+    <message>
+        <source>Marked objects: %d in %d file(s)</source>
+        <translation>已标记对象：%d 个，分布于 %d 个文件</translation>
+    </message>
+    <message>
+        <source>Missing selected fields will be created; unselected fields are not completed. Field completion is not a prerequisite.</source>
+        <translation>缺失的所选字段将新增；未选字段不会补全。字段补全不是前置条件。</translation>
+    </message>
+    <message>
+        <source>Add field</source>
+        <translation>添加字段</translation>
+    </message>
+    <message>
+        <source>Invalid field assignment</source>
+        <translation>字段设置无效</translation>
+    </message>
+</context>
+<context>
+    <name>RectangleCreation</name>
+    <message><source>Four extremes</source><translation>四极值画框</translation></message>
+    <message><source>Draft ready: submit or go back.</source><translation>草稿已就绪：提交或返回。</translation></message>
+    <message><source>Click boundary {step}/4: {edge}</source><translation>点击边界 {step}/4：{edge}</translation></message>
+    <message><source>Rejected: image bounds or minimum size.</source><translation>已拒绝：超出图像边界或小于最小尺寸。</translation></message>
+</context>
+<context>
+    <name>_FieldRow</name>
+    <message><source>key</source><translation>键</translation></message>
+    <message><source>value</source><translation>值</translation></message>
+    <message><source>true</source><translation>true</translation></message>
+    <message><source>false</source><translation>false</translation></message>
+    <message><source>Remove field</source><translation>移除字段</translation></message>
+</context>
 </TS>
