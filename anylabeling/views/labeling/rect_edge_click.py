@@ -12,6 +12,7 @@ Point = tuple[float, float]
 EFFECTIVE_RANGE_FACTOR = 3.0
 DEAD_BAND_SCREEN_PX = 6.0
 DEAD_BAND_SHORT_SIDE_CAP = 0.05
+POINT_FIT_DEAD_BAND_SCREEN_PX = 8.0
 REASON_DEAD_ZONE = "dead_zone"
 REASON_OUT_OF_RANGE = "out_of_range"
 REASON_INVALID_BOX = "invalid_box"
@@ -116,3 +117,58 @@ def proposed_corner_box(box: Box, corner: int, point: Point) -> Box:
         ("left", "bottom"),
     )[corner]
     return proposed_box(proposed_box(box, horizontal, point), vertical, point)
+
+
+def point_fit_decision(
+    box: Box, point: Point, scale: float = 1.0
+) -> ClickDecision:
+    """Infer a corner from a point relative to the rectangle center.
+
+    The center horizontal and vertical bands are intentionally ambiguous: a
+    point in either band does not provide enough information to infer a unique
+    corner, so the caller should show a preview but reject the commit.
+
+    Args:
+        box: Original left, top, right and bottom image coordinates.
+        point: Candidate point in image coordinates.
+        scale: Display pixels per image pixel.
+
+    Returns:
+        A canonical corner name (``top_left`` etc.), or a reason when the
+        point cannot determine one safely.
+    """
+    left, top, right, bottom = box
+    if (
+        not all(math.isfinite(value) for value in box)
+        or right <= left
+        or bottom <= top
+    ):
+        return ClickDecision(None, REASON_INVALID_BOX)
+    x, y = point
+    if not all(math.isfinite(value) for value in point):
+        return ClickDecision(None, REASON_DEAD_ZONE)
+    if not math.isfinite(scale) or scale <= 0:
+        scale = 1.0
+    # Keep this tolerance in screen pixels so zooming does not change the
+    # interaction feel.  Very small rectangles may therefore be entirely
+    # ambiguous, which is safer than silently selecting the wrong corner.
+    half_band = POINT_FIT_DEAD_BAND_SCREEN_PX / scale
+    cx, cy = (left + right) / 2, (top + bottom) / 2
+    if abs(x - cx) <= half_band or abs(y - cy) <= half_band:
+        return ClickDecision(None, REASON_DEAD_ZONE)
+    horizontal = "left" if x < cx else "right"
+    vertical = "top" if y < cy else "bottom"
+    return ClickDecision(f"{vertical}_{horizontal}")
+
+
+def proposed_point_fit_box(box: Box, corner: str, point: Point) -> Box:
+    """Move the inferred corner to a point while fixing the opposite corner."""
+    corners = {
+        "top_left": 0,
+        "top_right": 1,
+        "bottom_right": 2,
+        "bottom_left": 3,
+    }
+    if corner not in corners:
+        raise ValueError(f"Unknown point-fit corner: {corner}")
+    return proposed_corner_box(box, corners[corner], point)

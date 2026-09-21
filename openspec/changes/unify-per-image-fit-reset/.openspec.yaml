@@ -1,0 +1,3 @@
+schema: spec-driven
+created: 2026-09-17
+goal: 逐图适窗结果必须等于图片稳定后手动执行一次 Ctrl+F，且不改变 Label on Selection 的纯显示语义。

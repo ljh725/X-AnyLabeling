@@ -2,6 +2,7 @@
 
 from types import MethodType, SimpleNamespace
 
+import pytest
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from anylabeling.views.labeling.label_widget import LabelingWidget
@@ -63,9 +64,13 @@ def _build_widget(qapp):
         canvas.adjustSize(),
         canvas.update(),
     )
+    widget._apply_fit_window_view = MethodType(
+        LabelingWidget._apply_fit_window_view, widget
+    )
     widget._apply_default_image_view = MethodType(
         LabelingWidget._apply_default_image_view, widget
     )
+    widget._schedule_post_load_fit = lambda filename: None
     widget._sync_viewport_ui = MethodType(
         LabelingWidget._sync_viewport_ui, widget
     )
@@ -75,6 +80,57 @@ def _build_widget(qapp):
 def _load(widget, filename):
     widget.filename = filename
     return LabelingWidget._apply_viewport_load_plan(widget, filename)
+
+
+@pytest.mark.parametrize(
+    "size",
+    [(100, 100), (800, 600), (1920, 1080), (1080, 1920)],
+)
+def test_fit_scale_is_calculated_per_pixmap_size(qapp, size):
+    """Fit-window scale follows each image's own dimensions."""
+    widget, scroll_area = _build_widget(qapp)
+    widget.central_widget = lambda: scroll_area
+    width, height = size
+    widget.canvas.load_pixmap(QtGui.QPixmap(width, height))
+    widget.canvas.scale = 1.0
+    widget.canvas.adjustSize()
+    qapp.processEvents()
+
+    available = scroll_area.maximumViewportSize()
+    expected = min(available.width() / width, available.height() / height)
+    assert LabelingWidget.scale_fit_window(widget) == pytest.approx(expected)
+
+
+def test_post_load_fit_ignores_stale_generation(qapp, tmp_path):
+    """A queued fit cannot touch a newer image load."""
+    widget, _ = _build_widget(qapp)
+    filename = str(tmp_path / "image.png")
+    called = []
+    widget.filename = filename
+    widget._viewport_load_generation = 2
+    widget._apply_fit_window_view = lambda reset_origin=False: called.append(
+        reset_origin
+    )
+
+    LabelingWidget._apply_post_load_fit(widget, filename, 1)
+
+    assert called == []
+
+
+def test_label_on_selection_does_not_change_viewport(qapp):
+    """Label visibility changes do not alter the canvas zoom scale."""
+    canvas = Canvas()
+    canvas.scale = 2.5
+    widget = SimpleNamespace(
+        _config={},
+        canvas=canvas,
+        _sync_density_round_review_display=lambda: None,
+    )
+
+    LabelingWidget.set_canvas_params(widget, "label_on_selection", True)
+
+    assert canvas.label_on_selection is True
+    assert canvas.scale == 2.5
 
 
 def test_load_plan_supports_inherit_reverse_and_exact_restore(qapp, tmp_path):

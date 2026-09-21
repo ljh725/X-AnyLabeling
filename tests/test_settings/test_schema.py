@@ -89,6 +89,8 @@ class TestSettingsSchema(unittest.TestCase):
 
         for key in EXCLUDED_KEYS:
             self.assertNotIn(key, SETTINGS_KEYS)
+        self.assertNotIn("shortcuts.toggle_rect_angle_click", SETTINGS_KEYS)
+        self.assertNotIn("shortcuts.toggle_rect_point_fit", SETTINGS_KEYS)
 
     def test_primary_and_key_sets(self) -> None:
         """Display groups and core keys remain available."""

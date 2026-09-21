@@ -22,6 +22,7 @@ from anylabeling.views.labeling.widgets.pose_label import (
 
 from .. import utils
 from .. import rect_edge_alignment as rea
+from .. import rect_edge_click as rec
 from ..logger import logger
 from ..rect_edge_interaction import RectEdgeInteractionController
 from .rect_edge_click_controller import RectEdgeClickController
@@ -555,12 +556,12 @@ class Canvas(
         # persisted to JSON. The active edge is an in-memory ``RectEdgeRef``
         # that is never written into ``Shape.other_data``.
         self.rect_edge_align_enabled = False
-        self.rect_angle_click_enabled = False
-        self.rect_angle_click_corner = None
-        self.rect_angle_click_preview = None
-        self.rect_angle_click_shape = None
-        self.rect_angle_click_start_points = None
-        self.rect_angle_click_waiting = False
+        self.rect_point_fit_preview = None
+        self.rect_point_fit_corner = None
+        self.rect_point_fit_shape = None
+        self.rect_point_fit_pending_box = None
+        self.rect_point_fit_start_points = None
+        self.rect_point_fit_consume_release = False
         self.rect_edge_state = RectEdgeInteractionController()
         self.rect_edge_click = RectEdgeClickController(self)
         # A selected rectangle edge becomes pending on press and is promoted
@@ -834,13 +835,16 @@ class Canvas(
     def leaveEvent(self, _):
         """Mouse leave event"""
         had_click_preview = bool(
-            self.rect_edge_click.preview or self.rect_edge_click.preview_box
+            self.rect_edge_click.preview
+            or self.rect_edge_click.preview_box
+            or self.rect_point_fit_preview
         )
         self._clear_crosshair_cursor()
         self.store_moving_shape()
         self.un_highlight()
         self.rect_edge_click.preview = None
         self.rect_edge_click.preview_box = None
+        self._clear_rect_point_fit_preview()
         if had_click_preview:
             self.update()
         self.restore_cursor()
@@ -1521,7 +1525,7 @@ class Canvas(
             return
 
         self.rect_edge_click.pointer = QtCore.QPointF(pos)
-        if self._angle_click_move(pos):
+        if self._point_fit_move(pos, ev.modifiers()):
             return
         if self.rect_edge_click.move(ev):
             return
@@ -2180,7 +2184,7 @@ class Canvas(
             # target a removed, hidden or deselected shape. A valid edge press
             # keeps the current rectangle formally selected.
             # ----------------------------------------------------------
-            if self._angle_click_press(pos):
+            if self._point_fit_press(pos, ev.modifiers()):
                 return
             if self.rect_edge_click.press(pos, ev):
                 return
@@ -2448,7 +2452,9 @@ class Canvas(
         elif ev.button() == QtCore.Qt.MouseButton.LeftButton:
             if self._finish_selection_gesture():
                 return
-            if self._angle_click_release(self.transform_pos(ev.position())):
+            if self._point_fit_release(
+                self.transform_pos(ev.position()), ev.modifiers()
+            ):
                 return
             if self.rect_edge_click.release(ev):
                 return
@@ -4206,8 +4212,8 @@ class Canvas(
         if self.rect_edge_align_enabled:
             self._draw_rect_edge_alignment_overlay(p)
         self.rect_edge_click.draw(p)
-        if self.rect_angle_click_preview is not None:
-            self._draw_rect_angle_click_overlay(p)
+        if self.rect_point_fit_preview is not None:
+            self._draw_rect_point_fit_overlay(p)
         self._draw_rectangle_review_feedback_hud(p)
         self._draw_rectangle_review_loupe(p)
 
@@ -4219,10 +4225,7 @@ class Canvas(
         if workflow is not None:
             workflow.paint_draft(p)
 
-        if (
-            self.rect_edge_click.axis is None
-            and not self.rect_angle_click_enabled
-        ):
+        if self.rect_edge_click.axis is None:
             self._draw_crosshair(p)
 
         # Cross-image object marking overlay. Independent of selected,
@@ -5234,88 +5237,112 @@ class Canvas(
             self.transform_pos(QtCore.QPointF(area.bottomRight())),
         )
 
-    def set_rect_angle_click_enabled(self, enabled: bool) -> None:
-        """Enable corner-click adjustment while retaining normal selection."""
-        selected = self.selected_rect_click_shape()
-        self.clear_rect_edge_alignment()
-        self.rect_angle_click_enabled = bool(enabled and selected is not None)
-        self.rect_angle_click_shape = (
-            selected if self.rect_angle_click_enabled else None
+    @staticmethod
+    def _shift_pressed(modifiers: QtCore.Qt.KeyboardModifier) -> bool:
+        """Return whether Shift participates in the current pointer event."""
+        return bool(modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier)
+
+    def _update_rect_point_fit_preview(
+        self, shape: Shape, pos: QtCore.QPointF
+    ) -> None:
+        """Calculate the transient point-fit preview for one locked target."""
+        geometry = rea.geometry_from_shape(shape)
+        box = self.rect_edge_click.box(geometry)
+        decision = rec.point_fit_decision(box, (pos.x(), pos.y()), self.scale)
+        self.rect_point_fit_shape = shape
+        self.rect_point_fit_preview = QtCore.QPointF(pos)
+        self.rect_point_fit_corner = decision.edge
+        self.rect_point_fit_pending_box = (
+            rec.proposed_point_fit_box(box, decision.edge, (pos.x(), pos.y()))
+            if decision.edge is not None
+            else None
         )
-        if self.rect_angle_click_enabled:
-            self.rect_edge_click.notify(
-                self.tr(
-                    "Select a corner, then click its new position; Esc to exit."
-                )
-            )
-        self.rect_click_mode_changed.emit()
+        if decision.reason == rec.REASON_DEAD_ZONE:
+            self.rect_edge_click.notify(self.tr("Unable to infer corner."))
+        else:
+            self.rect_edge_click.notify("")
         self.update()
 
-    def _angle_click_press(self, pos: QtCore.QPointF) -> bool:
-        """Capture a selected rectangle corner for optional click adjustment."""
-        if not self.rect_angle_click_enabled or self.drawing():
+    def _point_fit_move(
+        self,
+        pos: QtCore.QPointF,
+        modifiers: QtCore.Qt.KeyboardModifier,
+    ) -> bool:
+        """Preview point fitting only while Shift and a valid target exist."""
+        if not self._shift_pressed(modifiers) or self.drawing():
+            if not self.rect_point_fit_consume_release:
+                self._clear_rect_point_fit_preview()
+            return self.rect_point_fit_consume_release
+        shape = (
+            self.rect_point_fit_shape
+            if self.rect_point_fit_consume_release
+            else self.selected_rect_click_shape()
+        )
+        if shape is None or shape is not self.selected_rect_click_shape():
+            self._clear_rect_point_fit_preview(
+                preserve_release=self.rect_point_fit_consume_release
+            )
+            return self.rect_point_fit_consume_release
+        self._update_rect_point_fit_preview(shape, pos)
+        return True
+
+    def _point_fit_press(
+        self,
+        pos: QtCore.QPointF,
+        modifiers: QtCore.Qt.KeyboardModifier,
+    ) -> bool:
+        """Lock a Shift point-fit gesture before native selection can run."""
+        if not self._shift_pressed(modifiers) or self.drawing():
             return False
         shape = self.selected_rect_click_shape()
-        if shape is None or shape is not self.rect_angle_click_shape:
-            self.set_rect_angle_click_enabled(False)
-            return True
-        corners = rea.points_from_geometry(rea.geometry_from_shape(shape))
-        distances = [QtCore.QLineF(pos, point).length() for point in corners]
-        nearest = min(range(4), key=distances.__getitem__)
-        if distances[nearest] <= self.epsilon / max(self.scale, 1e-6):
-            self.rect_angle_click_corner = nearest
-            self.rect_angle_click_waiting = True
-        elif self.rect_angle_click_corner is None:
-            return True
-        self.rect_angle_click_start_points = tuple(
-            (p.x(), p.y()) for p in shape.points
+        if shape is None:
+            return False
+        self.clear_rect_edge_alignment(reset_axis=True)
+        self.rect_point_fit_consume_release = True
+        self.rect_point_fit_start_points = tuple(
+            (point.x(), point.y()) for point in shape.points
         )
-        self.rect_angle_click_preview = QtCore.QPointF(pos)
-        self.update()
+        self._update_rect_point_fit_preview(shape, pos)
         return True
 
-    def _angle_click_move(self, pos: QtCore.QPointF) -> bool:
-        """Update the uncommitted corner preview."""
-        if not self.rect_angle_click_enabled:
+    def _point_fit_release(
+        self,
+        pos: QtCore.QPointF,
+        modifiers: QtCore.Qt.KeyboardModifier,
+    ) -> bool:
+        """Commit one locked Shift point-fit gesture or consume its cancel."""
+        if not self.rect_point_fit_consume_release:
             return False
-        if self.selected_rect_click_shape() is not self.rect_angle_click_shape:
-            self.set_rect_angle_click_enabled(False)
-            return True
-        if self.rect_angle_click_corner is None:
-            return True
-        self.rect_angle_click_preview = QtCore.QPointF(pos)
-        self.update()
-        return True
-
-    def _angle_click_release(self, pos: QtCore.QPointF) -> bool:
-        """Commit both adjacent edges as one undo transaction."""
-        shape = self.rect_angle_click_shape
-        corner = self.rect_angle_click_corner
-        if not self.rect_angle_click_enabled:
-            return False
-        if shape is None or corner is None:
-            return True
-        if self.rect_angle_click_waiting:
-            self.rect_angle_click_waiting = False
+        self.rect_point_fit_consume_release = False
+        shape = self.rect_point_fit_shape
+        start_points = self.rect_point_fit_start_points
+        if not self._shift_pressed(modifiers):
+            self._clear_rect_point_fit_preview()
             self.update()
             return True
-        start = self.rect_angle_click_start_points
+        if shape is not None and shape is self.selected_rect_click_shape():
+            self._update_rect_point_fit_preview(shape, pos)
+        proposal = self.rect_point_fit_pending_box
         if (
-            shape is not self.selected_rect_click_shape()
-            or tuple((p.x(), p.y()) for p in shape.points) != start
+            shape is None
+            or proposal is None
+            or shape is not self.selected_rect_click_shape()
+            or tuple((point.x(), point.y()) for point in shape.points)
+            != start_points
         ):
-            self.set_rect_angle_click_enabled(False)
-            return True
-        proposal = self._angle_click_proposal(pos)
-        if proposal is None:
-            from .rect_edge_click_controller import translate
-
-            self.rect_edge_click.notify(
-                translate("Rejected: image bounds or minimum size.")
-            )
+            self._clear_rect_point_fit_preview()
+            self.update()
             return True
         geometry = rea.geometry_from_shape(shape)
-        changed = proposal != self.rect_edge_click.box(geometry)
+        if not self.rect_edge_click.valid_box(proposal):
+            self.rect_edge_click.notify(
+                self.tr("Rejected: image bounds or minimum size.")
+            )
+            self._clear_rect_point_fit_preview()
+            self.update()
+            return True
+        current = self.rect_edge_click.box(geometry)
+        changed = proposal != current
         if changed:
             shape.points = rea.points_from_geometry(
                 rea.RectGeometry(*proposal)
@@ -5324,31 +5351,11 @@ class Canvas(
             self.notify_shape_changed(shape)
             self.store_shapes()
             self.shape_moved.emit()
-        self.rect_angle_click_start_points = tuple(
-            (p.x(), p.y()) for p in shape.points
-        )
-        self.rect_angle_click_preview = None
-        self.rect_angle_click_waiting = False
+        self._clear_rect_point_fit_preview()
+        if changed:
+            self.deselect_shape()
         self.update()
         return True
-
-    def _angle_click_proposal(self, pos: QtCore.QPointF) -> tuple | None:
-        """Validate the selected corner against fixed opposite edges."""
-        from ..rect_edge_click import proposed_corner_box
-
-        shape = self.rect_angle_click_shape
-        if (
-            shape is not self.selected_rect_click_shape()
-            or self.rect_angle_click_corner is None
-        ):
-            return None
-        geometry = rea.geometry_from_shape(shape)
-        proposal = proposed_corner_box(
-            self.rect_edge_click.box(geometry),
-            self.rect_angle_click_corner,
-            (pos.x(), pos.y()),
-        )
-        return proposal if self.rect_edge_click.valid_box(proposal) else None
 
     def set_person_small_target_min_edge(self, min_edge):
         """Set the person small-target threshold in image-pixel space.
@@ -5522,16 +5529,22 @@ class Canvas(
             return True
         return False
 
-    def clear_rect_edge_alignment(self, preserve_click_mode: bool = False):
-        """Clear transient edge-editing interaction state."""
-        if not preserve_click_mode:
-            self.rect_angle_click_enabled = False
-            self.rect_angle_click_shape = None
-            self.rect_angle_click_corner = None
-            self.rect_angle_click_preview = None
-            self.rect_angle_click_start_points = None
-            self.rect_angle_click_waiting = False
-        self.rect_edge_click.clear(reset_axis=not preserve_click_mode)
+    def clear_rect_edge_alignment(
+        self,
+        preserve_click_mode: bool = False,
+        *,
+        reset_axis: bool | None = None,
+    ) -> None:
+        """Clear transient rectangle-editing state.
+
+        Args:
+            preserve_click_mode: Keep the temporary X/Y click axis selected.
+            reset_axis: Whether to clear the temporary X/Y click axis.
+        """
+        self._clear_rect_point_fit_preview()
+        if reset_axis is None:
+            reset_axis = not preserve_click_mode
+        self.rect_edge_click.clear(reset_axis=reset_axis)
         self.rect_edge_state.clear_mouse()
         self.rectangle_review_feedback_snapshot = None
         self._rectangle_review_nudge_burst.reset()
@@ -5581,6 +5594,18 @@ class Canvas(
         self.update()
         return True
 
+    def _clear_rect_point_fit_preview(
+        self, preserve_release: bool = False
+    ) -> None:
+        """Clear point-fit preview and pending commit state."""
+        self.rect_point_fit_preview = None
+        self.rect_point_fit_corner = None
+        self.rect_point_fit_shape = None
+        self.rect_point_fit_pending_box = None
+        self.rect_point_fit_start_points = None
+        if not preserve_release:
+            self.rect_point_fit_consume_release = False
+
     def _cancel_rect_edge_interaction(self):
         """Cancel any pending or active direct edge interaction.
 
@@ -5594,21 +5619,24 @@ class Canvas(
         if self.rect_edge_dragging:
             return self.cancel_rect_edge_drag()
 
-        had_state = any(
-            state is not None
-            for state in (
-                self.rect_edge_hover_edge,
-                self.rect_edge_active_edge,
-                self.rect_edge_pending_edge,
-                self.rect_edge_click.preview_box,
-                self.rect_edge_click.axis,
-                self.rect_angle_click_shape,
+        had_state = (
+            any(
+                state is not None
+                for state in (
+                    self.rect_edge_hover_edge,
+                    self.rect_edge_active_edge,
+                    self.rect_edge_pending_edge,
+                    self.rect_edge_click.preview_box,
+                    self.rect_edge_click.axis,
+                    self.rect_point_fit_preview,
+                )
             )
+            or self.rect_point_fit_consume_release
         )
         if not had_state:
             return False
 
-        self.clear_rect_edge_alignment()
+        self.clear_rect_edge_alignment(reset_axis=True)
         self.override_cursor(CURSOR_DEFAULT)
         self.update()
         return True
@@ -5623,9 +5651,12 @@ class Canvas(
             True when the key event was consumed, False to let the caller
             fall through to the default Esc behaviour.
         """
-        if (
-            self.rect_edge_click.axis is not None
-            or self.rect_angle_click_enabled
+        if self.rect_edge_click.axis is not None or any(
+            state is not None
+            for state in (
+                self.rect_point_fit_preview,
+                self.rect_point_fit_shape,
+            )
         ):
             self.clear_rect_edge_alignment()
             self.update()
@@ -5863,18 +5894,16 @@ class Canvas(
                     painter, hover, QtGui.QColor(255, 255, 255), width=1.5
                 )
 
-    def _draw_rect_angle_click_overlay(self, painter: QtGui.QPainter) -> None:
-        """Draw guides and the pending axis-aligned corner rectangle."""
-        shape = self.rect_angle_click_shape
-        point = self.rect_angle_click_preview
-        corner = self.rect_angle_click_corner
-        if shape is None or point is None or corner is None:
+    def _draw_rect_point_fit_overlay(self, painter: QtGui.QPainter) -> None:
+        """Draw the inferred corner and the proposed automatic-fit rectangle."""
+        point = self.rect_point_fit_preview
+        if point is None:
             return
-        proposal = self._angle_click_proposal(point)
         viewport = self.rect_click_work_area()
+        proposal = self.rect_point_fit_pending_box
         painter.save()
         painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-        pen = QtGui.QPen(QtGui.QColor(0, 150, 230, 240))
+        pen = QtGui.QPen(QtGui.QColor(0, 150, 230, 220))
         pen.setCosmetic(True)
         pen.setWidthF(1.5)
         pen.setStyle(QtCore.Qt.PenStyle.DashLine)
@@ -5891,14 +5920,23 @@ class Canvas(
             pen.setColor(QtGui.QColor(220, 130, 0, 255))
             painter.setPen(pen)
             painter.drawRect(self.rect_edge_click.rect(proposal))
-        target = rea.points_from_geometry(rea.geometry_from_shape(shape))[
-            corner
-        ]
-        radius = 5 / max(self.scale, 1e-6)
-        pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
-        pen.setWidthF(2)
-        painter.setPen(pen)
-        painter.drawEllipse(target, radius, radius)
+        else:
+            pen.setColor(QtGui.QColor(210, 60, 60, 255))
+            pen.setWidthF(2.0)
+            painter.setPen(pen)
+            radius = 6 / max(self.scale, 1e-6)
+            painter.drawLine(
+                QtCore.QPointF(point.x() - radius, point.y() - radius),
+                QtCore.QPointF(point.x() + radius, point.y() + radius),
+            )
+            painter.drawLine(
+                QtCore.QPointF(point.x() - radius, point.y() + radius),
+                QtCore.QPointF(point.x() + radius, point.y() - radius),
+            )
+            painter.drawText(
+                QtCore.QPointF(point.x() + radius, point.y() - radius),
+                self.tr("无法判断角点"),
+            )
         painter.restore()
 
     def _draw_rectangle_review_feedback_hud(
@@ -6990,6 +7028,11 @@ class Canvas(
             self.rect_edge_click.modifiers_changed(
                 modifiers & ~QtCore.Qt.KeyboardModifier.ShiftModifier
             )
+            waiting_for_release = self.rect_point_fit_consume_release
+            self._clear_rect_point_fit_preview(
+                preserve_release=waiting_for_release
+            )
+            self.update()
         if self.drawing():
             if modifiers == QtCore.Qt.KeyboardModifier.NoModifier:
                 self.snapping = True
@@ -7073,7 +7116,9 @@ class Canvas(
         self.h_vertex = None
         self.h_edge = None
         self.h_cuboid_face = None
-        self.clear_rect_edge_alignment()
+        self.clear_rect_edge_alignment(
+            preserve_click_mode=True, reset_axis=True
+        )
         self.pixmap = pixmap
         if clear_shapes:
             self.shapes = []
@@ -7128,7 +7173,9 @@ class Canvas(
 
         # Drop any in-progress rectangle edge edit so transient state never
         # leaks across images.
-        self.clear_rect_edge_alignment()
+        self.clear_rect_edge_alignment(
+            preserve_click_mode=True, reset_axis=True
+        )
         self.notify_shapes_changed()
         self.update()
         _t_total = time.perf_counter()
@@ -7178,8 +7225,9 @@ class Canvas(
         """Set visibility for a shape"""
         self.visible[shape] = value
         if not value and (
-            shape is self.rect_edge_click.target
-            or shape is self.rect_angle_click_shape
+            shape in self.selected_shapes
+            or shape is self.rect_edge_click.target
+            or shape is self.rect_point_fit_shape
         ):
             self._cancel_rect_edge_interaction()
         self.notify_shape_changed(shape)
@@ -7206,7 +7254,7 @@ class Canvas(
         """Restore override cursor"""
         QtWidgets.QApplication.restoreOverrideCursor()
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         """Clear shapes and pixmap"""
         workflow = getattr(self, "rectangle_creation", None)
         if workflow is not None:
@@ -7232,7 +7280,7 @@ class Canvas(
         self.is_move_editing = False
         self.compare_pixmap = None
         # Reset every transient rectangle-edge interaction state.
-        self.clear_rect_edge_alignment()
+        self.clear_rect_edge_alignment(reset_axis=True)
         self.notify_shapes_changed()
         self.update()
 

@@ -1932,15 +1932,6 @@ class LabelingWidget(LabelDialog):
             checkable=False,
             enabled=True,
         )
-        toggle_rect_angle_click = action(
-            self.tr("角点击调整"),
-            self.toggle_rect_angle_click,
-            tip=self.tr("启用鼠标指定角并点击新角点"),
-            icon=None,
-            checkable=True,
-            checked=False,
-            enabled=True,
-        )
         rectangle_click_adjust_x.setShortcutContext(
             QtCore.Qt.ShortcutContext.WidgetShortcut
         )
@@ -1960,7 +1951,6 @@ class LabelingWidget(LabelDialog):
             (
                 rectangle_click_adjust_x,
                 rectangle_click_adjust_y,
-                toggle_rect_angle_click,
             ),
         )
         rectangle_click_menu.aboutToShow.connect(self._sync_rect_click_actions)
@@ -2619,7 +2609,6 @@ class LabelingWidget(LabelDialog):
             toggle_rect_edge_align=toggle_rect_edge_align,
             rectangle_click_adjust_x=rectangle_click_adjust_x,
             rectangle_click_adjust_y=rectangle_click_adjust_y,
-            toggle_rect_angle_click=toggle_rect_angle_click,
             toggle_precision_mode_lock=toggle_precision_mode_lock,
             toggle_rect_refine_mode=toggle_rect_refine_mode,
             show_navigator=show_navigator,
@@ -3435,6 +3424,7 @@ class LabelingWidget(LabelDialog):
         self.fit_window = False
         self.brightness_contrast_values = {}
         self.viewport_controller = ViewportController()
+        self._viewport_load_generation = 0
         from .widgets.rectangle_creation import RectangleCreation
 
         self.rectangle_creation = RectangleCreation(self)
@@ -3885,7 +3875,7 @@ class LabelingWidget(LabelDialog):
     def status(self, message, delay=5000):
         self.statusBar().showMessage(message, delay)
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         self.label_list.clear()
         self._filter_index = None  # invalidate stale item references
         self.filename = None
@@ -4231,7 +4221,9 @@ class LabelingWidget(LabelDialog):
         """Clear uncommitted edge state before a target/image transition."""
         if getattr(self.canvas, "rect_edge_dragging", False):
             self.canvas.cancel_rect_edge_drag()
-        self.canvas.clear_rect_edge_alignment()
+        self.canvas.clear_rect_edge_alignment(
+            preserve_click_mode=True, reset_axis=True
+        )
         self.canvas._reset_virtual_cursor()
         self.canvas._rectangle_review_wheel.reset()
 
@@ -8083,17 +8075,6 @@ class LabelingWidget(LabelDialog):
         self.actions.copy.setEnabled(n_selected)
         self.actions.edit.setEnabled(n_selected >= 1 and same_type)
         self.actions.copy_coordinates.setEnabled(n_selected == 1)
-        angle_action = getattr(self.actions, "toggle_rect_angle_click", None)
-        valid_angle_selection = (
-            self.canvas.selected_rect_click_shape() is not None
-        )
-        if angle_action is not None:
-            angle_action.setEnabled(valid_angle_selection)
-            if not valid_angle_selection and angle_action.isChecked():
-                angle_action.blockSignals(True)
-                angle_action.setChecked(False)
-                angle_action.blockSignals(False)
-                self.canvas.set_rect_angle_click_enabled(False)
         self.actions.union_selection.setEnabled(
             not all(value > 0 for value in allow_merge_shape_type.values())
             and (
@@ -9305,9 +9286,10 @@ class LabelingWidget(LabelDialog):
 
     def set_fit_window(self, value=True):
         if value:
-            self.actions.fit_width.setChecked(False)
-        self.zoom_mode = self.FIT_WINDOW if value else self.MANUAL_ZOOM
-        self.adjust_scale()
+            self._apply_fit_window_view(reset_origin=False)
+        else:
+            self.zoom_mode = self.MANUAL_ZOOM
+            self.adjust_scale()
 
     def set_fit_width(self, value=True):
         if value:
@@ -9439,36 +9421,11 @@ class LabelingWidget(LabelDialog):
         else:
             self.status(self.tr("矩形单边调整已关闭"))
 
-    def toggle_rect_angle_click(self, enabled: bool) -> None:
-        """Toggle the optional mouse corner-click rectangle adjustment."""
-        selected = self.canvas.selected_rect_click_shape()
-        if enabled and selected is None:
-            action = getattr(self.actions, "toggle_rect_angle_click", None)
-            if action is not None:
-                action.blockSignals(True)
-                action.setChecked(False)
-                action.blockSignals(False)
-            self.status(self.tr("请选择一个矩形后再开启角点击调整"))
-            return
-        if enabled and self.canvas.drawing():
-            self.set_edit_mode()
-        self.canvas.set_rect_angle_click_enabled(enabled)
-        self.status(
-            self.tr("角点击调整已开启" if enabled else "角点击调整已关闭")
-        )
-
     def _sync_rect_click_actions(self) -> None:
-        """Mirror canvas-owned transient mode into the View menu."""
+        """Mirror canvas-owned rectangle editing state into the View menu."""
         actions = getattr(self, "actions", None)
         if actions is None:
             return
-        action = getattr(actions, "toggle_rect_angle_click", None)
-        if action is not None:
-            with QtCore.QSignalBlocker(action):
-                action.setChecked(self.canvas.rect_angle_click_enabled)
-                action.setEnabled(
-                    self.canvas.selected_rect_click_shape() is not None
-                )
         edge = getattr(actions, "toggle_rect_edge_align", None)
         if edge is not None:
             with QtCore.QSignalBlocker(edge):
@@ -9828,6 +9785,7 @@ class LabelingWidget(LabelDialog):
     def load_file(self, filename=None):  # noqa: C901
         """Load the specified file, or the last opened file if None."""
         _t_load = time.perf_counter()
+        self._viewport_load_generation += 1
 
         # Clear any pending bind-draw context on image switch (task 3.14).
         # The source shape reference is invalid after the switch; the
@@ -10236,6 +10194,13 @@ class LabelingWidget(LabelDialog):
         if self.image.isNull():
             return False
 
+        return self._apply_fit_window_view(reset_origin=True)
+
+    def _apply_fit_window_view(self, reset_origin: bool = False) -> bool:
+        """Apply the shared fit-window view policy to the current image."""
+        if self.image.isNull() or self.canvas.pixmap.isNull():
+            return False
+
         self.zoom_mode = self.FIT_WINDOW
         self.actions.fit_width.setChecked(False)
         self.actions.fit_window.setChecked(True)
@@ -10244,9 +10209,10 @@ class LabelingWidget(LabelDialog):
             Qt.Orientation.Horizontal,
             Qt.Orientation.Vertical,
         ):
-            scroll_bar = self.scroll_bars[orientation]
-            if scroll_bar is not None:
-                scroll_bar.setValue(scroll_bar.minimum())
+            if reset_origin:
+                scroll_bar = self.scroll_bars[orientation]
+                if scroll_bar is not None:
+                    scroll_bar.setValue(scroll_bar.minimum())
         self.paint_canvas()
         return True
 
@@ -10274,6 +10240,7 @@ class LabelingWidget(LabelDialog):
                     plan,
                     applied_zoom=int(self.zoom_widget.value()),
                 )
+                self._schedule_post_load_fit(filename)
             return applied
 
         if plan.state is not None:
@@ -10310,7 +10277,34 @@ class LabelingWidget(LabelDialog):
                 plan,
                 applied_zoom=int(self.zoom_widget.value()),
             )
+            self._schedule_post_load_fit(filename)
         return applied
+
+    def _schedule_post_load_fit(self, filename: str) -> None:
+        """Queue one final fit after downstream load-time UI work settles."""
+        if not hasattr(self, "_viewport_load_generation"):
+            return
+        generation = self._viewport_load_generation
+        QtCore.QTimer.singleShot(
+            0,
+            functools.partial(
+                self._apply_post_load_fit,
+                filename,
+                generation,
+            ),
+        )
+
+    def _apply_post_load_fit(self, filename: str, generation: int) -> None:
+        """Apply a queued fit only to the still-current image load."""
+        if generation != self._viewport_load_generation:
+            return
+        if self.viewport_controller.normalize_filename(
+            self.filename
+        ) != self.viewport_controller.normalize_filename(filename):
+            return
+        if self.zoom_mode != self.FIT_WINDOW:
+            return
+        self._apply_fit_window_view(reset_origin=True)
 
     def adjust_scale(self, initial=False):
         value = self.scalers[self.FIT_WINDOW if initial else self.zoom_mode]()
@@ -10321,13 +10315,17 @@ class LabelingWidget(LabelDialog):
 
     def scale_fit_window(self):
         """Figure out the size of the pixmap to fit the main widget."""
-        e = 2.0  # So that no scrollbars are generated.
-        w1 = self.central_widget().width() - e
-        h1 = self.central_widget().height() - e
+        viewport_size = self.central_widget().maximumViewportSize()
+        w1 = float(viewport_size.width())
+        h1 = float(viewport_size.height())
+        if w1 <= 0 or h1 <= 0:
+            return 1.0
         wh_ratio1 = w1 / h1
         # Calculate a new scale value based on the pixmap's aspect ratio.
-        w2 = self.canvas.pixmap.width() - 0.0
-        h2 = self.canvas.pixmap.height() - 0.0
+        w2 = float(self.canvas.pixmap.width())
+        h2 = float(self.canvas.pixmap.height())
+        if w2 <= 0 or h2 <= 0:
+            return 1.0
         wh_ratio2 = w2 / h2
         return w1 / w2 if wh_ratio2 >= wh_ratio1 else h1 / h2
 
@@ -10342,6 +10340,8 @@ class LabelingWidget(LabelDialog):
 
     def _clear_viewport_session(self) -> None:
         """Clear all in-memory viewport state for the current dataset."""
+        if hasattr(self, "_viewport_load_generation"):
+            self._viewport_load_generation += 1
         self.viewport_controller.clear()
 
     def _clear_view_state_for_files(self, filenames):
@@ -10422,7 +10422,11 @@ class LabelingWidget(LabelDialog):
 
     def reset_all_image_views(self):
         """重置所有图像的视图状态。"""
-        filenames = list(self.image_list)
+        filenames = list(
+            dict.fromkeys(
+                list(self._dataset_all_image_files) + list(self.image_list)
+            )
+        )
         self._reset_image_views_for_files(filenames, self.tr("all images"))
 
     # QT Overload

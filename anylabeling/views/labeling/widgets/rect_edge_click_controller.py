@@ -58,7 +58,6 @@ class RectEdgeClickController:
             return False
         pointer = self.pointer
         self.canvas._cancel_rect_edge_interaction()
-        self.canvas.set_rect_angle_click_enabled(False)
         self.clear()
         self.axis = axis
         self.target = self.canvas.selected_rect_click_shape()
@@ -85,7 +84,6 @@ class RectEdgeClickController:
             and canvas._selected_rect_edge_shape() is not None
             and canvas.pixmap is not None
             and not canvas.pixmap.isNull()
-            and not canvas.rect_angle_click_enabled
             and self.target is canvas._selected_rect_edge_shape()
             and self.axis in {"x", "y"}
         )

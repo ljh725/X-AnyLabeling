@@ -414,6 +414,14 @@
       <translation>加载中...</translation>
     </message>
     <message>
+      <source>无法判断角点</source>
+      <translation>无法判断角点</translation>
+    </message>
+    <message>
+      <source>Unable to infer corner.</source>
+      <translation>无法判断角点。</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/widgets/canvas.py" line="471" />
       <source>Auto Labeling</source>
       <translation>自动标注</translation>
@@ -474,10 +482,6 @@
       <location filename="../../views/labeling/widgets/canvas.py" line="5003" />
       <source>Max edge %.1f px &lt; %g px</source>
       <translation>最大边 %.1f px &lt; %g px</translation>
-    </message>
-      <message>
-      <source>Select a corner, then click its new position; Esc to exit.</source>
-      <translation>先选中一个角，再点击新角点；Esc 退出。</translation>
     </message>
 </context>
   <context>
@@ -3710,14 +3714,6 @@ This warning will only be shown once. Do you want to continue?</source>
       <translation>矩形点击调整</translation>
     </message>
     <message>
-      <source>角点击调整</source>
-      <translation>角点击调整</translation>
-    </message>
-    <message>
-      <source>启用鼠标指定角并点击新角点</source>
-      <translation>启用鼠标指定角并点击新角点</translation>
-    </message>
-    <message>
       <source>边点击调整：修改 X（左/右边）</source>
       <translation>边点击调整：修改 X（左/右边）</translation>
     </message>
@@ -3733,19 +3729,7 @@ This warning will only be shown once. Do you want to continue?</source>
       <source>按下后点击目标纵坐标</source>
       <translation>按下后点击目标纵坐标</translation>
     </message>
-    <message>
-      <source>请选择一个矩形后再开启角点击调整</source>
-      <translation>请选择一个矩形后再开启角点击调整</translation>
-    </message>
-    <message>
-      <source>角点击调整已开启</source>
-      <translation>角点击调整已开启</translation>
-    </message>
-    <message>
-      <source>角点击调整已关闭</source>
-      <translation>角点击调整已关闭</translation>
-    </message>
-</context>
+  </context>
   <context>
     <name>Model</name>
     <message>

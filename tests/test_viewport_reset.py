@@ -156,6 +156,19 @@ def test_current_reset_applies_default_view_and_reports_target_count() -> None:
         widget, "scale_applied", initial
     )
     widget.paint_canvas = lambda: setattr(widget, "painted", True)
+
+    def _fake_fit_window_view(reset_origin=False):
+        widget.zoom_mode = widget.FIT_WINDOW
+        widget.actions.fit_width.setChecked(False)
+        widget.actions.fit_window.setChecked(True)
+        widget.adjust_scale(initial=True)
+        if reset_origin:
+            for scroll_bar in widget.scroll_bars.values():
+                scroll_bar.setValue(scroll_bar.minimum())
+        widget.paint_canvas()
+        return True
+
+    widget._apply_fit_window_view = _fake_fit_window_view
     widget._apply_default_image_view = lambda: (
         LabelingWidget._apply_default_image_view(widget)
     )
@@ -214,3 +227,20 @@ def test_reset_non_current_view_does_not_touch_shape_or_dirty_state() -> None:
     assert widget.shapes == ["shape"]
     assert widget.dirty is True
     assert messages
+
+
+def test_reset_all_uses_complete_dataset_when_file_list_is_filtered() -> None:
+    """Reset-all includes files hidden by the current file-list filter."""
+    targets = []
+    widget = SimpleNamespace(
+        _dataset_all_image_files=["a.png", "b.png"],
+        image_list=["a.png"],
+        tr=lambda text: text,
+        _reset_image_views_for_files=lambda filenames, scope: targets.append(
+            (list(filenames), scope)
+        ),
+    )
+
+    LabelingWidget.reset_all_image_views(widget)
+
+    assert targets == [(["a.png", "b.png"], "all images")]

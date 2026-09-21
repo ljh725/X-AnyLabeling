@@ -414,6 +414,14 @@
       <translation type="unfinished" />
     </message>
     <message>
+      <source>无法判断角点</source>
+      <translation>Unable to infer corner</translation>
+    </message>
+    <message>
+      <source>Unable to infer corner.</source>
+      <translation>Unable to infer corner.</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/widgets/canvas.py" line="471" />
       <source>Auto Labeling</source>
       <translation type="unfinished" />
@@ -474,10 +482,6 @@
       <location filename="../../views/labeling/widgets/canvas.py" line="5003" />
       <source>Max edge %.1f px &lt; %g px</source>
       <translation>Max edge %.1f px &lt; %g px</translation>
-    </message>
-      <message>
-      <source>Select a corner, then click its new position; Esc to exit.</source>
-      <translation>Select a corner, then click its new position; Esc to exit.</translation>
     </message>
 </context>
   <context>
@@ -3690,14 +3694,6 @@ This warning will only be shown once. Do you want to continue?</translation>
       <translation>Rectangle click adjustment</translation>
     </message>
     <message>
-      <source>角点击调整</source>
-      <translation>Corner click adjustment</translation>
-    </message>
-    <message>
-      <source>启用鼠标指定角并点击新角点</source>
-      <translation>Select a corner, then click its new position</translation>
-    </message>
-    <message>
       <source>边点击调整：修改 X（左/右边）</source>
       <translation>Edge click adjustment: modify X (left/right)</translation>
     </message>
@@ -3713,19 +3709,7 @@ This warning will only be shown once. Do you want to continue?</translation>
       <source>按下后点击目标纵坐标</source>
       <translation>Press once, then click the target Y coordinate</translation>
     </message>
-    <message>
-      <source>请选择一个矩形后再开启角点击调整</source>
-      <translation>Select one rectangle before enabling corner click adjustment</translation>
-    </message>
-    <message>
-      <source>角点击调整已开启</source>
-      <translation>Corner click adjustment enabled</translation>
-    </message>
-    <message>
-      <source>角点击调整已关闭</source>
-      <translation>Corner click adjustment disabled</translation>
-    </message>
-</context>
+  </context>
   <context>
     <name>Model</name>
     <message>

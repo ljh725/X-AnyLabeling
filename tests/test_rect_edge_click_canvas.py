@@ -205,12 +205,12 @@ def test_activation_prerequisites(editor: Canvas, case: str) -> None:
 def test_interrupted_press_never_commits(editor: Canvas, cancel: str) -> None:
     """Invalidate pending clicks before a later release can edit stale state."""
     editor.begin_rect_click_axis("x")
-    send(editor, QtCore.QEvent.Type.MouseButtonPress, (180, 200), SHIFT)
+    send(editor, QtCore.QEvent.Type.MouseButtonPress, (180, 200), NO_MOD)
     assert editor.rect_edge_click.lock is not None
     if cancel == "escape":
         editor.keyPressEvent(
             QtGui.QKeyEvent(
-                QtCore.QEvent.Type.KeyPress, QtCore.Qt.Key.Key_Escape, SHIFT
+                QtCore.QEvent.Type.KeyPress, QtCore.Qt.Key.Key_Escape, NO_MOD
             )
         )
     elif cancel == "focus":
@@ -222,9 +222,9 @@ def test_interrupted_press_never_commits(editor: Canvas, cancel: str) -> None:
     elif cancel == "changed":
         rea.apply_edge_coord(editor.shapes[0], "left", 105)
     else:
-        editor.set_rect_angle_click_enabled(True)
+        editor.set_editing(False)
     baseline = len(editor.shapes_backups)
-    send(editor, QtCore.QEvent.Type.MouseButtonRelease, (180, 200), SHIFT)
+    send(editor, QtCore.QEvent.Type.MouseButtonRelease, (180, 200), NO_MOD)
     assert len(editor.shapes_backups) == baseline
     if editor.shapes:
         assert box(editor)[2] == 200

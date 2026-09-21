@@ -1,0 +1,6 @@
+- [x] 1. Add a shared fit-window calculation/application path that preserves low-resolution upscaling and uses the real available viewport.
+- [x] 2. Add load-generation tracking and post-load fit correction with stale callback guards.
+- [x] 3. Ensure reset-all targets the complete dataset list while preserving viewport state-machine priority.
+- [x] 4. Verify Label on Selection remains isolated from viewport behavior.
+- [x] 5. Add focused Qt/state-machine regression tests for mixed resolutions, layout settling, filtering, rapid navigation, and reset non-invasiveness.
+- [x] 6. Run formatting, focused tests, and OpenSpec validation.
