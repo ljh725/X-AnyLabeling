@@ -5,6 +5,7 @@ from PyQt6 import QtCore, QtGui
 
 from . import utils
 from ..labeling.logger import logger
+from .shape_identity import new_shape_id as _new_shape_id
 
 # TODO(unknown):
 # - [opt] Store paths instead of creating new ones at each paint.
@@ -34,6 +35,7 @@ class Shape:
     NEAR_VERTEX = 1
 
     KEYS = [
+        "xanylabeling_shape_id",
         "label",
         "score",
         "points",
@@ -78,6 +80,7 @@ class Shape:
         direction=0,
         attributes=None,
         kie_linking=None,
+        shape_id=None,
     ):
         if attributes is None:
             attributes = {}
@@ -96,6 +99,7 @@ class Shape:
         self.shape_type = shape_type
         self.flags = flags
         self.other_data = {}
+        self.xanylabeling_shape_id = shape_id or self.new_shape_id()
         self.attributes = attributes
         self.cache_label = None
         self.cache_description = None
@@ -135,6 +139,7 @@ class Shape:
         if self.shape_type == "cuboid" and len(self.points) >= 8:
             self.sync_cuboid_depth_vector()
         dictData = {
+            "xanylabeling_shape_id": self.xanylabeling_shape_id,
             "label": self.label,
             "score": self.score,
             "points": [(p.x(), p.y()) for p in self.points],
@@ -155,7 +160,21 @@ class Shape:
         dictData.pop("locked", None)
         return dictData
 
-    def load_from_dict(self, data: dict, close=True):
+    @staticmethod
+    def new_shape_id():
+        """Return a new identity for a newly created annotation shape."""
+        return _new_shape_id()
+
+    def load_from_dict(self, data: dict, close=True, preserve_shape_id=True):
+        """Load serialized shape data and optionally preserve its identity.
+
+        Args:
+            data: X-AnyLabeling shape mapping.
+            close: Whether to close the shape after loading its points.
+            preserve_shape_id: Keep the serialized identity for file loads and
+                undo restores. Set to False for paste/import-as-new
+                operations.
+        """
         self.label = data["label"]
         self.score = data.get("score")
         self.points = [QtCore.QPointF(p[0], p[1]) for p in data["points"]]
@@ -175,6 +194,15 @@ class Shape:
             raise ValueError("kie_linking must be a list of integer pairs")
         self.kie_linking = kie_linking
         self.locked = False
+        serialized_id = data.get("xanylabeling_shape_id")
+        if (
+            preserve_shape_id
+            and isinstance(serialized_id, str)
+            and serialized_id
+        ):
+            self.xanylabeling_shape_id = serialized_id
+        else:
+            self.xanylabeling_shape_id = self.new_shape_id()
         if self.shape_type == "rotation":
             self.direction = data.get("direction", 0)
         self.other_data = {k: v for k, v in data.items() if k not in self.KEYS}
@@ -836,13 +864,19 @@ class Shape:
         self._highlight_index = None
 
     def copy(self):
-        """Copy shape"""
+        """Copy shape, keeping the persistent identity of the source."""
         memo = {id(point): QtCore.QPointF(point) for point in self.points}
         memo[id(self.points)] = [memo[id(point)] for point in self.points]
         for value in self.__dict__.values():
             if isinstance(value, QtGui.QColor):
                 memo[id(value)] = QtGui.QColor(value)
         return copy.deepcopy(self, memo)
+
+    def copy_for_new_object(self):
+        """Copy shape as a new annotation object with a fresh identity."""
+        result = self.copy()
+        result.xanylabeling_shape_id = self.new_shape_id()
+        return result
 
     def __len__(self):
         return len(self.points)

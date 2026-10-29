@@ -36,10 +36,26 @@ class TestLabelLocks(unittest.TestCase):
         self.shapes = [Shape(label=label) for label in ("cat", "cat", "dog")]
         self.widget = SimpleNamespace(
             unique_label_list=self.labels,
-            canvas=SimpleNamespace(shapes=self.shapes),
+            canvas=SimpleNamespace(
+                shapes=self.shapes,
+                invalidate_rectangle_size_issues=Mock(),
+            ),
             _update_shapes_lock=Mock(),
             refresh_panel_controls=Mock(),
             _session_shape_locks={},
+            label_filter_combobox=SimpleNamespace(
+                text_box=SimpleNamespace(currentText=lambda: "")
+            ),
+            gid_filter_combobox=SimpleNamespace(
+                gid_box=SimpleNamespace(currentText=lambda: "-1")
+            ),
+            _manually_hidden_shapes=set(),
+            _invert_shape_filter=False,
+            _invert_filter_actions=[],
+        )
+        self.widget._sync_invert_filter_actions = Mock()
+        self.widget._apply_shape_filter_visibility = partial(
+            LabelingWidget._apply_shape_filter_visibility, self.widget
         )
         self.widget.toggle_unique_label_items_lock = partial(
             LabelingWidget.toggle_unique_label_items_lock, self.widget

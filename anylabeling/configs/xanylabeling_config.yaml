@@ -8,6 +8,7 @@ display_label_popup: true
 store_data: false
 keep_prev: false
 keep_prev_scale: false
+share_view_across_same_size: true
 keep_prev_brightness: false
 keep_prev_contrast: false
 auto_use_last_label: false
@@ -19,6 +20,10 @@ show_groups: false
 show_masks: true
 show_texts: true
 show_labels: true
+show_labels_only_selected: false
+show_rectangle_pixels: false
+show_rectangle_size_violations: false
+rectangle_size_rules: null
 show_scores: true
 show_degrees: false
 show_shapes: true
@@ -110,6 +115,8 @@ canvas:
     width: 2.0
     color: "#00FF00"
     opacity: 0.5
+    # Fork addition: guide shown only while drawing two-point rectangles.
+    show_when_drawing: true
   attributes:
     background_color: [33, 33, 33, 255]
     border_color: [66, 66, 66, 255]

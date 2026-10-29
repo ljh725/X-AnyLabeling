@@ -1,0 +1,267 @@
+--- modified_beta4:LabelingWidget.import_image_folder
++++ current_421:LabelingWidget.import_image_folder
+@@ -1,32 +1,24 @@
+     def import_image_folder(self, dirpath, pattern=None, load=True):
+-        _t0 = time.perf_counter()
+         if not self.may_continue() or not dirpath:
+             return
+ 
+-        self._close_dataset_thumbnail_window()
+-        self._clear_viewport_session()
+         if self.compare_view_manager.is_active():
+             self.close_compare_view(confirm=False)
+ 
+-        # Cancel any previous background label check.
+-        self._stop_shape_identity_worker()
+-        self._stop_label_check_worker()
+-
+-        self._prepare_dataset_index_for_directory(dirpath)
+         self.last_open_dir = dirpath
++        # A new folder starts a new review round, so stale size groups from
++        # the previous dataset must not leak into it.
++        self.shared_view_store.clear()
+         self.filename = None
++        self.update_browse_actions()
+         self.file_list_widget.clear()
+-        self.fn_to_index.clear()
+         image_files = []
+-        all_image_files = []
+ 
+         search_pattern = parse_search_pattern(pattern) if pattern else None
+ 
+-        # Phase 1: scan paths only (no network IO for labels).
+         for file_index, filename in enumerate(
+             utils.scan_all_images(dirpath), start=1
+         ):
+-            all_image_files.append(filename)
+             if search_pattern:
+                 if search_pattern.mode == "index":
+                     if search_pattern.index != file_index:
+@@ -35,28 +27,27 @@
+                     if not matches_filename(filename, search_pattern):
+                         continue
+ 
+-                    # Attribute filtering is deferred to Phase 2 because
+-                    # it requires reading JSON content over the network.
+                     if search_pattern.mode == "attribute":
+-                        pass
++                        label_file = osp.splitext(filename)[0] + ".json"
++                        if self.output_dir:
++                            label_file_without_path = osp.basename(label_file)
++                            label_file = (
++                                self.output_dir + "/" + label_file_without_path
++                            )
++
++                        if not matches_label_attribute(
++                            filename, label_file, search_pattern
++                        ):
++                            continue
+ 
+             image_files.append(filename)
+-        self._dataset_all_image_files = all_image_files
+-
+-        # Bulk atomic insert (avoids 38k individual addItem calls).
+-        self.file_list_widget.addItems(image_files)
+-        for i, path in enumerate(image_files):
+-            self.fn_to_index[path] = i
+-
+-        # All items start as unchecked; labels are verified in background.
+-        for i in range(self.file_list_widget.count()):
+-            item = self.file_list_widget.item(i)
+-            item.setCheckState(Qt.CheckState.Unchecked)
+-            self._set_file_item_checked(item, False)
+-
+-        cache_attached = self._attach_existing_dataset_index(
+-            dirpath, all_image_files
+-        )
++            label_file = osp.splitext(filename)[0] + ".json"
++            if self.output_dir:
++                label_file_without_path = osp.basename(label_file)
++                label_file = self.output_dir + "/" + label_file_without_path
++            item = self._create_file_list_item(filename, label_file)
++            self.file_list_widget.addItem(item)
++            self.fn_to_index[filename] = self.file_list_widget.count() - 1
+ 
+         self.actions.open_next_image.setEnabled(True)
+         self.actions.open_prev_image.setEnabled(True)
+@@ -65,17 +56,5 @@
+         self.toggle_actions(True)
+         self.open_next_image(load=load)
+ 
+-        # NOTE: inspector file list sync is deferred to the background
+-        # label check worker to avoid blocking the UI with 38k network
+-        # IO calls (osp.isfile) on remote storage.
+-
+-        _perf_log(
+-            "import_image_folder phase1: %d files in %.3fs",
+-            len(image_files),
+-            time.perf_counter() - _t0,
+-        )
+-
+-        if not cache_attached:
+-            # No cache exists yet. Discover label presence in the background,
+-            # but never block annotation with an application-modal dialog.
+-            self._start_label_check_worker(image_files)+        if image_files and self._config.get("exif_scan_enabled", True):
++            self.async_exif_scanner.start_scan(image_files)
+
+--- modified_beta4:LabelingWidget._create_file_list_item
++++ current_421:LabelingWidget._create_file_list_item
+@@ -1,25 +1,15 @@
+-    def _create_file_list_item(
+-        self, file, label_file, load_checked=False, check_label=True
+-    ):
++    def _create_file_list_item(self, file, label_file):
+         item = QtWidgets.QListWidgetItem(file)
++        item.setToolTip(file)
+         flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+         if self._config.get("file_list_checkbox_editable", False):
+             flags |= Qt.ItemFlag.ItemIsUserCheckable
+         item.setFlags(flags)
+-        if check_label:
+-            if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(
+-                label_file
+-            ):
+-                item.setCheckState(Qt.CheckState.Checked)
+-            else:
+-                item.setCheckState(Qt.CheckState.Unchecked)
+-            if load_checked:
+-                self._set_file_item_checked(
+-                    item, self._label_file_checked(label_file)
+-                )
+-            else:
+-                self._set_file_item_checked(item, False)
++        if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(
++            label_file
++        ):
++            item.setCheckState(Qt.CheckState.Checked)
+         else:
+             item.setCheckState(Qt.CheckState.Unchecked)
+-            self._set_file_item_checked(item, False)
++        self._set_file_item_checked(item, self._label_file_checked(label_file))
+         return item
+
+--- modified_beta4:LabelingWidget.load_shapes
++++ current_421:LabelingWidget.load_shapes
+@@ -1,42 +1,18 @@
+-    def load_shapes(
+-        self, shapes, replace=True, update_last_label=True, store_backup=True
+-    ):
+-        shapes = validate_shape_references(
+-            shapes,
+-            replace=replace,
+-            existing_shapes=self.canvas.shapes,
+-        )
+-        _t0 = time.perf_counter()
++    def load_shapes(self, shapes, replace=True, update_last_label=True):
++        if replace:
++            self._manually_hidden_shapes.clear()
+         self._no_selection_slot = True
+         self.label_list.setUpdatesEnabled(False)
+         try:
+-            with self.label_list.programmatic_update():
+-                for shape in shapes:
+-                    self.add_label(
+-                        shape,
+-                        update_last_label=update_last_label,
+-                        refresh_filters=False,
+-                    )
+-                self.label_list.clearSelection()
++            for shape in shapes:
++                self.add_label(
++                    shape,
++                    update_last_label=update_last_label,
++                    refresh_filters=False,
++                )
++            self.label_list.clearSelection()
+         finally:
+             self.label_list.setUpdatesEnabled(True)
+             self._no_selection_slot = False
+-        _t_list = time.perf_counter()
+-        self.canvas.load_shapes(
+-            shapes, replace=replace, store_backup=store_backup
+-        )
+-        self._sync_marked_object_ui()
+-        _t_canvas = time.perf_counter()
+-        self._refresh_shape_filters()
+-        _t_filter = time.perf_counter()
+-        total_time = _t_filter - _t0
+-        if total_time > 0.1:
+-            _perf_log(
+-                "load_shapes slow: %d shapes, list=%.3fs, canvas=%.3fs, "
+-                "filter=%.3fs, total=%.3fs",
+-                len(shapes),
+-                _t_list - _t0,
+-                _t_canvas - _t_list,
+-                _t_filter - _t_canvas,
+-                total_time,
+-            )+        self.canvas.load_shapes(shapes, replace=replace)
++        self._refresh_shape_filters()
+
+--- modified_beta4:Canvas.load_shapes
++++ current_421:Canvas.load_shapes
+@@ -1,53 +1,20 @@
+-    def load_shapes(self, shapes, replace=True, store_backup=True):
++    def load_shapes(self, shapes, replace=True):
+         """Load shapes"""
+-        _t0 = time.perf_counter()
+-        shapes = validate_shape_references(
+-            shapes,
+-            replace=replace,
+-            existing_shapes=self.shapes,
+-        )
+-        self._reset_rectangle_size_issue_state()
+-        shapes = self._normalize_incoming_shape_ids(shapes, replace=replace)
++        shapes = self._normalize_incoming_shape_ids(shapes, replace)
++        self.cancel_brush_mode()
++        self._clear_magic_wand_preview()
+         if replace:
+-            self._keyboard_edit_before = None
+-            self.moving_shape = False
+-            self.rotating_shape = False
+-            self._set_size_overlay_hover_shape(None)
+-            self._set_selected_shapes([], source="none")
+-            self.selected_shapes_copy = []
+             self.shapes = list(shapes)
+         else:
+             self.shapes.extend(shapes)
+-        _t_before_store = time.perf_counter()
+-        if store_backup:
+-            self.store_shapes()
+-            self._pending_initial_backup = False
+-        else:
+-            self._pending_initial_backup = True
+-        _t_after_store = time.perf_counter()
++        self.store_shapes()
+         self.current = None
+         self._brush_drawing = False
+-        self._set_size_overlay_hover_shape(None)
+-        self.h_hape = None
++        self.h_shape = None
+         self.h_vertex = None
+         self.h_edge = None
+         self.h_cuboid_face = None
+-        self._batch_mark_press = None
+-
+-        # Drop any in-progress rectangle edge edit so transient state never
+-        # leaks across images.
+-        self.clear_rect_edge_alignment(
+-            preserve_click_mode=True, reset_axis=True
+-        )
+-        self.notify_shapes_changed()
+-        self.update()
+-        _t_total = time.perf_counter()
+-        total_time = _t_total - _t0
+-        if total_time > 0.1:
+-            _perf_log(
+-                "Canvas.load_shapes slow: store_shapes=%.3fs, total=%.3fs, "
+-                "count=%d",
+-                _t_after_store - _t_before_store,
+-                total_time,
+-                len(self.shapes),
+-            )+        self._selected_group_id = None
++        self._hovered_group_id = None
++        self.invalidate_rectangle_size_issues()
++        self.update()
+
+
+

@@ -662,6 +662,14 @@ Review the prompt before generating.</source>
   <context>
     <name>Canvas</name>
     <message>
+      <source>Unable to infer corner.</source>
+      <translation>꼭짓점을 판단할 수 없습니다.</translation>
+    </message>
+    <message>
+      <source>Rectangle is outside the image or too small.</source>
+      <translation>사각형이 이미지 범위를 벗어났거나 너무 작습니다.</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/widgets/canvas.py" line="252" />
       <source>Loading...</source>
       <translation>로딩 중...</translation>
@@ -752,6 +760,10 @@ Review the prompt before generating.</source>
       <location filename="../../views/labeling/widgets/canvas.py" line="3349" />
       <source>Click &amp; drag to move %s</source>
       <translation>클릭하고 드래그하여 %s 이동</translation>
+    </message>
+    <message>
+      <source>W %.1f px  H %.1f px</source>
+      <translation>너비 %.1f px  높이 %.1f px</translation>
     </message>
   </context>
   <context>
@@ -2925,6 +2937,30 @@ Continue?</source>
   <context>
     <name>LabelingWidget</name>
     <message>
+      <source>Share View Across Same-Size Images</source>
+      <translation>Share View Across Same-Size Images</translation>
+    </message>
+    <message>
+      <source>Same-size images keep one zoom and centre until you change it</source>
+      <translation>Same-size images keep one zoom and centre until you change it</translation>
+    </message>
+    <message>
+      <source>Reset Shared View</source>
+      <translation>Reset Shared View</translation>
+    </message>
+    <message>
+      <source>Forget the shared view of the current image size</source>
+      <translation>Forget the shared view of the current image size</translation>
+    </message>
+    <message>
+      <source>Reset the view shared by same-size images</source>
+      <translation>Reset the view shared by same-size images</translation>
+    </message>
+    <message>
+      <source>Rectangle Edge Editing</source>
+      <translation>사각형 모서리 편집</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="307" />
       <source>Flags</source>
       <translation>플래그</translation>
@@ -3898,6 +3934,16 @@ Enter 키를 눌러 검색합니다.</translation>
       <translation>레이블만 표시</translation>
     </message>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="1440" />
+      <source>Show Labels Only for Selected</source>
+      <translation>선택된 항목만 레이블 표시</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1440" />
+      <source>Show labels only for selected shapes; hovering previews others</source>
+      <translation>선택한 도형의 레이블만 표시하고, 마우스를 올리면 임시로 표시합니다</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="1428" />
       <source>Show label inside shapes</source>
       <translation>도형 내부에 레이블 표시</translation>
@@ -4605,6 +4651,11 @@ Reset the label as {}.</source>
       <translation>그룹 ID로 필터링</translation>
     </message>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="4674" />
+      <source>Invert Filter Result</source>
+      <translation>필터 결과 반전</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="4610" />
       <source>All Labels</source>
       <translation>모든 라벨 표시</translation>
@@ -4978,6 +5029,34 @@ Results have been saved to:
       <translation>주석을 성공적으로 내보냈습니다!
 결과가 다음 위치에 저장되었습니다:
 %s</translation>
+    </message>
+    <message>
+      <source>Show Rectangle Size</source>
+      <translation>사각형 크기 표시</translation>
+    </message>
+    <message>
+      <source>Live width/height readout for the rectangle being created, dragged, hovered or selected</source>
+      <translation>생성·드래그·호버·선택 중인 사각형의 너비와 높이를 실시간 표시</translation>
+    </message>
+    <message>
+      <source>Show Size Rule Warnings</source>
+      <translation>크기 규칙 경고 표시</translation>
+    </message>
+    <message>
+      <source>Warn about rectangles at or below their label minimum size; configure rules first</source>
+      <translation>레이블 최소 크기 이하인 사각형을 경고합니다. 먼저 규칙을 설정하세요</translation>
+    </message>
+    <message>
+      <source>Rectangle Size Rules...</source>
+      <translation>사각형 크기 규칙...</translation>
+    </message>
+    <message>
+      <source>Edit minimum width/height rules per label</source>
+      <translation>레이블별 최소 너비/높이 규칙 편집</translation>
+    </message>
+    <message>
+      <source>Rectangle size rules updated</source>
+      <translation>사각형 크기 규칙이 업데이트되었습니다</translation>
     </message>
   </context>
   <context>
@@ -7984,6 +8063,14 @@ Changes will not be saved until you click Save.</source>
       <translation>십자선 표시</translation>
     </message>
     <message>
+      <source>Rectangle Drawing Crosshair</source>
+      <translation>사각형 그리기 십자선</translation>
+    </message>
+    <message>
+      <source>Show full-image guides while drawing two-point rectangles.</source>
+      <translation>두 점 사각형을 그리는 동안 전체 이미지 가이드를 표시합니다.</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/settings/schema.py" line="111" />
       <source>Crosshair Width</source>
       <translation>십자선 너비</translation>
@@ -10381,6 +10468,135 @@ Response preview:
       <location filename="../../views/labeling/pointcloud/viewport.py" line="197" />
       <source>Could not create an OpenGL display context.</source>
       <translation>OpenGL 디스플레이 컨텍스트를 생성할 수 없습니다.</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleWorkflow</name>
+    <message>
+      <source>Four extremes</source>
+      <translation>네 극값 그리기</translation>
+    </message>
+    <message>
+      <source>Submit draft</source>
+      <translation>초안 커밋</translation>
+    </message>
+    <message>
+      <source>Back one boundary</source>
+      <translation>경계 하나 되돌리기</translation>
+    </message>
+    <message>
+      <source>Continue drawing</source>
+      <translation>계속 그리기</translation>
+    </message>
+    <message>
+      <source>Draft ready: submit or go back.</source>
+      <translation>초안이 준비되었습니다: 커밋하거나 되돌리세요.</translation>
+    </message>
+    <message>
+      <source>Click boundary {step}/4: {edge}</source>
+      <translation>경계 {step}/4 클릭: {edge}</translation>
+    </message>
+    <message>
+      <source>Rejected: image bounds or minimum size.</source>
+      <translation>거부됨: 이미지 범위를 벗어났거나 크기가 너무 작습니다.</translation>
+    </message>
+    <message>
+      <source>Top</source>
+      <translation>위</translation>
+    </message>
+    <message>
+      <source>Right</source>
+      <translation>오른쪽</translation>
+    </message>
+    <message>
+      <source>Bottom</source>
+      <translation>아래</translation>
+    </message>
+    <message>
+      <source>Left</source>
+      <translation>왼쪽</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleTable</name>
+    <message>
+      <source>Enabled</source>
+      <translation>사용</translation>
+    </message>
+    <message>
+      <source>Min width (px)</source>
+      <translation>최소 너비 (px)</translation>
+    </message>
+    <message>
+      <source>Min height (px)</source>
+      <translation>최소 높이 (px)</translation>
+    </message>
+    <message>
+      <source>Trigger</source>
+      <translation>트리거</translation>
+    </message>
+    <message>
+      <source>Add rule</source>
+      <translation>규칙 추가</translation>
+    </message>
+    <message>
+      <source>Exact label</source>
+      <translation>정확한 레이블</translation>
+    </message>
+    <message>
+      <source>Any configured dimension</source>
+      <translation>설정된 차원 중 하나</translation>
+    </message>
+    <message>
+      <source>All configured dimensions</source>
+      <translation>설정된 모든 차원</translation>
+    </message>
+    <message>
+      <source>Not checked</source>
+      <translation>검사 안 함</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleDialog</name>
+    <message>
+      <source>Rectangle size rules</source>
+      <translation>사각형 크기 규칙</translation>
+    </message>
+    <message>
+      <source>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</source>
+      <translation>실제 값이 임계값 이하인 사각형을 이상으로 간주합니다. 비어 있는 차원은 검사하지 않습니다.</translation>
+    </message>
+    <message>
+      <source>Cannot apply rules: {0}</source>
+      <translation>규칙을 적용할 수 없습니다: {0}</translation>
+    </message>
+    <message>
+      <source>Label must not be empty.</source>
+      <translation>레이블은 비워 둘 수 없습니다.</translation>
+    </message>
+    <message>
+      <source>The label '{0}' is duplicated.</source>
+      <translation>레이블 '{0}'이(가) 중복됩니다.</translation>
+    </message>
+    <message>
+      <source>Width threshold must be a positive finite number.</source>
+      <translation>너비 임계값은 양의 유한수여야 합니다.</translation>
+    </message>
+    <message>
+      <source>Height threshold must be a positive finite number.</source>
+      <translation>높이 임계값은 양의 유한수여야 합니다.</translation>
+    </message>
+    <message>
+      <source>An enabled rule needs at least one W/H threshold.</source>
+      <translation>활성 규칙에는 최소 하나의 너비/높이 임계값이 필요합니다.</translation>
+    </message>
+    <message>
+      <source>Trigger must be 'any' or 'all'.</source>
+      <translation>트리거는 'any' 또는 'all'이어야 합니다.</translation>
+    </message>
+    <message>
+      <source>Rule row {0}: {1}</source>
+      <translation>규칙 {0}행: {1}</translation>
     </message>
   </context>
 </TS>

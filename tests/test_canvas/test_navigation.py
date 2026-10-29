@@ -11,6 +11,7 @@ from PyQt6 import QtCore, QtGui, QtTest, QtWidgets
 from anylabeling.resources import resources
 from anylabeling.views.labeling.label_widget import LabelingWidget
 from anylabeling.views.labeling.shape import Shape
+from anylabeling.views.labeling.shared_view_state import SharedViewStateStore
 from anylabeling.views.labeling.widgets.canvas import Canvas
 from anylabeling.views.labeling.widgets.navigator_widget import NavigatorDialog
 from anylabeling.views.labeling.widgets.zoom_widget import ZoomWidget
@@ -24,6 +25,15 @@ class NavigationView(QtWidgets.QWidget):
     _apply_zoom = LabelingWidget._apply_zoom
     pan_canvas = LabelingWidget.pan_canvas
     on_navigator_request = LabelingWidget.on_navigator_request
+    _share_view_enabled = LabelingWidget._share_view_enabled
+    _current_image_size = LabelingWidget._current_image_size
+    _current_shared_view = LabelingWidget._current_shared_view
+    _remember_shared_view = LabelingWidget._remember_shared_view
+    _apply_or_seed_shared_view = LabelingWidget._apply_or_seed_shared_view
+    _apply_shared_view = LabelingWidget._apply_shared_view
+    _centre_scroll_on_canvas_centre = (
+        LabelingWidget._centre_scroll_on_canvas_centre
+    )
 
     def __init__(self):
         super().__init__()
@@ -50,6 +60,8 @@ class NavigationView(QtWidgets.QWidget):
         self.zoom_mode = self.MANUAL_ZOOM
         self.zoom_values = {}
         self.pan_values = {}
+        self._config = {"share_view_across_same_size": True}
+        self.shared_view_store = SharedViewStateStore()
         self.update_navigator_viewport = Mock()
         self.canvas.menus = (Mock(), Mock())
         self.show()
@@ -324,6 +336,7 @@ def test_image_switch_restores_fractional_zoom_and_pan_and_fit_resets(
     window.show()
     app.processEvents()
     widget = window.labeling_widget.view
+    widget._config["share_view_across_same_size"] = False
     try:
         paths = [str(tmp_path / f"image_{index}.png") for index in range(2)]
         image = QtGui.QImage(800, 600, QtGui.QImage.Format.Format_RGB32)
@@ -357,6 +370,70 @@ def test_image_switch_restores_fractional_zoom_and_pan_and_fit_resets(
         app.removeEventFilter(widget)
         window.deleteLater()
         app.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+
+
+def test_shared_view_tracks_revisits_and_reset(tmp_path, monkeypatch, navigation_app):
+    from anylabeling import config as app_config
+    from anylabeling.views.labeling.settings.schema import load_template_config
+    from anylabeling.views.mainwindow import MainWindow
+
+    monkeypatch.setattr(app_config, "_work_directory", str(tmp_path))
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(app_config, "current_config_file", str(config_file))
+    settings_class = QtCore.QSettings
+    monkeypatch.setattr(
+        QtCore, "QSettings", lambda *args: settings_class(
+            str(tmp_path / "settings.ini"), settings_class.Format.IniFormat
+        )
+    )
+    window = MainWindow(navigation_app, config=copy.deepcopy(load_template_config()))
+    window.resize(1400, 900)
+    window.show()
+    navigation_app.processEvents()
+    widget = window.labeling_widget.view
+    try:
+        paths = [str(tmp_path / f"shared_{i}.png") for i in range(3)]
+        for path, size in zip(paths, [(800, 600), (800, 600), (400, 300)]):
+            image = QtGui.QImage(*size, QtGui.QImage.Format.Format_RGB32)
+            image.fill(QtGui.QColor("white"))
+            assert image.save(path)
+        assert widget.load_file(paths[0])
+        navigation_app.processEvents()
+        widget.set_zoom(210)
+        widget.pan_canvas(QtCore.QPointF(100, -70))
+        before = widget._current_shared_view()
+        assert widget.load_file(paths[1])
+        navigation_app.processEvents()
+        after = widget._current_shared_view()
+        assert after.zoom_value == pytest.approx(before.zoom_value)
+        assert after.center_x == pytest.approx(before.center_x, abs=2)
+        assert after.center_y == pytest.approx(before.center_y, abs=2)
+        widget.set_zoom(155)
+        widget.pan_canvas(QtCore.QPointF(-30, 50))
+        before = widget._current_shared_view()
+        assert widget.load_file(paths[0])
+        navigation_app.processEvents()
+        after = widget._current_shared_view()
+        assert after.zoom_value == pytest.approx(before.zoom_value)
+        assert after.center_x == pytest.approx(before.center_x, abs=2)
+        assert after.center_y == pytest.approx(before.center_y, abs=2)
+        assert widget.load_file(paths[2])
+        navigation_app.processEvents()
+        assert widget._current_shared_view().zoom_value != pytest.approx(155)
+        assert widget.load_file(paths[0])
+        navigation_app.processEvents()
+        widget.reset_shared_view()
+        reset = widget._current_shared_view()
+        assert widget.load_file(paths[1])
+        navigation_app.processEvents()
+        assert widget._current_shared_view().zoom_value == pytest.approx(reset.zoom_value)
+    finally:
+        widget.dirty = False
+        window.close()
+        navigation_app.removeEventFilter(widget)
+        window.deleteLater()
+        navigation_app.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
 
 
 def test_zoom_runs_through_intermediate_frames_in_event_loop(view):

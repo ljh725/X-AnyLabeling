@@ -60,7 +60,7 @@ class TestLabelWidgetGroups(unittest.TestCase):
         copied_shapes = [object(), object()]
         pasted_shapes = [object(), object()]
         for shape, copied_shape in zip(shapes, copied_shapes):
-            shape.copy.return_value = copied_shape
+            shape.copy_for_new_object.return_value = copied_shape
         canvas = SimpleNamespace(
             _active_group_shapes=Mock(return_value=shapes),
             _selected_group_id=3,

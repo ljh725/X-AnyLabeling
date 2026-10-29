@@ -203,11 +203,18 @@ class TestLabelWidgetAttributes(unittest.TestCase):
             return text
 
         widget = SimpleNamespace(
-            _batch_edit_warning_shown=True,
+            canvas=SimpleNamespace(
+                shapes=[unchanged_shape, changed_shape],
+                shapes_backups=[],
+                store_shapes=Mock(),
+                is_shape_restorable=False,
+                invalidate_rectangle_size_issues=Mock(),
+            ),
             label_dialog=SimpleNamespace(
                 pop_up=Mock(
                     return_value=("car", {}, None, "new", False, [])
                 ),
+                touched_fields=Mock(return_value={"label"}),
                 add_label_history=Mock(),
                 get_review_status=Mock(return_value="pending"),
             ),
@@ -221,8 +228,21 @@ class TestLabelWidgetAttributes(unittest.TestCase):
             unique_label_list=SimpleNamespace(
                 find_items_by_label=Mock(return_value=[object()])
             ),
+            actions=SimpleNamespace(undo=Mock()),
+            _config={"validate_label": None},
+            tr=lambda text: text,
             set_dirty=Mock(),
             _refresh_shape_filters=Mock(),
+        )
+        widget._resolve_label_attributes = (
+            lambda shape, label: LabelingWidget._resolve_label_attributes(
+                widget, shape, label
+            )
+        )
+        widget._apply_field_patch = (
+            lambda target, values, touched: LabelingWidget._apply_field_patch(
+                widget, target, values, touched
+            )
         )
 
         LabelingWidget.batch_edit_labels(

@@ -662,6 +662,14 @@ Review the prompt before generating.</source>
   <context>
     <name>Canvas</name>
     <message>
+      <source>Unable to infer corner.</source>
+      <translation>角を判定できません。</translation>
+    </message>
+    <message>
+      <source>Rectangle is outside the image or too small.</source>
+      <translation>矩形が画像の範囲外か、小さすぎます。</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/widgets/canvas.py" line="252" />
       <source>Loading...</source>
       <translation>読み込み中...</translation>
@@ -752,6 +760,10 @@ Review the prompt before generating.</source>
       <location filename="../../views/labeling/widgets/canvas.py" line="3349" />
       <source>Click &amp; drag to move %s</source>
       <translation>クリックしてドラッグし、%s を移動</translation>
+    </message>
+    <message>
+      <source>W %.1f px  H %.1f px</source>
+      <translation>幅 %.1f px  高さ %.1f px</translation>
     </message>
   </context>
   <context>
@@ -2924,6 +2936,30 @@ Continue?</source>
   <context>
     <name>LabelingWidget</name>
     <message>
+      <source>Share View Across Same-Size Images</source>
+      <translation>Share View Across Same-Size Images</translation>
+    </message>
+    <message>
+      <source>Same-size images keep one zoom and centre until you change it</source>
+      <translation>Same-size images keep one zoom and centre until you change it</translation>
+    </message>
+    <message>
+      <source>Reset Shared View</source>
+      <translation>Reset Shared View</translation>
+    </message>
+    <message>
+      <source>Forget the shared view of the current image size</source>
+      <translation>Forget the shared view of the current image size</translation>
+    </message>
+    <message>
+      <source>Reset the view shared by same-size images</source>
+      <translation>Reset the view shared by same-size images</translation>
+    </message>
+    <message>
+      <source>Rectangle Edge Editing</source>
+      <translation>矩形の辺を編集</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="307" />
       <source>Flags</source>
       <translation>フラグ</translation>
@@ -3897,6 +3933,16 @@ Enter キーを押して検索します。</translation>
       <translation>ラベルを表示</translation>
     </message>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="1440" />
+      <source>Show Labels Only for Selected</source>
+      <translation>選択時のみラベルを表示</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1440" />
+      <source>Show labels only for selected shapes; hovering previews others</source>
+      <translation>選択した図形のラベルのみ表示し、ホバー時は一時的に表示します</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="1428" />
       <source>Show label inside shapes</source>
       <translation>図形内にラベルを表示</translation>
@@ -4603,6 +4649,11 @@ Reset the label as {}.</source>
       <translation>グループIDでフィルター</translation>
     </message>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="4674" />
+      <source>Invert Filter Result</source>
+      <translation>フィルタ結果を反転</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="4610" />
       <source>All Labels</source>
       <translation>すべてのラベル</translation>
@@ -4976,6 +5027,34 @@ Results have been saved to:
       <translation>ラベルのエクスポートが完了しました！
 結果の保存先：
 %s</translation>
+    </message>
+    <message>
+      <source>Show Rectangle Size</source>
+      <translation>矩形サイズを表示</translation>
+    </message>
+    <message>
+      <source>Live width/height readout for the rectangle being created, dragged, hovered or selected</source>
+      <translation>作成・ドラッグ・ホバー・選択中の矩形の幅と高さをリアルタイム表示</translation>
+    </message>
+    <message>
+      <source>Show Size Rule Warnings</source>
+      <translation>サイズ規則の警告を表示</translation>
+    </message>
+    <message>
+      <source>Warn about rectangles at or below their label minimum size; configure rules first</source>
+      <translation>ラベルの最小サイズ以下の矩形を警告します。先に規則を設定してください</translation>
+    </message>
+    <message>
+      <source>Rectangle Size Rules...</source>
+      <translation>矩形サイズ規則...</translation>
+    </message>
+    <message>
+      <source>Edit minimum width/height rules per label</source>
+      <translation>ラベルごとの最小幅・高さ規則を編集</translation>
+    </message>
+    <message>
+      <source>Rectangle size rules updated</source>
+      <translation>矩形サイズ規則を更新しました</translation>
     </message>
   </context>
   <context>
@@ -7982,6 +8061,14 @@ Changes will not be saved until you click Save.</source>
       <translation>クロスヘアを表示</translation>
     </message>
     <message>
+      <source>Rectangle Drawing Crosshair</source>
+      <translation>矩形描画時のクロスヘア</translation>
+    </message>
+    <message>
+      <source>Show full-image guides while drawing two-point rectangles.</source>
+      <translation>2点矩形の描画中に全画像のガイドを表示します。</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/settings/schema.py" line="111" />
       <source>Crosshair Width</source>
       <translation>クロスヘアの幅</translation>
@@ -10379,6 +10466,135 @@ Response preview:
       <location filename="../../views/labeling/pointcloud/viewport.py" line="197" />
       <source>Could not create an OpenGL display context.</source>
       <translation>OpenGL表示コンテキストを作成できません。</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleWorkflow</name>
+    <message>
+      <source>Four extremes</source>
+      <translation>四隅値の作成</translation>
+    </message>
+    <message>
+      <source>Submit draft</source>
+      <translation>下書きを確定</translation>
+    </message>
+    <message>
+      <source>Back one boundary</source>
+      <translation>境界を1つ戻す</translation>
+    </message>
+    <message>
+      <source>Continue drawing</source>
+      <translation>描画を続ける</translation>
+    </message>
+    <message>
+      <source>Draft ready: submit or go back.</source>
+      <translation>下書きが完成しました：確定するか戻ってください。</translation>
+    </message>
+    <message>
+      <source>Click boundary {step}/4: {edge}</source>
+      <translation>境界 {step}/4 をクリック：{edge}</translation>
+    </message>
+    <message>
+      <source>Rejected: image bounds or minimum size.</source>
+      <translation>拒否されました：画像範囲外またはサイズ不足。</translation>
+    </message>
+    <message>
+      <source>Top</source>
+      <translation>上</translation>
+    </message>
+    <message>
+      <source>Right</source>
+      <translation>右</translation>
+    </message>
+    <message>
+      <source>Bottom</source>
+      <translation>下</translation>
+    </message>
+    <message>
+      <source>Left</source>
+      <translation>左</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleTable</name>
+    <message>
+      <source>Enabled</source>
+      <translation>有効</translation>
+    </message>
+    <message>
+      <source>Min width (px)</source>
+      <translation>最小幅 (px)</translation>
+    </message>
+    <message>
+      <source>Min height (px)</source>
+      <translation>最小高さ (px)</translation>
+    </message>
+    <message>
+      <source>Trigger</source>
+      <translation>トリガー</translation>
+    </message>
+    <message>
+      <source>Add rule</source>
+      <translation>規則を追加</translation>
+    </message>
+    <message>
+      <source>Exact label</source>
+      <translation>完全一致ラベル</translation>
+    </message>
+    <message>
+      <source>Any configured dimension</source>
+      <translation>設定したいずれかの次元</translation>
+    </message>
+    <message>
+      <source>All configured dimensions</source>
+      <translation>設定したすべての次元</translation>
+    </message>
+    <message>
+      <source>Not checked</source>
+      <translation>チェックしない</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleDialog</name>
+    <message>
+      <source>Rectangle size rules</source>
+      <translation>矩形サイズ規則</translation>
+    </message>
+    <message>
+      <source>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</source>
+      <translation>実際の値がしきい値以下の矩形を異常とします。空欄の次元は検査しません。</translation>
+    </message>
+    <message>
+      <source>Cannot apply rules: {0}</source>
+      <translation>規則を適用できません: {0}</translation>
+    </message>
+    <message>
+      <source>Label must not be empty.</source>
+      <translation>ラベルを空にできません。</translation>
+    </message>
+    <message>
+      <source>The label '{0}' is duplicated.</source>
+      <translation>ラベル「{0}」が重複しています。</translation>
+    </message>
+    <message>
+      <source>Width threshold must be a positive finite number.</source>
+      <translation>幅のしきい値は正の有限数である必要があります。</translation>
+    </message>
+    <message>
+      <source>Height threshold must be a positive finite number.</source>
+      <translation>高さのしきい値は正の有限数である必要があります。</translation>
+    </message>
+    <message>
+      <source>An enabled rule needs at least one W/H threshold.</source>
+      <translation>有効な規則には少なくとも 1 つの幅/高さしきい値が必要です。</translation>
+    </message>
+    <message>
+      <source>Trigger must be 'any' or 'all'.</source>
+      <translation>トリガーは 'any' または 'all' である必要があります。</translation>
+    </message>
+    <message>
+      <source>Rule row {0}: {1}</source>
+      <translation>規則 {0} 行目: {1}</translation>
     </message>
   </context>
 </TS>

@@ -14,7 +14,28 @@ from anylabeling.views.labeling.utils.colormap import label_colormap
 from anylabeling.views.labeling.utils.theme import get_theme
 
 from .. import utils
+from .point_fit import PointFitMixin
+from .rectangle_crosshair import RectangleCrosshairMixin
+from .rectangle_edge import RectangleEdgeMixin
+from .rectangle_size_overlay import (
+    RectangleSizeOverlayRenderer,
+    RectangleSizeOverlayRequest,
+    merge_overlay_requests,
+    overlay_request_from_issue,
+)
+from ..logger import logger
+from ..rectangle_size import (
+    RectangleCandidate,
+    RectangleSizeEvaluator,
+    RectangleSizeIssue,
+    RectangleSizeRule,
+)
 from ..shape import Shape
+from ..shape_identity import (
+    MISSING_SHAPE_ID,
+    describe_shape_identity_diagnostics,
+    normalize_shape_identities,
+)
 
 CURSOR_DEFAULT = QtCore.Qt.CursorShape.ArrowCursor
 CURSOR_POINT = QtCore.Qt.CursorShape.PointingHandCursor
@@ -52,7 +73,10 @@ LABEL_COLORMAP = label_colormap()
 
 
 class Canvas(
-    QtWidgets.QWidget
+    RectangleCrosshairMixin,
+    PointFitMixin,
+    RectangleEdgeMixin,
+    QtWidgets.QWidget,
 ):  # pylint: disable=too-many-public-methods, too-many-instance-attributes
     """Canvas widget to handle label drawing"""
 
@@ -64,6 +88,7 @@ class Canvas(
     # when the cursor moves over an object
     mode_changed = QtCore.pyqtSignal()
     new_shape = QtCore.pyqtSignal()
+    image_changed = QtCore.pyqtSignal()
     show_shape = QtCore.pyqtSignal(int, int, QtCore.QPointF)
     selection_changed = QtCore.pyqtSignal(list)
     shape_moved = QtCore.pyqtSignal()
@@ -138,6 +163,14 @@ class Canvas(
         self.current = None
         self.selected_shapes = []  # save the selected shapes here
         self.selected_shapes_copy = []
+        self._point_fit_pressed = False
+        self._point_fit_target = None
+        self._point_fit_start = None
+        self._point_fit_pending_box = None
+        self._point_fit_cursor = None
+        self._rectangle_edge_enabled = False
+        self._rectangle_edge_hover = None
+        self._rectangle_edge_drag = None
         # self.line represents:
         #   - create_mode == 'polygon': edge from last point to current
         #   - create_mode == 'rectangle': diagonal line of the rectangle
@@ -211,6 +244,34 @@ class Canvas(
         self.show_masks = True
         self.show_texts = True
         self.show_labels = True
+        self.show_labels_only_selected = False
+        # Live rectangle W/H readout and label-specific minimum-size rules.
+        self.show_rectangle_pixels = False
+        self._show_rectangle_size_violations = False
+        self._rectangle_size_rules: tuple = ()
+        self._rectangle_size_evaluator = RectangleSizeEvaluator(())
+        self._rectangle_size_issues: tuple = ()
+        self._rectangle_size_issue_shapes: dict = {}
+        self._rectangle_size_overlay_renderer = (
+            RectangleSizeOverlayRenderer()
+        )
+        self._rectangle_size_scan_interval_ms = 32
+        self._rectangle_size_scan_timer = QtCore.QTimer(self)
+        self._rectangle_size_scan_timer.setSingleShot(True)
+        self._rectangle_size_scan_timer.setInterval(
+            self._rectangle_size_scan_interval_ms
+        )
+        self._rectangle_size_scan_timer.timeout.connect(
+            self._rescan_rectangle_size_issues
+        )
+        self.shape_moved.connect(self.invalidate_rectangle_size_issues)
+        self.selection_changed.connect(
+            lambda _shapes: self.invalidate_rectangle_size_issues()
+        )
+        self.new_shape.connect(self.invalidate_rectangle_size_issues)
+        self.shapes_deleted.connect(
+            lambda _shapes: self.invalidate_rectangle_size_issues()
+        )
         self.show_scores = True
         self.show_degrees = False
         self.show_attributes = True
@@ -221,6 +282,11 @@ class Canvas(
         self.cross_line_width = 2.0
         self.cross_line_color = "#00FF00"
         self.cross_line_opacity = 0.5
+        # Two-point rectangle creation guide (fork-specific).
+        self.rectangle_creation_crosshair_show = True
+        self._crosshair_cursor_active = False
+        # Four-extreme creation controller, attached by the label widget.
+        self.rectangle_creation = None
 
         # Set attributes color options.
         self.attr_background_color = self.attributes_config.get(
@@ -393,6 +459,7 @@ class Canvas(
 
     def cancel_drawing(self):
         """Discard the unfinished shape and its drawing preview."""
+        self._clear_crosshair_cursor()
         if self.current is None:
             return
         self.current = None
@@ -621,6 +688,9 @@ class Canvas(
 
     def leaveEvent(self, _):
         """Mouse leave event"""
+        self._clear_crosshair_cursor()
+        if self._rectangle_edge_drag is None:
+            self._rectangle_edge_cancel()
         self._clear_space_pan_state()
         self.store_moving_shape()
         self.un_highlight()
@@ -630,6 +700,9 @@ class Canvas(
 
     def focusOutEvent(self, _):
         """Window out of focus event"""
+        self._clear_crosshair_cursor()
+        self._rectangle_edge_cancel()
+        self._clear_point_fit()
         self._clear_space_pan_state()
         self._right_pan_start = None
         self._right_pan_prev_point = None
@@ -640,12 +713,330 @@ class Canvas(
         """Check if a shape is visible"""
         return self.visible.get(shape, True)
 
+    def label_text_visible(self, shape):
+        """Return whether this shape may paint its label text.
+
+        ``show_labels_only_selected`` keeps the canvas readable in dense
+        scenes; hovering an unselected shape still previews its label.
+        """
+        if not self.show_labels_only_selected:
+            return True
+        return bool(shape.selected) or shape is self.h_shape
+
+    # --- Live rectangle size readout and minimum-size rules -----------
+
+    @property
+    def show_rectangle_size_violations(self):
+        """Return whether minimum-size rule warnings are painted."""
+        return self._show_rectangle_size_violations
+
+    @show_rectangle_size_violations.setter
+    def show_rectangle_size_violations(self, enabled):
+        """Toggle rule warnings and keep the issue cache consistent."""
+        enabled = bool(enabled)
+        if enabled == self._show_rectangle_size_violations:
+            return
+        self._show_rectangle_size_violations = enabled
+        if enabled:
+            self.invalidate_rectangle_size_issues()
+        else:
+            self._rectangle_size_scan_timer.stop()
+            self.clear_rectangle_size_issues()
+
+    @property
+    def rectangle_size_rules(self):
+        """Return the active immutable rectangle-size rule snapshot."""
+        return self._rectangle_size_rules
+
+    def set_rectangle_size_rules(self, rules):
+        """Replace rectangle-size rules and refresh cached issues."""
+        new_rules = tuple(rules)
+        new_evaluator = RectangleSizeEvaluator(new_rules)
+        if new_rules == self._rectangle_size_rules:
+            return
+        self._rectangle_size_rules = new_rules
+        self._rectangle_size_evaluator = new_evaluator
+        self._rectangle_size_issues = ()
+        self._rectangle_size_issue_shapes = {}
+        self.invalidate_rectangle_size_issues()
+
+    @property
+    def rectangle_size_issues(self):
+        """Return cached issues in canvas shape order."""
+        return self._rectangle_size_issues
+
+    def clear_rectangle_size_issues(self):
+        """Drop cached issues and repaint without them."""
+        if not self._rectangle_size_issues:
+            return
+        self._rectangle_size_issues = ()
+        self._rectangle_size_issue_shapes = {}
+        self.update()
+
+    def invalidate_rectangle_size_issues(self):
+        """Schedule one coalesced issue rescan for the current snapshot."""
+        if not self.show_rectangle_size_violations:
+            self._rectangle_size_scan_timer.stop()
+            self.clear_rectangle_size_issues()
+            return
+        self._rectangle_size_scan_timer.start()
+
+    def _rescan_rectangle_size_issues(self):
+        """Recompute cached issues and repaint only on a visible change."""
+        if not self.show_rectangle_size_violations:
+            self.clear_rectangle_size_issues()
+            return
+        issues, issue_shapes = self._evaluate_rectangle_size_issues()
+        changed = issues != self._rectangle_size_issues
+        self._rectangle_size_issues = issues
+        self._rectangle_size_issue_shapes = issue_shapes
+        if changed:
+            self.update()
+
+    def _evaluate_rectangle_size_issues(self):
+        """Return issues plus their live-shape lookup for one snapshot."""
+        if not self._rectangle_size_rules:
+            return ((), {})
+        candidates = []
+        shape_by_candidate = {}
+        for index, shape in enumerate(self.shapes):
+            candidate = self._rectangle_size_candidate(shape, index)
+            if candidate is None:
+                continue
+            candidates.append(candidate)
+            shape_by_candidate[candidate.candidate_id] = shape
+        issues = self._rectangle_size_evaluator.evaluate(candidates)
+        return (issues, shape_by_candidate)
+
+    def _rectangle_size_candidate(self, shape, index):
+        """Build one evaluator snapshot, or ``None`` when not measurable."""
+        if shape.shape_type != "rectangle":
+            return None
+        if not isinstance(shape.label, str) or not shape.label:
+            return None
+        if not self._size_overlay_shape_drawn(shape):
+            return None
+        try:
+            bbox = self._point_fit_shape_box(shape)
+        except (IndexError, ValueError):
+            return None
+        return RectangleCandidate(
+            candidate_id=id(shape),
+            shape_index=index,
+            label=shape.label,
+            shape_type="rectangle",
+            bbox=bbox,
+            interactive=True,
+        )
+
+    def _size_overlay_shape_drawn(self, shape):
+        """Return whether a shape is currently painted and reachable."""
+        if shape not in self.shapes:
+            return False
+        if not shape.visible or not self.is_visible(shape):
+            return False
+        return bool(shape.selected or not self._hide_backround)
+
+    @staticmethod
+    def _extent_from_two_points(first, second):
+        """Return normalized image-space bounds for a two-point rectangle."""
+        x0, y0 = first.x(), first.y()
+        x1, y1 = second.x(), second.y()
+        return (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
+
+    def _size_overlay_target(self):
+        """Return ``(shape, bbox)`` for the rectangle the readout describes.
+
+        Priority mirrors what the user is manipulating right now: an
+        in-progress creation, an active edge drag, the hovered rectangle, then
+        the single selected rectangle. ``shape`` is ``None`` while creating.
+        """
+        if self.drawing() and self.create_mode == "rectangle":
+            if (
+                self.current
+                and len(self.current) >= 1
+                and len(self.line.points) >= 2
+            ):
+                return (
+                    None,
+                    self._extent_from_two_points(
+                        self.current[0], self.line.points[1]
+                    ),
+                )
+            return None
+
+        drag = self._rectangle_edge_drag
+        if drag is not None and drag.shape is not None:
+            shape = drag.shape
+            if self._size_overlay_shape_drawn(shape):
+                return (shape, self._point_fit_shape_box(shape))
+
+        hover = self.h_shape
+        if hover is not None and self._size_overlay_shape_drawn(hover):
+            return (hover, self._point_fit_shape_box(hover))
+
+        if len(self.selected_shapes) == 1:
+            shape = self.selected_shapes[0]
+            if self._size_overlay_shape_drawn(shape):
+                return (shape, self._point_fit_shape_box(shape))
+        return None
+
+    def _image_to_widget_transform(self):
+        """Return the image-space to widget-space transform used by paint."""
+        transform = QtGui.QTransform()
+        transform.scale(self.scale, self.scale)
+        offset = self.offset_to_center()
+        transform.translate(offset.x(), offset.y())
+        return transform
+
+    def _size_overlay_viewport(self):
+        """Return the visible image-space bounds used by overlay layout."""
+        transform = self._image_to_widget_transform()
+        inverse, ok = transform.inverted()
+        if not ok:
+            return (0.0, 0.0, float(self.width()), float(self.height()))
+        top_left = inverse.map(QtCore.QPointF(0.0, 0.0))
+        bottom_right = inverse.map(
+            QtCore.QPointF(float(self.width()), float(self.height()))
+        )
+        return (
+            top_left.x(),
+            top_left.y(),
+            bottom_right.x(),
+            bottom_right.y(),
+        )
+
+    def _label_display_text(self, shape):
+        """Return the label line painted for one shape, or an empty string."""
+        fields = []
+        if self.show_labels and self.label_text_visible(shape):
+            label = shape.label or ""
+            if shape.group_id is not None:
+                label = f"{label} ({shape.group_id})".strip()
+            if label:
+                fields.append(label)
+            if shape.score is not None and self.show_scores:
+                fields.append(f"{float(shape.score):.2f}")
+        if self.show_texts and shape.description:
+            fields.append(shape.description)
+        return " · ".join(fields)
+
+    def _size_overlay_label_rect(self, shape):
+        """Return the painted label rectangle in image space, if any.
+
+        The readout is anchored to the same label box the user sees, so it
+        never covers the class name at any zoom level.
+        """
+        if shape is None or not shape.visible:
+            return None
+        text = self._label_display_text(shape)
+        if not text:
+            return None
+        metrics = QtGui.QFontMetrics(
+            QtGui.QFont("Arial", self.label_font_size)
+        )
+        text_rect = metrics.tightBoundingRect(text)
+        rect_width = float(text_rect.width() + 8)
+        rect_height = float(metrics.height() + 4)
+        try:
+            bbox = shape.bounding_rect()
+        except IndexError:
+            return None
+        transform = self._image_to_widget_transform()
+        inverse, ok = transform.inverted()
+        if not ok:
+            return None
+        anchor = transform.map(bbox.topLeft())
+        top_left = inverse.map(
+            QtCore.QPointF(anchor.x(), anchor.y() - rect_height)
+        )
+        bottom_right = inverse.map(
+            QtCore.QPointF(anchor.x() + rect_width, anchor.y())
+        )
+        return (
+            top_left.x(),
+            top_left.y(),
+            bottom_right.x() - top_left.x(),
+            bottom_right.y() - top_left.y(),
+        )
+
+    def _normal_size_overlay_request(self):
+        """Build the live W/H request for the current edit target."""
+        if not self.show_rectangle_pixels:
+            return None
+        target = self._size_overlay_target()
+        if target is None:
+            return None
+        shape, bbox = target
+        width = bbox[2] - bbox[0]
+        height = bbox[3] - bbox[1]
+        if width < 1e-6 and height < 1e-6:
+            return None
+        return RectangleSizeOverlayRequest(
+            candidate_id=(
+                id(shape) if shape is not None else "rectangle-creation"
+            ),
+            lines=(self.tr("W %.1f px  H %.1f px") % (width, height),),
+            bbox=bbox,
+            label_rect=self._size_overlay_label_rect(shape),
+            warning=False,
+        )
+
+    def _violation_overlay_requests(self):
+        """Build warning requests for currently drawn rule violations."""
+        if not self.show_rectangle_size_violations:
+            return ()
+        self._schedule_rectangle_size_rescan()
+        requests = []
+        for issue in self._rectangle_size_issues:
+            shape = self._rectangle_size_issue_shapes.get(issue.candidate_id)
+            if shape is None or not self._size_overlay_shape_drawn(shape):
+                continue
+            requests.append(
+                overlay_request_from_issue(
+                    issue,
+                    label_rect=self._size_overlay_label_rect(shape),
+                )
+            )
+        return tuple(requests)
+
+    def _schedule_rectangle_size_rescan(self):
+        """Keep cached issues fresh while an edit gesture is in progress."""
+        if self._rectangle_size_scan_timer.isActive():
+            return
+        if self._rectangle_edge_drag is None and not self.drawing():
+            return
+        self._rectangle_size_scan_timer.start()
+
+    def _paint_rectangle_size(self, painter):
+        """Paint live size readouts and rule warnings above everything else."""
+        if not (
+            self.show_rectangle_pixels
+            or self.show_rectangle_size_violations
+        ):
+            return
+        requests = merge_overlay_requests(
+            self._normal_size_overlay_request(),
+            self._violation_overlay_requests(),
+        )
+        if not requests:
+            return
+        self._rectangle_size_overlay_renderer.render(
+            painter,
+            requests,
+            self._size_overlay_viewport(),
+        )
+
     def _shape_hit_candidates(self, point):
         """Return shapes under a point in interaction priority order."""
         candidates = []
         epsilon = self.epsilon / self.scale
         for stack_index, shape in enumerate(self.shapes):
             if not self.is_visible(shape):
+                continue
+            # Focus/background hiding stops painting unselected shapes, so
+            # they must not stay hittable as invisible targets.
+            if self._hide_backround and not shape.selected:
                 continue
 
             rect = shape.bounding_rect()
@@ -1624,6 +2015,8 @@ class Canvas(
 
     def set_editing(self, value=True):
         """Set editing mode. Editing is set to False, user is drawing"""
+        self._rectangle_edge_cancel()
+        self._clear_point_fit()
         self.mode = self.EDIT if value else self.CREATE
         if value:
             self.cancel_drawing()
@@ -2080,6 +2473,8 @@ class Canvas(
         except AttributeError:
             return
 
+        self._update_crosshair_cursor(pos)
+
         if self._space_panning:
             if ev.buttons() & self._pan_button:
                 self._update_space_pan(ev.globalPosition())
@@ -2095,6 +2490,18 @@ class Canvas(
             self._space_pan_suppress_until_release = False
         if self._space_pressed:
             self.override_cursor(CURSOR_GRAB)
+            ev.accept()
+            return
+
+        if self._rectangle_edge_drag_move(pos, ev):
+            ev.accept()
+            return
+        if self._point_fit_move(pos, ev.modifiers()):
+            if self._rectangle_edge_hover is not None:
+                self._rectangle_edge_cancel()
+            ev.accept()
+            return
+        if not ev.buttons() and self._rectangle_edge_hover_move(pos):
             ev.accept()
             return
 
@@ -2738,6 +3145,13 @@ class Canvas(
             ):
                 ev.accept()
                 return
+            if self._point_fit_press(pos, ev.modifiers()):
+                self._rectangle_edge_cancel()
+                ev.accept()
+                return
+            if self._rectangle_edge_press(pos, ev):
+                ev.accept()
+                return
             if self.is_magic_wand_mode and self.drawing():
                 if self._start_magic_wand(pos, ev.position()):
                     ev.accept()
@@ -2961,7 +3375,11 @@ class Canvas(
     # QT Overload
     def mouseReleaseEvent(self, ev):
         """Mouse release event"""
-        if self.is_loading:
+        if (
+            self.is_loading
+            or self._point_fit_handle_release_event(ev)
+            or self._rectangle_edge_release_event(ev)
+        ):
             return
         right_click = False
         if (
@@ -3036,11 +3454,14 @@ class Canvas(
 
         self.store_moving_shape()
 
-    def end_move(self, copy):
+    def end_move(self, copy: bool) -> bool:
         """End of move"""
         assert self.selected_shapes and self.selected_shapes_copy
         assert len(self.selected_shapes_copy) == len(self.selected_shapes)
         if copy:
+            self.selected_shapes_copy = self._normalize_incoming_shape_ids(
+                self.selected_shapes_copy, replace=False
+            )
             for i, shape in enumerate(self.selected_shapes_copy):
                 self.shapes.append(shape)
                 self.selected_shapes[i].selected = False
@@ -3062,9 +3483,10 @@ class Canvas(
             self.set_hiding(True)
             self.update()
 
-    def set_hiding(self, enable=True):
+    def set_hiding(self, enable: bool = True) -> None:
         """Set background hiding"""
         self._hide_backround = self.hide_backround if enable else False
+        self.invalidate_rectangle_size_issues()
 
     def can_close_shape(self):
         """Check if a shape can be closed (number of points > 2)"""
@@ -3980,9 +4402,10 @@ class Canvas(
     def duplicate_selected_shapes(self):
         """Duplicate selected shapes"""
         if self.selected_shapes:
-            self.selected_shapes_copy = [
-                s.copy() for s in self.selected_shapes
-            ]
+            self.selected_shapes_copy = self._normalize_incoming_shape_ids(
+                [s.copy_for_new_object() for s in self.selected_shapes],
+                replace=False,
+            )
             for shape in self.selected_shapes_copy:
                 shape.locked = False
             self.bounded_shift_shapes(self.selected_shapes_copy)
@@ -4004,7 +4427,10 @@ class Canvas(
             self.bounded_move_shapes(shapes, point + offset)
 
     def prepare_pasted_shapes(self, shapes, copied_group_id=None):
-        pasted_shapes = [shape.copy() for shape in shapes]
+        pasted_shapes = self._normalize_incoming_shape_ids(
+            [shape.copy_for_new_object() for shape in shapes],
+            replace=False,
+        )
         if not pasted_shapes:
             return pasted_shapes
         for shape in pasted_shapes:
@@ -4420,6 +4846,11 @@ class Canvas(
         self._paint_brush_overlays(p)
         self._paint_magic_wand_overlay(p)
 
+        self._draw_rectangle_crosshair(p)
+
+        if self.rectangle_creation is not None:
+            self.rectangle_creation.paint_draft(p)
+
         if self.current:
             self.current.paint(p)
             self.line.paint(p)
@@ -4493,18 +4924,7 @@ class Canvas(
                     "AUTOLABEL_REMOVE",
                 ]:
                     continue
-                fields = []
-                if self.show_labels:
-                    label = shape.label or ""
-                    if shape.group_id is not None:
-                        label = f"{label} ({shape.group_id})".strip()
-                    if label:
-                        fields.append(label)
-                    if shape.score is not None and self.show_scores:
-                        fields.append(f"{float(shape.score):.2f}")
-                if self.show_texts and shape.description:
-                    fields.append(shape.description)
-                label_text = " · ".join(fields)
+                label_text = self._label_display_text(shape)
                 if not label_text:
                     continue
                 fm = QtGui.QFontMetrics(p.font())
@@ -4621,7 +5041,7 @@ class Canvas(
             p.restore()
 
         # Draw mouse coordinates
-        if self.cross_line_show:
+        if self._native_crosshair_enabled():
             pen = self._cross_line_pen()
             rect = self._cross_line_rect()
             p.setPen(pen)
@@ -4853,6 +5273,9 @@ class Canvas(
 
         # Brush-size preview circle follows the cursor in brush mode.
         self._paint_brush_cursor(p)
+        self._paint_point_fit(p)
+        self._paint_rectangle_edge(p)
+        self._paint_rectangle_size(p)
 
         p.end()
 
@@ -4977,6 +5400,7 @@ class Canvas(
         self.shapes.append(self.current)
         self.store_shapes()
         self.current = None
+        self._clear_crosshair_cursor()
         self.set_hiding(False)
         self.new_shape.emit()
         self.update()
@@ -5366,6 +5790,10 @@ class Canvas(
         """Key press event"""
         modifiers = ev.modifiers()
         key = ev.key()
+        if key == Qt.Key.Key_Escape and self._rectangle_edge_drag is not None:
+            self._rectangle_edge_cancel()
+            ev.accept()
+            return
         if key == QtCore.Qt.Key.Key_Space and not ev.isAutoRepeat():
             self._space_pressed = True
             self._clear_space_pan_hover_state()
@@ -5441,6 +5869,8 @@ class Canvas(
         """Key release event"""
         modifiers = ev.modifiers()
         key = ev.key()
+        if key == QtCore.Qt.Key.Key_Shift and not ev.isAutoRepeat():
+            self._clear_point_fit(keep_press=self._point_fit_pressed)
         if key == QtCore.Qt.Key.Key_Space and not ev.isAutoRepeat():
             self._space_pressed = False
             self._space_panning = False
@@ -5532,8 +5962,13 @@ class Canvas(
             self.drawing_polygon.emit(False)
         self.update()
 
-    def load_pixmap(self, pixmap, clear_shapes=True):
+    def load_pixmap(
+        self, pixmap: QtGui.QPixmap, clear_shapes: bool = True
+    ) -> None:
         """Load pixmap"""
+        self._clear_crosshair_cursor()
+        self._rectangle_edge_cancel()
+        self._clear_point_fit()
         self.cancel_brush_mode()
         self._clear_magic_wand_preview()
         self._magic_wand_source = None
@@ -5541,10 +5976,49 @@ class Canvas(
         if clear_shapes:
             self.shapes = []
             self.visible.clear()
+            self.image_changed.emit()
+        self.invalidate_rectangle_size_issues()
         self.update()
+
+    def _normalize_incoming_shape_ids(self, shapes, replace):
+        """Claim unique persistent identities for Shapes entering the canvas.
+
+        Existing shapes keep their identity; incoming shapes with a missing,
+        invalid, or already claimed identity are repaired. ``replace=True``
+        means the incoming shapes are the whole new collection, so only they
+        are reserved against each other.
+        """
+        incoming = list(shapes)
+        reserved_ids = (
+            ()
+            if replace
+            else (
+                getattr(shape, "xanylabeling_shape_id", MISSING_SHAPE_ID)
+                for shape in self.shapes
+            )
+        )
+        identity_result = normalize_shape_identities(
+            (
+                getattr(shape, "xanylabeling_shape_id", MISSING_SHAPE_ID)
+                for shape in incoming
+            ),
+            reserved_ids=reserved_ids,
+        )
+        for shape, shape_id in zip(incoming, identity_result.identities):
+            shape.xanylabeling_shape_id = shape_id
+        if identity_result.diagnostics:
+            logger.warning(
+                "Repaired %d incoming Canvas Shape identities: %s",
+                identity_result.repaired_count,
+                describe_shape_identity_diagnostics(
+                    identity_result.diagnostics
+                ),
+            )
+        return incoming
 
     def load_shapes(self, shapes, replace=True):
         """Load shapes"""
+        shapes = self._normalize_incoming_shape_ids(shapes, replace)
         self.cancel_brush_mode()
         self._clear_magic_wand_preview()
         if replace:
@@ -5560,11 +6034,13 @@ class Canvas(
         self.h_cuboid_face = None
         self._selected_group_id = None
         self._hovered_group_id = None
+        self.invalidate_rectangle_size_issues()
         self.update()
 
-    def set_shape_visible(self, shape, value):
+    def set_shape_visible(self, shape: Shape, value: bool) -> None:
         """Set visibility for a shape"""
         self.visible[shape] = value
+        self.invalidate_rectangle_size_issues()
         self.update()
 
     def current_cursor(self):
@@ -5591,8 +6067,10 @@ class Canvas(
         """Restore override cursor"""
         QtWidgets.QApplication.restoreOverrideCursor()
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         """Clear shapes and pixmap"""
+        self._rectangle_edge_cancel()
+        self._clear_point_fit()
         self._clear_space_pan_state()
         self.pan_offset = QtCore.QPointF()
         self._right_pan_start = None
@@ -5605,15 +6083,27 @@ class Canvas(
         self.compare_pixmap = None
         self._selected_group_id = None
         self._hovered_group_id = None
+        self.image_changed.emit()
         self.update()
 
-    def set_cross_line(self, show, width, color, opacity):
+    def set_cross_line(
+        self, show, width, color, opacity, show_when_drawing=True
+    ):
         """Set cross line options"""
         self.cross_line_show = show
         self.cross_line_width = width
         self.cross_line_color = color
         self.cross_line_opacity = opacity
+        self.set_rectangle_creation_crosshair(show_when_drawing)
         self.update()
+
+    def set_rectangle_creation_crosshair(self, show):
+        """Toggle the two-point rectangle creation guide"""
+        show = bool(show)
+        was_visible = self._rectangle_creation_crosshair_enabled()
+        self.rectangle_creation_crosshair_show = show
+        if was_visible and not self._rectangle_creation_crosshair_enabled():
+            self.update()
 
     def _cross_line_pen(self) -> QtGui.QPen:
         pen = QtGui.QPen(QtGui.QColor(self.cross_line_color))

@@ -1,0 +1,23 @@
+476ad1fabe7340ca503d81a44751dae787879439
+2026-05-22
+2605221500_找到卡顿原因
+
+加载图片后会自动扫描exif和dataset索引，同时因为全量构建所有的图片的的标签加入缓存，使得加载4000千个标签会有3-4分钟的卡顿。现在将exif和data索引改为手动，加载1.1万张图片也没有卡顿的问题
+
+3c13fbcef18ba89c353ab8eea25a2452044ccdf4
+2026-06-10
+2606101610_修改图片加载方式
+
+951ba30a010908c5118d26ab3e22458782d0f558
+2026-07-17
+feat: harden dataset index lifecycle and persistence
+
+09fe88077048145c27029883de5632dd64ad39dd
+2026-07-17
+2607171457_几项修复
+
+修复black模块耗时过长，修复矩形边保持选中，调整标签加载架构代码
+
+b45af4adcbbfb13d4ae1fcffa04afe5678b463e0
+2026-09-22
+fix: prevent page navigation UI freezes

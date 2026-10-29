@@ -351,6 +351,7 @@ class SettingsRuntimeApplier:
             float(width),
             str(crosshair["color"]),
             float(crosshair["opacity"]),
+            bool(crosshair.get("show_when_drawing", True)),
         )
         self._widget.crosshair_settings = dict(crosshair)
         self._widget.crosshair_settings["width"] = float(width)

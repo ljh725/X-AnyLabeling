@@ -996,6 +996,21 @@ def _non_shortcut_fields() -> list[SettingField]:
             ),
         ),
         SettingField(
+            "canvas.crosshair.show_when_drawing",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Rectangle Drawing Crosshair",
+            ),
+            "bool",
+            "Canvas",
+            "Interaction",
+            "Crosshair",
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Show full-image guides while drawing two-point rectangles.",
+            ),
+        ),
+        SettingField(
             "canvas.crosshair.width",
             QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Crosshair Width"),
             "float",

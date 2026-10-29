@@ -662,6 +662,14 @@ Review the prompt before generating.</source>
   <context>
     <name>Canvas</name>
     <message>
+      <source>Unable to infer corner.</source>
+      <translation>无法判断角点。</translation>
+    </message>
+    <message>
+      <source>Rectangle is outside the image or too small.</source>
+      <translation>矩形超出图像边界或尺寸过小。</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/widgets/canvas.py" line="252" />
       <source>Loading...</source>
       <translation>加载中...</translation>
@@ -752,6 +760,10 @@ Review the prompt before generating.</source>
       <location filename="../../views/labeling/widgets/canvas.py" line="3349" />
       <source>Click &amp; drag to move %s</source>
       <translation>单击并拖拽以移动 %s</translation>
+    </message>
+    <message>
+      <source>W %.1f px  H %.1f px</source>
+      <translation>宽 %.1f px  高 %.1f px</translation>
     </message>
   </context>
   <context>
@@ -2924,6 +2936,30 @@ Continue?</source>
   <context>
     <name>LabelingWidget</name>
     <message>
+      <source>Share View Across Same-Size Images</source>
+      <translation>相同尺寸图片共享视图</translation>
+    </message>
+    <message>
+      <source>Same-size images keep one zoom and centre until you change it</source>
+      <translation>相同尺寸图片共享缩放比例和中心点，直到手动调整</translation>
+    </message>
+    <message>
+      <source>Reset Shared View</source>
+      <translation>重置共享视图</translation>
+    </message>
+    <message>
+      <source>Forget the shared view of the current image size</source>
+      <translation>清除当前图片尺寸的共享视图</translation>
+    </message>
+    <message>
+      <source>Reset the view shared by same-size images</source>
+      <translation>已重置相同尺寸图片的共享视图</translation>
+    </message>
+    <message>
+      <source>Rectangle Edge Editing</source>
+      <translation>矩形框编辑</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="307" />
       <source>Flags</source>
       <translation>标志</translation>
@@ -3897,6 +3933,16 @@ Press Enter to search.</source>
       <translation>显示标签</translation>
     </message>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="1440" />
+      <source>Show Labels Only for Selected</source>
+      <translation>仅选中时显示标签</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1440" />
+      <source>Show labels only for selected shapes; hovering previews others</source>
+      <translation>仅显示选中对象的标签；悬停未选中对象时临时预览</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="1428" />
       <source>Show label inside shapes</source>
       <translation>显示标签</translation>
@@ -4603,6 +4649,11 @@ Reset the label as {}.</source>
       <translation>按组 ID 筛选</translation>
     </message>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="4674" />
+      <source>Invert Filter Result</source>
+      <translation>反选筛选结果</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="4610" />
       <source>All Labels</source>
       <translation>全部标签</translation>
@@ -4976,6 +5027,34 @@ Results have been saved to:
       <translation>导出标签成功！
 结果已保存到：
 %s</translation>
+    </message>
+    <message>
+      <source>Show Rectangle Size</source>
+      <translation>显示矩形尺寸</translation>
+    </message>
+    <message>
+      <source>Live width/height readout for the rectangle being created, dragged, hovered or selected</source>
+      <translation>实时显示正在创建、拖动、悬停或选中的矩形宽高</translation>
+    </message>
+    <message>
+      <source>Show Size Rule Warnings</source>
+      <translation>显示尺寸规则提示</translation>
+    </message>
+    <message>
+      <source>Warn about rectangles at or below their label minimum size; configure rules first</source>
+      <translation>对小于等于标签最小尺寸的矩形给出警告；请先配置规则</translation>
+    </message>
+    <message>
+      <source>Rectangle Size Rules...</source>
+      <translation>矩形尺寸规则...</translation>
+    </message>
+    <message>
+      <source>Edit minimum width/height rules per label</source>
+      <translation>按标签编辑最小宽度/高度规则</translation>
+    </message>
+    <message>
+      <source>Rectangle size rules updated</source>
+      <translation>矩形尺寸规则已更新</translation>
     </message>
   </context>
   <context>
@@ -7982,6 +8061,14 @@ Changes will not be saved until you click Save.</source>
       <translation>显示十字线</translation>
     </message>
     <message>
+      <source>Rectangle Drawing Crosshair</source>
+      <translation>矩形绘制十字线</translation>
+    </message>
+    <message>
+      <source>Show full-image guides while drawing two-point rectangles.</source>
+      <translation>绘制两点矩形时显示全图引导线。</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/settings/schema.py" line="111" />
       <source>Crosshair Width</source>
       <translation>十字线宽度</translation>
@@ -10379,6 +10466,135 @@ Response preview:
       <location filename="../../views/labeling/pointcloud/viewport.py" line="197" />
       <source>Could not create an OpenGL display context.</source>
       <translation>无法创建 OpenGL 显示上下文。</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleWorkflow</name>
+    <message>
+      <source>Four extremes</source>
+      <translation>四极值画框</translation>
+    </message>
+    <message>
+      <source>Submit draft</source>
+      <translation>提交草稿</translation>
+    </message>
+    <message>
+      <source>Back one boundary</source>
+      <translation>回退一条边界</translation>
+    </message>
+    <message>
+      <source>Continue drawing</source>
+      <translation>继续绘制</translation>
+    </message>
+    <message>
+      <source>Draft ready: submit or go back.</source>
+      <translation>草稿已完成：提交或回退。</translation>
+    </message>
+    <message>
+      <source>Click boundary {step}/4: {edge}</source>
+      <translation>点击第 {step}/4 条边界：{edge}</translation>
+    </message>
+    <message>
+      <source>Rejected: image bounds or minimum size.</source>
+      <translation>已拒绝：超出图像范围或尺寸过小。</translation>
+    </message>
+    <message>
+      <source>Top</source>
+      <translation>上</translation>
+    </message>
+    <message>
+      <source>Right</source>
+      <translation>右</translation>
+    </message>
+    <message>
+      <source>Bottom</source>
+      <translation>下</translation>
+    </message>
+    <message>
+      <source>Left</source>
+      <translation>左</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleTable</name>
+    <message>
+      <source>Enabled</source>
+      <translation>启用</translation>
+    </message>
+    <message>
+      <source>Min width (px)</source>
+      <translation>最小宽度 (px)</translation>
+    </message>
+    <message>
+      <source>Min height (px)</source>
+      <translation>最小高度 (px)</translation>
+    </message>
+    <message>
+      <source>Trigger</source>
+      <translation>触发条件</translation>
+    </message>
+    <message>
+      <source>Add rule</source>
+      <translation>添加规则</translation>
+    </message>
+    <message>
+      <source>Exact label</source>
+      <translation>精确标签</translation>
+    </message>
+    <message>
+      <source>Any configured dimension</source>
+      <translation>任一已配置维度</translation>
+    </message>
+    <message>
+      <source>All configured dimensions</source>
+      <translation>全部已配置维度</translation>
+    </message>
+    <message>
+      <source>Not checked</source>
+      <translation>不检查</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleDialog</name>
+    <message>
+      <source>Rectangle size rules</source>
+      <translation>矩形尺寸规则</translation>
+    </message>
+    <message>
+      <source>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</source>
+      <translation>矩形实际值小于等于阈值时视为异常；留空的维度不参与检查。</translation>
+    </message>
+    <message>
+      <source>Cannot apply rules: {0}</source>
+      <translation>无法应用规则：{0}</translation>
+    </message>
+    <message>
+      <source>Label must not be empty.</source>
+      <translation>标签不能为空。</translation>
+    </message>
+    <message>
+      <source>The label '{0}' is duplicated.</source>
+      <translation>标签“{0}”重复。</translation>
+    </message>
+    <message>
+      <source>Width threshold must be a positive finite number.</source>
+      <translation>宽度阈值必须是正的有限数值。</translation>
+    </message>
+    <message>
+      <source>Height threshold must be a positive finite number.</source>
+      <translation>高度阈值必须是正的有限数值。</translation>
+    </message>
+    <message>
+      <source>An enabled rule needs at least one W/H threshold.</source>
+      <translation>启用规则至少需要一个宽/高阈值。</translation>
+    </message>
+    <message>
+      <source>Trigger must be 'any' or 'all'.</source>
+      <translation>触发条件必须是 any 或 all。</translation>
+    </message>
+    <message>
+      <source>Rule row {0}: {1}</source>
+      <translation>规则第 {0} 行：{1}</translation>
     </message>
   </context>
 </TS>

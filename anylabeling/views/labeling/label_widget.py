@@ -7,7 +7,7 @@ import os.path as osp
 import re
 import shutil
 import zlib
-from typing import Optional
+from typing import Callable, Optional
 
 import cv2
 import numpy as np
@@ -53,6 +53,7 @@ from .utils.style import (
 )
 from ...config import get_config, save_config
 from .label_file import LabelFile, LabelFileError
+from .editing_commands import apply_field_changes, store_undo_step
 from .logger import logger
 from .schema import IMAGE_TAGS_FIELD
 from .settings import SettingsController, SettingsDialog
@@ -63,6 +64,14 @@ from .settings.schema import (
     load_template_config,
 )
 from .shape import Shape
+from .shape_filter import desired_visibility
+from .shared_view_state import SharedViewState, SharedViewStateStore
+from .rectangle_size import (
+    RectangleSizeConfigError,
+    load_rectangle_size_rules,
+    serialize_rectangle_size_rules,
+)
+from .widgets.rectangle_size_rule_dialog import RectangleSizeRuleDialog
 from .utils.file_search import (
     parse_search_pattern,
     matches_filename,
@@ -283,8 +292,10 @@ class LabelingWidget(LabelDialog):
         self._session_shape_locks = {}
         self._copied_shapes = None
         self._copied_group_id = None
-        self._batch_edit_warning_shown = False
         self._batch_processing_active = False
+        self._invert_shape_filter = False
+        self._manually_hidden_shapes = set()
+        self._invert_filter_actions = []
 
         self.brightness_contrast_processor = BrightnessContrastProcessor()
 
@@ -483,6 +494,10 @@ class LabelingWidget(LabelDialog):
         self.canvas.zoom_request.connect(self.zoom_request)
         self.canvas.pan_request.connect(self.pan_canvas)
         self.canvas.interaction_started.connect(self._zoom_animation.stop)
+
+        # Rectangle minimum-size rules are read once at startup; invalid
+        # persisted data is ignored instead of blocking the window.
+        self.canvas.set_rectangle_size_rules(self._load_rectangle_size_rules())
 
         # Compare view support
         self.compare_view_manager = CompareViewManager(self.canvas, self)
@@ -1389,6 +1404,27 @@ class LabelingWidget(LabelDialog):
             checkable=True,
             enabled=False,
         )
+        fit_width.setObjectName("fitWidth")
+        share_view_across_same_size = action(
+            self.tr("Share View Across Same-Size Images"),
+            self.set_share_view_enabled,
+            shortcut=None,
+            tip=self.tr(
+                "Same-size images keep one zoom and centre until you change it"
+            ),
+            icon=None,
+            checkable=True,
+            checked=self._config.get("share_view_across_same_size", True),
+            enabled=True,
+        )
+        reset_shared_view = action(
+            self.tr("Reset Shared View"),
+            self.reset_shared_view,
+            shortcut=None,
+            tip=self.tr("Forget the shared view of the current image size"),
+            icon=None,
+            enabled=True,
+        )
         show_groups = action(
             self.tr("Show Groups"),
             lambda x: self.set_canvas_params("show_groups", x),
@@ -1431,6 +1467,57 @@ class LabelingWidget(LabelDialog):
             checked=self._config["show_labels"],
             enabled=True,
             auto_trigger=True,
+        )
+        show_labels_only_selected = action(
+            self.tr("Show Labels Only for Selected"),
+            lambda x: self.set_canvas_params("show_labels_only_selected", x),
+            shortcut=None,
+            tip=self.tr(
+                "Show labels only for selected shapes; hovering previews others"
+            ),
+            icon=None,
+            checkable=True,
+            checked=self._config.get("show_labels_only_selected", False),
+            enabled=True,
+            auto_trigger=True,
+        )
+        show_rectangle_pixels = action(
+            self.tr("Show Rectangle Size"),
+            lambda x: self.set_canvas_params("show_rectangle_pixels", x),
+            shortcut=None,
+            tip=self.tr(
+                "Live width/height readout for the rectangle being created, "
+                "dragged, hovered or selected"
+            ),
+            icon=None,
+            checkable=True,
+            checked=self._config.get("show_rectangle_pixels", False),
+            enabled=True,
+            auto_trigger=True,
+        )
+        show_rectangle_size_violations = action(
+            self.tr("Show Size Rule Warnings"),
+            lambda x: self.set_canvas_params(
+                "show_rectangle_size_violations", x
+            ),
+            shortcut=None,
+            tip=self.tr(
+                "Warn about rectangles at or below their label minimum size; "
+                "configure rules first"
+            ),
+            icon=None,
+            checkable=True,
+            checked=self._config.get("show_rectangle_size_violations", False),
+            enabled=True,
+            auto_trigger=True,
+        )
+        rectangle_size_rules = action(
+            self.tr("Rectangle Size Rules..."),
+            self.open_rectangle_size_rule_dialog,
+            shortcut=None,
+            tip=self.tr("Edit minimum width/height rules per label"),
+            icon=None,
+            enabled=True,
         )
         show_scores = action(
             self.tr("Show Scores"),
@@ -2000,10 +2087,16 @@ class LabelingWidget(LabelDialog):
             keep_prev_contrast=keep_prev_contrast,
             fit_window=fit_window,
             fit_width=fit_width,
+            share_view_across_same_size=share_view_across_same_size,
+            reset_shared_view=reset_shared_view,
             show_groups=show_groups,
             show_masks=show_masks,
             show_texts=show_texts,
             show_labels=show_labels,
+            show_labels_only_selected=show_labels_only_selected,
+            show_rectangle_pixels=show_rectangle_pixels,
+            show_rectangle_size_violations=show_rectangle_size_violations,
+            rectangle_size_rules=rectangle_size_rules,
             show_scores=show_scores,
             show_degrees=show_degrees,
             show_attributes=show_attributes,
@@ -2320,10 +2413,17 @@ class LabelingWidget(LabelDialog):
                 None,
                 fit_window,
                 fit_width,
+                share_view_across_same_size,
+                reset_shared_view,
                 None,
                 show_masks,
                 show_texts,
                 show_labels,
+                show_labels_only_selected,
+                show_rectangle_pixels,
+                show_rectangle_size_violations,
+                rectangle_size_rules,
+                None,
                 show_scores,
                 show_degrees,
                 show_attributes,
@@ -2335,6 +2435,23 @@ class LabelingWidget(LabelDialog):
                 ungroup_selected_shapes,
             ),
         )
+
+        self.rectangle_edge_action = QtGui.QAction(
+            QtCore.QCoreApplication.translate(
+                "LabelingWidget", "Rectangle Edge Editing"
+            ),
+            self,
+        )
+        self.rectangle_edge_action.setCheckable(True)
+        self.rectangle_edge_action.setShortcut(
+            self._config.get("shortcuts", {}).get(
+                "toggle_rect_edge_align", "Ctrl+Shift+E"
+            )
+        )
+        self.rectangle_edge_action.triggered.connect(
+            self.canvas.set_rectangle_edge_enabled
+        )
+        self.menus.view.addAction(self.rectangle_edge_action)
 
         self._view_menu_filter = utils.StayOpenMenuFilter(self.menus.view)
         self.menus.view.installEventFilter(self._view_menu_filter)
@@ -2836,11 +2953,19 @@ class LabelingWidget(LabelDialog):
         self.fit_window = False
         self.zoom_values = {}  # key=filename, value=(zoom_mode, zoom_value)
         self.pan_values = {}
+        # One viewport per image size for the current review round; see
+        # shared_view_state.py. Empty when the user turns sharing off.
+        self.shared_view_store = SharedViewStateStore()
         self.brightness_contrast_values = {}
         self.scroll_values = {
             Qt.Orientation.Horizontal: {},
             Qt.Orientation.Vertical: {},
         }  # key=filename, value=scroll_value
+
+        from .widgets.rectangle_creation import RectangleCreation
+
+        self.rectangle_creation = RectangleCreation(self)
+        self.rectangle_creation.hide()
 
         if filename is not None and osp.isdir(filename):
             self.import_image_folder(filename, load=False)
@@ -3539,6 +3664,7 @@ class LabelingWidget(LabelDialog):
 
     def _set_all_objects_visibility(self, visible):
         """Set all Objects panel checkboxes and shape visibility to visible (True/False)."""
+        self._manually_hidden_shapes.clear()
         for item in self.label_list:
             label = item.shape().label
             if label in self.label_info:
@@ -3669,7 +3795,7 @@ class LabelingWidget(LabelDialog):
             else:
                 polygon_shapes.append([(p.x(), p.y()) for p in points])
 
-        union_shape = shape.copy()
+        union_shape = shape.copy_for_new_object()
 
         if len(rectangle_shapes) > 0:
             min_x = min([bbox[0] for bbox in rectangle_shapes])
@@ -4088,6 +4214,14 @@ class LabelingWidget(LabelDialog):
         self.update_labeling_instruction()
 
     def create_digit_mode(self, digit_num):
+        """Draw with the digit label, or relabel the current selection.
+
+        One digit-to-label mapping drives both actions: with no selection a
+        digit starts drawing, with a selection it relabels every editable
+        selected shape, and while a shape is being drawn the keys are ignored
+        so the pending geometry is never lost. 4.2.1 has no digit paging, so
+        the mapping index is the digit itself.
+        """
         if self.drawing_digit_shortcuts is None:
             return
 
@@ -4100,9 +4234,42 @@ class LabelingWidget(LabelDialog):
 
         if create_mode not in Shape.get_supported_shape():
             return
+        if self.canvas.current is not None:
+            return
+        workflow = getattr(self, "rectangle_creation", None)
+        if workflow is not None and workflow.draft is not None:
+            return
+
+        selected = [
+            shape
+            for shape in self.canvas.selected_shapes
+            if shape in self.canvas.shapes
+        ]
+        if selected:
+            editable = [
+                shape
+                for shape in selected
+                if not getattr(shape, "locked", False)
+            ]
+            if not editable:
+                return
+            self._relabel_selection(editable, label)
+            return
 
         self.digit_to_label = label
         self.toggle_draw_mode(edit=False, create_mode=create_mode)
+
+    def _relabel_selection(self, shapes, label):
+        """Apply one digit label to the frozen selection as one undo step."""
+        if not self.validate_label(label):
+            self.error_message(
+                self.tr("Invalid label"),
+                self.tr("Invalid label '{}' with validation type '{}'").format(
+                    label, self._config["validate_label"]
+                ),
+            )
+            return []
+        return self._apply_field_patch(shapes, {"label": label}, {"label"})
 
     def toggle_draw_mode(
         self,
@@ -4111,6 +4278,9 @@ class LabelingWidget(LabelDialog):
         disable_auto_labeling=True,
         preserve_brush_mode=False,
     ):
+        workflow = getattr(self, "rectangle_creation", None)
+        if workflow is not None:
+            workflow.before_tool_change(edit, create_mode)
         if not preserve_brush_mode:
             if getattr(self.canvas, "is_brush_mode", False):
                 self.canvas.cancel_brush_mode()
@@ -4599,6 +4769,15 @@ class LabelingWidget(LabelDialog):
             if after_filter_actions:
                 parent_menu.addSeparator()
                 utils.add_actions(parent_menu, after_filter_actions)
+        invert_action = QtGui.QAction(
+            self.tr("Invert Filter Result"), parent_menu
+        )
+        invert_action.setCheckable(True)
+        invert_action.setChecked(self._invert_shape_filter)
+        invert_action.setEnabled(self._has_active_shape_filter())
+        invert_action.toggled.connect(self.set_invert_shape_filter)
+        parent_menu.addAction(invert_action)
+        self._invert_filter_actions.append(invert_action)
         return label_menu, gid_menu
 
     def _populate_label_filter_menu(self, menu):
@@ -4688,26 +4867,12 @@ class LabelingWidget(LabelDialog):
         return False
 
     def batch_edit_labels(self, shapes):
-        if not self._batch_edit_warning_shown:
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                self.tr("Batch Edit"),
-                self.tr(
-                    "You are about to edit multiple shapes in batch mode. "
-                    "This operation cannot be undone.\n\n"
-                    "This warning will only be shown once. Do you want to continue?"
-                ),
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No,
-                QtWidgets.QMessageBox.StandardButton.No,
-            )
+        """Edit only the fields the user changed, as one undoable step."""
+        targets = [shape for shape in shapes if shape in self.canvas.shapes]
+        if not targets:
+            return False
 
-            if reply != QtWidgets.QMessageBox.StandardButton.Yes:
-                return
-
-            self._batch_edit_warning_shown = True
-
-        first_shape = shapes[0]
+        first_shape = targets[0]
         result = self.label_dialog.pop_up(
             text=first_shape.label,
             flags=first_shape.flags,
@@ -4720,64 +4885,79 @@ class LabelingWidget(LabelDialog):
             ),
             move_mode="center",
         )
-
         if result[0] is None:
-            return
+            return False
 
         text, flags, group_id, description, difficult, kie_linking = result
-
-        if not self.validate_label(text):
+        touched = self.label_dialog.touched_fields()
+        if "label" in touched and not self.validate_label(text):
             self.error_message(
                 self.tr("Invalid label"),
                 self.tr("Invalid label '{}' with validation type '{}'").format(
                     text, self._config["validate_label"]
                 ),
             )
-            return
+            return False
 
-        for shape in shapes:
-            if self.attributes and text and text != shape.label:
-                text = self.reset_attribute(text, shape)
+        values = {
+            "label": text,
+            "flags": flags,
+            "group_id": group_id,
+            "description": description,
+            "difficult": difficult,
+            "kie_linking": kie_linking,
+            "review_status": self.label_dialog.get_review_status(),
+        }
+        changed = self._apply_field_patch(targets, values, touched)
+        if not changed:
+            return False
+        if "label" in touched:
+            self.label_dialog.add_label_history(text)
+        return True
 
-            shape.label = text
-            shape.flags = flags
-            shape.group_id = group_id
-            shape.description = description
-            shape.difficult = difficult
-            shape.kie_linking = kie_linking
-            shape.other_data["review_status"] = (
-                self.label_dialog.get_review_status()
-            )
-
+    def _apply_field_patch(self, shapes, values, touched):
+        """Apply a validated field patch, one undo step and a UI refresh."""
+        changed = apply_field_changes(
+            self.canvas,
+            shapes,
+            values,
+            touched,
+            label_resolver=self._resolve_label_attributes,
+        )
+        if not changed:
+            return []
+        store_undo_step(self.canvas)
+        self.actions.undo.setEnabled(self.canvas.is_shape_restorable)
+        for shape in changed:
             self._update_shape_color(shape)
-
             item = self.label_list.find_item_by_shape(shape)
             if item is not None:
+                item.setText(
+                    _format_label_list_text(shape.label, shape.group_id)
+                )
                 if shape.group_id is None:
                     color = self._get_rgb_by_label(shape.label)
-                    item.setText(
-                        _format_label_list_text(shape.label, shape.group_id)
-                    )
                     item.setBackground(QtGui.QColor(*color, LABEL_OPACITY))
-                else:
-                    item.setText(
-                        _format_label_list_text(shape.label, shape.group_id)
-                    )
-
-        self.label_dialog.add_label_history(text)
-
-        if not self.unique_label_list.find_items_by_label(text):
-            unique_label_item = self.unique_label_list.create_item_from_label(
-                text
-            )
-            self.unique_label_list.addItem(unique_label_item)
-            rgb = self._get_rgb_by_label(text)
-            self.unique_label_list.set_item_label(
-                unique_label_item, text, rgb, LABEL_OPACITY
-            )
-
+        for label in sorted({shape.label for shape in changed}):
+            if not self.unique_label_list.find_items_by_label(label):
+                unique_label_item = (
+                    self.unique_label_list.create_item_from_label(label)
+                )
+                self.unique_label_list.addItem(unique_label_item)
+                rgb = self._get_rgb_by_label(label)
+                self.unique_label_list.set_item_label(
+                    unique_label_item, label, rgb, LABEL_OPACITY
+                )
         self.set_dirty()
         self._refresh_shape_filters()
+        self.canvas.invalidate_rectangle_size_issues()
+        return changed
+
+    def _resolve_label_attributes(self, shape, label):
+        """Resolve label-specific attributes without touching other fields."""
+        if self.attributes and label and label != shape.label:
+            return self.reset_attribute(label, shape)
+        return label
 
     def edit_label(self, item=None):
         if item and not isinstance(item, LabelListWidgetItem):
@@ -5592,6 +5772,8 @@ class LabelingWidget(LabelDialog):
                 action.setEnabled(False)
 
     def load_shapes(self, shapes, replace=True, update_last_label=True):
+        if replace:
+            self._manually_hidden_shapes.clear()
         self._no_selection_slot = True
         self.label_list.setUpdatesEnabled(False)
         try:
@@ -5618,7 +5800,10 @@ class LabelingWidget(LabelDialog):
             )
             self.flag_widget.addItem(item)
 
-    def _sync_label_list_visibility(self, get_visible):
+    def _sync_label_list_visibility(
+        self, get_visible: Callable[[LabelListWidgetItem], bool]
+    ) -> None:
+        """Apply object visibility and invalidate size warnings together."""
         with QtCore.QSignalBlocker(self.unique_label_list):
             for row in range(self.unique_label_list.count()):
                 item = self.unique_label_list.item(row)
@@ -5649,6 +5834,7 @@ class LabelingWidget(LabelDialog):
         finally:
             self.label_list.setUpdatesEnabled(True)
             del blocker
+        self.canvas.invalidate_rectangle_size_issues()
         self.canvas.update()
         self._update_select_toggle_button_tooltip()
         if (
@@ -5660,19 +5846,51 @@ class LabelingWidget(LabelDialog):
     def _refresh_shape_filters(self):
         self.update_combo_box(block_signal=True)
         self.update_gid_box(block_signal=True)
-        current_gid = self.gid_filter_combobox.gid_box.currentText()
-        if current_gid and current_gid != "-1":
-            self.gid_selection_changed(
-                self.gid_filter_combobox.gid_box.currentIndex()
+        self._apply_shape_filter_visibility()
+
+    def _apply_shape_filter_visibility(self):
+        """Apply the combined label/group filter, invert and manual hides."""
+        label = self.label_filter_combobox.text_box.currentText()
+        gid = self.gid_filter_combobox.gid_box.currentText() or "-1"
+        label_info = self.label_info
+        manual_hidden = self._manually_hidden_shapes
+        invert = self._invert_shape_filter
+        self._sync_label_list_visibility(
+            lambda item: desired_visibility(
+                item.shape(),
+                label=label,
+                gid=gid,
+                label_visible=label_info.get(item.shape().label, {}).get(
+                    "visible", True
+                ),
+                invert=invert,
+                manually_hidden=item.shape() in manual_hidden,
             )
-            return
-        current_label = self.label_filter_combobox.text_box.currentText()
-        if current_label:
-            self.text_selection_changed(
-                self.label_filter_combobox.text_box.currentIndex()
-            )
-            return
-        self.apply_label_visibility()
+        )
+        self._sync_invert_filter_actions()
+
+    def _sync_invert_filter_actions(self):
+        """Keep the invert menu entries in sync with the filter state."""
+        active = self._has_active_shape_filter()
+        if not active:
+            self._invert_shape_filter = False
+        alive = []
+        for action in self._invert_filter_actions:
+            try:
+                blocker = QtCore.QSignalBlocker(action)
+            except RuntimeError:
+                # The owning menu was rebuilt and the C++ action is gone.
+                continue
+            action.setChecked(self._invert_shape_filter)
+            action.setEnabled(active)
+            del blocker
+            alive.append(action)
+        self._invert_filter_actions = alive
+
+    def set_invert_shape_filter(self, value):
+        """Invert the combined filter result while a filter is active."""
+        self._invert_shape_filter = bool(value)
+        self._apply_shape_filter_visibility()
 
     def set_label_visibility(self, label, visible):
         if label not in self.label_info:
@@ -5688,11 +5906,7 @@ class LabelingWidget(LabelDialog):
         self._refresh_shape_filters()
 
     def apply_label_visibility(self):
-        self._sync_label_list_visibility(
-            lambda item: self.label_info.get(item.shape().label, {}).get(
-                "visible", True
-            )
-        )
+        self._apply_shape_filter_visibility()
 
     def update_combo_box(self, block_signal=False):
         current_label = self.label_filter_combobox.text_box.currentText()
@@ -5826,7 +6040,11 @@ class LabelingWidget(LabelDialog):
             try:
                 shapeDicts = json.loads(json_str)
                 for shapeDict in shapeDicts:
-                    shapes.append(Shape().load_from_dict(shapeDict))
+                    shapes.append(
+                        Shape().load_from_dict(
+                            shapeDict, preserve_shape_id=False
+                        )
+                    )
             except json.JSONDecodeError as e:
                 self.error_message(
                     self.tr("Error pasting shapes"),
@@ -5859,32 +6077,15 @@ class LabelingWidget(LabelDialog):
             )
         else:
             self._copied_shapes = [
-                s.copy() for s in self.canvas.selected_shapes
+                s.copy_for_new_object() for s in self.canvas.selected_shapes
             ]
             self.actions.paste.setEnabled(len(self._copied_shapes) > 0)
 
     def text_selection_changed(self, index):
-        label = self.label_filter_combobox.text_box.itemText(index)
-        self._sync_label_list_visibility(
-            lambda item: label in ["", item.shape().label]
-            and self.label_info.get(item.shape().label, {}).get(
-                "visible", True
-            )
-        )
+        self._apply_shape_filter_visibility()
 
     def gid_selection_changed(self, index):
-        gid = self.gid_filter_combobox.gid_box.itemText(index)
-        self._sync_label_list_visibility(
-            lambda item: str(gid)
-            in (
-                ["-1", str(item.shape().group_id)]
-                if item.shape().group_id is not None
-                else ["-1"]
-            )
-            and self.label_info.get(item.shape().label, {}).get(
-                "visible", True
-            )
-        )
+        self._apply_shape_filter_visibility()
 
     def label_selection_changed(self):
         if self._no_selection_slot:
@@ -5906,6 +6107,10 @@ class LabelingWidget(LabelDialog):
         self.canvas.set_shape_visible(
             shape, item.checkState() == Qt.CheckState.Checked
         )
+        if shape.visible:
+            self._manually_hidden_shapes.discard(shape)
+        else:
+            self._manually_hidden_shapes.add(shape)
         self._update_select_toggle_button_tooltip()
         if (
             hasattr(self, "navigator_dialog")
@@ -6309,6 +6514,7 @@ class LabelingWidget(LabelDialog):
         if hasattr(self, "navigator_dialog"):
             self.navigator_dialog.set_zoom_value(round(value))
         self.update_navigator_viewport()
+        self._remember_shared_view()
 
     def pan_canvas(self, delta):
         self._zoom_animation.stop()
@@ -6323,6 +6529,181 @@ class LabelingWidget(LabelDialog):
         self.pan_values[self.filename] = QtCore.QPointF(self.canvas.pan_offset)
         self.canvas.update()
         self.update_navigator_viewport()
+        self._remember_shared_view()
+
+    def _share_view_enabled(self):
+        """Return whether same-size images share one viewport."""
+        return bool(self._config.get("share_view_across_same_size", True))
+
+    def _current_image_size(self):
+        """Return the current image's exact ``(width, height)`` group key."""
+        canvas = self.canvas
+        if canvas.pixmap is None or canvas.pixmap.isNull():
+            return None
+        return SharedViewStateStore.size_key(
+            canvas.pixmap.width(),
+            canvas.pixmap.height(),
+        )
+
+    def _current_shared_view(self):
+        """Snapshot the viewport centre in image coordinates.
+
+        The centre is read from the scroll area viewport rather than the
+        canvas alone, so scrolling a large image is part of the snapshot.
+        """
+        canvas = self.canvas
+        if canvas.pixmap is None or canvas.pixmap.isNull():
+            return None
+        viewport = self._canvas_scroll_area.viewport()
+        if viewport is None or viewport.width() <= 0:
+            return None
+        transform = canvas._image_to_widget_transform()
+        inverse, ok = transform.inverted()
+        if not ok:
+            return None
+        viewport_centre = QtCore.QPointF(
+            viewport.width() / 2.0,
+            viewport.height() / 2.0,
+        )
+        canvas_point = viewport_centre - QtCore.QPointF(canvas.pos())
+        image_centre = inverse.map(canvas_point)
+        return SharedViewState(
+            zoom_mode=self.MANUAL_ZOOM,
+            zoom_value=max(0.01, canvas.scale * 100.0),
+            center_x=image_centre.x(),
+            center_y=image_centre.y(),
+        )
+
+    def _remember_shared_view(self):
+        """Store the current viewport for the current image-size group."""
+        if not self.filename:
+            return
+        if getattr(self, "_suppress_shared_view_capture", False):
+            return
+        if not self._share_view_enabled():
+            return
+        size = self._current_image_size()
+        if size is None:
+            return
+        state = self._current_shared_view()
+        if state is None:
+            return
+        self.shared_view_store.remember(size, state)
+
+    def _apply_or_seed_shared_view(self):
+        """Restore the latest group viewport, including on revisited images."""
+        if not self._share_view_enabled():
+            return
+        size = self._current_image_size()
+        if size is None:
+            return
+        state = self.shared_view_store.recall(size)
+        if state is None:
+            self._remember_shared_view()
+            return
+        self._apply_shared_view(state)
+
+    def _apply_shared_view(self, state):
+        """Apply one group viewport and centre it inside the scroll area.
+
+        ``offset_to_center`` is ``base + pan / scale``, so the pan that puts a
+        chosen image point at the canvas centre can be solved directly instead
+        of iterating on the widget geometry.
+
+        Args:
+            state: Viewport snapshot to apply.
+
+        Returns:
+            True when the viewport was applied.
+        """
+        canvas = self.canvas
+        if canvas.pixmap is None or canvas.pixmap.isNull():
+            return False
+        self._zoom_animation.stop()
+        self.actions.fit_width.setChecked(False)
+        self.actions.fit_window.setChecked(False)
+        self.zoom_mode = self.MANUAL_ZOOM
+        with QtCore.QSignalBlocker(self.zoom_widget):
+            self.zoom_widget.setValue(round(state.zoom_value))
+        canvas.scale = state.zoom_value / 100.0
+        canvas.adjustSize()
+        scale = canvas.scale
+        current = canvas.offset_to_center()
+        pan = canvas.pan_offset
+        base_x = current.x() - pan.x() / scale
+        base_y = current.y() - pan.y() / scale
+        target_x = (canvas.width() / 2.0) / scale - state.center_x
+        target_y = (canvas.height() / 2.0) / scale - state.center_y
+        canvas.pan_offset = QtCore.QPointF(
+            (target_x - base_x) * scale,
+            (target_y - base_y) * scale,
+        )
+        canvas.update()
+        self.zoom_values[self.filename] = (
+            self.zoom_mode,
+            state.zoom_value,
+        )
+        self.pan_values[self.filename] = QtCore.QPointF(canvas.pan_offset)
+        self._centre_scroll_on_canvas_centre()
+        if hasattr(self, "navigator_dialog"):
+            self.navigator_dialog.set_zoom_value(round(state.zoom_value))
+        self.update_navigator_viewport()
+        return True
+
+    def _centre_scroll_on_canvas_centre(self):
+        """Scroll so the canvas centre sits in the middle of the viewport."""
+        area = self._canvas_scroll_area
+        if area is None:
+            return
+        viewport = area.viewport()
+        if viewport is None or viewport.width() <= 0:
+            return
+        canvas = self.canvas
+        # The canvas keeps its position inside the scroll content, so
+        # ``pos + value`` is invariant while scrolling. Solving from it puts
+        # the canvas centre exactly at the viewport centre; ensureVisible()
+        # only guarantees a minimum margin and would drift.
+        horizontal = area.horizontalScrollBar()
+        vertical = area.verticalScrollBar()
+        horizontal.setValue(
+            int(
+                round(
+                    canvas.pos().x()
+                    + horizontal.value()
+                    + canvas.width() / 2.0
+                    - viewport.width() / 2.0
+                )
+            )
+        )
+        vertical.setValue(
+            int(
+                round(
+                    canvas.pos().y()
+                    + vertical.value()
+                    + canvas.height() / 2.0
+                    - viewport.height() / 2.0
+                )
+            )
+        )
+
+    def set_share_view_enabled(self, enabled):
+        """Turn same-size viewport sharing on or off for this session."""
+        enabled = bool(enabled)
+        self._config["share_view_across_same_size"] = enabled
+        if enabled:
+            self._remember_shared_view()
+        else:
+            self.shared_view_store.clear()
+        save_config(self._config)
+
+    def reset_shared_view(self, _checked=False):
+        """Forget the current size group and fall back to fit-window."""
+        size = self._current_image_size()
+        if size is not None:
+            self.shared_view_store.forget(size)
+        self.set_fit_window(True)
+        self._remember_shared_view()
+        self.status(self.tr("Reset the view shared by same-size images"))
 
     def set_fit_window(self, value=True):
         if value:
@@ -6335,6 +6716,33 @@ class LabelingWidget(LabelDialog):
             self.actions.fit_window.setChecked(False)
         self.zoom_mode = self.FIT_WIDTH if value else self.MANUAL_ZOOM
         self.adjust_scale()
+
+    def _load_rectangle_size_rules(self):
+        """Return persisted rectangle-size rules, ignoring invalid data."""
+        try:
+            return load_rectangle_size_rules(self._config)
+        except RectangleSizeConfigError as error:
+            logger.warning("Ignoring invalid rectangle size rules: %s", error)
+            return ()
+
+    def open_rectangle_size_rule_dialog(self, _checked=False):
+        """Edit per-label minimum rectangle sizes and persist the result."""
+        dialog = RectangleSizeRuleDialog(
+            self.canvas.rectangle_size_rules,
+            self,
+        )
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return False
+        rules = dialog.accepted_rules
+        if rules is None:
+            return False
+        self.canvas.set_rectangle_size_rules(rules)
+        self._config["rectangle_size_rules"] = serialize_rectangle_size_rules(
+            rules
+        )
+        save_config(self._config)
+        self.status(self.tr("Rectangle size rules updated"))
+        return True
 
     def set_canvas_params(self, key, value):
         self._config[key] = value
@@ -6495,6 +6903,7 @@ class LabelingWidget(LabelDialog):
             self.file_list_widget.update()
             return False
 
+        self._remember_shared_view()
         self.reset_state()
         self.canvas.setEnabled(False)
 
@@ -6636,21 +7045,29 @@ class LabelingWidget(LabelDialog):
         saved_pan = QtCore.QPointF(
             self.pan_values.get(self.filename, QtCore.QPointF())
         )
-        # set zoom values
-        is_initial_load = not self.zoom_values
-        if self.filename in self.zoom_values:
-            self.zoom_mode = self.zoom_values[self.filename][0]
-            self.set_zoom(self.zoom_values[self.filename][1])
-        elif is_initial_load or not self._config["keep_prev_scale"]:
-            self.adjust_scale(initial=True)
-        # set scroll values
-        for orientation in self.scroll_values:
-            if self.filename in self.scroll_values[orientation]:
-                self.set_scroll(
-                    orientation, self.scroll_values[orientation][self.filename]
-                )
-        self.canvas.pan_offset = saved_pan
-        self.pan_values[self.filename] = QtCore.QPointF(saved_pan)
+        # Native per-file restoration must not seed the shared view: until the
+        # last line of this block the pan still belongs to the previous image.
+        self._suppress_shared_view_capture = True
+        try:
+            # set zoom values
+            is_initial_load = not self.zoom_values
+            if self.filename in self.zoom_values:
+                self.zoom_mode = self.zoom_values[self.filename][0]
+                self.set_zoom(self.zoom_values[self.filename][1])
+            elif is_initial_load or not self._config["keep_prev_scale"]:
+                self.adjust_scale(initial=True)
+            # set scroll values
+            for orientation in self.scroll_values:
+                if self.filename in self.scroll_values[orientation]:
+                    self.set_scroll(
+                        orientation,
+                        self.scroll_values[orientation][self.filename],
+                    )
+            self.canvas.pan_offset = saved_pan
+            self.pan_values[self.filename] = QtCore.QPointF(saved_pan)
+        finally:
+            self._suppress_shared_view_capture = False
+        self._apply_or_seed_shared_view()
 
         # set brightness contrast values
         brightness, contrast = self.brightness_contrast_values.get(
@@ -6721,8 +7138,11 @@ class LabelingWidget(LabelDialog):
             self._sidebar_width_ratio = self.right_sidebar.width() / available
 
     def _update_ui_density(self):
+        # Use the stable top-level size to avoid layout feedback.
+        window = self.window()
         scale = min(
-            1.5, max(1.0, min(self.width() / 1920, self.height() / 1000))
+            1.5,
+            max(1.0, min(window.width() / 1920, window.height() / 1000)),
         )
         scale = round(scale * 8) / 8
         if scale != self._ui_scale:
@@ -6800,6 +7220,7 @@ class LabelingWidget(LabelDialog):
         self.zoom_values[self.filename] = (self.zoom_mode, value)
         if hasattr(self, "navigator_dialog"):
             self.navigator_dialog.set_zoom_value(value)
+        self._remember_shared_view()
 
     def scale_fit_window(self):
         """Figure out the size of the pixmap to fit the main widget."""
@@ -7329,6 +7750,7 @@ class LabelingWidget(LabelDialog):
                 Qt.CheckState.Checked if value else Qt.CheckState.Unchecked
             )
             self.label_list[index].shape().visible = True if value else False
+        self._manually_hidden_shapes.clear()
         self._config["show_shapes"] = value
         self._update_select_toggle_button_tooltip()
         if (
@@ -7459,6 +7881,9 @@ class LabelingWidget(LabelDialog):
             self.close_compare_view(confirm=False)
 
         self.last_open_dir = dirpath
+        # A new folder starts a new review round, so stale size groups from
+        # the previous dataset must not leak into it.
+        self.shared_view_store.clear()
         self.filename = None
         self.update_browse_actions()
         self.file_list_widget.clear()

@@ -119,7 +119,7 @@ class TestSettingsRuntimeApplier(unittest.TestCase):
 
             applier.apply_change("canvas.crosshair.width", 0.5)
             canvas.set_cross_line.assert_called_once_with(
-                True, 0.5, "#00FF00", 0.5
+                True, 0.5, "#00FF00", 0.5, True
             )
             self.assertEqual(widget.crosshair_settings["width"], 0.5)
         finally:

@@ -1,0 +1,58 @@
+{
+  "scope": "Separate proof of concept with real QThread, timed batches of 250 real Qt list rows, uniform row size and batched Qt layout, SQLite index, mtime_ns+size invalidation. No production integration. Excludes canvas and app startup. OS cache not flushed.",
+  "trials": [
+    {
+      "background_seconds": 6.4089927999302745,
+      "parsed": 10000,
+      "cache_hits": 0,
+      "count": 10000,
+      "first_250_rows_seconds": 0.30413759988732636,
+      "all_names_seconds": 0.4022876999806613,
+      "complete_seconds": 6.410983999958262,
+      "largest_heartbeat_gap_seconds": 0.023296700092032552,
+      "indexed_search_with_5000_row_rebuild_seconds": 0.059581900015473366,
+      "mode": "build_index"
+    },
+    {
+      "background_seconds": 1.5840346000622958,
+      "parsed": 0,
+      "cache_hits": 10000,
+      "count": 10000,
+      "first_250_rows_seconds": 0.28022770001553,
+      "all_names_seconds": 0.4079833999276161,
+      "complete_seconds": 1.5894981001038104,
+      "largest_heartbeat_gap_seconds": 0.02551340009085834,
+      "indexed_search_with_5000_row_rebuild_seconds": 0.05819760006852448,
+      "mode": "reuse_index"
+    },
+    {
+      "background_seconds": 1.5913363001309335,
+      "parsed": 0,
+      "cache_hits": 10000,
+      "count": 10000,
+      "first_250_rows_seconds": 0.24932390009053051,
+      "all_names_seconds": 0.37944000004790723,
+      "complete_seconds": 1.5958577001001686,
+      "largest_heartbeat_gap_seconds": 0.030014100018888712,
+      "indexed_search_with_5000_row_rebuild_seconds": 0.057746600126847625,
+      "mode": "reuse_index"
+    },
+    {
+      "background_seconds": 1.6603548000566661,
+      "parsed": 0,
+      "cache_hits": 10000,
+      "count": 10000,
+      "first_250_rows_seconds": 0.2612972999922931,
+      "all_names_seconds": 0.3660487998276949,
+      "complete_seconds": 1.6666296999901533,
+      "largest_heartbeat_gap_seconds": 0.019705399870872498,
+      "indexed_search_with_5000_row_rebuild_seconds": 0.0636448001023382,
+      "mode": "reuse_index"
+    }
+  ],
+  "external_edit_validation": {
+    "passed": true,
+    "parsed": 1,
+    "cache_hits": 9999
+  }
+}

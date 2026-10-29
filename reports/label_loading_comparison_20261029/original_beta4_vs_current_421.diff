@@ -1,0 +1,87 @@
+--- original_beta4:LabelingWidget.import_image_folder
++++ current_421:LabelingWidget.import_image_folder
+@@ -6,7 +6,11 @@
+             self.close_compare_view(confirm=False)
+ 
+         self.last_open_dir = dirpath
++        # A new folder starts a new review round, so stale size groups from
++        # the previous dataset must not leak into it.
++        self.shared_view_store.clear()
+         self.filename = None
++        self.update_browse_actions()
+         self.file_list_widget.clear()
+         image_files = []
+ 
+
+
+--- original_beta4:LabelingWidget._create_file_list_item
++++ current_421:LabelingWidget._create_file_list_item
+@@ -1,5 +1,6 @@
+     def _create_file_list_item(self, file, label_file):
+         item = QtWidgets.QListWidgetItem(file)
++        item.setToolTip(file)
+         flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+         if self._config.get("file_list_checkbox_editable", False):
+             flags |= Qt.ItemFlag.ItemIsUserCheckable
+
+
+--- original_beta4:LabelingWidget.load_shapes
++++ current_421:LabelingWidget.load_shapes
+@@ -1,4 +1,6 @@
+     def load_shapes(self, shapes, replace=True, update_last_label=True):
++        if replace:
++            self._manually_hidden_shapes.clear()
+         self._no_selection_slot = True
+         self.label_list.setUpdatesEnabled(False)
+         try:
+
+
+--- original_beta4:Canvas.load_shapes
++++ current_421:Canvas.load_shapes
+@@ -1,5 +1,8 @@
+     def load_shapes(self, shapes, replace=True):
+         """Load shapes"""
++        shapes = self._normalize_incoming_shape_ids(shapes, replace)
++        self.cancel_brush_mode()
++        self._clear_magic_wand_preview()
+         if replace:
+             self.shapes = list(shapes)
+         else:
+@@ -7,8 +10,11 @@
+         self.store_shapes()
+         self.current = None
+         self._brush_drawing = False
+-        self.h_hape = None
++        self.h_shape = None
+         self.h_vertex = None
+         self.h_edge = None
+         self.h_cuboid_face = None
++        self._selected_group_id = None
++        self._hovered_group_id = None
++        self.invalidate_rectangle_size_issues()
+         self.update()
+
+--- original_beta4:LabelFile._check_image_height_and_width
++++ current_421:LabelFile._check_image_height_and_width
+@@ -1,15 +1,15 @@
+     def _check_image_height_and_width(image_data, image_height, image_width):
+-        img_arr = utils.img_b64_to_arr(image_data)
+-        if image_height is not None and img_arr.shape[0] != image_height:
++        actual_width, actual_height = utils.get_pil_img_dim(image_data)
++        if image_height is not None and actual_height != image_height:
+             logger.error(
+                 "image_height does not match with image_data or image_path, "
+                 "so getting image_height from actual image."
+             )
+-            image_height = img_arr.shape[0]
+-        if image_width is not None and img_arr.shape[1] != image_width:
++            image_height = actual_height
++        if image_width is not None and actual_width != image_width:
+             logger.error(
+                 "image_width does not match with image_data or image_path, "
+                 "so getting image_width from actual image."
+             )
+-            image_width = img_arr.shape[1]
++            image_width = actual_width
+         return image_height, image_width
+

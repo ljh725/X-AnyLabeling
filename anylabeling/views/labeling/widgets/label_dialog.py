@@ -1376,6 +1376,10 @@ class LabelDialog(QtWidgets.QDialog):
 
         super(LabelDialog, self).__init__(parent)
         self.setObjectName("LabelDialog")
+        # True while pop_up fills the widgets, so programmatic changes are
+        # not mistaken for user edits.
+        self._loading_fields = False
+        self._touched_fields = set()
         t = get_theme()
         self.setStyleSheet(f"""
             QDialog#LabelDialog QLineEdit,
@@ -1605,6 +1609,24 @@ class LabelDialog(QtWidgets.QDialog):
         layout.addItem(self.flags_layout)
         self.edit.textChanged.connect(self.update_flags)
         self.setLayout(layout)
+
+        # Track which fields the user really changed so a batch edit can
+        # patch only those fields instead of overwriting every column.
+        self.edit.textChanged.connect(
+            lambda *_: self._mark_touched("label")
+        )
+        self.edit_group_id.textChanged.connect(
+            lambda *_: self._mark_touched("group_id")
+        )
+        self.edit_description.textChanged.connect(
+            lambda: self._mark_touched("description")
+        )
+        self.edit_difficult.stateChanged.connect(
+            lambda *_: self._mark_touched("difficult")
+        )
+        self.review_group.buttonClicked.connect(
+            lambda *_: self._mark_touched("review_status")
+        )
         # completion
         completer = QtWidgets.QCompleter()
         if completion == "startswith":
@@ -1649,6 +1671,7 @@ class LabelDialog(QtWidgets.QDialog):
                 self.linking_list.setHidden(
                     False
                 )  # Show the list when an item is added
+                self._mark_touched("kie_linking")
             else:
                 raise ValueError
         except Exception as e:
@@ -1668,6 +1691,7 @@ class LabelDialog(QtWidgets.QDialog):
                 if selected_items:
                     for item in selected_items:
                         self.linking_list.takeItem(self.linking_list.row(item))
+                    self._mark_touched("kie_linking")
         else:
             super(LabelDialog, self).keyPressEvent(event)
 
@@ -1796,6 +1820,7 @@ class LabelDialog(QtWidgets.QDialog):
         for key in flags:
             item = QtWidgets.QCheckBox(key, self)
             item.setChecked(flags[key])
+            item.toggled.connect(lambda *_: self._mark_touched("flags"))
             self.flags_layout.addWidget(item)
             item.show()
 
@@ -1832,6 +1857,15 @@ class LabelDialog(QtWidgets.QDialog):
             kie_linking.append(item.data(Qt.ItemDataRole.UserRole))
         return kie_linking
 
+    def touched_fields(self):
+        """Return the field names the user changed during the last pop_up."""
+        return frozenset(self._touched_fields)
+
+    def _mark_touched(self, field):
+        """Record one user edit unless the dialog is still being filled."""
+        if not self._loading_fields:
+            self._touched_fields.add(field)
+
     def pop_up(
         self,
         text=None,
@@ -1844,6 +1878,8 @@ class LabelDialog(QtWidgets.QDialog):
         kie_linking=None,
         review_status="pending",
     ):
+        self._loading_fields = True
+        self._touched_fields.clear()
         self.review_buttons.get(
             review_status, self.review_buttons["pending"]
         ).setChecked(True)
@@ -1891,6 +1927,7 @@ class LabelDialog(QtWidgets.QDialog):
             row = self.label_list.row(items[0])
             self.edit.completer().setCurrentRow(row)
         self.edit.setFocus(QtCore.Qt.FocusReason.PopupFocusReason)
+        self._loading_fields = False
 
         if move:
             if move_mode == "auto":

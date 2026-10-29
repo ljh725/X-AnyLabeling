@@ -1,0 +1,58 @@
+{
+  "scope": "Separate proof of concept with real QThread, timed batches of 250 real Qt list rows, SQLite index, mtime_ns+size invalidation. No production integration. Excludes canvas and app startup. OS cache not flushed.",
+  "trials": [
+    {
+      "background_seconds": 5.89770959992893,
+      "parsed": 10000,
+      "cache_hits": 0,
+      "count": 10000,
+      "first_250_rows_seconds": 0.2765051999595016,
+      "all_names_seconds": 4.018540799850598,
+      "complete_seconds": 5.8995681998785585,
+      "largest_heartbeat_gap_seconds": 0.20545800006948411,
+      "indexed_search_with_5000_row_rebuild_seconds": 0.09095140011049807,
+      "mode": "build_index"
+    },
+    {
+      "background_seconds": 1.52802799991332,
+      "parsed": 0,
+      "cache_hits": 10000,
+      "count": 10000,
+      "first_250_rows_seconds": 0.2535304999910295,
+      "all_names_seconds": 4.118390099843964,
+      "complete_seconds": 4.296795399859548,
+      "largest_heartbeat_gap_seconds": 0.17839340004138649,
+      "indexed_search_with_5000_row_rebuild_seconds": 0.09168020007200539,
+      "mode": "reuse_index"
+    },
+    {
+      "background_seconds": 1.538666300009936,
+      "parsed": 0,
+      "cache_hits": 10000,
+      "count": 10000,
+      "first_250_rows_seconds": 0.26875089993700385,
+      "all_names_seconds": 4.068189000012353,
+      "complete_seconds": 4.243665199959651,
+      "largest_heartbeat_gap_seconds": 0.17547930008731782,
+      "indexed_search_with_5000_row_rebuild_seconds": 0.10092579992488027,
+      "mode": "reuse_index"
+    },
+    {
+      "background_seconds": 1.7268568000290543,
+      "parsed": 0,
+      "cache_hits": 10000,
+      "count": 10000,
+      "first_250_rows_seconds": 0.2832358998712152,
+      "all_names_seconds": 4.486876799957827,
+      "complete_seconds": 4.670648199971765,
+      "largest_heartbeat_gap_seconds": 0.19307570019736886,
+      "indexed_search_with_5000_row_rebuild_seconds": 0.10141960019245744,
+      "mode": "reuse_index"
+    }
+  ],
+  "external_edit_validation": {
+    "passed": true,
+    "parsed": 1,
+    "cache_hits": 9999
+  }
+}

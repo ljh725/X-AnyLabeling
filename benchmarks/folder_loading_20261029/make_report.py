@@ -1,0 +1,128 @@
+"""Produce a readable, reproducible report from measured benchmark results."""
+
+import hashlib
+import json
+from pathlib import Path
+import statistics
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[1]
+baseline = json.loads((HERE / "results.json").read_text(encoding="utf-8"))
+prototype = json.loads((HERE / "prototype_results.json").read_text(encoding="utf-8"))
+assert len(baseline["runs"]) == 36
+assert len(baseline["summaries"]) == 12
+assert prototype["external_edit_validation"] == {"passed": True, "parsed": 1, "cache_hits": 9999}
+for name, expected in baseline["source_sha256"].items():
+    assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
+
+names = {"single": "每文件 1 个对象，约 0.55 KiB", "multi": "每文件 50 个对象、10～11 类，约 19.36 KiB", "legacy": "每文件 50 个对象，缺少 checked，约 19.34 KiB"}
+lookup = {(s["count"], s["case"], s["pattern"]): s for s in baseline["summaries"]}
+lines = [
+    "# 一万个标注文件：目录加载耗时与解决方案",
+    "",
+    "日期：2026-10-29（Asia/Shanghai）。本报告仅增加独立测试脚本、测试结果和方案原型，没有修改软件主体代码。",
+    "",
+    "## 结论",
+    "",
+    "当前目录加载仍在 UI 主线程逐个读取标注文件。一万个文件普通打开约 3.3～3.7 秒；类别搜索约 5.3～6.9 秒，期间事件循环被阻塞。主要耗时是 JSON 文件读取，文件名扫描和排序约 0.22 秒。",
+    "",
+    "推荐：后台扫描和建立索引，先显示文件，列表分批更新并使用统一行高及批量布局；审核状态与所有类别建立可失效的缓存，后续搜索查索引。",
+    "",
+    "## 测试范围与条件",
+    "",
+    f"- 环境：{baseline['environment']['os']}；Python 3.11.9；PyQt6/Qt {baseline['environment']['qt']}；内存 {baseline['environment']['physical_memory_gib']:.1f} GiB；本机 D 盘。",
+    "- 在独立目录生成实际 PNG 与 JSON 文件，分别测试 1000 和 10000 对；每个场景测三次，报告中取中位数。每个 JSON 的 shapes 均为真实结构。图片为有效的 32×32 PNG。",
+    "- 从当前源码 AST 原样编译 import_image_folder、_create_file_list_item、_label_file_checked、_set_file_item_checked、_annotation_checked_text、open_next_image、scan_all_images 和图像后缀函数，调用真实 PyQt6 列表控件；属性搜索直接载入现有 file_search.py。没有用重写算法代替当前目录加载逻辑。",
+    "- 使用 offscreen Qt 平台和最小应用外壳，测试目录列表构建；不包含完整应用启动、当前图片解码、画布绘制、模型加载及 EXIF 扫描。状态图标用固定尺寸色块，未套完整应用主题。因此这不是完整软件端到端耗时，也不是用户真实数据的耗时保证。",
+    "- 数据生成不计入耗时。没有清空操作系统文件缓存，三轮测试为缓存可能命中的状态；不是冷启动磁盘基准。测试进程没有与正在生成其他测试集的进程并发运行。",
+    "- 计时包装分别累计扫描、审核状态读取、控件设置及属性解析，存在少量计时开销。定时器每 10 ms 采样 UI 事件处理，另记录加载函数返回后的首轮事件处理。",
+    "- 类别搜索使用 label::person，始终命中一半文件，即一万文件返回 5000 条。校验了返回数量、映射数量及审核状态样本。原型另外校验所有一万条审核状态和类别匹配结果。",
+    "",
+    "## 当前代码实测",
+    "",
+    "| 数据规模与内容 | 普通打开 | 普通打开含首轮事件处理 | 类别搜索 |",
+    "|---|---:|---:|---:|",
+]
+for count in (1000, 10000):
+    for case in names:
+        regular = lookup[count, case, None]
+        filtered = lookup[count, case, "label::person"]
+        lines.append(f"| {count} 文件；{names[case]} | {regular['loader_seconds_median']:.3f} s | {regular['loader_and_initial_events_seconds_median']:.3f} s | {filtered['loader_seconds_median']:.3f} s |")
+
+regular = lookup[10000, "multi", None]
+filtered = lookup[10000, "multi", "label::person"]
+lines += [
+    "",
+    "多类别一万文件，普通打开的阶段耗时（各阶段中位数，可能存在微小求和差异）：",
+    "",
+    f"- 扫描与自然排序：{regular['scan_seconds_median']:.3f} s。",
+    f"- 读取审核状态：{regular['status_read_seconds_median']:.3f} s，约占 {regular['status_read_seconds_median']/regular['loader_seconds_median']*100:.1f}%。",
+    f"- 文件条目设置，不含审核读取：{regular['item_setup_excluding_status_seconds_median']:.3f} s。",
+    f"- 列表插入与其余处理：{regular['list_insertion_and_other_seconds_median']:.3f} s。",
+    f"- 普通打开的最长 UI 定时器间隔中位数：{regular['largest_heartbeat_gap_seconds_median']:.3f} s；类别搜索为 {filtered['largest_heartbeat_gap_seconds_median']:.3f} s。说明工作直接阻塞了主线程。",
+    f"- 类别搜索中，全量 JSON 解析与属性匹配：{filtered['attribute_parse_seconds_median']:.3f} s；匹配的 5000 个文件还要再读取审核状态约 {filtered['status_read_seconds_median']:.3f} s。",
+    "",
+    "代码位置：",
+    "",
+    "- anylabeling/views/labeling/label_widget.py:7876：目录扫描并逐条创建文件列表，完成后才打开第一张。",
+    "- anylabeling/views/labeling/label_widget.py:4651：每次读取 8192 字符查找 checked；没有该字段时读到文件尾。",
+    "- anylabeling/views/labeling/utils/file_search.py:236：属性搜索完整 json.load，再遍历 shapes。",
+    "- anylabeling/views/labeling/schema.py:19：当前保存格式把 checked 放在 shapes 前面，普通加载通常只需读取开头。",
+    "",
+    "## 独立方案原型实测",
+    "",
+    "原型采用 QThread 后台扫描、每批 250 个文件条目、Qt 统一行高与批量布局、SQLite 持久缓存，以及内存中的 类别→文件集合。原型还原类别搜索结果的勾选、审核状态、提示及选择标记，避免把只显示名称的时间当成完整条目显示时间。它尚未集成到软件。",
+    "",
+    "| 指标 | 首次建立索引（1 次） | 复用索引（3 次中位数） |",
+    "|---|---:|---:|",
+]
+first = prototype["trials"][0]
+warm = prototype["trials"][1:]
+for key, label in (
+    ("first_250_rows_seconds", "首批 250 个文件出现"),
+    ("all_names_seconds", "一万个文件名全部加入列表"),
+    ("complete_seconds", "全部审核状态、类别索引就绪"),
+    ("indexed_search_with_5000_row_rebuild_seconds", "索引搜索并重建 5000 条结果，含审核状态"),
+    ("largest_heartbeat_gap_seconds", "目录加载期间最长 UI 定时器间隔"),
+):
+    lines.append(f"| {label} | {first[key]:.3f} s | {statistics.median(r[key] for r in warm):.3f} s |")
+lines += [
+    "",
+    "首次建立索引约 6.4 秒，并不比当前普通打开的总工作时间短：它额外读取全部类别，换取后续搜索复用。改进在于先显示文件、后台继续工作，期间 UI 仍能处理事件。不能把首批文件出现时间描述成全部数据加载完毕。",
+    "",
+    "缓存复用验证：三次均命中 10000 个缓存条目，解析 JSON 数为 0；修改一个 JSON 后，命中 9999 条，只重新解析 1 条。用的是 文件绝对路径 + mtime_ns + 文件大小。生产实现还应校验缓存 schema 版本，并在本软件保存后主动失效，不能仅依赖时间戳。",
+    "",
+    "也测试了只后台处理、分批添加但不调整 Qt 布局的版本：全部名称加入列表仍约 4 秒，每批触发布局带来额外成本。因此分批显示必须同时控制布局，不能机械地把 for 拆成多个定时回调。原始试验结果保存在 prototype_naive_results.json。",
+    "",
+    "## 建议的实际改法",
+    "",
+    "1. 把目录扫描、文件存在性检查、JSON 读取与属性提取移入后台 worker。UI 线程只创建/更新控件，不能在 worker 中操作 Qt 界面。目录切换时为任务分配 generation id、取消旧任务，并丢弃旧结果。",
+    "2. 先返回排序后的图片路径，分批显示文件列表，并尽早打开当前图片。列表使用统一行高与 Qt batched layout；每批设置时间预算，例如 8～12 ms，再根据机器速度调整条数。首次数据未完成时明确显示加载状态。",
+    "3. 在应用缓存目录建立 SQLite 元数据索引。每条记录含规范化图片/JSON 路径、mtime_ns、大小、审核状态、类别集合及解析错误。一个文件含多个类别时，每一个类别都必须可检索。JSON 保持权威数据源，索引损坏可重建。",
+    "4. 首次或变更文件在后台解析一次，审核状态和类别一起提取；后续类别查询直接查索引，不重新对一万个 JSON 做 json.load。其他已有属性筛选分阶段扩充索引，未覆盖的查询使用后台原逻辑兜底，保持匹配语义。",
+    "5. 保存、批量修改、导入、删除和更改输出目录时主动更新或失效对应索引。外部修改通过 stat 或目录 watcher 检测；读取前后检查文件签名，必要时重试。缓存版本变化、损坏或丢失时自动重建。",
+    "6. 审核状态未知不应显示成未审核，未完成的搜索不应当作最终结果。保留原搜索语义、三态审核和切图保存保护；解析失败应显示诊断并允许重试。关闭窗口时安全停止 worker，不使用 terminate 强制杀线程。",
+    "",
+    "建议分两步集成：先完成后台扫描、分批显示和批量布局，解决界面阻塞；再加入可失效的索引，减少重复读盘和搜索耗时。当前一万文件规模可以先保留 QListWidget，不必把更换整个列表模型作为前置条件。",
+    "",
+    "建议验收目标（本机同一测试集，正式集成后重新验证，不作为当前已实现指标）：首批文件 <0.5 s；全量文件名 <1 s；目录阶段 UI 单次阻塞 <50 ms；缓存命中的类别搜索含 5000 条结果 <0.3 s；外部修改 1 条只重读 1 条；切目录/取消/退出无旧结果串入、无丢失未保存标注。首张图片解码和完整应用主题需另做端到端测量。",
+    "",
+    "## 验证与复现",
+    "",
+    "- 当前代码基线：2 个规模 × 3 种数据 × 2 种操作 × 3 次，共 36 次，数量与审核状态断言通过。",
+    "- 方案原型：首建 1 次、复用 3 次，另做一次外部修改失效验证；所有一万条审核状态及 person 类别命中集合断言通过。",
+    "- 现有 file_search 测试：10 项通过，详见 file_search_tests.log。",
+    "- 基线记录的四个生产源文件 SHA256 与报告生成时一致，未改应用源文件。",
+    "",
+    "```powershell",
+    "uv --cache-dir benchmarks/folder_loading_20261029/.uv-cache pip install --python D:/Python311/python.exe --target benchmarks/folder_loading_20261029/.deps PyQt6==6.12.0 natsort==8.4.0 psutil==7.2.2",
+    "D:/Python311/python.exe benchmarks/folder_loading_20261029/benchmark.py --counts 1000 10000 --runs 3",
+    "D:/Python311/python.exe benchmarks/folder_loading_20261029/prototype.py",
+    "D:/Python311/python.exe benchmarks/folder_loading_20261029/make_report.py",
+    "```",
+    "",
+    "独立测试依赖使用 .deps，不修改全局 Python 环境。本次测试结束后已清理生成的 data、.deps、.uv-cache、__pycache__ 和 prototype_index_*.sqlite，保留脚本、JSON 结果、日志和本报告。复测时先按上述命令重新准备依赖，脚本会自动生成测试集。",
+    "",
+]
+(HERE / "REPORT.md").write_text("\n".join(lines), encoding="utf-8")
+print(HERE / "REPORT.md")

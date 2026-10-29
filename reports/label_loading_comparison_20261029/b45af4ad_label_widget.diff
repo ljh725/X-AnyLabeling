@@ -1,0 +1,54 @@
+diff --git a/anylabeling/views/labeling/label_widget.py b/anylabeling/views/labeling/label_widget.py
+index ee39002c..02c3d0bc 100644
+--- a/anylabeling/views/labeling/label_widget.py
++++ b/anylabeling/views/labeling/label_widget.py
+@@ -902,6 +902,7 @@ class LabelingWidget(LabelDialog):
+             "next",
+             self.tr("Open next image"),
+             enabled=False,
++            auto_repeat=False,
+         )
+         open_prev_image = action(
+             self.tr("Prev Image"),
+@@ -910,6 +911,7 @@ class LabelingWidget(LabelDialog):
+             "prev",
+             self.tr("Open prev image"),
+             enabled=False,
++            auto_repeat=False,
+         )
+         open_next_unchecked_image = action(
+             self.tr("Next Unchecked Image"),
+@@ -918,6 +920,7 @@ class LabelingWidget(LabelDialog):
+             "next",
+             self.tr("Open next unchecked image"),
+             enabled=False,
++            auto_repeat=False,
+         )
+         open_prev_unchecked_image = action(
+             self.tr("Prev Unchecked Image"),
+@@ -926,6 +929,7 @@ class LabelingWidget(LabelDialog):
+             "prev",
+             self.tr("Open previous unchecked image"),
+             enabled=False,
++            auto_repeat=False,
+         )
+         save = action(
+             self.tr("Save"),
+@@ -7120,6 +7124,8 @@ class LabelingWidget(LabelDialog):
+             return
+         if self.filename and self.canvas.shapes is not None:
+             self.inspector_panel.set_current_file(str(self.filename))
++            if not self.inspector_panel.isVisible():
++                return
+             self.inspector_panel.refresh_table_from_shapes(
+                 file_path=str(self.filename),
+                 shapes=self.canvas.shapes,
+@@ -7164,6 +7170,8 @@ class LabelingWidget(LabelDialog):
+         ):
+             visible = not self.inspector_panel.isVisible()
+             self.inspector_panel.setVisible(visible)
++            if visible:
++                self._refresh_inspector_table()
+             if hasattr(self, "actions") and hasattr(
+                 self.actions, "toggle_inspector"
+             ):

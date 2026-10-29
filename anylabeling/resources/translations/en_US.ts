@@ -662,6 +662,14 @@ Review the prompt before generating.</translation>
   <context>
     <name>Canvas</name>
     <message>
+      <source>Unable to infer corner.</source>
+      <translation>Unable to infer corner.</translation>
+    </message>
+    <message>
+      <source>Rectangle is outside the image or too small.</source>
+      <translation>Rectangle is outside the image or too small.</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/widgets/canvas.py" line="252" />
       <source>Loading...</source>
       <translation>Loading...</translation>
@@ -752,6 +760,10 @@ Review the prompt before generating.</translation>
       <location filename="../../views/labeling/widgets/canvas.py" line="3349" />
       <source>Click &amp; drag to move %s</source>
       <translation>Click &amp; drag to move %s</translation>
+    </message>
+    <message>
+      <source>W %.1f px  H %.1f px</source>
+      <translation>W %.1f px  H %.1f px</translation>
     </message>
   </context>
   <context>
@@ -2925,6 +2937,30 @@ Continue?</translation>
   <context>
     <name>LabelingWidget</name>
     <message>
+      <source>Share View Across Same-Size Images</source>
+      <translation>Share View Across Same-Size Images</translation>
+    </message>
+    <message>
+      <source>Same-size images keep one zoom and centre until you change it</source>
+      <translation>Same-size images keep one zoom and centre until you change it</translation>
+    </message>
+    <message>
+      <source>Reset Shared View</source>
+      <translation>Reset Shared View</translation>
+    </message>
+    <message>
+      <source>Forget the shared view of the current image size</source>
+      <translation>Forget the shared view of the current image size</translation>
+    </message>
+    <message>
+      <source>Reset the view shared by same-size images</source>
+      <translation>Reset the view shared by same-size images</translation>
+    </message>
+    <message>
+      <source>Rectangle Edge Editing</source>
+      <translation>Rectangle Edge Editing</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="307" />
       <source>Flags</source>
       <translation>Flags</translation>
@@ -3898,6 +3934,16 @@ Press Enter to search.</translation>
       <translation>Show Labels</translation>
     </message>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="1440" />
+      <source>Show Labels Only for Selected</source>
+      <translation>Show Labels Only for Selected</translation>
+    </message>
+    <message>
+      <location filename="../../views/labeling/label_widget.py" line="1440" />
+      <source>Show labels only for selected shapes; hovering previews others</source>
+      <translation>Show labels only for selected shapes; hovering previews others</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="1428" />
       <source>Show label inside shapes</source>
       <translation>Show label inside shapes</translation>
@@ -4605,6 +4651,11 @@ Reset the label as {}.</translation>
       <translation>Filter by Group ID</translation>
     </message>
     <message>
+      <location filename="../../views/labeling/label_widget.py" line="4674" />
+      <source>Invert Filter Result</source>
+      <translation>Invert Filter Result</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/label_widget.py" line="4610" />
       <source>All Labels</source>
       <translation>All Labels</translation>
@@ -4978,6 +5029,34 @@ Results have been saved to:
       <translation>Exporting annotations successfully!
 Results have been saved to:
 %s</translation>
+    </message>
+    <message>
+      <source>Show Rectangle Size</source>
+      <translation>Show Rectangle Size</translation>
+    </message>
+    <message>
+      <source>Live width/height readout for the rectangle being created, dragged, hovered or selected</source>
+      <translation>Live width/height readout for the rectangle being created, dragged, hovered or selected</translation>
+    </message>
+    <message>
+      <source>Show Size Rule Warnings</source>
+      <translation>Show Size Rule Warnings</translation>
+    </message>
+    <message>
+      <source>Warn about rectangles at or below their label minimum size; configure rules first</source>
+      <translation>Warn about rectangles at or below their label minimum size; configure rules first</translation>
+    </message>
+    <message>
+      <source>Rectangle Size Rules...</source>
+      <translation>Rectangle Size Rules...</translation>
+    </message>
+    <message>
+      <source>Edit minimum width/height rules per label</source>
+      <translation>Edit minimum width/height rules per label</translation>
+    </message>
+    <message>
+      <source>Rectangle size rules updated</source>
+      <translation>Rectangle size rules updated</translation>
     </message>
   </context>
   <context>
@@ -7984,6 +8063,14 @@ Changes will not be saved until you click Save.</translation>
       <translation>Show Crosshair</translation>
     </message>
     <message>
+      <source>Rectangle Drawing Crosshair</source>
+      <translation>Rectangle Drawing Crosshair</translation>
+    </message>
+    <message>
+      <source>Show full-image guides while drawing two-point rectangles.</source>
+      <translation>Show full-image guides while drawing two-point rectangles.</translation>
+    </message>
+    <message>
       <location filename="../../views/labeling/settings/schema.py" line="111" />
       <source>Crosshair Width</source>
       <translation>Crosshair Width</translation>
@@ -10381,6 +10468,135 @@ Response preview:
       <location filename="../../views/labeling/pointcloud/viewport.py" line="197" />
       <source>Could not create an OpenGL display context.</source>
       <translation>Could not create an OpenGL display context.</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleWorkflow</name>
+    <message>
+      <source>Four extremes</source>
+      <translation>Four extremes</translation>
+    </message>
+    <message>
+      <source>Submit draft</source>
+      <translation>Submit draft</translation>
+    </message>
+    <message>
+      <source>Back one boundary</source>
+      <translation>Back one boundary</translation>
+    </message>
+    <message>
+      <source>Continue drawing</source>
+      <translation>Continue drawing</translation>
+    </message>
+    <message>
+      <source>Draft ready: submit or go back.</source>
+      <translation>Draft ready: submit or go back.</translation>
+    </message>
+    <message>
+      <source>Click boundary {step}/4: {edge}</source>
+      <translation>Click boundary {step}/4: {edge}</translation>
+    </message>
+    <message>
+      <source>Rejected: image bounds or minimum size.</source>
+      <translation>Rejected: image bounds or minimum size.</translation>
+    </message>
+    <message>
+      <source>Top</source>
+      <translation>Top</translation>
+    </message>
+    <message>
+      <source>Right</source>
+      <translation>Right</translation>
+    </message>
+    <message>
+      <source>Bottom</source>
+      <translation>Bottom</translation>
+    </message>
+    <message>
+      <source>Left</source>
+      <translation>Left</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleTable</name>
+    <message>
+      <source>Enabled</source>
+      <translation>Enabled</translation>
+    </message>
+    <message>
+      <source>Min width (px)</source>
+      <translation>Min width (px)</translation>
+    </message>
+    <message>
+      <source>Min height (px)</source>
+      <translation>Min height (px)</translation>
+    </message>
+    <message>
+      <source>Trigger</source>
+      <translation>Trigger</translation>
+    </message>
+    <message>
+      <source>Add rule</source>
+      <translation>Add rule</translation>
+    </message>
+    <message>
+      <source>Exact label</source>
+      <translation>Exact label</translation>
+    </message>
+    <message>
+      <source>Any configured dimension</source>
+      <translation>Any configured dimension</translation>
+    </message>
+    <message>
+      <source>All configured dimensions</source>
+      <translation>All configured dimensions</translation>
+    </message>
+    <message>
+      <source>Not checked</source>
+      <translation>Not checked</translation>
+    </message>
+  </context>
+  <context>
+    <name>RectangleSizeRuleDialog</name>
+    <message>
+      <source>Rectangle size rules</source>
+      <translation>Rectangle size rules</translation>
+    </message>
+    <message>
+      <source>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</source>
+      <translation>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</translation>
+    </message>
+    <message>
+      <source>Cannot apply rules: {0}</source>
+      <translation>Cannot apply rules: {0}</translation>
+    </message>
+    <message>
+      <source>Label must not be empty.</source>
+      <translation>Label must not be empty.</translation>
+    </message>
+    <message>
+      <source>The label '{0}' is duplicated.</source>
+      <translation>The label '{0}' is duplicated.</translation>
+    </message>
+    <message>
+      <source>Width threshold must be a positive finite number.</source>
+      <translation>Width threshold must be a positive finite number.</translation>
+    </message>
+    <message>
+      <source>Height threshold must be a positive finite number.</source>
+      <translation>Height threshold must be a positive finite number.</translation>
+    </message>
+    <message>
+      <source>An enabled rule needs at least one W/H threshold.</source>
+      <translation>An enabled rule needs at least one W/H threshold.</translation>
+    </message>
+    <message>
+      <source>Trigger must be 'any' or 'all'.</source>
+      <translation>Trigger must be 'any' or 'all'.</translation>
+    </message>
+    <message>
+      <source>Rule row {0}: {1}</source>
+      <translation>Rule row {0}: {1}</translation>
     </message>
   </context>
 </TS>
