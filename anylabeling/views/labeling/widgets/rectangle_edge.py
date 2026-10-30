@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from PyQt6 import QtCore, QtGui
@@ -41,32 +42,100 @@ class RectangleEdgeMixin:
         if shape is None or self.scale <= 0:
             return None
         epsilon = self.epsilon / self.scale
-        if shape.nearest_vertex(pos, epsilon) is not None:
-            return None
         left, top, right, bottom = self._point_fit_shape_box(shape)
-        if not self._point_fit_valid_box((left, top, right, bottom)):
+        if (
+            not all(
+                math.isfinite(value) for value in (left, top, right, bottom)
+            )
+            or right - left < 1
+            or bottom - top < 1
+        ):
+            return None
+        for center, radius, edge in self._rectangle_edge_handles(shape):
+            if (
+                math.hypot(pos.x() - center.x(), pos.y() - center.y())
+                <= radius
+            ):
+                return (
+                    (shape, edge)
+                    if self._rectangle_edge_native_priority(shape, pos)
+                    else None
+                )
+        if shape.nearest_vertex(pos, epsilon) is not None:
             return None
         small = min(right - left, bottom - top) * self.scale < 3 * self.epsilon
         x, y = pos.x(), pos.y()
         candidates = []
         if top <= y <= bottom:
-            if not small or x <= left:
-                candidates.append((abs(x - left), "left"))
-            if not small or x >= right:
-                candidates.append((abs(x - right), "right"))
+            candidates.append(
+                (abs(x - left), "left", x > left, left, right - left)
+            )
+            candidates.append(
+                (
+                    abs(x - right),
+                    "right",
+                    x < right,
+                    self.pixmap.width() - right,
+                    right - left,
+                )
+            )
         if left <= x <= right:
-            if not small or y <= top:
-                candidates.append((abs(y - top), "top"))
-            if not small or y >= bottom:
-                candidates.append((abs(y - bottom), "bottom"))
+            candidates.append(
+                (abs(y - top), "top", y > top, top, bottom - top)
+            )
+            candidates.append(
+                (
+                    abs(y - bottom),
+                    "bottom",
+                    y < bottom,
+                    self.pixmap.height() - bottom,
+                    bottom - top,
+                )
+            )
         if not candidates:
             return None
-        distance, edge = min(candidates)
-        if distance > epsilon:
+        candidates.sort(key=lambda candidate: candidate[0])
+        distance, edge, inward, outside_space, span = candidates[0]
+        if len(candidates) > 1 and math.isclose(
+            distance, candidates[1][0], rel_tol=1e-12, abs_tol=1e-12
+        ):
+            return None
+        tolerance = epsilon
+        if inward:
+            available = (
+                max(0.0, epsilon - max(0.0, outside_space))
+                if small
+                else epsilon
+            )
+            tolerance = min(available, span / 4)
+        if distance > tolerance and not math.isclose(
+            distance, tolerance, rel_tol=1e-12, abs_tol=1e-12
+        ):
             return None
         if not self._rectangle_edge_native_priority(shape, pos):
             return None
         return (shape, edge)
+
+    def _rectangle_edge_handles(self, shape: Shape) -> list:
+        """Expose small-box edge midpoints without covering its centre."""
+        if not self._rectangle_edge_enabled or self.scale <= 0:
+            return []
+        left, top, right, bottom = self._point_fit_shape_box(shape)
+        width, height = right - left, bottom - top
+        if (
+            not all(math.isfinite(v) for v in (left, top, right, bottom))
+            or min(width, height) < 1
+            or min(width, height) * self.scale >= 3 * self.epsilon
+        ):
+            return []
+        radius = min(3 / self.scale, width / 4, height / 4)
+        cx, cy = (left + right) / 2, (top + bottom) / 2
+        return [
+            (QtCore.QPointF(left, cy), radius, "left"),
+            (QtCore.QPointF(right, cy), radius, "right"),
+            (QtCore.QPointF(cx, top), radius, "top"),
+            (QtCore.QPointF(cx, bottom), radius, "bottom"),
+        ]
 
     def _rectangle_edge_native_priority(
         self, shape: Shape, pos: QtCore.QPointF
@@ -126,7 +195,7 @@ class RectangleEdgeMixin:
         self._rectangle_edge_drag = EdgeDrag(
             shape,
             edge,
-            QtCore.QPointF(event.position()),
+            QtCore.QPointF(pos),
             [QtCore.QPointF(p) for p in shape.points],
         )
         self._rectangle_edge_hover = hit
@@ -146,19 +215,21 @@ class RectangleEdgeMixin:
         if drag.shape is not self._point_fit_selected_rectangle():
             self._rectangle_edge_cancel()
             return True
-        if event.position() == drag.press:
+        if pos == drag.press and not drag.changed:
             return True
         original = self._point_fit_shape_box(drag.shape)
-        left, top, right, bottom = original
-        max_x, max_y = self.pixmap.width() - 1, self.pixmap.height() - 1
+        xs, ys = [p.x() for p in drag.points], [p.y() for p in drag.points]
+        left, top, right, bottom = min(xs), min(ys), max(xs), max(ys)
+        delta = pos - drag.press
+        max_x, max_y = self.pixmap.width(), self.pixmap.height()
         if drag.edge == "left":
-            left = max(0.0, min(pos.x(), right - 1))
+            left = max(0.0, min(left + delta.x(), right - 1))
         elif drag.edge == "right":
-            right = min(float(max_x), max(pos.x(), left + 1))
+            right = min(float(max_x), max(right + delta.x(), left + 1))
         elif drag.edge == "top":
-            top = max(0.0, min(pos.y(), bottom - 1))
+            top = max(0.0, min(top + delta.y(), bottom - 1))
         else:
-            bottom = min(float(max_y), max(pos.y(), top + 1))
+            bottom = min(float(max_y), max(bottom + delta.y(), top + 1))
         updated = (left, top, right, bottom)
         if updated == original:
             return True
@@ -202,6 +273,20 @@ class RectangleEdgeMixin:
 
     def _paint_rectangle_edge(self, painter: QtGui.QPainter) -> None:
         """Highlight the hovered or actively dragged edge."""
+        if not self._rectangle_edge_enabled:
+            return
+        selected = self._point_fit_selected_rectangle()
+        if selected is not None:
+            handles = self._rectangle_edge_handles(selected)
+            if handles:
+                painter.save()
+                pen = QtGui.QPen(QtGui.QColor("white"))
+                pen.setCosmetic(True)
+                painter.setPen(pen)
+                painter.setBrush(QtGui.QColor("white"))
+                for center, radius, _ in handles:
+                    painter.drawEllipse(center, radius, radius)
+                painter.restore()
         hit = self._rectangle_edge_hover
         if hit is None:
             return

@@ -1,0 +1,8 @@
+........................................................................ [ 67%]
+..................................                                       [100%]
+============================ slowest 30 durations =============================
+2.03s call     tests/test_canvas/test_rectangle_edge_migration.py::test_main_window_exposes_translated_edge_toggle
+0.01s setup    tests/test_canvas/test_shift_point_fit_interaction.py::test_fit_inside_near_center_preview_commit_and_undo
+
+(28 durations < 0.005s hidden.  Use -vv to show these durations.)
+106 passed in 4.57s

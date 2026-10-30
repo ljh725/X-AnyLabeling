@@ -1,0 +1,47 @@
+...........................................................F............ [ 13%]
+........................................................................ [ 26%]
+........................................................................ [ 39%]
+........................................................................ [ 52%]
+........................................................................ [ 66%]
+........................................................................ [ 79%]
+............................................................. [ 90%]
+...................................................                      [100%]
+================================== FAILURES ===================================
+___ TestCanvasGroups.test_shape_label_keeps_fixed_screen_size_while_zooming ___
+tests\test_canvas\test_groups.py:131: in test_shape_label_keeps_fixed_screen_size_while_zooming
+    self.assertEqual(widths[0], widths[1])
+E   AssertionError: 179 != 139
+============================ slowest 30 durations =============================
+1.97s call     tests/test_canvas/test_navigation.py::test_shared_view_tracks_revisits_and_reset
+1.95s call     tests/test_canvas/test_navigation.py::test_image_switch_restores_fractional_zoom_and_pan_and_fit_resets
+1.77s call     tests/test_canvas/test_rectangle_edge_migration.py::test_main_window_exposes_translated_edge_toggle
+0.17s call     tests/test_canvas/test_navigation.py::test_zoom_runs_through_intermediate_frames_in_event_loop
+0.16s call     tests/test_canvas/test_groups.py::TestCanvasGroups::test_visualization_uses_configured_label_font_size
+0.15s call     tests/test_canvas/test_groups.py::TestCanvasGroups::test_shape_label_uses_configured_font_size
+0.13s call     tests/test_canvas/test_magic_wand.py::TestCanvasMagicWand::test_drag_increases_threshold_in_all_directions
+0.10s call     tests/test_canvas/test_shape_copy.py::test_vectorized_path_preserves_geometry[256-polygon]
+0.02s call     tests/test_canvas/test_brush_edit.py::TestCanvasBrushEdit::test_cancel_restores_geometry_without_storing_history
+0.02s call     tests/test_canvas/test_drawing_mode_switch.py::TestDrawingModeSwitch::test_all_shape_type_switches_cancel_draft_and_preserve_history
+0.02s call     tests/test_canvas/test_navigation.py::test_rectangle_wheel_editing_is_disabled_by_default
+0.02s call     tests/test_canvas/test_rectangle_creation_crosshair.py::test_default_config_enables_guide_independently
+0.01s call     tests/test_canvas/test_magic_wand.py::TestCanvasMagicWand::test_cached_image_owns_its_memory
+0.01s call     tests/test_canvas/test_shape_identity.py::TestLabelFileIdentity::test_legacy_file_identity_becomes_stable_after_save
+0.01s setup    tests/test_canvas/test_navigation.py::test_zoom_keeps_cursor_anchor_across_scrollbar_boundaries[100-50]
+0.01s call     tests/test_canvas/test_brush_drawing.py::TestCanvasBrushDrawing::test_crossing_start_is_detected_as_closed
+0.01s call     tests/test_canvas/test_rotation_handle.py::TestCanvasRotationHandle::test_rotation_handle_drag_rotates_shape_and_stores_history
+0.01s setup    tests/test_canvas/test_navigation.py::test_space_pan_keeps_unfinished_polygon_and_image_coordinates
+0.01s setup    tests/test_canvas/test_navigation.py::test_zoom_runs_through_intermediate_frames_in_event_loop
+0.01s setup    tests/test_canvas/test_drag_refresh.py::test_moves_before_the_event_loop_are_coalesced
+0.01s call     tests/test_canvas/test_shape_identity.py::TestCanvasIdentity::test_loading_against_existing_shapes_repairs_collisions
+0.01s call     tests/test_canvas/test_navigation.py::test_wheel_animates_fractional_zoom_with_fixed_anchor[120-0]
+0.01s call     tests/test_canvas/test_shape_identity.py::TestLabelFileIdentity::test_load_repairs_duplicate_and_missing_identities
+0.01s call     tests/test_canvas/test_groups.py::TestCanvasGroups::test_shape_label_keeps_fixed_screen_size_while_zooming
+0.01s setup    tests/test_canvas/test_navigation.py::test_image_switch_restores_fractional_zoom_and_pan_and_fit_resets
+0.01s call     tests/test_canvas/test_navigation.py::test_wheel_animates_fractional_zoom_with_fixed_anchor[15-0]
+0.01s setup    tests/test_canvas/test_navigation.py::test_right_drag_pans_before_drawing_and_click_opens_menu[circle]
+0.01s call     tests/test_canvas/test_shape_selection.py::TestCanvasShapeSelection::test_blank_click_does_not_extend_polygon_with_duplicate_points
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ===========================
+FAILED tests/test_canvas/test_groups.py::TestCanvasGroups::test_shape_label_keeps_fixed_screen_size_while_zooming
+1 failed, 543 passed, 83 subtests passed in 11.30s

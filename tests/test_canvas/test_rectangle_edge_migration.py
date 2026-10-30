@@ -162,8 +162,187 @@ def test_small_rectangle_inner_area_is_not_edge(canvas: Canvas) -> None:
         QtCore.QPointF(128, 128),
         QtCore.QPointF(100, 128),
     ]
-    assert canvas._rectangle_edge_hit(QtCore.QPointF(101, 114)) is None
+    assert canvas._rectangle_edge_hit(QtCore.QPointF(101, 110)) is None
+    assert canvas._rectangle_edge_hit(QtCore.QPointF(114, 114)) is None
     assert canvas._rectangle_edge_hit(QtCore.QPointF(98, 114))[1] == "left"
+
+
+@pytest.mark.parametrize("scale", [0.3, 1.0, 2.0])
+@pytest.mark.parametrize("distance", [2, 5, 10])
+@pytest.mark.parametrize(
+    ("box", "point", "edge"),
+    [
+        ((0, 100, 300, 180), (0, 140), "left"),
+        ((700, 100, 999, 180), (999, 140), "right"),
+        ((700, 100, 1000, 180), (1000, 140), "right"),
+        ((100, 0, 180, 300), (140, 0), "top"),
+        ((100, 700, 180, 999), (140, 999), "bottom"),
+        ((100, 700, 180, 1000), (140, 1000), "bottom"),
+    ],
+)
+def test_boundary_edge_has_inward_hit_band(
+    canvas: Canvas, scale, distance, box, point, edge
+) -> None:
+    """All image edges stay reachable from inside at different zooms."""
+    canvas.pixmap = QtGui.QPixmap(1000, 1000)
+    canvas.scale = scale
+    left, top, right, bottom = box
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(x, y) for x, y in
+                    ((left, top), (right, top), (right, bottom), (left, bottom))]
+    canvas.set_rectangle_edge_enabled(True)
+    x, y = point
+    delta = distance / scale
+    x += delta if edge == "left" else -delta if edge == "right" else 0
+    y += delta if edge == "top" else -delta if edge == "bottom" else 0
+    # The last-pixel representation leaves one image pixel of outer space.
+    if scale == 0.3 and distance == 10 and (right == 999 or bottom == 999):
+        assert canvas._rectangle_edge_hit(QtCore.QPointF(x, y)) is None
+        return
+    assert canvas._rectangle_edge_hit(QtCore.QPointF(x, y)) == (shape, edge)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (x, y))
+    assert canvas._rectangle_edge_drag.edge == edge
+
+
+def test_imported_outside_box_can_edit_visible_edge(canvas: Canvas) -> None:
+    """An imported off-image edge does not disable the other edges."""
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(x, y) for x, y in
+                    ((-2, 100), (200, 100), (200, 200), (-2, 200))]
+    canvas.set_rectangle_edge_enabled(True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (200, 150))
+    assert canvas._rectangle_edge_drag is not None
+    send(canvas, QtCore.QEvent.Type.MouseMove, (210, 150), held=True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (210, 150))
+    assert bounds(shape) == (-2, 100, 210, 200)
+    canvas.restore_shape()
+    assert bounds(canvas.shapes[0]) == (-2, 100, 200, 200)
+
+
+@pytest.mark.parametrize(
+    ("box", "start", "end", "expected"),
+    [
+        ((0, 100, 300, 180), (10, 140), (20, 140), (10, 100, 300, 180)),
+        ((700, 100, 1000, 180), (990, 140), (980, 140), (700, 100, 990, 180)),
+        ((100, 0, 180, 300), (140, 10), (140, 20), (100, 10, 180, 300)),
+        ((100, 700, 180, 1000), (140, 990), (140, 980), (100, 700, 180, 990)),
+    ],
+)
+def test_thin_boundary_box_drag_commits_once_and_undoes(
+    canvas, box, start, end, expected
+):
+    """An inward press on a thin border box resizes only that edge."""
+    canvas.pixmap = QtGui.QPixmap(1000, 1000)
+    canvas.scale = 0.3
+    left, top, right, bottom = box
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(x, y) for x, y in
+                    ((left, top), (right, top), (right, bottom), (left, bottom))]
+    canvas.store_shapes()
+    baseline = len(canvas.shapes_backups)
+    moves = []
+    canvas.shape_moved.connect(lambda: moves.append(True))
+    canvas.set_rectangle_edge_enabled(True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, start)
+    assert canvas._rectangle_edge_drag is not None
+    send(canvas, QtCore.QEvent.Type.MouseMove, end, held=True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, end)
+    assert bounds(shape) == pytest.approx(expected)
+    assert len(canvas.shapes_backups) == baseline + 1
+    assert moves == [True]
+    assert canvas.selected_shapes == [shape]
+    canvas.restore_shape()
+    assert bounds(canvas.shapes[0]) == box
+
+
+def test_thin_box_does_not_choose_far_edge_or_occupy_centre(canvas):
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(x, y) for x, y in
+                    ((0, 100), (15, 100), (15, 200), (0, 200))]
+    canvas.set_rectangle_edge_enabled(True)
+    for x in (5, 7.5, 9):
+        assert canvas._rectangle_edge_hit(QtCore.QPointF(x, 150)) is None
+    assert canvas._rectangle_edge_hit(QtCore.QPointF(7.5, 100)) == (shape, "top")
+    assert canvas._rectangle_edge_hit(QtCore.QPointF(0, 100)) is None
+
+
+@pytest.mark.parametrize("scale", [0.3, 1, 2])
+@pytest.mark.parametrize("edge", ["left", "right", "top", "bottom"])
+def test_near_boundary_access_uses_screen_distance(canvas, scale, edge):
+    canvas.pixmap = QtGui.QPixmap(1000, 1000)
+    canvas.scale = scale
+    def transform(x, y):
+        x, y = x / scale, y / scale
+        return {"left": (x, y), "right": (1000-x, y),
+                "top": (y, x), "bottom": (y, 1000-x)}[edge]
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(*transform(x, y)) for x, y in
+                    ((1, 100), (21, 100), (21, 200), (1, 200))]
+    canvas.set_rectangle_edge_enabled(True)
+    assert canvas._rectangle_edge_hit(QtCore.QPointF(*transform(3, 140))) == (shape, edge)
+    assert canvas._rectangle_edge_hit(QtCore.QPointF(*transform(11, 150))) is None
+
+
+@pytest.mark.parametrize("scale", [0.3, 1, 2])
+def test_offset_drag_does_not_jump_and_returns_after_clamp(canvas, scale):
+    canvas.scale = scale
+    canvas.set_rectangle_edge_enabled(True)
+    moves = []
+    canvas.shape_moved.connect(lambda: moves.append(True))
+    baseline = len(canvas.shapes_backups)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (105, 150))
+    send(canvas, QtCore.QEvent.Type.MouseMove, (106, 150), held=True)
+    assert bounds(canvas.shapes[0]) == pytest.approx((101, 100, 200, 200))
+    send(canvas, QtCore.QEvent.Type.MouseMove, (-100, 150), held=True)
+    assert bounds(canvas.shapes[0])[0] == 0
+    send(canvas, QtCore.QEvent.Type.MouseMove, (105, 150), held=True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (105, 150))
+    assert bounds(canvas.shapes[0]) == (100, 100, 200, 200)
+    assert len(canvas.shapes_backups) == baseline
+    assert moves == []
+
+
+def test_small_midpoint_handles_are_visible_and_toggle_off(canvas):
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(x, y) for x, y in
+                    ((0, 100), (15, 100), (15, 200), (0, 200))]
+    canvas.set_rectangle_edge_enabled(True)
+    image = QtGui.QImage(300, 300, QtGui.QImage.Format.Format_ARGB32)
+    image.fill(QtGui.QColor("black"))
+    painter = QtGui.QPainter(image)
+    canvas._paint_rectangle_edge(painter)
+    painter.end()
+    assert image.pixelColor(7, 100) == QtGui.QColor("white")
+    canvas.set_rectangle_edge_enabled(False)
+    assert canvas._rectangle_edge_handles(shape) == []
+
+
+def test_thin_box_centre_still_moves_the_whole_rectangle(canvas):
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(x, y) for x, y in
+                    ((100, 100), (115, 100), (115, 200), (100, 200))]
+    canvas.set_rectangle_edge_enabled(True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (107.5, 150))
+    assert canvas._rectangle_edge_drag is None
+    send(canvas, QtCore.QEvent.Type.MouseMove, (117.5, 155), held=True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (117.5, 155))
+    assert bounds(shape) == (110, 105, 125, 205)
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "expected"),
+    [
+        ((200, 150), (310, 150), (100, 100, 300, 200)),
+        ((150, 200), (150, 310), (100, 100, 200, 300)),
+    ],
+)
+def test_edge_drag_uses_full_image_extent(canvas, start, end, expected):
+    """Right and bottom edges can reach the same bounds as drawn boxes."""
+    canvas.set_rectangle_edge_enabled(True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, start)
+    send(canvas, QtCore.QEvent.Type.MouseMove, end, held=True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, end)
+    assert bounds(canvas.shapes[0]) == expected
 
 
 def test_edge_click_without_motion_keeps_selection_and_history(
