@@ -1,0 +1,194 @@
+{
+  "date": "2026-10-29 Asia/Shanghai",
+  "scope": "Genuine MainWindow with full real signal connections, resource icons and default drawing settings; real user dataset. Offscreen Qt; private config/settings. Directory picker alone is substituted. Autosave, keep-prev, EXIF scan disabled; audit hook rejects original dataset writes/deletes/renames. No app source changes. OS cache not flushed; earlier inspection may warm some files, so this is not a controlled cold-cache test. No human directory-picker time or monitor/GPU presentation latency included.",
+  "environment": {
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "qt": "6.12.0",
+    "window": [
+      1600,
+      1000
+    ]
+  },
+  "images": "D:\\A0-part2-kps-3-class-dataset\\PRW\\PRW_image_11792",
+  "labels": "D:\\A0-part2-kps-3-class-dataset\\PRW\\PRW_json_11792",
+  "file_count": 11792,
+  "json_total_bytes": 153334254,
+  "first_image": "PRW_c1s1_000151.jpg",
+  "first_image_dimensions": [
+    1920,
+    1080
+  ],
+  "first_shapes": 54,
+  "first_shape_types": {
+    "point": 51,
+    "rectangle": 3
+  },
+  "initial_images_only_open_seconds": 1.5877934999298304,
+  "source_sha256": {
+    "anylabeling/views/labeling/label_widget.py": "f9d497735540a8a3eca3ce0f3148d04b323d7b4b3ddaf3f246bb8bfbb8129e20",
+    "anylabeling/views/labeling/label_file.py": "8e55c579ff8b89073707ebf2ac785313944ae7e4b9db24ca627cbc41858f51c0",
+    "anylabeling/views/labeling/widgets/canvas.py": "b8029aa786b361a4ba0e91ea8283721b6cd6629deda9c10e4f02cb50b369dfc8",
+    "anylabeling/views/labeling/shape.py": "c44b36f42b2a22fb401000c716775beeaba6d9700e168fa95fbbbfef61b42694"
+  },
+  "runs": [
+    {
+      "iteration": 1,
+      "output_change_return_seconds": 0.06956709991209209,
+      "first_annotated_paint_seconds": 0.5448154998011887,
+      "settled_seconds": 0.5461071999743581,
+      "largest_ui_heartbeat_gap_seconds": 0.47667320002801716,
+      "stage_seconds_inclusive": {
+        "image_list_materialization": 0.01208389992825687,
+        "reset_state": 0.004472400061786175,
+        "label_file_parse": 0.006739299977198243,
+        "decode_image": 0.016432300209999084,
+        "add_label": 0.00883789942599833,
+        "undo_snapshot": 0.0047016998287290335,
+        "canvas_load_shapes": 0.004834400024265051,
+        "refresh_filters": 0.003388000186532736,
+        "widget_load_shapes": 0.017207100056111813,
+        "restore_locks": 0.001307399943470955,
+        "thumbnail": 2.550007775425911e-05,
+        "load_current_file": 0.05330809997394681,
+        "individual_shape_paint": 0.0022188997827470303,
+        "canvas_paint": 0.009043999947607517
+      },
+      "stage_call_counts": {
+        "image_list_materialization": 1,
+        "reset_state": 1,
+        "label_file_parse": 1,
+        "decode_image": 1,
+        "add_label": 54,
+        "undo_snapshot": 1,
+        "canvas_load_shapes": 1,
+        "refresh_filters": 1,
+        "widget_load_shapes": 1,
+        "restore_locks": 1,
+        "thumbnail": 1,
+        "load_current_file": 1,
+        "individual_shape_paint": 54,
+        "canvas_paint": 1
+      },
+      "actual_loaded_shapes": 54,
+      "canvas_pixels": [
+        1301,
+        917
+      ]
+    },
+    {
+      "iteration": 2,
+      "output_change_return_seconds": 0.07040020008571446,
+      "first_annotated_paint_seconds": 0.3547368000727147,
+      "settled_seconds": 0.3566114001441747,
+      "largest_ui_heartbeat_gap_seconds": 0.28623059997335076,
+      "stage_seconds_inclusive": {
+        "image_list_materialization": 0.012534499866887927,
+        "reset_state": 0.006722799967974424,
+        "label_file_parse": 0.004695700015872717,
+        "decode_image": 0.017658299999311566,
+        "add_label": 0.004902600310742855,
+        "undo_snapshot": 0.00799770001322031,
+        "canvas_load_shapes": 0.008155099814757705,
+        "refresh_filters": 0.002584100002422929,
+        "widget_load_shapes": 0.01576999993994832,
+        "restore_locks": 0.004303500056266785,
+        "thumbnail": 1.4400109648704529e-05,
+        "load_current_file": 0.0564196000341326,
+        "individual_shape_paint": 0.0013910012785345316,
+        "canvas_paint": 0.007804099936038256
+      },
+      "stage_call_counts": {
+        "image_list_materialization": 1,
+        "reset_state": 1,
+        "label_file_parse": 1,
+        "decode_image": 1,
+        "add_label": 54,
+        "undo_snapshot": 1,
+        "canvas_load_shapes": 1,
+        "refresh_filters": 1,
+        "widget_load_shapes": 1,
+        "restore_locks": 1,
+        "thumbnail": 1,
+        "load_current_file": 1,
+        "individual_shape_paint": 54,
+        "canvas_paint": 1
+      },
+      "actual_loaded_shapes": 54,
+      "canvas_pixels": [
+        1301,
+        917
+      ]
+    },
+    {
+      "iteration": 3,
+      "output_change_return_seconds": 0.06175939994864166,
+      "first_annotated_paint_seconds": 0.484343099873513,
+      "settled_seconds": 0.4863976000342518,
+      "largest_ui_heartbeat_gap_seconds": 0.42436880012974143,
+      "stage_seconds_inclusive": {
+        "image_list_materialization": 0.010066099930554628,
+        "reset_state": 0.006544299889355898,
+        "label_file_parse": 0.004833600018173456,
+        "decode_image": 0.016572199994698167,
+        "add_label": 0.00377549952827394,
+        "undo_snapshot": 0.004170800093561411,
+        "canvas_load_shapes": 0.0042437000665813684,
+        "refresh_filters": 0.00282689998857677,
+        "widget_load_shapes": 0.010938199935480952,
+        "restore_locks": 0.004855100065469742,
+        "thumbnail": 1.0499963536858559e-05,
+        "load_current_file": 0.048938299994915724,
+        "individual_shape_paint": 0.0013872000854462385,
+        "canvas_paint": 0.00614989991299808
+      },
+      "stage_call_counts": {
+        "image_list_materialization": 1,
+        "reset_state": 1,
+        "label_file_parse": 1,
+        "decode_image": 1,
+        "add_label": 54,
+        "undo_snapshot": 1,
+        "canvas_load_shapes": 1,
+        "refresh_filters": 1,
+        "widget_load_shapes": 1,
+        "restore_locks": 1,
+        "thumbnail": 1,
+        "load_current_file": 1,
+        "individual_shape_paint": 54,
+        "canvas_paint": 1
+      },
+      "actual_loaded_shapes": 54,
+      "canvas_pixels": [
+        1301,
+        917
+      ]
+    }
+  ],
+  "loaded_frame_repaint": {
+    "trials": 20,
+    "median_seconds": 0.008089149952866137,
+    "min_seconds": 0.0070164999924600124,
+    "max_seconds": 0.011782800080254674,
+    "stage_seconds_inclusive": {
+      "individual_shape_paint": 0.025588505435734987,
+      "canvas_paint": 0.12407049909234047
+    },
+    "stage_call_counts": {
+      "individual_shape_paint": 1080,
+      "canvas_paint": 20
+    }
+  },
+  "read_only_verification": {
+    "dataset_write_audit_guard_active": true,
+    "all_json_size_mtime_unchanged": true,
+    "first_json_sha256_unchanged": true,
+    "image_size_mtime_unchanged": true,
+    "source_sha256_unchanged": true
+  },
+  "summary": {
+    "output_change_return_seconds_median": 0.06956709991209209,
+    "first_annotated_paint_seconds_median": 0.484343099873513,
+    "settled_seconds_median": 0.4863976000342518,
+    "largest_ui_heartbeat_gap_seconds_median": 0.42436880012974143
+  }
+}

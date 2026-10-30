@@ -1,0 +1,615 @@
+{
+  "qt": "6.10.0",
+  "python": "3.12.12 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 20:05:38) [MSC v.1929 64 bit (AMD64)]",
+  "image": "D:\\A0-part2-kps-3-class-dataset\\PRW\\PRW_image_11792\\PRW_c1s1_000151.jpg",
+  "scope": "Real MainWindow and mouse-move handler, offscreen. Same real 1920x1080 image; synthetic path list only; no background scans. Three real rectangles, or original 54 shapes. Runtime-only A/B substitutions; original data and application source unmodified. Event includes processEvents; no monitor presentation timing. Sequential, warm-cache trials, not hardware FPS.",
+  "source_sha256": {
+    "D:\\X-AnyLabeling-4.2.1\\anylabeling\\views\\labeling\\label_widget.py": "8a76decf358b1917278368fb7b2ae9eb8e59c6227cb79d2fdbffe6404a7c4a11",
+    "D:\\X-AnyLabeling-4.2.1\\anylabeling\\views\\labeling\\widgets\\canvas.py": "b8029aa786b361a4ba0e91ea8283721b6cd6629deda9c10e4f02cb50b369dfc8",
+    "D:\\X-AnyLabeling-4.2.1\\anylabeling\\views\\labeling\\shape.py": "c44b36f42b2a22fb401000c716775beeaba6d9700e168fa95fbbbfef61b42694"
+  },
+  "source_unchanged": true,
+  "annotation_unchanged": true,
+  "scenarios": [
+    {
+      "files": 1,
+      "shapes": 3,
+      "mode": "baseline",
+      "moves": 90,
+      "selection_ms": 1.492,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0014567000325769186
+        ]
+      },
+      "event": {
+        "median_ms": 7.078,
+        "p95_ms": 11.898,
+        "max_ms": 25.936
+      },
+      "methods": {
+        "paintEvent": {
+          "calls": 180,
+          "total_ms": 386.987,
+          "ms_per_move": 4.3
+        },
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 2.063,
+          "ms_per_move": 0.023
+        },
+        "image_list": {
+          "calls": 180,
+          "total_ms": 1.477,
+          "ms_per_move": 0.016
+        },
+        "show_shape": {
+          "calls": 90,
+          "total_ms": 7.519,
+          "ms_per_move": 0.084
+        }
+      }
+    },
+    {
+      "files": 1,
+      "shapes": 3,
+      "mode": "status_without_list_scan",
+      "moves": 90,
+      "selection_ms": 1.671,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0016306000761687756
+        ]
+      },
+      "event": {
+        "median_ms": 6.725,
+        "p95_ms": 8.798,
+        "max_ms": 9.799
+      },
+      "methods": {
+        "paintEvent": {
+          "calls": 180,
+          "total_ms": 330.272,
+          "ms_per_move": 3.67
+        },
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 1.783,
+          "ms_per_move": 0.02
+        }
+      }
+    },
+    {
+      "files": 1,
+      "shapes": 3,
+      "mode": "status_and_coalesced_paint",
+      "moves": 90,
+      "selection_ms": 2.325,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0022533999290317297
+        ]
+      },
+      "event": {
+        "median_ms": 3.184,
+        "p95_ms": 4.091,
+        "max_ms": 5.207
+      },
+      "methods": {
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 1.451,
+          "ms_per_move": 0.016
+        },
+        "paintEvent": {
+          "calls": 90,
+          "total_ms": 153.972,
+          "ms_per_move": 1.711
+        }
+      }
+    },
+    {
+      "files": 1000,
+      "shapes": 3,
+      "mode": "baseline",
+      "moves": 90,
+      "selection_ms": 1.619,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0015798998065292835
+        ]
+      },
+      "event": {
+        "median_ms": 9.005,
+        "p95_ms": 10.519,
+        "max_ms": 11.707
+      },
+      "methods": {
+        "paintEvent": {
+          "calls": 180,
+          "total_ms": 319.457,
+          "ms_per_move": 3.55
+        },
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 1.629,
+          "ms_per_move": 0.018
+        },
+        "image_list": {
+          "calls": 180,
+          "total_ms": 219.72,
+          "ms_per_move": 2.441
+        },
+        "show_shape": {
+          "calls": 90,
+          "total_ms": 227.322,
+          "ms_per_move": 2.526
+        }
+      }
+    },
+    {
+      "files": 1000,
+      "shapes": 3,
+      "mode": "status_without_list_scan",
+      "moves": 90,
+      "selection_ms": 1.723,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.001676199957728386
+        ]
+      },
+      "event": {
+        "median_ms": 6.037,
+        "p95_ms": 7.798,
+        "max_ms": 8.263
+      },
+      "methods": {
+        "paintEvent": {
+          "calls": 180,
+          "total_ms": 300.321,
+          "ms_per_move": 3.337
+        },
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 1.687,
+          "ms_per_move": 0.019
+        }
+      }
+    },
+    {
+      "files": 1000,
+      "shapes": 3,
+      "mode": "status_and_coalesced_paint",
+      "moves": 90,
+      "selection_ms": 1.632,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0015901001170277596
+        ]
+      },
+      "event": {
+        "median_ms": 3.231,
+        "p95_ms": 4.037,
+        "max_ms": 4.703
+      },
+      "methods": {
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 1.457,
+          "ms_per_move": 0.016
+        },
+        "paintEvent": {
+          "calls": 90,
+          "total_ms": 156.651,
+          "ms_per_move": 1.741
+        }
+      }
+    },
+    {
+      "files": 11000,
+      "shapes": 3,
+      "mode": "baseline",
+      "moves": 90,
+      "selection_ms": 1.777,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.001729500014334917
+        ]
+      },
+      "event": {
+        "median_ms": 35.294,
+        "p95_ms": 39.325,
+        "max_ms": 46.265
+      },
+      "methods": {
+        "paintEvent": {
+          "calls": 180,
+          "total_ms": 381.729,
+          "ms_per_move": 4.241
+        },
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 1.653,
+          "ms_per_move": 0.018
+        },
+        "image_list": {
+          "calls": 180,
+          "total_ms": 2510.385,
+          "ms_per_move": 27.893
+        },
+        "show_shape": {
+          "calls": 90,
+          "total_ms": 2555.538,
+          "ms_per_move": 28.395
+        }
+      }
+    },
+    {
+      "files": 11000,
+      "shapes": 3,
+      "mode": "status_without_list_scan",
+      "moves": 90,
+      "selection_ms": 2.044,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0019870998803526163
+        ]
+      },
+      "event": {
+        "median_ms": 9.917,
+        "p95_ms": 22.076,
+        "max_ms": 51.784
+      },
+      "methods": {
+        "paintEvent": {
+          "calls": 180,
+          "total_ms": 609.96,
+          "ms_per_move": 6.777
+        },
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 2.677,
+          "ms_per_move": 0.03
+        }
+      }
+    },
+    {
+      "files": 11000,
+      "shapes": 3,
+      "mode": "status_and_coalesced_paint",
+      "moves": 90,
+      "selection_ms": 2.052,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.001986199989914894
+        ]
+      },
+      "event": {
+        "median_ms": 4.129,
+        "p95_ms": 5.49,
+        "max_ms": 7.65
+      },
+      "methods": {
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 1.859,
+          "ms_per_move": 0.021
+        },
+        "paintEvent": {
+          "calls": 90,
+          "total_ms": 202.995,
+          "ms_per_move": 2.256
+        }
+      }
+    },
+    {
+      "files": 1,
+      "shapes": 54,
+      "mode": "baseline",
+      "moves": 90,
+      "selection_ms": 1.825,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.001761100022122264
+        ]
+      },
+      "event": {
+        "median_ms": 17.199,
+        "p95_ms": 21.36,
+        "max_ms": 24.211
+      },
+      "methods": {
+        "paintEvent": {
+          "calls": 180,
+          "total_ms": 1267.259,
+          "ms_per_move": 14.081
+        },
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 2.03,
+          "ms_per_move": 0.023
+        },
+        "image_list": {
+          "calls": 180,
+          "total_ms": 1.451,
+          "ms_per_move": 0.016
+        },
+        "show_shape": {
+          "calls": 90,
+          "total_ms": 7.525,
+          "ms_per_move": 0.084
+        }
+      }
+    },
+    {
+      "files": 1,
+      "shapes": 54,
+      "mode": "status_without_list_scan",
+      "moves": 90,
+      "selection_ms": 1.658,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0016186998691409826
+        ]
+      },
+      "event": {
+        "median_ms": 16.205,
+        "p95_ms": 17.378,
+        "max_ms": 19.169
+      },
+      "methods": {
+        "paintEvent": {
+          "calls": 180,
+          "total_ms": 1164.343,
+          "ms_per_move": 12.937
+        },
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 1.696,
+          "ms_per_move": 0.019
+        }
+      }
+    },
+    {
+      "files": 1,
+      "shapes": 54,
+      "mode": "status_and_coalesced_paint",
+      "moves": 90,
+      "selection_ms": 2.235,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0021840999834239483
+        ]
+      },
+      "event": {
+        "median_ms": 8.197,
+        "p95_ms": 9.177,
+        "max_ms": 14.412
+      },
+      "methods": {
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 1.579,
+          "ms_per_move": 0.018
+        },
+        "paintEvent": {
+          "calls": 90,
+          "total_ms": 589.529,
+          "ms_per_move": 6.55
+        }
+      }
+    },
+    {
+      "files": 1000,
+      "shapes": 54,
+      "mode": "baseline",
+      "moves": 90,
+      "selection_ms": 2.938,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0028556999750435352
+        ]
+      },
+      "event": {
+        "median_ms": 21.328,
+        "p95_ms": 30.708,
+        "max_ms": 40.826
+      },
+      "methods": {
+        "paintEvent": {
+          "calls": 180,
+          "total_ms": 1420.794,
+          "ms_per_move": 15.787
+        },
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 2.376,
+          "ms_per_move": 0.026
+        },
+        "image_list": {
+          "calls": 180,
+          "total_ms": 242.694,
+          "ms_per_move": 2.697
+        },
+        "show_shape": {
+          "calls": 90,
+          "total_ms": 285.446,
+          "ms_per_move": 3.172
+        }
+      }
+    },
+    {
+      "files": 1000,
+      "shapes": 54,
+      "mode": "status_without_list_scan",
+      "moves": 90,
+      "selection_ms": 2.331,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0022459998726844788
+        ]
+      },
+      "event": {
+        "median_ms": 16.749,
+        "p95_ms": 20.376,
+        "max_ms": 26.958
+      },
+      "methods": {
+        "paintEvent": {
+          "calls": 180,
+          "total_ms": 1230.586,
+          "ms_per_move": 13.673
+        },
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 2.133,
+          "ms_per_move": 0.024
+        }
+      }
+    },
+    {
+      "files": 1000,
+      "shapes": 54,
+      "mode": "status_and_coalesced_paint",
+      "moves": 90,
+      "selection_ms": 1.668,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0016253998037427664
+        ]
+      },
+      "event": {
+        "median_ms": 8.616,
+        "p95_ms": 11.043,
+        "max_ms": 14.497
+      },
+      "methods": {
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 1.838,
+          "ms_per_move": 0.02
+        },
+        "paintEvent": {
+          "calls": 90,
+          "total_ms": 630.328,
+          "ms_per_move": 7.004
+        }
+      }
+    },
+    {
+      "files": 11000,
+      "shapes": 54,
+      "mode": "baseline",
+      "moves": 90,
+      "selection_ms": 1.668,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0016216000076383352
+        ]
+      },
+      "event": {
+        "median_ms": 49.805,
+        "p95_ms": 65.005,
+        "max_ms": 74.869
+      },
+      "methods": {
+        "paintEvent": {
+          "calls": 180,
+          "total_ms": 1363.842,
+          "ms_per_move": 15.154
+        },
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 2.298,
+          "ms_per_move": 0.026
+        },
+        "image_list": {
+          "calls": 180,
+          "total_ms": 2891.176,
+          "ms_per_move": 32.124
+        },
+        "show_shape": {
+          "calls": 90,
+          "total_ms": 2950.058,
+          "ms_per_move": 32.778
+        }
+      }
+    },
+    {
+      "files": 11000,
+      "shapes": 54,
+      "mode": "status_without_list_scan",
+      "moves": 90,
+      "selection_ms": 2.276,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0022205000277608633
+        ]
+      },
+      "event": {
+        "median_ms": 16.867,
+        "p95_ms": 22.957,
+        "max_ms": 29.29
+      },
+      "methods": {
+        "paintEvent": {
+          "calls": 180,
+          "total_ms": 1265.4,
+          "ms_per_move": 14.06
+        },
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 2.121,
+          "ms_per_move": 0.024
+        }
+      }
+    },
+    {
+      "files": 11000,
+      "shapes": 54,
+      "mode": "status_and_coalesced_paint",
+      "moves": 90,
+      "selection_ms": 1.8,
+      "selection_metrics": {
+        "shape_selection_changed": [
+          1,
+          0.0017516000661998987
+        ]
+      },
+      "event": {
+        "median_ms": 9.026,
+        "p95_ms": 13.572,
+        "max_ms": 16.559
+      },
+      "methods": {
+        "bounded_move_shapes": {
+          "calls": 90,
+          "total_ms": 1.995,
+          "ms_per_move": 0.022
+        },
+        "paintEvent": {
+          "calls": 90,
+          "total_ms": 675.41,
+          "ms_per_move": 7.505
+        }
+      }
+    }
+  ]
+}

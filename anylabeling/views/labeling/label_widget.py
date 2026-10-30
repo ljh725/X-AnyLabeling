@@ -7,6 +7,7 @@ import os.path as osp
 import re
 import shutil
 import zlib
+from collections import deque
 from typing import Callable, Optional
 
 import cv2
@@ -77,6 +78,7 @@ from .utils.file_search import (
     matches_filename,
     matches_label_attribute,
 )
+from .utils.staged_annotation_loading import MetadataController, ViewController
 from .utils.qt import new_icon_path
 from .utils.theme import get_theme
 from .pointcloud.icons import get_icon
@@ -175,6 +177,28 @@ def _create_file_status_icon(color, filled=True):
 class FileNameDelegate(QtWidgets.QStyledItemDelegate):
     def displayText(self, value, locale):
         return osp.basename(super().displayText(value, locale))
+
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        get_generation = getattr(self, "metadata_generation", None)
+        generation = get_generation() if get_generation else None
+        if generation is not None and (
+            index.data(Qt.ItemDataRole.UserRole + 1) != generation
+            or index.data(Qt.ItemDataRole.UserRole + 2) == "unknown"
+        ):
+            option.icon = QtGui.QIcon()
+            option.checkState = Qt.CheckState.PartiallyChecked
+
+    def helpEvent(self, event, view, option, index):
+        get_generation = getattr(self, "metadata_generation", None)
+        generation = get_generation() if get_generation else None
+        if generation is not None and (
+            index.data(Qt.ItemDataRole.UserRole + 1) != generation
+            or index.data(Qt.ItemDataRole.UserRole + 2) == "unknown"
+        ):
+            QtWidgets.QToolTip.showText(event.globalPos(), self.tr("Checking annotation"), view)
+            return True
+        return super().helpEvent(event, view, option, index)
 
 
 class FileListWidget(QtWidgets.QListWidget):
@@ -284,6 +308,37 @@ class LabelingWidget(LabelDialog):
         Shape.line_width = self._config["shape"]["line_width"]
 
         super(LabelDialog, self).__init__()
+
+        self._metadata_controller = MetadataController()
+        self._metadata_revisions = {}
+        self._metadata_generation = None
+        self._metadata_results = deque()
+        self._metadata_errors = 0
+        self._metadata_error_paths = set()
+        self._metadata_search_errors = 0
+        self._metadata_processed = 0
+        self._metadata_total = 0
+        self._pending_review_navigation = None
+        self._last_review_error = None
+        self._metadata_timer = QtCore.QTimer(self)
+        self._metadata_timer.setInterval(10)
+        self._metadata_timer.timeout.connect(self._poll_metadata)
+        self._view_controller = ViewController()
+        self._view_timer = QtCore.QTimer(self)
+        self._view_timer.setInterval(10)
+        self._view_timer.timeout.connect(self._poll_view)
+        self._view_buffer = deque()
+        self._full_image_paths = None
+        self._full_image_dir = None
+        self._dropped_image_paths = []
+        self._view_pending_dropped = []
+        self._view_finished = False
+        self._view_error_message = None
+        self._view_first_load = False
+        self._view_first_pending = False
+        self._view_preserve = None
+        self._exif_generation = 0
+        self._exif_pending = False
 
         # Whether we need to save or not.
         self.dirty = False
@@ -397,6 +452,7 @@ class LabelingWidget(LabelDialog):
         )
         self.file_search.returnPressed.connect(self.file_search_changed)
         self.file_search.returnPressed.connect(self.file_search.setFocus)
+        self.file_search.textChanged.connect(self._file_search_text_changed)
         self.settings_button = QPushButton(self)
         self.settings_button.setFixedSize(32, 32)
         self.settings_button.setCursor(
@@ -408,10 +464,12 @@ class LabelingWidget(LabelDialog):
         self.settings_button.setStyleSheet(get_settings_button_style())
         self.settings_button.clicked.connect(self.open_settings_dialog)
         self.file_list_widget = FileListWidget()
+        self.file_list_widget.setUniformItemSizes(True)
         self.file_list_widget.setObjectName("FileList")
         self.file_list_widget.setItemDelegate(
             FileNameDelegate(self.file_list_widget)
         )
+        self.file_list_widget.itemDelegate().metadata_generation = lambda: self._metadata_generation
         self.file_list_widget.setIconSize(QtCore.QSize(10, 12))
         self.file_list_widget.setStyleSheet(
             "QListWidget#FileList::indicator { margin-right: 0; }"
@@ -2967,8 +3025,9 @@ class LabelingWidget(LabelDialog):
         self.rectangle_creation = RectangleCreation(self)
         self.rectangle_creation.hide()
 
-        if filename is not None and osp.isdir(filename):
-            self.import_image_folder(filename, load=False)
+        startup_directory = filename is not None and osp.isdir(filename)
+        if startup_directory:
+            self.import_image_folder(filename, load=True)
         else:
             self.filename = filename
 
@@ -2980,7 +3039,8 @@ class LabelingWidget(LabelDialog):
         # Restore application settings.
         self.settings = QtCore.QSettings("anylabeling", "anylabeling")
         self.recent_files = self.settings.value("recent_files", []) or []
-        self.last_open_dir = self.settings.value("last_open_dir", None) or None
+        if not startup_directory:
+            self.last_open_dir = self.settings.value("last_open_dir", None) or None
 
         # Populate the File menu dynamically.
         self.update_file_menu()
@@ -4671,8 +4731,6 @@ class LabelingWidget(LabelDialog):
         return False
 
     def _set_file_item_checked(self, item, checked):
-        if item.data(Qt.ItemDataRole.UserRole) == checked:
-            return
         item.setIcon(self.file_status_icons[checked])
         item.setData(Qt.ItemDataRole.UserRole, checked)
         item.setToolTip(
@@ -4681,6 +4739,65 @@ class LabelingWidget(LabelDialog):
 
     def _file_item_annotation_checked(self, item):
         return item.data(Qt.ItemDataRole.UserRole) in (True, "failed")
+
+    def _metadata_state(self, item):
+        if self._metadata_generation is None:
+            return "ready"
+        if item.data(Qt.ItemDataRole.UserRole + 1) != self._metadata_generation:
+            return "unknown"
+        return item.data(Qt.ItemDataRole.UserRole + 2) or "unknown"
+
+    def _poll_metadata(self):
+        controller = self._metadata_controller
+        if not self._metadata_results:
+            self._metadata_results.extend(controller.poll())
+        records = []
+        for _ in range(min(20, len(self._metadata_results))):
+            records.append(self._metadata_results.popleft())
+        with QtCore.QSignalBlocker(self.file_list_widget):
+            for generation, path, revision, metadata in records:
+                if generation != self._metadata_generation:
+                    continue
+                self._metadata_processed += 1
+                if self._metadata_revisions.get(path, 0) != revision:
+                    continue
+                index = self.fn_to_index.get(path)
+                if index is None:
+                    continue
+                item = self.file_list_widget.item(index)
+                item.setData(Qt.ItemDataRole.UserRole + 1, generation)
+                item.setData(Qt.ItemDataRole.UserRole + 2, metadata.review)
+                if metadata.presence == "error":
+                    self._metadata_error_paths.add(path)
+                    self._metadata_errors = self._metadata_search_errors + len(self._metadata_error_paths)
+                    item.setIcon(QtGui.QIcon())
+                    item.setCheckState(Qt.CheckState.PartiallyChecked)
+                    item.setToolTip(f"{path}\n{self.tr('Annotation read error')}: {metadata.error}")
+                    continue
+                self._metadata_error_paths.discard(path)
+                self._metadata_errors = self._metadata_search_errors + len(self._metadata_error_paths)
+                item.setCheckState(
+                    Qt.CheckState.Checked if metadata.presence == "present"
+                    else Qt.CheckState.Unchecked
+                )
+                checked = {"passed": True, "failed": "failed", "unchecked": False}[metadata.review]
+                self._set_file_item_checked(item, checked)
+        if self._pending_review_navigation is not None:
+            self._continue_review_navigation()
+        if records:
+            self.status(
+                self.tr("Checking annotations: %s/%s; errors: %s")
+                % (self._metadata_processed, self._metadata_total, self._metadata_errors),
+                3000,
+            )
+        if not controller.is_running() and not self._metadata_results:
+            # A final poll on the next tick drains results published at exit.
+            if not records:
+                self._metadata_timer.stop()
+                self.status(
+                    self.tr("Annotation check complete; errors: %s") % self._metadata_errors,
+                    5000,
+                )
 
     def _create_file_list_item(self, file, label_file):
         item = QtWidgets.QListWidgetItem(file)
@@ -4730,7 +4847,19 @@ class LabelingWidget(LabelDialog):
     def _update_current_file_checked_item(self):
         item = self._current_file_item()
         if item is not None:
-            self._set_file_item_checked(item, self._annotation_checked())
+            with QtCore.QSignalBlocker(self.file_list_widget):
+                item.setCheckState(
+                    Qt.CheckState.Checked if self.label_file is not None
+                    else Qt.CheckState.Unchecked
+                )
+                self._set_file_item_checked(item, self._annotation_checked())
+                if self._metadata_generation is not None:
+                    path = item.text()
+                    self._metadata_revisions[path] = self._metadata_revisions.get(path, 0) + 1
+                    item.setData(Qt.ItemDataRole.UserRole + 1, self._metadata_generation)
+                    item.setData(Qt.ItemDataRole.UserRole + 2, "ready")
+                    self._metadata_error_paths.discard(path)
+                    self._metadata_errors = self._metadata_search_errors + len(self._metadata_error_paths)
 
     def _sync_annotation_checked_state(self):
         self._update_annotation_checked_action()
@@ -5052,21 +5181,37 @@ class LabelingWidget(LabelDialog):
         self.update_attributes(selected_idx)
 
     def file_search_changed(self):
-        search_text = self.file_search.text()
-        self.import_image_folder(
-            self.last_open_dir,
-            pattern=search_text,
-            load=False,
-        )
+        if self.last_open_dir or self._full_image_paths is not None:
+            directory = self.last_open_dir or self._full_image_dir or ""
+            self._start_view(directory, self.file_search.text(), False, False)
+
+    def _cancel_pending_review(self, *_args):
+        self._pending_review_navigation = None
+        self._last_review_error = None
+
+    def _file_search_text_changed(self, *_args):
+        self._cancel_pending_review()
+        self.file_search_changed()
+
+    def _refresh_attribute_search_after_save(self):
+        if self.last_open_dir and parse_search_pattern(self.file_search.text()).mode == "attribute":
+            self._view_controller.cancel()
+            QtCore.QTimer.singleShot(0, self.file_search_changed)
 
     def file_selection_changed(self):
+        self._pending_review_navigation = None
+        self._last_review_error = None
         items = self.file_list_widget.selectedItems()
         if not items:
             return
         item = items[0]
-
         if not self.may_continue():
+            with QtCore.QSignalBlocker(self.file_list_widget):
+                previous = self.fn_to_index.get(str(self.filename), -1)
+                self.file_list_widget.setCurrentRow(previous)
             return
+        if self._view_timer.isActive():
+            self._view_preserve = item.text()
 
         current_index = self.fn_to_index[str(item.text())]
         if current_index < len(self.image_list):
@@ -5548,6 +5693,10 @@ class LabelingWidget(LabelDialog):
                 flags=flags,
             )
             self.label_file = label_file
+            if self._metadata_generation is not None and self.filename:
+                self._metadata_revisions[self.filename] = (
+                    self._metadata_revisions.get(self.filename, 0) + 1
+                )
             self.actions.save.setIcon(utils.new_icon("save-check"))
             items = self.file_list_widget.findItems(
                 self.image_path, Qt.MatchFlag.MatchExactly
@@ -5559,6 +5708,10 @@ class LabelingWidget(LabelDialog):
                 self._set_file_item_checked(
                     items[0], self._annotation_checked()
                 )
+                if self._metadata_generation is not None:
+                    items[0].setData(Qt.ItemDataRole.UserRole + 1, self._metadata_generation)
+                    items[0].setData(Qt.ItemDataRole.UserRole + 2, "ready")
+            self._refresh_attribute_search_after_save()
             # disable allows next and previous image to proceed
             # self.filename = filename
             return True
@@ -5999,6 +6152,10 @@ class LabelingWidget(LabelDialog):
                 flags=flags,
             )
             self.label_file = label_file
+            if self._metadata_generation is not None and self.filename:
+                self._metadata_revisions[self.filename] = (
+                    self._metadata_revisions.get(self.filename, 0) + 1
+                )
             self.actions.save.setIcon(utils.new_icon("save-check"))
             items = self.file_list_widget.findItems(
                 self.image_path, Qt.MatchFlag.MatchExactly
@@ -6010,6 +6167,10 @@ class LabelingWidget(LabelDialog):
                 self._set_file_item_checked(
                     items[0], self._annotation_checked()
                 )
+                if self._metadata_generation is not None:
+                    items[0].setData(Qt.ItemDataRole.UserRole + 1, self._metadata_generation)
+                    items[0].setData(Qt.ItemDataRole.UserRole + 2, "ready")
+            self._refresh_attribute_search_after_save()
             # disable allows next and previous image to proceed
             # self.filename = filename
             return True
@@ -6859,7 +7020,7 @@ class LabelingWidget(LabelDialog):
         if filename is not None:
             try:
                 current_index = self.fn_to_index[str(filename)]
-            except ValueError:
+            except (ValueError, KeyError):
                 return []
             filenames.append(filename)
         for _ in range(num_files):
@@ -6882,6 +7043,12 @@ class LabelingWidget(LabelDialog):
 
     def load_file(self, filename=None):  # noqa: C901
         """Load the specified file, or the last opened file if None."""
+
+        if filename and str(filename) != str(self.filename):
+            self._cancel_pending_review()
+        if filename and self._view_timer.isActive() and self._view_first_pending:
+            self._view_first_pending = False
+            self._view_preserve = str(filename)
 
         # NOTE(jack): Does we need to save the config here?
         # save_config(self._config)
@@ -6925,9 +7092,18 @@ class LabelingWidget(LabelDialog):
             label_file_without_path = osp.basename(label_file)
             label_file = self.output_dir + "/" + label_file_without_path
 
-        if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(
-            label_file
-        ):
+        try:
+            os.stat(label_file)
+            label_exists = True
+        except FileNotFoundError:
+            label_exists = False
+        except OSError as e:
+            self.error_message(
+                self.tr("Error opening file"),
+                self.tr("Error reading annotation: %s") % str(e),
+            )
+            return False
+        if label_exists and LabelFile.is_label_file(label_file):
             try:
                 self.label_file = LabelFile(
                     label_file,
@@ -7247,6 +7423,18 @@ class LabelingWidget(LabelDialog):
         if not self.may_continue():
             event.ignore()
             return
+        exif_thread = self.async_exif_scanner.thread
+        exif_running = exif_thread is not None and exif_thread.isRunning()
+        if self._metadata_controller.is_running() or self._view_controller.is_running() or exif_running:
+            self._metadata_controller.cancel()
+            self._view_controller.cancel()
+            self._exif_generation += 1
+            self._exif_pending = False
+            self.async_exif_scanner.stop_scan()
+            event.ignore()
+            self.status(self.tr("Waiting for annotation reads to finish"), 3000)
+            QtCore.QTimer.singleShot(100, self.window().close)
+            return
         if self.pointcloud_window is not None:
             if not self.pointcloud_window.can_close():
                 event.ignore()
@@ -7328,40 +7516,71 @@ class LabelingWidget(LabelDialog):
         self.import_image_folder(dirpath)
 
     def open_prev_unchecked_image(self):
-        if (
-            not self.may_continue()
-            or len(self.image_list) <= 0
-            or self.filename is None
-        ):
-            return
-
-        current_index = self.fn_to_index[str(self.filename)]
-        for i in range(current_index - 1, -1, -1):
-            if not self._file_item_annotation_checked(
-                self.file_list_widget.item(i)
-            ):
-                filename = self.image_list[i]
-                if filename:
-                    self.load_file(filename)
-                break
+        self._start_review_navigation(-1)
 
     def open_next_unchecked_image(self, _value=False):
-        if (
-            not self.may_continue()
-            or len(self.image_list) <= 0
-            or self.filename is None
-        ):
-            return
+        self._start_review_navigation(1)
 
-        current_index = self.fn_to_index[str(self.filename)]
-        for i in range(current_index + 1, len(self.image_list)):
-            if not self._file_item_annotation_checked(
-                self.file_list_widget.item(i)
-            ):
-                filename = self.image_list[i]
-                if filename:
-                    self.load_file(filename)
-                break
+    def _start_review_navigation(self, direction):
+        if self._pending_review_navigation is not None:
+            return
+        if not self.filename or not self.may_continue():
+            return
+        index = self.fn_to_index.get(str(self.filename))
+        if index is None and not self._view_timer.isActive():
+            return
+        self._pending_review_navigation = (
+            direction, self.filename, self._metadata_generation,
+            None if index is None else index + direction,
+        )
+        self._continue_review_navigation()
+
+    def _continue_review_navigation(self):
+        pending = self._pending_review_navigation
+        if pending is None:
+            return
+        direction, anchor, generation, index = pending
+        if self.filename != anchor or generation != self._metadata_generation:
+            self._pending_review_navigation = None
+            return
+        if index is None:
+            anchor_index = self.fn_to_index.get(str(anchor))
+            if anchor_index is None:
+                if not self._view_timer.isActive():
+                    self._pending_review_navigation = None
+                return
+            index = anchor_index + direction
+            self._pending_review_navigation = (direction, anchor, generation, index)
+        while 0 <= index < self.file_list_widget.count():
+            item = self.file_list_widget.item(index)
+            state = self._metadata_state(item)
+            if state == "unknown":
+                self._metadata_controller.prioritize(item.text())
+                self.status(self.tr("Checking annotation for review navigation"), 3000)
+                return
+            if state == "error":
+                if self._last_review_error == item.text():
+                    path = item.text()
+                    item.setData(Qt.ItemDataRole.UserRole + 2, "unknown")
+                    self._metadata_controller.retry(path, self.output_dir, self._metadata_revisions.get(path, 0))
+                    self._metadata_total += 1
+                    self._last_review_error = None
+                    self._metadata_timer.start()
+                    self.status(self.tr("Retrying annotation: %s") % path, 5000)
+                    return
+                self._last_review_error = item.text()
+                self._pending_review_navigation = None
+                self.status(self.tr("Cannot read annotation: %s. Repeat navigation to retry.") % item.text(), 10000)
+                return
+            if not self._file_item_annotation_checked(item):
+                self._pending_review_navigation = None
+                self.load_file(item.text())
+                return
+            index += direction
+            self._pending_review_navigation = (direction, anchor, generation, index)
+        if direction > 0 and self._view_timer.isActive():
+            return
+        self._pending_review_navigation = None
 
     def open_prev_image(self, _value=False):
         if not self.may_continue():
@@ -7370,7 +7589,9 @@ class LabelingWidget(LabelDialog):
             return
         if self.filename is None:
             return
-        current_index = self.fn_to_index[str(self.filename)]
+        current_index = self.fn_to_index.get(str(self.filename))
+        if current_index is None:
+            return
         if current_index - 1 >= 0:
             filename = self.file_list_widget.item(current_index - 1).text()
             if filename:
@@ -7386,7 +7607,9 @@ class LabelingWidget(LabelDialog):
         if self.filename is None:
             filename = self.file_list_widget.item(0).text()
         else:
-            current_index = self.fn_to_index[str(self.filename)]
+            current_index = self.fn_to_index.get(str(self.filename))
+            if current_index is None:
+                return
             if current_index + 1 < count:
                 filename = self.file_list_widget.item(current_index + 1).text()
             else:
@@ -7415,6 +7638,19 @@ class LabelingWidget(LabelDialog):
         if file_dialog.exec():
             filename = file_dialog.selectedFiles()[0]
             if filename:
+                self._view_controller.cancel()
+                self._view_timer.stop()
+                self._metadata_controller.cancel()
+                self._metadata_timer.stop()
+                self._metadata_generation = None
+                self._metadata_results.clear()
+                self._pending_review_navigation = None
+                self._full_image_paths = None
+                self._full_image_dir = None
+                self._dropped_image_paths = []
+                self._exif_generation += 1
+                self._exif_pending = False
+                self.async_exif_scanner.stop_scan()
                 self.file_list_widget.clear()
                 self.fn_to_index.clear()
                 self.load_file(filename)
@@ -7438,6 +7674,26 @@ class LabelingWidget(LabelDialog):
         if not output_dir:
             return
 
+        if not self.may_continue():
+            return
+
+        current_filename = self.filename
+        if self.file_search.text() or self._view_timer.isActive() or not current_filename:
+            self._metadata_controller.cancel()
+            self._metadata_generation = None
+            self._metadata_timer.stop()
+            self.output_dir = output_dir
+            if current_filename:
+                keep_prev = self._config["keep_prev"]
+                self._config["keep_prev"] = False
+                try:
+                    self.load_file(current_filename)
+                finally:
+                    self._config["keep_prev"] = keep_prev
+            if self.last_open_dir:
+                self._start_view(self.last_open_dir, self.file_search.text(), False, False)
+            return
+
         self.output_dir = output_dir
 
         self.statusBar().showMessage(
@@ -7446,15 +7702,30 @@ class LabelingWidget(LabelDialog):
         )
         self.statusBar().show()
 
-        current_filename = self.filename
-        self.import_image_folder(self.last_open_dir, load=False)
-
-        if current_filename in self.image_list:
-            # retain currently selected file
-            self.file_list_widget.setCurrentRow(
-                self.fn_to_index[str(current_filename)]
-            )
-            self.file_list_widget.repaint()
+        self._pending_review_navigation = None
+        self._last_review_error = None
+        paths = [path for path in self.image_list if path != current_filename]
+        self._metadata_revisions = {}
+        self._metadata_results.clear()
+        self._metadata_errors = 0
+        self._metadata_error_paths.clear()
+        self._metadata_search_errors = 0
+        self._metadata_processed = 0
+        self._metadata_total = len(paths)
+        self._metadata_generation = self._metadata_controller.request(paths, output_dir, {})
+        self.file_list_widget.viewport().update()
+        # A directory switch must never copy shapes from the old directory.
+        keep_prev = self._config["keep_prev"]
+        self._config["keep_prev"] = False
+        try:
+            self.load_file(current_filename)
+        finally:
+            self._config["keep_prev"] = keep_prev
+        item = self._current_file_item()
+        if item is not None:
+            item.setCheckState(Qt.CheckState.Checked if self.label_file else Qt.CheckState.Unchecked)
+        self.status(self.tr("Checking annotations in background"))
+        self._metadata_timer.start()
 
     def save_file(self, _value=False):
         assert not self.image.isNull(), "cannot save empty image"
@@ -7616,9 +7887,12 @@ class LabelingWidget(LabelDialog):
             os.remove(label_file)
             logger.info(f"Label file is removed: {label_file}")
 
-            item = self.file_list_widget.currentItem()
-            item.setCheckState(Qt.CheckState.Unchecked)
-            self._set_file_item_checked(item, False)
+            item = self._current_file_item()
+            if item is not None:
+                item.setCheckState(Qt.CheckState.Unchecked)
+                self._set_file_item_checked(item, False)
+            if self.filename:
+                self._metadata_revisions[self.filename] = self._metadata_revisions.get(self.filename, 0) + 1
 
             filename = self.filename
             self.reset_state()
@@ -7679,7 +7953,7 @@ class LabelingWidget(LabelDialog):
             if self.filename is None:
                 filename = self.image_list[0]
             else:
-                current_index = self.fn_to_index[str(self.filename)]
+                current_index = self.fn_to_index.get(str(self.filename), -1)
                 if current_index + 1 < len(self.image_list):
                     filename = self.image_list[current_index + 1]
                 else:
@@ -7692,6 +7966,8 @@ class LabelingWidget(LabelDialog):
 
             self.filename = filename
             if self.filename:
+                self._view_first_pending = False
+                self._view_preserve = filename
                 self.load_file(self.filename)
 
     # Message Dialogs. #
@@ -7843,96 +8119,186 @@ class LabelingWidget(LabelDialog):
         return lst
 
     def import_dropped_image_files(self, image_files):
-        extensions = utils.get_supported_image_extensions()
-
-        self.filename = None
+        extensions = tuple(utils.get_supported_image_extensions())
+        self._cancel_pending_review()
+        if self._full_image_paths is None and not self._view_timer.isActive():
+            self._full_image_paths = self.image_list
+            if self.filename and self.filename not in self._full_image_paths:
+                self._full_image_paths.append(self.filename)
+            self._full_image_dir = self.last_open_dir or ""
+        known = set(self.image_list)
+        if self._full_image_paths is not None:
+            known.update(self._full_image_paths)
+        known.update(self._dropped_image_paths)
         valid_files = []
-        for file in image_files:
-            if file in self.image_list or not file.lower().endswith(
-                tuple(extensions)
-            ):
+        for path in image_files:
+            if path in known or not path.lower().endswith(extensions):
                 continue
-            valid_files.append(file)
-            label_file = osp.splitext(file)[0] + ".json"
-            if self.output_dir:
-                label_file_without_path = osp.basename(label_file)
-                label_file = self.output_dir + "/" + label_file_without_path
-            item = self._create_file_list_item(file, label_file)
-            self.file_list_widget.addItem(item)
-            self.fn_to_index[file] = self.file_list_widget.count() - 1
+            known.add(path)
+            valid_files.append(path)
+        if not valid_files:
+            return
 
-        if len(self.image_list) > 1:
-            self.actions.open_next_image.setEnabled(True)
-            self.actions.open_prev_image.setEnabled(True)
-            self.actions.open_next_unchecked_image.setEnabled(True)
-            self.actions.open_prev_unchecked_image.setEnabled(True)
+        self._dropped_image_paths.extend(valid_files)
+        if self._full_image_paths is not None:
+            self._full_image_paths.extend(valid_files)
+        elif not self.last_open_dir:
+            self._full_image_paths = self.image_list + valid_files
+            self._full_image_dir = ""
 
-        self.toggle_actions(True)
-        self.open_next_image()
+        # A fresh request applies exactly the same name/index/attribute rules
+        # to both scanned and dropped paths, even while a prior view drains.
+        directory = self.last_open_dir or self._full_image_dir or ""
+        self._start_view(directory, self.file_search.text(), False, False)
 
-        if valid_files and self._config.get("exif_scan_enabled", True):
+        if self._config.get("exif_scan_enabled", True):
             self.async_exif_scanner.start_scan(valid_files)
 
     def import_image_folder(self, dirpath, pattern=None, load=True):
-        if not self.may_continue() or not dirpath:
+        if not dirpath or not self.may_continue():
             return
-
         if self.compare_view_manager.is_active():
             self.close_compare_view(confirm=False)
-
-        self.last_open_dir = dirpath
-        # A new folder starts a new review round, so stale size groups from
-        # the previous dataset must not leak into it.
         self.shared_view_store.clear()
-        self.filename = None
-        self.update_browse_actions()
-        self.file_list_widget.clear()
-        image_files = []
+        self.last_open_dir = dirpath
+        self.async_exif_scanner.stop_scan()
+        self._exif_generation += 1
+        self._exif_pending = self._config.get("exif_scan_enabled", True)
+        self._full_image_paths = None
+        self._full_image_dir = None
+        self._dropped_image_paths = []
+        self._start_view(dirpath, pattern, load, True)
 
-        search_pattern = parse_search_pattern(pattern) if pattern else None
+    def _start_view(self, dirpath, pattern, load, new_directory):
+        self._metadata_controller.cancel()
+        self._metadata_generation = self._metadata_controller.generation
+        self._metadata_results.clear()
+        self._metadata_timer.stop()
+        self._pending_review_navigation = None
+        self._last_review_error = None
+        self._view_buffer.clear()
+        self._view_pending_dropped = []
+        self._view_finished = False
+        self._view_error_message = None
+        self._view_first_load = bool(load or (not new_directory and self.filename is None))
+        self._view_first_pending = new_directory or self.filename is None
+        self._view_preserve = None if new_directory else self.filename
+        if new_directory:
+            if self.filename is not None:
+                self.reset_state()
+                self.set_clean()
+                self.toggle_actions(False)
+                self.canvas.setEnabled(False)
+            self.filename = None
+            self.update_browse_actions()
+        with QtCore.QSignalBlocker(self.file_list_widget):
+            self.file_list_widget.clear()
+        self.fn_to_index.clear()
+        paths = self._full_image_paths if self._full_image_dir == dirpath else None
+        self._view_controller.request(
+            directory=dirpath,
+            extensions=utils.get_supported_image_extensions(),
+            paths=paths,
+            extra_paths=self._dropped_image_paths if paths is None else (),
+            output_dir=self.output_dir,
+            pattern=pattern,
+        )
+        self.status(self.tr("Scanning images and filtering"), 3000)
+        self._view_timer.start()
 
-        for file_index, filename in enumerate(
-            utils.scan_all_images(dirpath), start=1
-        ):
-            if search_pattern:
-                if search_pattern.mode == "index":
-                    if search_pattern.index != file_index:
-                        continue
+    def _poll_view(self):
+        if not self._view_buffer:
+            for _, kind, value in self._view_controller.poll():
+                if kind == "paths":
+                    scanned = set(value)
+                    self._full_image_paths = value + [
+                        path for path in self._dropped_image_paths if path not in scanned
+                    ]
+                    self._full_image_dir = self.last_open_dir
+                elif kind == "matches":
+                    self._view_buffer.extend(value)
+                elif kind == "done":
+                    self._view_finished = True
+                    self._view_errors = value
+                elif kind == "error":
+                    self._view_finished = True
+                    self._view_errors = 1
+                    self._view_error_message = value
+                    self.status(self.tr("Image scan failed: %s") % value, 10000)
+        with QtCore.QSignalBlocker(self.file_list_widget):
+            for _ in range(min(100, len(self._view_buffer))):
+                path = self._view_buffer.popleft()
+                if path in self.fn_to_index:
+                    continue
+                item = QtWidgets.QListWidgetItem(path)
+                flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+                if self._config.get("file_list_checkbox_editable", False):
+                    flags |= Qt.ItemFlag.ItemIsUserCheckable
+                item.setFlags(flags)
+                item.setCheckState(Qt.CheckState.PartiallyChecked)
+                self.file_list_widget.addItem(item)
+                self.fn_to_index[path] = self.file_list_widget.count() - 1
+                if path == self._view_preserve:
+                    self.file_list_widget.setCurrentItem(item)
+        if self._view_first_pending and self.file_list_widget.count():
+            self._view_first_pending = False
+            self.toggle_actions(True)
+            self.open_next_image(load=self._view_first_load)
+        if self._pending_review_navigation is not None:
+            self._continue_review_navigation()
+        if not self._view_finished or self._view_buffer:
+            self.status(
+                self.tr("Filtering images: %s matches so far") % self.file_list_widget.count(),
+                3000,
+            )
+        if self._view_finished and not self._view_buffer:
+            self._view_timer.stop()
+            if self._pending_review_navigation is not None:
+                self._continue_review_navigation()
+            paths = self.image_list
+            self.actions.open_next_image.setEnabled(bool(paths))
+            self.actions.open_prev_image.setEnabled(bool(paths))
+            self.actions.open_next_unchecked_image.setEnabled(bool(paths))
+            self.actions.open_prev_unchecked_image.setEnabled(bool(paths))
+            if not paths:
+                if self._view_error_message:
+                    self.status(self.tr("Image scan failed: %s") % self._view_error_message, 10000)
+                elif self._view_errors:
+                    self.status(self.tr("No matches; unreadable annotations: %s") % self._view_errors, 10000)
                 else:
-                    if not matches_filename(filename, search_pattern):
-                        continue
+                    self.status(self.tr("No matching images"), 5000)
+                return
+            self._metadata_revisions = {}
+            self._metadata_results.clear()
+            self._metadata_errors = self._view_errors
+            self._metadata_error_paths.clear()
+            self._metadata_search_errors = self._view_errors
+            self._metadata_processed = 0
+            self._metadata_total = len(paths)
+            self._metadata_generation = self._metadata_controller.request(paths, self.output_dir, {})
+            if self._pending_review_navigation is not None:
+                direction, anchor, _, index = self._pending_review_navigation
+                self._pending_review_navigation = (direction, anchor, self._metadata_generation, index)
+            if self.filename in self.fn_to_index and self.image_path:
+                item = self._current_file_item()
+                self._update_current_file_checked_item()
+                item.setCheckState(Qt.CheckState.Checked if self.label_file else Qt.CheckState.Unchecked)
+            self.file_list_widget.viewport().update()
+            self._metadata_timer.start()
+            if self._exif_pending:
+                generation = self._exif_generation
+                QtCore.QTimer.singleShot(150, lambda: self._start_pending_exif(generation))
 
-                    if search_pattern.mode == "attribute":
-                        label_file = osp.splitext(filename)[0] + ".json"
-                        if self.output_dir:
-                            label_file_without_path = osp.basename(label_file)
-                            label_file = (
-                                self.output_dir + "/" + label_file_without_path
-                            )
-
-                        if not matches_label_attribute(
-                            filename, label_file, search_pattern
-                        ):
-                            continue
-
-            image_files.append(filename)
-            label_file = osp.splitext(filename)[0] + ".json"
-            if self.output_dir:
-                label_file_without_path = osp.basename(label_file)
-                label_file = self.output_dir + "/" + label_file_without_path
-            item = self._create_file_list_item(filename, label_file)
-            self.file_list_widget.addItem(item)
-            self.fn_to_index[filename] = self.file_list_widget.count() - 1
-
-        self.actions.open_next_image.setEnabled(True)
-        self.actions.open_prev_image.setEnabled(True)
-        self.actions.open_next_unchecked_image.setEnabled(True)
-        self.actions.open_prev_unchecked_image.setEnabled(True)
-        self.toggle_actions(True)
-        self.open_next_image(load=load)
-
-        if image_files and self._config.get("exif_scan_enabled", True):
-            self.async_exif_scanner.start_scan(image_files)
+    def _start_pending_exif(self, generation):
+        if generation != self._exif_generation or not self._exif_pending:
+            return
+        thread = self.async_exif_scanner.thread
+        if thread is not None:
+            QtCore.QTimer.singleShot(200, lambda: self._start_pending_exif(generation))
+            return
+        self._exif_pending = False
+        if self._full_image_paths:
+            self.async_exif_scanner.start_scan(self._full_image_paths)
 
     def toggle_auto_labeling_widget(self):
         """Toggle auto labeling widget visibility."""

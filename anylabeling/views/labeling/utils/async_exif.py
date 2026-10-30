@@ -50,10 +50,14 @@ class AsyncExifScanner(QObject):
         super().__init__(parent)
         self.worker = None
         self.thread = None
+        self._pending_files = None
 
     def start_scan(self, image_files: List[str]):
-        if self.thread and self.thread.isRunning():
-            self.stop_scan()
+        if self.thread is not None:
+            self._pending_files = list(image_files)
+            if self.worker is not None:
+                self.worker.stop()
+            return
 
         self.thread = QtCore.QThread(self)
         self.worker = ExifScannerWorker(image_files)
@@ -61,38 +65,27 @@ class AsyncExifScanner(QObject):
 
         self.thread.started.connect(self.worker.scan_files)
         self.worker.exif_files_found.connect(self.exif_detected)
-        self.worker.scan_finished.connect(self._cleanup_thread)
+        self.worker.scan_finished.connect(self.thread.quit)
+        self.worker.scan_finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self._cleanup_thread)
 
         self.thread.start()
 
     def _cleanup_thread(self):
-        if self.worker:
-            try:
-                self.worker.scan_finished.disconnect(self._cleanup_thread)
-            except (RuntimeError, TypeError):
-                pass
-        if self.thread:
-            try:
-                if self.thread.isRunning():
-                    self.thread.quit()
-                    if not self.thread.wait(3000):
-                        self.thread.terminate()
-                        self.thread.wait()
-                self.thread.deleteLater()
-                self.thread = None
-            except RuntimeError:
-                self.thread = None
-        if self.worker:
-            try:
-                self.worker.deleteLater()
-            except RuntimeError:
-                pass
-            self.worker = None
+        thread = self.thread
+        self.thread = None
+        self.worker = None
+        if thread is not None:
+            thread.deleteLater()
+        pending = self._pending_files
+        self._pending_files = None
+        if pending is not None:
+            self.start_scan(pending)
 
     def stop_scan(self):
+        self._pending_files = None
         if self.worker:
             self.worker.stop()
-        self._cleanup_thread()
 
 
 class ExifProcessingDialog:

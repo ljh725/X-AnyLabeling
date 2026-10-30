@@ -237,6 +237,8 @@ def matches_label_attribute(
     image_file: str,
     label_file: str,
     search_pattern: SearchPattern,
+    *,
+    strict: bool = False,
 ) -> bool:
     """
     Check if label file contains shapes matching the attribute filter.
@@ -257,11 +259,6 @@ def matches_label_attribute(
 
     filter_type = search_pattern.attribute_filter["type"]
     filter_value = search_pattern.attribute_filter["value"]
-
-    if not osp.exists(label_file):
-        if filter_type == "checked":
-            return filter_value is False or filter_value == "unchecked"
-        return False
 
     try:
         with open(label_file, "r", encoding="utf-8") as f:
@@ -366,7 +363,13 @@ def matches_label_attribute(
             return False
 
         return False
-    except (json.JSONDecodeError, IOError, KeyError):
+    except FileNotFoundError:
+        if filter_type == "checked":
+            return filter_value is False or filter_value == "unchecked"
+        return False
+    except (ValueError, OSError, KeyError, TypeError, AttributeError):
+        if strict:
+            raise
         return False
 
 

@@ -1,0 +1,504 @@
+{
+  "date": "2026-10-30",
+  "upstream_baseline": "6d250499d2dd81f78723b9217c7a9abf0443ca25",
+  "previous_snapshot": "4043583b06d765875e263442920ddfe574b2cf20",
+  "note": "File A/M is distinct from feature classification. Existing tests are not revalidated by this inventory.",
+  "files": [
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/configs/xanylabeling_config.yaml",
+      "file_category": "upstream_file_modified",
+      "sha256": "a07cc0fafccec7cf60cd4eff94a71022d62b599dffafd3652ff6dc795dc2bc19",
+      "bytes": 5749,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/resources/resources.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "3a41f49ee31bfd85fc6062cd5cdf67a30d4ab35ac40ff1d2bfe2eeb9fd29f17f",
+      "bytes": 5875846,
+      "layer": "generated_or_translation"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/resources/translations/en_US.qm",
+      "file_category": "upstream_file_modified",
+      "sha256": "9b4ac0b32814f4a4ee6c7223d475fa36d7ea91904ac1286c37e47711f22b9f49",
+      "bytes": 235741,
+      "layer": "generated_or_translation"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/resources/translations/en_US.ts",
+      "file_category": "upstream_file_modified",
+      "sha256": "95b6bec6975e41275ce9efa7d6469b03401f7f9e6933663f55235b73a097c819",
+      "bytes": 471417,
+      "layer": "generated_or_translation"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/resources/translations/ja_JP.qm",
+      "file_category": "upstream_file_modified",
+      "sha256": "3f73007113d7ad129346ce53da3953396a8fa76f703a8e2d0f23810dcdb762b9",
+      "bytes": 194789,
+      "layer": "generated_or_translation"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/resources/translations/ja_JP.ts",
+      "file_category": "upstream_file_modified",
+      "sha256": "e0884be2e2aa1cfd91e007c0e7c8772251a100c4e9d4cb6448ef784425e23023",
+      "bytes": 500119,
+      "layer": "generated_or_translation"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/resources/translations/ko_KR.qm",
+      "file_category": "upstream_file_modified",
+      "sha256": "4a47e368d9fdb22b4c166c5ad8757193bf2666dc9e4de194420319c7eda12519",
+      "bytes": 194891,
+      "layer": "generated_or_translation"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/resources/translations/ko_KR.ts",
+      "file_category": "upstream_file_modified",
+      "sha256": "26c01fd05f4e9e41b6aade8dae97f51227736a6276ef18d4483a039dc0a6409a",
+      "bytes": 489251,
+      "layer": "generated_or_translation"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/resources/translations/zh_CN.qm",
+      "file_category": "upstream_file_modified",
+      "sha256": "19dd325b9e0c5dc747df0af0a477d3711ef05d30a90c7e3b9d038bdd4e2aeb7f",
+      "bytes": 174241,
+      "layer": "generated_or_translation"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/resources/translations/zh_CN.ts",
+      "file_category": "upstream_file_modified",
+      "sha256": "ce9cbd0ec9da626f68c1de0596ab9897d4c2a3e9d67da11cbe13c35cdd8c5349",
+      "bytes": 469519,
+      "layer": "generated_or_translation"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/editing_commands.py",
+      "file_category": "local_file_added",
+      "sha256": "d6be78244f90ee416fdb65fcb4361770f086d2f418beb6ef79c5d420cadc7885",
+      "bytes": 3747,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/views/labeling/label_file.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "8e55c579ff8b89073707ebf2ac785313944ae7e4b9db24ca627cbc41858f51c0",
+      "bytes": 9630,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/views/labeling/label_widget.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "8a76decf358b1917278368fb7b2ae9eb8e59c6227cb79d2fdbffe6404a7c4a11",
+      "bytes": 338441,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/rect_edge_click.py",
+      "file_category": "local_file_added",
+      "sha256": "8fd01b17b7f52acebb48fcaea161a1be7f2b660054103bfc0deea2a0e210c9fb",
+      "bytes": 1959,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/rectangle_size/__init__.py",
+      "file_category": "local_file_added",
+      "sha256": "b236dec4a541251b4f4bd9805b04e26b6d9509e3e90c2ef4a9a504484f185c3a",
+      "bytes": 1126,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/rectangle_size/config_codec.py",
+      "file_category": "local_file_added",
+      "sha256": "7994cc03fcf88de732d9766b61f54f282cba6d3a665eb6db055d3a20d3d08cd4",
+      "bytes": 9122,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/rectangle_size/evaluator.py",
+      "file_category": "local_file_added",
+      "sha256": "d1a7af9629bfff06858fef331e9abfa3ec7da28dd841dec884bfa2cfc23b4ad7",
+      "bytes": 7335,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/rectangle_size/layout.py",
+      "file_category": "local_file_added",
+      "sha256": "b2e22d8c78f0c4e16c9440aaca31bb2f3bc7008c609374e360df2716f01908a2",
+      "bytes": 14748,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/rectangle_size/models.py",
+      "file_category": "local_file_added",
+      "sha256": "83d881bd22e9a8c33daa3a2a5aed1a4ec4e924a03ea54bf94dcc54f00b0f03ab",
+      "bytes": 3119,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/views/labeling/settings/runtime_applier.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "5cf800a5b69ffabb719a28f1461e460dd0bdd7fc498ac0b90ebf2196da66a6ac",
+      "bytes": 27457,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/views/labeling/settings/schema.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "b111e64dd175de22648624c20046077ac97fad888326ff5a0ac8545684beb996",
+      "bytes": 54076,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/views/labeling/shape.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "c44b36f42b2a22fb401000c716775beeaba6d9700e168fa95fbbbfef61b42694",
+      "bytes": 32831,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/shape_filter.py",
+      "file_category": "local_file_added",
+      "sha256": "7442b00a4f68efda24e9a7f4ba03d1e6e3a2edaa066ceba542b74f19779c7e72",
+      "bytes": 1534,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/shape_identity.py",
+      "file_category": "local_file_added",
+      "sha256": "ae1efb212ee006d4ad485d19784d52770be921dcc38b3a443ab1b867f0366b1c",
+      "bytes": 5568,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/shared_view_state.py",
+      "file_category": "local_file_added",
+      "sha256": "27934fbe6d8630fbe65c23ac86094ed12827d8f42e59ce061e57e08734ec1242",
+      "bytes": 6157,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/views/labeling/utils/async_exif.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "04d77ec4a4af6324419261a2c33a747c875e881d025e6c20f42e76fef09b05ab",
+      "bytes": 5815,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/views/labeling/utils/file_search.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "98b60369185b40c02554738168ac7a41798b6d0132241bfb71d47aed801ed908",
+      "bytes": 14227,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/views/labeling/widgets/canvas.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "b8029aa786b361a4ba0e91ea8283721b6cd6629deda9c10e4f02cb50b369dfc8",
+      "bytes": 239182,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "anylabeling/views/labeling/widgets/label_dialog.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "627c9a847fa4ae9df658dae67964c170bc08df3f099d890b704610924b132bb1",
+      "bytes": 73088,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/widgets/point_fit.py",
+      "file_category": "local_file_added",
+      "sha256": "3c155635d1266176d68f02c30c2c713c75af8b969e3beda0bd1e54fa8af9e749",
+      "bytes": 7761,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/widgets/rectangle_creation.py",
+      "file_category": "local_file_added",
+      "sha256": "e11435d3990620d310db05c64925106f53fcd33c928d3810001cd7eee0063f74",
+      "bytes": 11434,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/widgets/rectangle_crosshair.py",
+      "file_category": "local_file_added",
+      "sha256": "7dca55ce43d9de9ef8231c33fb6d52150d9199d78a0720cd0a1092b16638612b",
+      "bytes": 4027,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/widgets/rectangle_edge.py",
+      "file_category": "local_file_added",
+      "sha256": "19b7513aaf35c310d74eb98075ff0135cf240ee21472ed8747500b2e6d328d6f",
+      "bytes": 8217,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/widgets/rectangle_extreme.py",
+      "file_category": "local_file_added",
+      "sha256": "3ee31004c50edb82338bb81c6eb28f54316dc82e15d05fc1f9026142989fad6a",
+      "bytes": 3071,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/widgets/rectangle_size_overlay.py",
+      "file_category": "local_file_added",
+      "sha256": "d7057d1107cd327e9b10cd0262de3fec24bf73010fe3ff06cfbecdf7a9995ae2",
+      "bytes": 11046,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/widgets/rectangle_size_rule_dialog.py",
+      "file_category": "local_file_added",
+      "sha256": "3b09d430819c9d1e14467fcadd52c035551f9295290520592e958a161d108ce5",
+      "bytes": 16399,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "scripts/compile_languages.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "6c5cf63cf4523081fe39048e8b386360727ac1aa6da691ee2993204896fba67e",
+      "bytes": 2860,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_canvas/test_label_visibility_mode.py",
+      "file_category": "local_file_added",
+      "sha256": "dc54c04e5f860ed88d465dff34acea334eb49abd2c5c53186b56c606860d9dd1",
+      "bytes": 3278,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "tests/test_canvas/test_navigation.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "0237a84d0151c25a75725c2a5f533c9b09f42a7d37f12bcbd4de765feddfe3e8",
+      "bytes": 28168,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_canvas/test_rectangle_creation_crosshair.py",
+      "file_category": "local_file_added",
+      "sha256": "3bfdcb26a0db73e680c8549d29ec0647b81de0507c2a7889e48f7e6e5c06a8e5",
+      "bytes": 6312,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_canvas/test_rectangle_edge_migration.py",
+      "file_category": "local_file_added",
+      "sha256": "ed25aa26d15b80a2f24000e707bfce2ffed2f8ae2645ffbbf71d62ed2fc33164",
+      "bytes": 10558,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_canvas/test_rectangle_extreme_creation.py",
+      "file_category": "local_file_added",
+      "sha256": "c7628f664c798189c99456e636dad1249a31f14daa7412f1fd03cc3394b55865",
+      "bytes": 7816,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_canvas/test_rectangle_size.py",
+      "file_category": "local_file_added",
+      "sha256": "9848b0c3d4d3ef4eff3d44c7062b1520019edfbaa99e69a06055142179aa5f15",
+      "bytes": 15714,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_canvas/test_selection_priority.py",
+      "file_category": "local_file_added",
+      "sha256": "77d88b7e7b005990e407253d77b6b8494610e23a7034e4f277446655b962f838",
+      "bytes": 3516,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_canvas/test_shape_identity.py",
+      "file_category": "local_file_added",
+      "sha256": "ffb1ab24a2c5c2c6b4cc4a1eab509b21ec59f390959f740b905344540a9cd7ed",
+      "bytes": 11075,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_canvas/test_shift_point_fit_geometry.py",
+      "file_category": "local_file_added",
+      "sha256": "f1500214f004b0f9b919e3b6ce58b3e7a484a99824af6381067c3f071b2561e9",
+      "bytes": 1453,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_canvas/test_shift_point_fit_interaction.py",
+      "file_category": "local_file_added",
+      "sha256": "a6cca38dcc476bf19de62ca04a7143324f42307caf34ba600a42f5f0b7f3678c",
+      "bytes": 9412,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_labeling/test_batch_edit_fields.py",
+      "file_category": "local_file_added",
+      "sha256": "cf411fe1ef0fc61688c20b8794391fcb2da93331903b8012db0d4bc590355934",
+      "bytes": 15032,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_labeling/test_candidate_review_regressions.py",
+      "file_category": "local_file_added",
+      "sha256": "4eae68988bbb144b4344e70fec9762648bd7a94351ae020b6d49f72207462aa2",
+      "bytes": 9528,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_labeling/test_digit_label_actions.py",
+      "file_category": "local_file_added",
+      "sha256": "2394903c9b27533ebcf3a76eb9c9296d2e1b639f2d482d561e88443861e7ec3c",
+      "bytes": 8143,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_labeling/test_edit_mode_shortcut.py",
+      "file_category": "local_file_added",
+      "sha256": "f2d69bbd8a1df49cdd33b0036e6a2755cc6d8cae7da42e831d3a13830ca4f18d",
+      "bytes": 1979,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_labeling/test_editing_command_scope.py",
+      "file_category": "local_file_added",
+      "sha256": "7b051bd5357050ab8247d0a26b840bc6154e0882c7b97edf2e3313eb9648b7b2",
+      "bytes": 1614,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "tests/test_labeling/test_label_locks.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "6fe21ab47e88018827fb49bea66da6f1a0409876aaa7016e0a13c71f6d2629c7",
+      "bytes": 12518,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "tests/test_labeling/test_label_widget_attributes.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "faf43692bf988cda18fd2d17e468876154584dbe31c6d992a49b8679c3782b79",
+      "bytes": 17274,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "tests/test_labeling/test_label_widget_groups.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "255e8f72e3c19b59434b67a145a755db620c5e98a1bd320613e6ee43e0ac5095",
+      "bytes": 2898,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_labeling/test_shape_filter.py",
+      "file_category": "local_file_added",
+      "sha256": "ce7d7a2cf5c01eb19ed56831d4c70eb9fdf3ff818a65fa68f4dc2efbab95d12e",
+      "bytes": 7801,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "tests/test_settings/test_runtime_applier.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "d58e51e6cc9044e8092dc152bcecffa707db9714fbfa4c16e13a1f086320c4f1",
+      "bytes": 6965,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "M",
+      "path": "tests/test_settings/test_schema.py",
+      "file_category": "upstream_file_modified",
+      "sha256": "3dc1962cfb3d8f5516f9c3451eb050504d6d44a92c9979b8e8383b3f55c02731",
+      "bytes": 5242,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_ui_density_extremes_repair.py",
+      "file_category": "local_file_added",
+      "sha256": "388dad463d980f31b4d5645159943956bcd8af61bd19c827d60027f58c60ceed",
+      "bytes": 3234,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "anylabeling/views/labeling/utils/staged_annotation_loading.py",
+      "file_category": "local_file_added",
+      "sha256": "f0a2b121a698bec8c969a89b6c584422d66a1d86ad4116a59d77a16e5d85aae1",
+      "bytes": 12067,
+      "layer": "source_or_build"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_staged_annotation_metadata.py",
+      "file_category": "local_file_added",
+      "sha256": "2f7c1cd93492700e85fe71909b7c3d109205901aaecad80475428f1d3c78c3f0",
+      "bytes": 8095,
+      "layer": "test"
+    },
+    {
+      "status_vs_upstream": "A",
+      "path": "tests/test_staged_output_window.py",
+      "file_category": "local_file_added",
+      "sha256": "629d92aac950e13a2f9328fb627277d15f2cd6bc7fc3cadd68a83c727bcba305",
+      "bytes": 27105,
+      "layer": "test"
+    }
+  ]
+}
