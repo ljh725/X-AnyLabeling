@@ -2533,7 +2533,12 @@ class Canvas(
 
         prev_hover_shape = self.h_shape
         self.prev_move_point = pos
-        self.repaint()
+        # CUSTOM-003: schedule instead of painting synchronously.  Branches
+        # below that change geometry request their own repaint, so the event
+        # loop paints the newest state once instead of painting the stale
+        # state first.  Hover-only paths rely on this request to clear the
+        # previous highlight.
+        self.update()
 
         # Handle auto decode mode
         if (
@@ -2671,7 +2676,7 @@ class Canvas(
                 self.is_move_editing = False
                 try:
                     self.bounded_move_vertex(pos)
-                    self.repaint()
+                    self.update()
                     self.moving_shape = True
                 except IndexError:
                     return
@@ -2702,7 +2707,7 @@ class Canvas(
                     self.h_shape, self.h_cuboid_face, offset
                 )
                 self.prev_point = pos
-                self.repaint()
+                self.update()
                 self.moving_shape = True
                 p1 = self.h_shape[0]
                 p2 = self.h_shape[2]
@@ -2718,7 +2723,7 @@ class Canvas(
                     return
                 self.override_cursor(CURSOR_MOVE)
                 self.bounded_move_shapes(self.selected_shapes, pos)
-                self.repaint()
+                self.update()
                 self.moving_shape = True
                 if self.selected_shapes[-1].shape_type == "rectangle":
                     p1 = self.selected_shapes[-1][0]
@@ -2753,7 +2758,7 @@ class Canvas(
                 self.h_cuboid_face = None
                 try:
                     self.bounded_move_vertex(pos)
-                    self.repaint()
+                    self.update()
                     self.moving_shape = True
                 except IndexError:
                     return
@@ -2783,7 +2788,7 @@ class Canvas(
                     self.h_shape, self.h_cuboid_face, offset
                 )
                 self.prev_point = pos
-                self.repaint()
+                self.update()
                 self.moving_shape = True
                 p1 = self.h_shape[0]
                 p2 = self.h_shape[2]

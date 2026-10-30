@@ -1,0 +1,102 @@
+{
+  "verdict": {
+    "none": {
+      "fixed_median_ms": [
+        10.379,
+        10.857
+      ],
+      "fixed_p95_ms": [
+        11.609,
+        15.289
+      ],
+      "baseline_median_ms": [
+        42.338,
+        42.144
+      ],
+      "baseline_p95_ms": [
+        44.004,
+        44.441
+      ],
+      "improvement_pct": [
+        75.5,
+        74.2
+      ]
+    },
+    "exif": {
+      "fixed_median_ms": [
+        10.827,
+        11.028
+      ],
+      "fixed_p95_ms": [
+        13.676,
+        14.756
+      ],
+      "baseline_median_ms": [
+        43.163,
+        44.261
+      ],
+      "baseline_p95_ms": [
+        46.837,
+        50.694
+      ],
+      "improvement_pct": [
+        74.9,
+        75.1
+      ]
+    },
+    "metadata": {
+      "fixed_median_ms": [
+        11.094,
+        12.201
+      ],
+      "fixed_p95_ms": [
+        17.118,
+        20.908
+      ],
+      "baseline_median_ms": [
+        43.314,
+        42.842
+      ],
+      "baseline_p95_ms": [
+        49.873,
+        48.595
+      ],
+      "improvement_pct": [
+        74.4,
+        71.5
+      ]
+    },
+    "both": {
+      "fixed_median_ms": [
+        11.863,
+        14.367
+      ],
+      "fixed_p95_ms": [
+        19.355,
+        24.587
+      ],
+      "baseline_median_ms": [
+        43.94,
+        43.709
+      ],
+      "baseline_p95_ms": [
+        54.379,
+        52.38
+      ],
+      "improvement_pct": [
+        73.0,
+        67.1
+      ]
+    }
+  },
+  "thresholds": {
+    "none_median_le_15": true,
+    "none_p95_le_25": true,
+    "none_improvement_ge_60": true,
+    "review_median_le_25": true,
+    "review_p95_le_40": true,
+    "size_spread_le_3": true,
+    "no_full_list_reads": true
+  },
+  "size_spread_ms": 0.26500000000000057
+}
