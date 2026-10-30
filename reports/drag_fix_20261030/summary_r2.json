@@ -1,0 +1,102 @@
+{
+  "verdict": {
+    "none": {
+      "fixed_median_ms": [
+        11.272,
+        11.273
+      ],
+      "fixed_p95_ms": [
+        13.832,
+        14.307
+      ],
+      "baseline_median_ms": [
+        44.534,
+        44.564
+      ],
+      "baseline_p95_ms": [
+        55.394,
+        56.235
+      ],
+      "improvement_pct": [
+        74.7,
+        74.7
+      ]
+    },
+    "exif": {
+      "fixed_median_ms": [
+        11.325,
+        13.157
+      ],
+      "fixed_p95_ms": [
+        17.039,
+        17.46
+      ],
+      "baseline_median_ms": [
+        43.871,
+        48.458
+      ],
+      "baseline_p95_ms": [
+        58.494,
+        60.757
+      ],
+      "improvement_pct": [
+        74.2,
+        72.8
+      ]
+    },
+    "metadata": {
+      "fixed_median_ms": [
+        12.069,
+        11.82
+      ],
+      "fixed_p95_ms": [
+        19.758,
+        21.162
+      ],
+      "baseline_median_ms": [
+        48.072,
+        45.605
+      ],
+      "baseline_p95_ms": [
+        60.555,
+        61.24
+      ],
+      "improvement_pct": [
+        74.9,
+        74.1
+      ]
+    },
+    "both": {
+      "fixed_median_ms": [
+        14.145,
+        14.195
+      ],
+      "fixed_p95_ms": [
+        21.049,
+        21.496
+      ],
+      "baseline_median_ms": [
+        48.153,
+        49.354
+      ],
+      "baseline_p95_ms": [
+        58.637,
+        59.701
+      ],
+      "improvement_pct": [
+        70.6,
+        71.2
+      ]
+    }
+  },
+  "thresholds": {
+    "none_median_le_15": true,
+    "none_p95_le_25": true,
+    "none_improvement_ge_60": true,
+    "review_median_le_25": true,
+    "review_p95_le_40": true,
+    "size_spread_le_3": true,
+    "no_full_list_reads": true
+  },
+  "size_spread_ms": 1.9529999999999994
+}

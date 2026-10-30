@@ -113,7 +113,22 @@ def pump_until(app, condition, limit=180):
             raise TimeoutError("background lifecycle did not finish")
 
 
-def build_window(app):
+def effective_config(snapshot_path):
+    """Return the exact config the window runs with, plus its fingerprint.
+
+    The template config, the saved user config and the benchmark overrides
+    (auto_save/keep_prev) all participate, so dumping the merged result is the
+    only way to prove two runs used the same display configuration.  When the
+    snapshot already exists it is reused verbatim and the user config is not
+    read again.
+    """
+    if snapshot_path is not None and snapshot_path.exists():
+        snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        config = copy.deepcopy(load_template_config())
+        config.clear()
+        config.update(snapshot)
+        return config, hashlib.sha256(snapshot_path.read_bytes()).hexdigest(), True
+
     config = copy.deepcopy(load_template_config())
     if USER_CONFIG.exists():
         app_config.update_dict(
@@ -123,12 +138,27 @@ def build_window(app):
             ),
         )
     config.update(auto_save=False, keep_prev=False)
+    payload = json.dumps(config, sort_keys=True, ensure_ascii=False, indent=2, default=str)
+    if snapshot_path is not None:
+        # Hash the file bytes, never the in-memory string: writing on Windows
+        # would otherwise turn \n into \r\n and give the same config a
+        # different fingerprint in the other tree.
+        snapshot_path.write_text(payload, encoding="utf-8", newline="\n")
+        return (
+            config,
+            hashlib.sha256(snapshot_path.read_bytes()).hexdigest(),
+            False,
+        )
+    return config, hashlib.sha256(payload.encode("utf-8")).hexdigest(), False
+
+
+def build_window(app, config):
     QtCore_settings(str(PROFILE / "settings.ini"), QtCore_settings.Format.IniFormat).clear()
     window = MainWindow(app, config=config)
     window.resize(*WINDOW_SIZE)
     window.show()
     app.processEvents()
-    return window, config
+    return window
 
 
 def reset_target(canvas, target, original_points):
@@ -225,14 +255,27 @@ def main():
     )
     parser.add_argument("--list-sizes", default="1,1000,11792")
     parser.add_argument("--skip-background", action="store_true")
+    parser.add_argument(
+        "--config-snapshot",
+        default="",
+        help="frozen effective config; written on the first run, reused afterwards",
+    )
     args = parser.parse_args()
 
     sys.addaudithook(audit)
     install_counters()
 
+    snapshot_path = HERE / args.config_snapshot if args.config_snapshot else None
+    config, config_sha, snapshot_loaded = effective_config(snapshot_path)
+    script_sha = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    print(
+        f"CONFIG snapshot={snapshot_path} sha256={config_sha} loaded={snapshot_loaded}",
+        flush=True,
+    )
+
     app = QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    window, _ = build_window(app)
+    window = build_window(app, config)
     widget: LabelingWidget = window.labeling_widget.view
     canvas = widget.canvas
     widget.output_dir = str(LABELS)
@@ -325,6 +368,18 @@ def main():
         "pyqt": QtCore.PYQT_VERSION_STR,
         "python": sys.version,
         "config_source": str(USER_CONFIG),
+        "config_source_sha256": (
+            hashlib.sha256(USER_CONFIG.read_bytes()).hexdigest()
+            if USER_CONFIG.exists()
+            else None
+        ),
+        "config_snapshot": str(snapshot_path) if snapshot_path else None,
+        "config_snapshot_sha256": config_sha,
+        "config_snapshot_loaded": snapshot_loaded,
+        "interpreter": sys.executable,
+        "argv": sys.argv,
+        "script": str(Path(__file__).resolve()),
+        "script_sha256": script_sha,
         "window": list(WINDOW_SIZE),
         "files": 11792,
         "image": str(IMAGE),

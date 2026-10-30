@@ -1,0 +1,2 @@
+cd D:/X-AnyLabeling-4.2.1
+QT_QPA_PLATFORM=offscreen C:/Users/20441/.conda/envs/x-anylabeling-cu12/python.exe -m pytest tests -p no:cacheprovider -q --tb=no -rfE --color=no --junitxml=reports/drag_fix_20261030/regression/fixed.xml > reports/drag_fix_20261030/regression/fixed.log 2>&1

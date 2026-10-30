@@ -1,10 +1,18 @@
-"""Build the CUSTOM-003 comparison table from the two benchmark runs."""
+"""Build the CUSTOM-003 comparison table from two benchmark runs.
+
+usage: summarize.py [fixed.json baseline.json prefix]
+The frozen-config re-run uses: summarize.py results_fixed_r2.json results_baseline_r2.json summary_r2
+"""
 import json
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-fixed = json.loads((HERE / "results_fixed.json").read_text(encoding="utf-8"))
-baseline = json.loads((HERE / "results_baseline.json").read_text(encoding="utf-8"))
+fixed_name = sys.argv[1] if len(sys.argv) > 1 else "results_fixed.json"
+baseline_name = sys.argv[2] if len(sys.argv) > 2 else "results_baseline.json"
+prefix = sys.argv[3] if len(sys.argv) > 3 else "summary"
+fixed = json.loads((HERE / fixed_name).read_text(encoding="utf-8"))
+baseline = json.loads((HERE / baseline_name).read_text(encoding="utf-8"))
 
 CONDITIONS = ["none", "exif", "metadata", "both"]
 
@@ -23,6 +31,7 @@ lines = []
 lines.append("# CUSTOM-003 benchmark comparison\n")
 lines.append(
     f"fixed: {fixed['date']} | baseline: {baseline['date']} | "
+    f"config snapshot: {fixed.get('config_snapshot_sha256', 'n/a')[:16]} | "
     f"Qt {fixed['qt']} / PyQt {fixed['pyqt']} | window {fixed['window']} | "
     f"files {fixed['files']} | shapes {fixed['shapes']} | moves {fixed['moves']} | rounds {fixed['rounds']}\n"
 )
@@ -103,8 +112,8 @@ lines.append("## Acceptance\n")
 for name, passed in thresholds.items():
     lines.append(f"- {name}: {'PASS' if passed else 'FAIL'}")
 
-(HERE / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-(HERE / "summary.json").write_text(
+(HERE / f"{prefix}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+(HERE / f"{prefix}.json").write_text(
     json.dumps({"verdict": verdict, "thresholds": thresholds, "size_spread_ms": spread}, indent=2),
     encoding="utf-8",
 )

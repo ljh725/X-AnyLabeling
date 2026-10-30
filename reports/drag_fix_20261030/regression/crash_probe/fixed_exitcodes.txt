@@ -1,0 +1,15 @@
+fixed tests/test_auto_labeling exit=1
+fixed tests/test_auto_training exit=1
+fixed tests/test_canvas exit=1
+fixed tests/test_config exit=0
+fixed tests/test_labeling exit=1
+fixed tests/test_models exit=0
+fixed tests/test_pointcloud exit=127
+fixed tests/test_ppocr exit=0
+fixed tests/test_settings exit=127
+fixed tests/test_utils exit=0
+fixed tests/test_updates exit=0
+fixed tests/test_widgets exit=1
+fixed tests/test_staged_annotation_metadata.py exit=0
+fixed tests/test_staged_output_window.py exit=0
+fixed tests/test_ui_density_extremes_repair.py exit=0

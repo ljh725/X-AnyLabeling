@@ -1,0 +1,30 @@
+[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                                    [100%][0m
+============================ slowest 30 durations =============================
+2.06s setup    tests/test_labeling/test_show_shape_status.py::test_fractional_values_keep_integer_formatting
+2.02s setup    tests/test_labeling/test_show_shape_status.py::test_text_does_not_depend_on_list_membership[current-present]
+1.99s setup    tests/test_labeling/test_show_shape_status.py::test_no_image_keeps_the_previous_status
+1.98s setup    tests/test_labeling/test_show_shape_status.py::test_text_does_not_depend_on_list_membership[empty]
+1.98s setup    tests/test_labeling/test_drag_commit.py::test_undo_is_available_after_the_drag
+1.97s setup    tests/test_labeling/test_drag_commit.py::test_autosave_runs_once_when_the_drag_is_released
+1.96s setup    tests/test_labeling/test_show_shape_status.py::test_large_dataset_slot_never_builds_the_list
+1.91s setup    tests/test_labeling/test_drag_commit.py::test_drag_survives_save_and_reopen
+1.90s setup    tests/test_labeling/test_show_shape_status.py::test_status_follows_repeated_reporting
+1.89s setup    tests/test_labeling/test_show_shape_status.py::test_text_does_not_depend_on_list_membership[current-missing]
+0.06s setup    tests/test_canvas/test_drag_refresh.py::test_moves_before_the_event_loop_are_coalesced
+0.05s call     tests/test_labeling/test_drag_commit.py::test_autosave_runs_once_when_the_drag_is_released
+0.05s call     tests/test_labeling/test_drag_commit.py::test_drag_survives_save_and_reopen
+0.04s teardown tests/test_labeling/test_show_shape_status.py::test_text_does_not_depend_on_list_membership[current-missing]
+0.03s teardown tests/test_labeling/test_show_shape_status.py::test_text_does_not_depend_on_list_membership[empty]
+0.03s teardown tests/test_labeling/test_show_shape_status.py::test_large_dataset_slot_never_builds_the_list
+0.03s teardown tests/test_labeling/test_show_shape_status.py::test_fractional_values_keep_integer_formatting
+0.03s teardown tests/test_labeling/test_drag_commit.py::test_drag_survives_save_and_reopen
+0.03s teardown tests/test_labeling/test_show_shape_status.py::test_no_image_keeps_the_previous_status
+0.03s teardown tests/test_labeling/test_drag_commit.py::test_autosave_runs_once_when_the_drag_is_released
+0.03s teardown tests/test_labeling/test_show_shape_status.py::test_text_does_not_depend_on_list_membership[current-present]
+0.03s teardown tests/test_labeling/test_show_shape_status.py::test_status_follows_repeated_reporting
+0.03s teardown tests/test_labeling/test_drag_commit.py::test_undo_is_available_after_the_drag
+0.01s call     tests/test_labeling/test_show_shape_status.py::test_large_dataset_slot_never_builds_the_list
+0.01s call     tests/test_labeling/test_drag_commit.py::test_undo_is_available_after_the_drag
+
+(5 durations < 0.005s hidden.  Use -vv to show these durations.)
+[32m[32m[1m21 passed[0m[32m in 22.72s[0m[0m

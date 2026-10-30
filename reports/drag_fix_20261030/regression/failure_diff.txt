@@ -1,0 +1,26 @@
+# 失败集合对照（CUSTOM-003 全量回归）
+
+fixed:    11 failed, 682 passed, 130 subtests passed in 122.82s (0:02:02)
+baseline: 12 failed, 660 passed, 130 subtests passed in 97.79s (0:01:37)
+
+计数口径：pytest 的 `N failed` = 用例级失败 + unittest 子测试失败条目数。fixed 为 9 个用例级失败 + 2 条子测试失败；baseline 为 10 + 2。
+
+## 仅修复后失败（潜在回归）
+- （无）
+
+## 仅基线失败（修复或偶发）
+- tests/test_widgets/test_canvas_adjustment.py::TestCanvasAdjustmentWidget::test_brightness_contrast_updates_are_throttled
+
+## 两树共有（既有失败）
+- tests/test_canvas/test_groups.py::TestCanvasGroups::test_shape_label_keeps_fixed_screen_size_while_zooming
+- tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_batch_edit_resets_only_shapes_with_changed_labels
+- tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_save_attributes_uses_standard_shape_serialization
+- tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_window_title_includes_annotation_checked_status
+- tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_valid_upload_rebuilds_open_attribute_panel
+- tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_streamed_body_contains_complete_video_data
+- tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_streaming_stops_when_cancelled
+- tests/test_widgets/test_toolbar_layout.py::TestToolBarLayout::test_first_tool_button_stays_inside_vertical_toolbar
+- tests/test_widgets/test_toolbar_layout.py::TestToolBarLayout::test_scaled_buttons_fit_after_actions_are_rebuilt
+
+## 子测试失败（两树相同）
+- tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_upload_preserves_auto_switch_signal_state
