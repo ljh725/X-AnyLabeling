@@ -1,9 +1,17 @@
 """Shift-click rectangle fitting for the labeling canvas."""
 
+import math
+
 from PyQt6 import QtCore, QtGui
 from PyQt6.QtCore import Qt
 
-from ..rect_edge_click import point_fit_decision, proposed_point_fit_box
+from ..rect_edge_click import (
+    OPPOSITE_CORNER,
+    corner_point,
+    point_fit_decision,
+    proposed_inward_point_fit_box,
+    proposed_point_fit_box,
+)
 from ..shape import Shape
 
 
@@ -18,6 +26,10 @@ class PointFitMixin:
         self._point_fit_start = None
         self._point_fit_pending_box = None
         self._point_fit_cursor = None
+        self._point_fit_anchor = None
+        self._point_fit_corner = None
+        self._point_fit_box = None
+        self._point_fit_inward = False
         if not keep_press:
             self._point_fit_pressed = False
         self.update()
@@ -57,32 +69,80 @@ class PointFitMixin:
     def _point_fit_valid_box(
         self, box: tuple[float, float, float, float]
     ) -> bool:
-        """Reject undersized or out-of-image fitting proposals."""
+        """Validate clipped proposals using the canvas image extent."""
         left, top, right, bottom = box
         return (
-            right - left >= 1
+            all(math.isfinite(value) for value in box)
+            and right - left >= 1
             and bottom - top >= 1
             and 0 <= left <= right <= self.pixmap.width()
             and 0 <= top <= bottom <= self.pixmap.height()
         )
 
-    def _update_point_fit(self, shape: Shape, pos: QtCore.QPointF) -> None:
+    def _point_fit_clamp_box(
+        self, box: tuple[float, float, float, float]
+    ) -> tuple[float, float, float, float] | None:
+        """Clip a proposal before checking its remaining image area."""
+        if not all(math.isfinite(value) for value in box):
+            return None
+        left, top, right, bottom = box
+        width, height = self.pixmap.width(), self.pixmap.height()
+        clipped = (
+            max(0.0, min(left, width)),
+            max(0.0, min(top, height)),
+            max(0.0, min(right, width)),
+            max(0.0, min(bottom, height)),
+        )
+        return clipped if self._point_fit_valid_box(clipped) else None
+
+    def _update_point_fit(
+        self, shape: Shape, pos: QtCore.QPointF, inward: bool = False
+    ) -> None:
         """Calculate a non-mutating preview for the selected rectangle."""
-        box = self._point_fit_shape_box(shape)
-        decision = point_fit_decision(box, (pos.x(), pos.y()), self.scale)
-        proposal = (
-            proposed_point_fit_box(box, decision.edge, (pos.x(), pos.y()))
-            if decision.edge is not None
-            else None
+        box = (
+            self._point_fit_box
+            if self._point_fit_pressed and self._point_fit_box is not None
+            else self._point_fit_shape_box(shape)
         )
+        point = (pos.x(), pos.y())
+        corner = (
+            self._point_fit_corner
+            if self._point_fit_pressed
+            else point_fit_decision(box, point, self.scale).edge
+        )
+        if self._point_fit_pressed:
+            inward = self._point_fit_inward
+        if corner is None:
+            proposal = None
+            anchor = None
+        else:
+            build = (
+                proposed_inward_point_fit_box
+                if inward
+                else proposed_point_fit_box
+            )
+            proposal = build(box, corner, point)
+            anchor = corner_point(
+                box,
+                corner if inward else OPPOSITE_CORNER[corner],
+            )
+        width, height = self.pixmap.width(), self.pixmap.height()
         self._point_fit_target = shape
-        self._point_fit_cursor = QtCore.QPointF(pos)
-        self._point_fit_pending_box = (
-            proposal
-            if proposal and self._point_fit_valid_box(proposal)
+        self._point_fit_cursor = QtCore.QPointF(
+            max(0.0, min(pos.x(), width)),
+            max(0.0, min(pos.y(), height)),
+        )
+        self._point_fit_anchor = (
+            (max(0.0, min(anchor[0], width)), max(0.0, min(anchor[1], height)))
+            if anchor is not None
             else None
         )
-        if decision.edge is None:
+        self._point_fit_pending_box = (
+            self._point_fit_clamp_box(proposal)
+            if proposal is not None
+            else None
+        )
+        if corner is None:
             hint = QtCore.QCoreApplication.translate(
                 "Canvas", "Unable to infer corner."
             )
@@ -112,7 +172,8 @@ class PointFitMixin:
         ):
             self._clear_point_fit(keep_press=self._point_fit_pressed)
             return self._point_fit_pressed
-        self._update_point_fit(shape, pos)
+        inward = bool(modifiers & Qt.KeyboardModifier.AltModifier)
+        self._update_point_fit(shape, pos, inward)
         return True
 
     def _point_fit_press(
@@ -122,9 +183,21 @@ class PointFitMixin:
         shape = self._point_fit_selected_rectangle()
         if not modifiers & Qt.KeyboardModifier.ShiftModifier or shape is None:
             return False
+        self._update_point_fit(
+            shape, pos, bool(modifiers & Qt.KeyboardModifier.AltModifier)
+        )
+        if self._point_fit_pending_box is None:
+            self._clear_point_fit()
+            return False
+        self._point_fit_box = self._point_fit_shape_box(shape)
+        self._point_fit_corner = point_fit_decision(
+            self._point_fit_box, (pos.x(), pos.y()), self.scale
+        ).edge
+        self._point_fit_inward = bool(
+            modifiers & Qt.KeyboardModifier.AltModifier
+        )
         self._point_fit_pressed = True
         self._point_fit_start = tuple((p.x(), p.y()) for p in shape.points)
-        self._update_point_fit(shape, pos)
         return True
 
     def _point_fit_release(
@@ -142,7 +215,8 @@ class PointFitMixin:
             and tuple((p.x(), p.y()) for p in shape.points) == start
         )
         if valid:
-            self._update_point_fit(shape, pos)
+            inward = bool(modifiers & Qt.KeyboardModifier.AltModifier)
+            self._update_point_fit(shape, pos, inward)
         proposal = self._point_fit_pending_box if valid else None
         changed = (
             proposal is not None
@@ -187,7 +261,7 @@ class PointFitMixin:
         return True
 
     def _paint_point_fit(self, painter: QtGui.QPainter) -> None:
-        """Draw the pending rectangle and point without modifying data."""
+        """Draw the pending rectangle, its fixed corner, and the point."""
         if self._point_fit_cursor is None:
             return
         painter.save()
@@ -207,6 +281,15 @@ class PointFitMixin:
             painter.drawRect(
                 QtCore.QRectF(left, top, right - left, bottom - top)
             )
+            if self._point_fit_anchor is not None:
+                anchor_x, anchor_y = self._point_fit_anchor
+                painter.setBrush(color)
+                painter.drawEllipse(
+                    QtCore.QPointF(anchor_x, anchor_y),
+                    3 / self.scale,
+                    3 / self.scale,
+                )
+                painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(
             self._point_fit_cursor, 4 / self.scale, 4 / self.scale
         )

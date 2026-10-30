@@ -164,10 +164,14 @@ class Canvas(
         self.selected_shapes = []  # save the selected shapes here
         self.selected_shapes_copy = []
         self._point_fit_pressed = False
+        self._point_fit_corner = None
+        self._point_fit_box = None
+        self._point_fit_inward = False
         self._point_fit_target = None
         self._point_fit_start = None
         self._point_fit_pending_box = None
         self._point_fit_cursor = None
+        self._point_fit_anchor = None
         self._rectangle_edge_enabled = False
         self._rectangle_edge_hover = None
         self._rectangle_edge_drag = None
@@ -2496,7 +2500,11 @@ class Canvas(
         if self._rectangle_edge_drag_move(pos, ev):
             ev.accept()
             return
-        if self._point_fit_move(pos, ev.modifiers()):
+        # A rejected point-fit press belongs to native selection/dragging.
+        # Only hover or an already captured fit may update the fit preview.
+        if (
+            self._point_fit_pressed or not ev.buttons()
+        ) and self._point_fit_move(pos, ev.modifiers()):
             if self._rectangle_edge_hover is not None:
                 self._rectangle_edge_cancel()
             ev.accept()

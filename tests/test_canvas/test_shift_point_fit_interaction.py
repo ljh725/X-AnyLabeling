@@ -51,6 +51,7 @@ def send(
     kind: QtCore.QEvent.Type,
     point: tuple[float, float],
     shift: bool = True,
+    alt: bool = False,
     buttons: QtCore.Qt.MouseButton | None = None,
 ) -> None:
     """Send a mouse event at an image-space position."""
@@ -66,11 +67,11 @@ def send(
             if kind == QtCore.QEvent.Type.MouseButtonPress
             else QtCore.Qt.MouseButton.NoButton
         )
-    modifiers = (
-        QtCore.Qt.KeyboardModifier.ShiftModifier
-        if shift
-        else QtCore.Qt.KeyboardModifier.NoModifier
-    )
+    modifiers = QtCore.Qt.KeyboardModifier.NoModifier
+    if shift:
+        modifiers |= QtCore.Qt.KeyboardModifier.ShiftModifier
+    if alt:
+        modifiers |= QtCore.Qt.KeyboardModifier.AltModifier
     event = QtGui.QMouseEvent(kind, pos, pos, button, buttons, modifiers)
     {
         QtCore.QEvent.Type.MouseMove: canvas.mouseMoveEvent,
@@ -217,12 +218,79 @@ def test_fit_records_one_undo_step_and_emits_moved(canvas: Canvas) -> None:
     assert moves == [True]
 
 
-def test_invalid_proposal_does_not_create_undo(canvas: Canvas) -> None:
-    """An out-of-image proposal is rejected without creating history."""
+@pytest.mark.parametrize(
+    ("point", "expected"),
+    [
+        ((-0.5, 120), (0, 120, 200, 200)),
+        ((310, 120), (100, 120, 300, 200)),
+        ((120, -0.5), (120, 0, 200, 200)),
+        ((120, 310), (120, 100, 200, 300)),
+        ((310, 310), (100, 100, 300, 300)),
+    ],
+)
+def test_outside_proposal_clamps_preview_commit_and_undo(
+    canvas: Canvas, point, expected
+) -> None:
+    """An outside click fits to the image boundary with one undo step."""
     baseline = len(canvas.shapes_backups)
-    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (310, 120))
-    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (310, 120))
+    send(canvas, QtCore.QEvent.Type.MouseMove, point)
+    assert canvas._point_fit_pending_box == expected
     assert coordinates(canvas.shapes[0]) == (100, 100, 200, 200)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, point)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, point)
+    assert coordinates(canvas.shapes[0]) == expected
+    assert len(canvas.shapes_backups) == baseline + 1
+    canvas.restore_shape()
+    assert coordinates(canvas.shapes[0]) == (100, 100, 200, 200)
+
+
+def test_release_outside_image_clamps_final_fit(canvas: Canvas) -> None:
+    """The release location is clamped even after an inside press."""
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (180, 120))
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (305, -0.5))
+    assert coordinates(canvas.shapes[0]) == (100, 0, 300, 200)
+
+
+def test_ambiguous_fit_falls_back_to_native_drag(canvas: Canvas) -> None:
+    """An invalid Shift fit leaves selection and the full drag usable."""
+    moves = []
+    canvas.shape_moved.connect(lambda: moves.append(True))
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (150, 120))
+    assert not canvas._point_fit_pressed
+    assert canvas._point_fit_pending_box is None
+    send(canvas, QtCore.QEvent.Type.MouseMove, (170, 130),
+         buttons=QtCore.Qt.MouseButton.LeftButton)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (170, 130))
+    assert coordinates(canvas.shapes[0]) == (120, 110, 220, 210)
+    assert moves == [True]
+    assert canvas.selected_shapes == [canvas.shapes[0]]
+    canvas.restore_shape()
+    assert coordinates(canvas.shapes[0]) == (100, 100, 200, 200)
+
+
+def test_fit_clamps_imported_outside_box(canvas: Canvas) -> None:
+    """Imported bounds are cropped when committing a valid fit."""
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(x, y) for x, y in
+                    ((-2, 100), (200, 100), (200, 302), (-2, 302))]
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (180, 120))
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (180, 120))
+    assert coordinates(shape) == (0, 120, 180, 300)
+    canvas.restore_shape()
+    assert coordinates(canvas.shapes[0]) == (-2, 100, 200, 302)
+
+
+def test_clipped_degenerate_fit_does_not_capture_press(canvas: Canvas) -> None:
+    """A proposal with no image area returns the gesture to selection."""
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(x, y) for x, y in
+                    ((-100, 100), (-20, 100), (-20, 200), (-100, 200))]
+    baseline = len(canvas.shapes_backups)
+    assert not canvas._point_fit_press(
+        QtCore.QPointF(-120, 80), QtCore.Qt.KeyboardModifier.ShiftModifier
+    )
+    assert not canvas._point_fit_pressed
+    assert canvas._point_fit_pending_box is None
     assert len(canvas.shapes_backups) == baseline
 
 
@@ -240,3 +308,105 @@ def test_ambiguous_hint_uses_compiled_chinese_translation(
         assert canvas.toolTip() == "无法判断角点。"
     finally:
         app.removeTranslator(translator)
+
+
+def test_alt_shift_fit_shrinks_to_the_clicked_quadrant(
+    canvas: Canvas,
+) -> None:
+    """Alt commits the smaller box an interior point can define."""
+    point = (120, 120)
+    send(canvas, QtCore.QEvent.Type.MouseMove, point, alt=True)
+    assert canvas._point_fit_pending_box == (100, 100, 120, 120)
+    assert canvas._point_fit_anchor == (100, 100)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, point, alt=True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, point, alt=True)
+    assert coordinates(canvas.shapes[0]) == (100, 100, 120, 120)
+    canvas.restore_shape()
+    assert coordinates(canvas.shapes[0]) == (100, 100, 200, 200)
+
+
+def test_alt_preview_keeps_the_rectangle_and_undo_untouched(
+    canvas: Canvas,
+) -> None:
+    """The inward preview never mutates data or records a snapshot."""
+    baseline = len(canvas.shapes_backups)
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 120), alt=True)
+    assert canvas._point_fit_pending_box == (180, 100, 200, 120)
+    assert coordinates(canvas.shapes[0]) == (100, 100, 200, 200)
+    assert len(canvas.shapes_backups) == baseline
+
+
+def test_default_preview_anchors_the_far_corner(canvas: Canvas) -> None:
+    """Without Alt the anchor stays at the opposite corner."""
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 120))
+    assert canvas._point_fit_pending_box == (100, 120, 180, 200)
+    assert canvas._point_fit_anchor == (100, 200)
+
+
+def test_releasing_alt_before_release_keeps_captured_mode(
+    canvas: Canvas,
+) -> None:
+    """An inward gesture keeps its mode after Alt is released."""
+    point = (120, 120)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, point, alt=True)
+    assert canvas._point_fit_pending_box == (100, 100, 120, 120)
+    send(
+        canvas,
+        QtCore.QEvent.Type.MouseMove,
+        point,
+        alt=False,
+        buttons=QtCore.Qt.MouseButton.LeftButton,
+    )
+    assert canvas._point_fit_pending_box == (100, 100, 120, 120)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, point, alt=False)
+    assert coordinates(canvas.shapes[0]) == (100, 100, 120, 120)
+
+
+def test_fit_keeps_anchor_across_centre_and_anchor(canvas: Canvas) -> None:
+    """Moving across the centre and anchor never chooses another corner."""
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (120, 120))
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 120),
+         buttons=QtCore.Qt.MouseButton.LeftButton)
+    assert canvas._point_fit_anchor == (200, 200)
+    assert canvas._point_fit_pending_box == (180, 120, 200, 200)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (220, 240))
+    assert coordinates(canvas.shapes[0]) == (200, 200, 220, 240)
+    canvas.restore_shape()
+    assert coordinates(canvas.shapes[0]) == (100, 100, 200, 200)
+
+
+def test_preview_markers_use_clipped_coordinates(canvas: Canvas) -> None:
+    """Both visible markers stay on the committed image-clipped geometry."""
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(x, y) for x, y in
+                    ((-2, 100), (200, 100), (200, 302), (-2, 302))]
+    send(canvas, QtCore.QEvent.Type.MouseMove, (310, -10))
+    assert canvas._point_fit_cursor == QtCore.QPointF(300, 0)
+    assert canvas._point_fit_anchor == (0, 300)
+    assert canvas._point_fit_pending_box == (0, 0, 300, 300)
+
+
+def test_alt_fit_outside_anchors_the_quadrant_corner(canvas: Canvas) -> None:
+    """Outside points keep the click-quadrant corner fixed as well."""
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (250, 50), alt=True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (250, 50), alt=True)
+    assert coordinates(canvas.shapes[0]) == (200, 50, 250, 100)
+
+
+def test_alt_fit_records_one_undo_step(canvas: Canvas) -> None:
+    """An inward fit is still a single undoable operation."""
+    baseline = len(canvas.shapes_backups)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (180, 180), alt=True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (180, 180), alt=True)
+    assert coordinates(canvas.shapes[0]) == (180, 180, 200, 200)
+    assert len(canvas.shapes_backups) == baseline + 1
+    canvas.restore_shape()
+    assert coordinates(canvas.shapes[0]) == (100, 100, 200, 200)
+
+
+def test_alt_fit_still_rejects_locked_shapes(canvas: Canvas) -> None:
+    """Locked rectangles stay unfittable in inward mode."""
+    canvas.shapes[0].locked = True
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (120, 120), alt=True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (120, 120), alt=True)
+    assert coordinates(canvas.shapes[0]) == (100, 100, 200, 200)
