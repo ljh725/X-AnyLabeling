@@ -6403,36 +6403,21 @@ class LabelingWidget(LabelDialog):
         - shape_width (float): The width of the shape.
         - pos (QPointF): The current mouse coordinates inside the shape.
         """
-        num_images = len(self.image_list)
+        # CUSTOM-003: this slot runs for every mouse move while dragging.
+        # Reading ``image_list`` here rebuilt the whole file list twice per
+        # move, so the cost grew with the dataset size.  The former
+        # "member/not member" branches produced identical text, so the list is
+        # no longer read at all.  Keep the integer formatting, the translated
+        # sources and the "no image, no update" behaviour unchanged.
         if shape_height > 0 and shape_width > 0:
-            if num_images and self.filename in self.image_list:
-                self.status(
-                    str(self.tr("X: %d, Y: %d | H: %d, W: %d"))
-                    % (
-                        int(pos.x()),
-                        int(pos.y()),
-                        shape_height,
-                        shape_width,
-                    )
-                )
-            else:
-                self.status(
-                    str(self.tr("X: %d, Y: %d | H: %d, W: %d"))
-                    % (int(pos.x()), int(pos.y()), shape_height, shape_width)
-                )
+            self.status(
+                str(self.tr("X: %d, Y: %d | H: %d, W: %d"))
+                % (int(pos.x()), int(pos.y()), shape_height, shape_width)
+            )
         elif self.image_path:
-            if num_images and self.filename in self.image_list:
-                self.status(
-                    str(self.tr("X: %d, Y: %d"))
-                    % (
-                        int(pos.x()),
-                        int(pos.y()),
-                    )
-                )
-            else:
-                self.status(
-                    str(self.tr("X: %d, Y: %d")) % (int(pos.x()), int(pos.y()))
-                )
+            self.status(
+                str(self.tr("X: %d, Y: %d")) % (int(pos.x()), int(pos.y()))
+            )
 
     def on_navigator_request(self, x_ratio, y_ratio):
         """Handle navigation request from navigator widget."""
