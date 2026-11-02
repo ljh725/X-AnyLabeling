@@ -1,3 +1,5 @@
+> **个人项目版本与备份**：请先查看[中文版本目录](版本与备份目录.md)，按 **4.0.0-beta.4 旧版 / 4.2.1 新版 / 官方原版** 选择入口。当前默认首页的程序代码仍是旧版。
+
 <div align="center">
   <p>
     <a href="https://github.com/CVHub520/X-AnyLabeling/" target="_blank">
