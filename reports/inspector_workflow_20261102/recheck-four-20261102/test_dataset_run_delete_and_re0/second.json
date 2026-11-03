@@ -1,1 +1,0 @@
-{"version": "4.2.1", "imageWidth": 64, "imageHeight": 64, "imagePath": "second.png", "imageData": null, "shapes": [{"label": "person", "shape_type": "rectangle", "points": [[8, 8], [24, 24]], "xanylabeling_shape_id": "other"}]}

@@ -1,0 +1,54 @@
+[
+  {
+    "id": "tests.test_canvas.test_groups.TestCanvasGroups::test_shape_label_keeps_fixed_screen_size_while_zooming",
+    "message": "AssertionError: 179 != 139"
+  },
+  {
+    "id": "tests.test_labeling.test_label_widget_attributes.TestLabelWidgetAttributes::test_batch_edit_resets_only_shapes_with_changed_labels",
+    "message": "AttributeError: 'types.SimpleNamespace' object has no attribute 'copy'"
+  },
+  {
+    "id": "tests.test_labeling.test_label_widget_attributes.TestLabelWidgetAttributes::test_save_attributes_uses_standard_shape_serialization",
+    "message": "AttributeError: 'types.SimpleNamespace' object has no attribute '_metadata_generation'"
+  },
+  {
+    "id": "tests.test_labeling.test_label_widget_metrics.TestLabelWidgetMetrics::test_window_title_includes_annotation_checked_status",
+    "message": "AssertionError: 'X-AnyLabeling - D:\\\\tmp\\\\image.jpg [Check Passed] [640x480] [2/10]' != 'X-AnyLabeling - /tmp/image.jpg [Check Passed] [640x480] [2/10]'\n- X-AnyLabeling - D:\\tmp\\image.jpg [Check Passed] [640x480] [2/10]\n?                 ^^^   ^\n+ X-AnyLabeling - /tmp/image.jpg [Check Passed] [640x480] [2/10]\n?                 ^   ^"
+  },
+  {
+    "id": "tests.test_labeling.test_upload_shape_attributes.TestUploadShapeAttributes::test_upload_preserves_auto_switch_signal_state",
+    "message": "AssertionError: False is not true"
+  },
+  {
+    "id": "tests.test_labeling.test_upload_shape_attributes.TestUploadShapeAttributes::test_valid_upload_rebuilds_open_attribute_panel",
+    "message": "AssertionError: unexpectedly identical: <PyQt6.QtWidgets.QWidget object at 0x00000220E71ADB30>"
+  },
+  {
+    "id": "tests.test_labeling.test_video_classifier_workers.TestStreamingVideoBody::test_streamed_body_contains_complete_video_data",
+    "message": "PermissionError: [Errno 13] Permission denied: 'D:\\\\X-AnyLabeling-4.2.1\\\\.local\\\\pytest\\\\tmp71moe0fu.mp4'"
+  },
+  {
+    "id": "tests.test_labeling.test_video_classifier_workers.TestStreamingVideoBody::test_streaming_stops_when_cancelled",
+    "message": "PermissionError: [Errno 13] Permission denied: 'D:\\\\X-AnyLabeling-4.2.1\\\\.local\\\\pytest\\\\tmp1ol0zyb7.mp4'"
+  },
+  {
+    "id": "tests.test_auto_labeling.test_remote_server.TestRemoteServerClassFilter::test_prediction_forwards_selected_classes",
+    "message": "PermissionError: [Errno 13] Permission denied: 'D:\\\\X-AnyLabeling-4.2.1\\\\.local\\\\pytest\\\\tmp8550_0uy.jpg'"
+  },
+  {
+    "id": "tests.test_auto_labeling.test_remote_server.TestRemoteServerClassFilter::test_selecting_all_classes_sends_empty_filter_override",
+    "message": "PermissionError: [Errno 13] Permission denied: 'D:\\\\X-AnyLabeling-4.2.1\\\\.local\\\\pytest\\\\tmpn7wd_9gn.jpg'"
+  },
+  {
+    "id": "tests.test_settings.test_schema.TestSettingsSchema::test_field_count",
+    "message": "AssertionError: 145 != 144"
+  },
+  {
+    "id": "tests.test_settings.test_schema.TestSettingsSchema::test_fields_for_primary",
+    "message": "AssertionError: 89 != 88"
+  },
+  {
+    "id": "tests.test_settings.test_schema.TestSettingsSchema::test_shortcut_and_non_shortcut_count",
+    "message": "AssertionError: 89 != 88"
+  }
+]

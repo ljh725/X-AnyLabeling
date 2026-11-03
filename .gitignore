@@ -182,3 +182,23 @@ pnnx*
 
 # calibration image
 calibration_*.npy
+
+# Local automation tools and isolated test runtime
+/.local/
+/.tooling/
+/.commandcode/
+/.dsh-asar-out/
+/.workbuddy/
+
+# Generated pytest workspaces. Keep reports, scripts and screenshots tracked.
+/reports/correction_cost_20261103/baseline-sandbox-retry/
+/reports/inspector_workflow_20261102/recheck-four-20261102/
+/reports/inspector_workflow_20261102/review-nov02-elevated/
+/reports/inspector_workflow_20261102/review-probes-final/
+/reports/inspector_workflow_20261102/review-probes-confirmed/
+/reports/correction_cost_20261103/pre-implementation-*/
+/reports/drag_diagnosis_20261029/profile/
+/reports/drag_fix_20261030/profile/
+/benchmarks/canvas_drawing_20261029/profile/
+/reports/ui_review_20261103/.xanylabelingrc
+/reports/**/pytest-runtime/

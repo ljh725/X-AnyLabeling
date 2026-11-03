@@ -1,0 +1,783 @@
+........................................................................ [  6%]
+........................................................................ [ 13%]
+........................................................................ [ 20%]
+.............F.......................................................... [ 27%]
+........................................................................ [ 34%]
+........................................................................ [ 41%]
+........................................................................ [ 48%]
+........................................................................ [ 55%]
+........................................................................ [ 62%]
+............................................................. [ 67%]
+........................................................................ [ 74%]
+....................................................... [ 80%]
+..............................F.....F.................. [ 85%]
+.......F.............................F............FF........................................................FF............... [ 97%]
+............s.....FF..F.....                                    [100%]
+================================== FAILURES ===================================
+___ TestCanvasGroups.test_shape_label_keeps_fixed_screen_size_while_zooming ___
+
+self = <test_groups.TestCanvasGroups testMethod=test_shape_label_keeps_fixed_screen_size_while_zooming>
+
+    def test_shape_label_keeps_fixed_screen_size_while_zooming(self):
+        shape = self.make_shape(20, 30, 30, 40, group_id=None)
+        shape.label = "dense_object_label"
+        shape.line_color = QtGui.QColor("#FF00FF")
+        self.canvas.shapes = [shape]
+        self.canvas.show_groups = False
+        self.canvas.show_texts = False
+        self.canvas.show_masks = False
+        self.canvas.show_attributes = False
+        self.canvas.cross_line_show = False
+        self.canvas.show()
+
+        widths = []
+        for scale in (1.0, 3.0):
+            self.canvas.scale = scale
+            self.canvas.update()
+            self.app.processEvents()
+            image = self.canvas.grab().toImage()
+            y = int(shape.bounding_rect().top() * scale) - 3
+            pixels = [
+                x
+                for x in range(image.width())
+                if image.pixelColor(x, y) == shape.line_color
+            ]
+            widths.append(pixels[-1] - pixels[0] + 1)
+
+>       self.assertEqual(widths[0], widths[1])
+E       AssertionError: 179 != 139
+
+tests\test_canvas\test_groups.py:131: AssertionError
+_ TestLabelWidgetAttributes.test_batch_edit_resets_only_shapes_with_changed_labels _
+
+self = <test_label_widget_attributes.TestLabelWidgetAttributes testMethod=test_batch_edit_resets_only_shapes_with_changed_labels>
+
+    def test_batch_edit_resets_only_shapes_with_changed_labels(self):
+        unchanged_shape = SimpleNamespace(
+            label="car",
+            flags={},
+            group_id=None,
+            description="",
+            difficult=False,
+            kie_linking=[],
+            other_data={},
+            attributes={"color": "blue"},
+        )
+        changed_shape = SimpleNamespace(
+            label="person",
+            flags={},
+            group_id=None,
+            description="",
+            difficult=False,
+            kie_linking=[],
+            other_data={},
+            attributes={"age": "adult"},
+        )
+
+        def reset_attribute(text, shape):
+            shape.attributes = {"color": "red"}
+            return text
+
+        widget = SimpleNamespace(
+            canvas=SimpleNamespace(
+                shapes=[unchanged_shape, changed_shape],
+                shapes_backups=[],
+                store_shapes=Mock(),
+                is_shape_restorable=False,
+                invalidate_rectangle_size_issues=Mock(),
+            ),
+            label_dialog=SimpleNamespace(
+                pop_up=Mock(
+                    return_value=("car", {}, None, "new", False, [])
+                ),
+                touched_fields=Mock(return_value={"label"}),
+                add_label_history=Mock(),
+                get_review_status=Mock(return_value="pending"),
+            ),
+            validate_label=Mock(return_value=True),
+            attributes={"car": {"color": ["red", "blue"]}},
+            reset_attribute=Mock(side_effect=reset_attribute),
+            _update_shape_color=Mock(),
+            label_list=SimpleNamespace(
+                find_item_by_shape=Mock(return_value=None)
+            ),
+            unique_label_list=SimpleNamespace(
+                find_items_by_label=Mock(return_value=[object()])
+            ),
+            actions=SimpleNamespace(undo=Mock()),
+            _config={"validate_label": None},
+            tr=lambda text: text,
+            set_dirty=Mock(),
+            _refresh_shape_filters=Mock(),
+        )
+        widget._resolve_label_attributes = (
+            lambda shape, label: LabelingWidget._resolve_label_attributes(
+                widget, shape, label
+            )
+        )
+        widget._apply_field_patch = (
+            lambda target, values, touched: LabelingWidget._apply_field_patch(
+                widget, target, values, touched
+            )
+        )
+
+>       LabelingWidget.batch_edit_labels(
+            widget, [unchanged_shape, changed_shape]
+        )
+
+tests\test_labeling\test_label_widget_attributes.py:248:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+anylabeling\views\labeling\label_widget.py:5933: in batch_edit_labels
+    changed = self._apply_field_patch(targets, values, touched)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_labeling\test_label_widget_attributes.py:243: in <lambda>
+    lambda target, values, touched: LabelingWidget._apply_field_patch(
+anylabeling\views\labeling\label_widget.py:5942: in _apply_field_patch
+    changed = apply_field_changes(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+canvas = namespace(shapes=[namespace(label='car', flags={}, group_id=None, description='', difficult=False, kie_linking=[], oth...hapes=<Mock id='2340186259280'>, is_shape_restorable=False, invalidate_rectangle_size_issues=<Mock id='2340186245120'>)
+shapes = [namespace(label='car', flags={}, group_id=None, description='', difficult=False, kie_linking=[], other_data={}, attri... flags={}, group_id=None, description='', difficult=False, kie_linking=[], other_data={}, attributes={'age': 'adult'})]
+values = {'description': 'new', 'difficult': False, 'flags': {}, 'group_id': None, ...}
+touched = {'label'}
+label_resolver = <function TestLabelWidgetAttributes.test_batch_edit_resets_only_shapes_with_changed_labels.<locals>.<lambda> at 0x00000220C1D10400>
+
+    def apply_field_changes(
+        canvas: Any,
+        shapes: Iterable[Shape],
+        values: Mapping[str, Any],
+        touched: Collection[str],
+        label_resolver: Callable[[Shape, str], str] | None = None,
+    ) -> list[Shape]:
+        """Patch only the explicitly touched fields of every target shape.
+
+        Args:
+            canvas: Canvas owning the shapes; targets outside it are ignored.
+            shapes: Shapes the user selected before opening the dialog.
+            values: Mapping of field name to the value read from the dialog.
+            touched: Field names the user actually changed in the dialog.
+            label_resolver: Optional callable ``(shape, label) -> label`` used to
+                resolve label-specific attributes per shape.
+
+        Returns:
+            The shapes that actually changed. No shape is mutated and no undo
+            step is recorded when nothing would change.
+        """
+        targets = [shape for shape in shapes if shape in canvas.shapes]
+        selected = [field for field in BATCH_FIELDS if field in touched]
+        review_touched = REVIEW_STATUS_FIELD in touched
+        if not targets or (not selected and not review_touched):
+            return []
+
+        patches = []
+        for shape in targets:
+            resolved_label = None
+            patch = {}
+            if "label" in selected:
+                resolved_label = values["label"]
+                if label_resolver is not None:
+>                   resolved_shape = shape.copy()
+                                     ^^^^^^^^^^
+E                   AttributeError: 'types.SimpleNamespace' object has no attribute 'copy'
+
+anylabeling\views\labeling\editing_commands.py:63: AttributeError
+_ TestLabelWidgetAttributes.test_save_attributes_uses_standard_shape_serialization _
+
+self = <test_label_widget_attributes.TestLabelWidgetAttributes testMethod=test_save_attributes_uses_standard_shape_serialization>
+label_file_class = <MagicMock name='LabelFile' id='2340184684736'>
+
+    @patch("anylabeling.views.labeling.label_widget.LabelFile")
+    def test_save_attributes_uses_standard_shape_serialization(
+        self, label_file_class
+    ):
+        shape = Shape(
+            label="car",
+            score=0.91,
+            shape_type="rotation",
+            direction=0.25,
+            attributes={"color": "red"},
+        )
+        shape.points = [QtCore.QPointF(1, 2), QtCore.QPointF(3, 4)]
+        shape.locked = True
+        shape.other_data = {"custom": "value"}
+        widget = SimpleNamespace(
+            image_path="/tmp/image.jpg",
+            output_dir=None,
+            actions=SimpleNamespace(save=Mock()),
+            flag_widget=SimpleNamespace(count=Mock(return_value=0)),
+            other_data={},
+            _annotation_checked=Mock(return_value=False),
+            _config={"store_data": False},
+            image_data=None,
+            image=SimpleNamespace(
+                height=Mock(return_value=100),
+                width=Mock(return_value=200),
+            ),
+            file_list_widget=SimpleNamespace(findItems=Mock(return_value=[])),
+            error_message=Mock(),
+        )
+
+>       result = LabelingWidget.save_attributes(widget, [shape])
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_labeling\test_label_widget_attributes.py:95:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = namespace(image_path='/tmp/image.jpg', output_dir=None, actions=namespace(save=<Mock id='2340184685360'>), flag_widget...340184680368'>), error_message=<Mock id='2340184678448'>, label_file=<MagicMock name='LabelFile()' id='2340184684448'>)
+_shapes = [<anylabeling.views.labeling.shape.Shape object at 0x00000220DC351190>]
+
+    def save_attributes(self, _shapes):
+        resolve_conflict = getattr(
+            self, "_dense_review_resolve_conflict", None
+        )
+        if resolve_conflict is not None and not resolve_conflict():
+            return False
+        prepare_save = getattr(self, "_dense_review_prepare_save", None)
+        if prepare_save is not None:
+            prepare_save()
+        filename = osp.splitext(self.image_path)[0] + ".json"
+        if self.output_dir:
+            label_file_without_path = osp.basename(filename)
+            filename = osp.join(self.output_dir, label_file_without_path)
+        label_file = LabelFile()
+
+        # Get current shapes
+        # Excluding auto labeling special shapes
+        shapes = [
+            shape.to_dict()
+            for shape in _shapes
+            if shape.label
+            not in [
+                AutoLabelingMode.OBJECT,
+                AutoLabelingMode.ADD,
+                AutoLabelingMode.REMOVE,
+            ]
+        ]
+        flags = {}
+        for i in range(self.flag_widget.count()):
+            item = self.flag_widget.item(i)
+            key = item.text()
+            flag = item.checkState() == Qt.CheckState.Checked
+            flags[key] = flag
+        self.other_data[CHECKED_FIELD] = self._annotation_checked()
+        try:
+            image_path = osp.relpath(self.image_path, osp.dirname(filename))
+            image_data = (
+                self.image_data if self._config["store_data"] else None
+            )
+            if osp.dirname(filename) and not osp.exists(osp.dirname(filename)):
+                os.makedirs(osp.dirname(filename))
+            label_file.save(
+                filename=filename,
+                shapes=shapes,
+                image_path=image_path,
+                image_data=image_data,
+                image_height=self.image.height(),
+                image_width=self.image.width(),
+                other_data=self.other_data,
+                flags=flags,
+            )
+            self.label_file = label_file
+>           if self._metadata_generation is not None and self.filename:
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'types.SimpleNamespace' object has no attribute '_metadata_generation'
+
+anylabeling\views\labeling\label_widget.py:6605: AttributeError
+_ TestLabelWidgetMetrics.test_window_title_includes_annotation_checked_status _
+
+self = <test_label_widget_metrics.TestLabelWidgetMetrics testMethod=test_window_title_includes_annotation_checked_status>
+
+    def test_window_title_includes_annotation_checked_status(self):
+        from anylabeling.views.labeling.label_widget import LabelingWidget
+
+        widget = SimpleNamespace(
+            filename="/tmp/image.jpg",
+            dirty=False,
+            image=SimpleNamespace(
+                isNull=lambda: False,
+                width=lambda: 640,
+                height=lambda: 480,
+            ),
+            get_image_progress_info=lambda: (2, 10),
+            tr=lambda text: text,
+        )
+
+        widget._annotation_checked_text = lambda: (
+            LabelingWidget._annotation_checked_text(widget)
+        )
+        for checked, status in (
+            (True, "Check Passed"),
+            (False, "Unchecked"),
+            ("failed", "Check Failed"),
+        ):
+            widget._annotation_checked = lambda value=checked: value
+            title = LabelingWidget._window_title(widget)
+>           self.assertEqual(
+                title,
+                f"X-AnyLabeling - /tmp/image.jpg [{status}] [640x480] [2/10]",
+            )
+E           AssertionError: 'X-AnyLabeling - D:\\tmp\\image.jpg [Check Passed] [640x480] [2/10]' != 'X-AnyLabeling - /tmp/image.jpg [Check Passed] [640x480] [2/10]'
+E           - X-AnyLabeling - D:\tmp\image.jpg [Check Passed] [640x480] [2/10]
+E           ?                 ^^^   ^
+E           + X-AnyLabeling - /tmp/image.jpg [Check Passed] [640x480] [2/10]
+E           ?                 ^   ^
+
+tests\test_labeling\test_label_widget_metrics.py:194: AssertionError
+_ TestUploadShapeAttributes.test_upload_preserves_auto_switch_signal_state (initially_enabled=False) _
+
+self = <test_upload_shape_attributes.TestUploadShapeAttributes testMethod=test_upload_preserves_auto_switch_signal_state>
+
+    def test_upload_preserves_auto_switch_signal_state(self):
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", encoding="utf-8"
+        ) as file:
+            json.dump({"car": {"color": ["red", "blue"]}}, file)
+            file.flush()
+
+            for initially_enabled in (False, True):
+                with self.subTest(initially_enabled=initially_enabled):
+                    canvas = _Canvas()
+                    canvas.shapes = []
+                    canvas.selected_shapes = []
+                    set_edit_mode = Mock()
+                    widget = SimpleNamespace(
+                        tr=lambda text: text,
+                        canvas=canvas,
+                        set_edit_mode=set_edit_mode,
+                        _auto_switch_signal_connected=False,
+                        _config={
+                            "auto_switch_to_edit_mode": initially_enabled
+                        },
+                        unique_label_list=SimpleNamespace(
+                            find_items_by_label=Mock(
+                                return_value=[object()]
+                            )
+                        ),
+                        shape_attributes=SimpleNamespace(show=Mock()),
+                        scroll_area=SimpleNamespace(show=Mock()),
+                        hide_attributes_panel=Mock(),
+                    )
+                    applier = SettingsRuntimeApplier(widget)
+                    widget._settings_runtime_applier = applier
+                    applier.set_auto_switch_to_edit_mode(initially_enabled)
+
+                    with patch.object(
+                        QtWidgets.QFileDialog,
+                        "getOpenFileName",
+                        return_value=(file.name, ""),
+                    ), patch(
+                        "anylabeling.views.labeling.utils.upload.Popup"
+                    ) as popup:
+                        upload_shape_attrs_file(widget, 128)
+                        upload_shape_attrs_file(widget, 128)
+
+                    calls = popup.return_value.show_popup.call_args_list
+                    self.assertEqual(len(calls), 2)
+>                   self.assertTrue(
+                        all(
+                            call.kwargs.get("popup_height") == 65
+                            for call in calls
+                        )
+                    )
+E                   AssertionError: False is not true
+
+tests\test_labeling\test_upload_shape_attributes.py:319: AssertionError
+_ TestUploadShapeAttributes.test_upload_preserves_auto_switch_signal_state (initially_enabled=True) _
+
+self = <test_upload_shape_attributes.TestUploadShapeAttributes testMethod=test_upload_preserves_auto_switch_signal_state>
+
+    def test_upload_preserves_auto_switch_signal_state(self):
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", encoding="utf-8"
+        ) as file:
+            json.dump({"car": {"color": ["red", "blue"]}}, file)
+            file.flush()
+
+            for initially_enabled in (False, True):
+                with self.subTest(initially_enabled=initially_enabled):
+                    canvas = _Canvas()
+                    canvas.shapes = []
+                    canvas.selected_shapes = []
+                    set_edit_mode = Mock()
+                    widget = SimpleNamespace(
+                        tr=lambda text: text,
+                        canvas=canvas,
+                        set_edit_mode=set_edit_mode,
+                        _auto_switch_signal_connected=False,
+                        _config={
+                            "auto_switch_to_edit_mode": initially_enabled
+                        },
+                        unique_label_list=SimpleNamespace(
+                            find_items_by_label=Mock(
+                                return_value=[object()]
+                            )
+                        ),
+                        shape_attributes=SimpleNamespace(show=Mock()),
+                        scroll_area=SimpleNamespace(show=Mock()),
+                        hide_attributes_panel=Mock(),
+                    )
+                    applier = SettingsRuntimeApplier(widget)
+                    widget._settings_runtime_applier = applier
+                    applier.set_auto_switch_to_edit_mode(initially_enabled)
+
+                    with patch.object(
+                        QtWidgets.QFileDialog,
+                        "getOpenFileName",
+                        return_value=(file.name, ""),
+                    ), patch(
+                        "anylabeling.views.labeling.utils.upload.Popup"
+                    ) as popup:
+                        upload_shape_attrs_file(widget, 128)
+                        upload_shape_attrs_file(widget, 128)
+
+                    calls = popup.return_value.show_popup.call_args_list
+                    self.assertEqual(len(calls), 2)
+>                   self.assertTrue(
+                        all(
+                            call.kwargs.get("popup_height") == 65
+                            for call in calls
+                        )
+                    )
+E                   AssertionError: False is not true
+
+tests\test_labeling\test_upload_shape_attributes.py:319: AssertionError
+__ TestUploadShapeAttributes.test_valid_upload_rebuilds_open_attribute_panel __
+
+self = <test_upload_shape_attributes.TestUploadShapeAttributes testMethod=test_valid_upload_rebuilds_open_attribute_panel>
+
+    def test_valid_upload_rebuilds_open_attribute_panel(self):
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", encoding="utf-8"
+        ) as file:
+            json.dump({"car": {"size": ["small", "large"]}}, file)
+            file.flush()
+            shape = SimpleNamespace(
+                label="car",
+                group_id=None,
+                attributes={"color": "red"},
+            )
+            canvas = SimpleNamespace(
+                shapes=[shape],
+                selected_shapes=[shape],
+                current=None,
+                h_shape_is_hovered=True,
+                update=Mock(),
+            )
+            widget = SimpleNamespace(
+                tr=lambda text: text,
+                attributes={"car": {"color": ["red", "blue"]}},
+                attribute_widget_types={},
+                unique_label_list=SimpleNamespace(
+                    find_items_by_label=Mock(return_value=[object()])
+                ),
+                shape_attributes=SimpleNamespace(show=Mock()),
+                scroll_area=QtWidgets.QScrollArea(),
+                canvas=canvas,
+                attribute_selection_changed=Mock(),
+                attribute_radio_changed=Mock(),
+                attribute_line_changed=Mock(),
+                save_attributes=Mock(),
+                show_attributes_panel=Mock(),
+                hide_attributes_panel=Mock(),
+                _settings_runtime_applier=SimpleNamespace(
+                    set_auto_switch_to_edit_mode=Mock()
+                ),
+            )
+            widget.update_attributes = MethodType(
+                LabelingWidget.update_attributes, widget
+            )
+            LabelingWidget.update_attributes(widget, 0)
+            old_container = widget.grid_layout_container
+
+            with patch.object(
+                QtWidgets.QFileDialog,
+                "getOpenFileName",
+                return_value=(file.name, ""),
+            ), patch("anylabeling.views.labeling.utils.upload.Popup"):
+                upload_shape_attrs_file(widget, 128)
+
+>           self.assertIsNot(widget.grid_layout_container, old_container)
+E           AssertionError: unexpectedly identical: <PyQt6.QtWidgets.QWidget object at 0x00000220E71ADB30>
+
+tests\test_labeling\test_upload_shape_attributes.py:261: AssertionError
+---------------------------- Captured stderr call -----------------------------
+2026-11-03 16:28:39,613 | ERROR   | upload:upload_shape_attrs_file:1887 Error occurred while uploading shape attributes file: [Errno 13] Permission denied: 'D:\\X-AnyLabeling-4.2.1\\.local\\pytest\\tmpz32d09hf.json'
+___ TestStreamingVideoBody.test_streamed_body_contains_complete_video_data ____
+
+self = <test_video_classifier_workers.TestStreamingVideoBody testMethod=test_streamed_body_contains_complete_video_data>
+
+    def test_streamed_body_contains_complete_video_data(self):
+        source_data = b"video-payload!"
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as source:
+            source.write(source_data)
+            source.flush()
+            worker = video_classifier_dialog.VideoDescriptionWorker(
+                source.name, None, "describe"
+            )
+            data = {
+                "video": "__XANYLABELING_VIDEO_DATA__",
+                "prompt": "describe",
+            }
+            with mock.patch.object(
+                video_classifier_dialog, "AI_VIDEO_CHUNK_BYTES", 6
+            ):
+                body = worker._request_body(data, source.name, "video/mp4")
+>               payload = b"".join(body)
+                          ^^^^^^^^^^^^^^
+
+tests\test_labeling\test_video_classifier_workers.py:34:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <anylabeling.views.labeling.widgets.video_classifier_dialog._StreamingVideoBody object at 0x00000220DDECAB40>
+
+    def __iter__(self):
+        yield self.prefix
+        yield self.header
+        remaining = self.source_size
+>       with open(self.source_path, "rb") as stream:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       PermissionError: [Errno 13] Permission denied: 'D:\\X-AnyLabeling-4.2.1\\.local\\pytest\\tmp71moe0fu.mp4'
+
+anylabeling\views\labeling\widgets\video_classifier_dialog.py:228: PermissionError
+_________ TestStreamingVideoBody.test_streaming_stops_when_cancelled __________
+
+self = <test_video_classifier_workers.TestStreamingVideoBody testMethod=test_streaming_stops_when_cancelled>
+
+    def test_streaming_stops_when_cancelled(self):
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as source:
+            source.write(b"video")
+            source.flush()
+            body = video_classifier_dialog._StreamingVideoBody(
+                source.name,
+                b'{"video":"',
+                b'"}',
+                "video/mp4",
+                lambda: True,
+            )
+            chunks = iter(body)
+            next(chunks)
+            next(chunks)
+            with self.assertRaisesRegex(
+                RuntimeError, video_classifier_dialog.AI_CANCELLED
+            ):
+>               next(chunks)
+
+tests\test_labeling\test_video_classifier_workers.py:60:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def __iter__(self):
+        yield self.prefix
+        yield self.header
+        remaining = self.source_size
+>       with open(self.source_path, "rb") as stream:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       PermissionError: [Errno 13] Permission denied: 'D:\\X-AnyLabeling-4.2.1\\.local\\pytest\\tmp1ol0zyb7.mp4'
+
+anylabeling\views\labeling\widgets\video_classifier_dialog.py:228: PermissionError
+____ TestRemoteServerClassFilter.test_prediction_forwards_selected_classes ____
+
+self = <test_remote_server.TestRemoteServerClassFilter testMethod=test_prediction_forwards_selected_classes>
+
+    def test_prediction_forwards_selected_classes(self):
+        self.model.set_model_id("yolo")
+        self.model.set_auto_labeling_filter_classes(["car"])
+        response = Mock()
+        response.json.return_value = {"data": {"shapes": []}}
+
+        with tempfile.NamedTemporaryFile(suffix=".jpg") as image_file:
+            image_file.write(b"image")
+            image_file.flush()
+            with patch(
+                "anylabeling.services.auto_labeling.remote_server.requests.post",
+                return_value=response,
+            ) as post:
+>               self.model.predict_shapes(object(), image_file.name)
+
+tests\test_auto_labeling\test_remote_server.py:50:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <anylabeling.services.auto_labeling.remote_server.RemoteServer object at 0x00000220E02CF430>
+image = <object object at 0x00000220EA8B2670>
+image_path = 'D:\\X-AnyLabeling-4.2.1\\.local\\pytest\\tmp8550_0uy.jpg'
+text_prompt = None, run_tracker = False
+
+    def predict_shapes(
+        self, image, image_path=None, text_prompt=None, run_tracker=False
+    ):
+        if image is None:
+            return AutoLabelingResult([], replace=self.replace)
+
+        if self.current_model_id is None:
+            logger.warning("No model selected")
+            return AutoLabelingResult([], replace=self.replace)
+
+        batch_mode = self.get_batch_processing_mode()
+        if batch_mode == "video" and text_prompt:
+            return self._handle_video_prompt(image_path, text_prompt)
+        elif batch_mode == "video" and self.marks:
+            result = self._handle_video_point_prompt(image_path)
+            if run_tracker:
+                logger.info("Starting video propagation after point prompt...")
+                return self._handle_video_propagation()
+            return result
+        elif batch_mode == "video" and run_tracker:
+            logger.info("Starting video propagation...")
+            return self._handle_video_propagation()
+
+        if image_path and os.path.exists(image_path):
+>           with open(image_path, "rb") as f:
+                 ^^^^^^^^^^^^^^^^^^^^^^
+E           PermissionError: [Errno 13] Permission denied: 'D:\\X-AnyLabeling-4.2.1\\.local\\pytest\\tmp8550_0uy.jpg'
+
+anylabeling\services\auto_labeling\remote_server.py:179: PermissionError
+_ TestRemoteServerClassFilter.test_selecting_all_classes_sends_empty_filter_override _
+
+self = <test_remote_server.TestRemoteServerClassFilter testMethod=test_selecting_all_classes_sends_empty_filter_override>
+
+    def test_selecting_all_classes_sends_empty_filter_override(self):
+        self.model.set_model_id("yolo")
+        self.model.set_auto_labeling_filter_classes(self.model.classes)
+        response = Mock()
+        response.json.return_value = {"data": {"shapes": []}}
+
+        with tempfile.NamedTemporaryFile(suffix=".jpg") as image_file:
+            image_file.write(b"image")
+            image_file.flush()
+            with patch(
+                "anylabeling.services.auto_labeling.remote_server.requests.post",
+                return_value=response,
+            ) as post:
+>               self.model.predict_shapes(object(), image_file.name)
+
+tests\test_auto_labeling\test_remote_server.py:68:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <anylabeling.services.auto_labeling.remote_server.RemoteServer object at 0x00000220E02CC050>
+image = <object object at 0x00000220EA8B0520>
+image_path = 'D:\\X-AnyLabeling-4.2.1\\.local\\pytest\\tmpn7wd_9gn.jpg'
+text_prompt = None, run_tracker = False
+
+    def predict_shapes(
+        self, image, image_path=None, text_prompt=None, run_tracker=False
+    ):
+        if image is None:
+            return AutoLabelingResult([], replace=self.replace)
+
+        if self.current_model_id is None:
+            logger.warning("No model selected")
+            return AutoLabelingResult([], replace=self.replace)
+
+        batch_mode = self.get_batch_processing_mode()
+        if batch_mode == "video" and text_prompt:
+            return self._handle_video_prompt(image_path, text_prompt)
+        elif batch_mode == "video" and self.marks:
+            result = self._handle_video_point_prompt(image_path)
+            if run_tracker:
+                logger.info("Starting video propagation after point prompt...")
+                return self._handle_video_propagation()
+            return result
+        elif batch_mode == "video" and run_tracker:
+            logger.info("Starting video propagation...")
+            return self._handle_video_propagation()
+
+        if image_path and os.path.exists(image_path):
+>           with open(image_path, "rb") as f:
+                 ^^^^^^^^^^^^^^^^^^^^^^
+E           PermissionError: [Errno 13] Permission denied: 'D:\\X-AnyLabeling-4.2.1\\.local\\pytest\\tmpn7wd_9gn.jpg'
+
+anylabeling\services\auto_labeling\remote_server.py:179: PermissionError
+_____________________ TestSettingsSchema.test_field_count _____________________
+
+self = <test_schema.TestSettingsSchema testMethod=test_field_count>
+
+    def test_field_count(self):
+>       self.assertEqual(len(SETTING_FIELDS), 144)
+E       AssertionError: 145 != 144
+
+tests\test_settings\test_schema.py:27: AssertionError
+_________________ TestSettingsSchema.test_fields_for_primary __________________
+
+self = <test_schema.TestSettingsSchema testMethod=test_fields_for_primary>
+
+    def test_fields_for_primary(self):
+        general_fields = fields_for_primary("General")
+        shape_fields = fields_for_primary("Shape")
+        shortcut_fields = fields_for_primary("Shortcuts")
+        canvas_fields = fields_for_primary("Canvas")
+        self.assertEqual(
+            [field.key for field in general_fields],
+            list(SETTINGS_GENERAL_KEYS),
+        )
+        self.assertEqual(
+            [field.key for field in shape_fields], list(SETTINGS_SHAPE_KEYS)
+        )
+        shape_keys = {field.key for field in shape_fields}
+        self.assertIn("shape.line_color", shape_keys)
+        self.assertIn("shape.point_size", shape_keys)
+        self.assertIn("shape.line_width", shape_keys)
+>       self.assertEqual(
+            len(shortcut_fields),
+            88,
+        )
+E       AssertionError: 89 != 88
+
+tests\test_settings\test_schema.py:110: AssertionError
+___________ TestSettingsSchema.test_shortcut_and_non_shortcut_count ___________
+
+self = <test_schema.TestSettingsSchema testMethod=test_shortcut_and_non_shortcut_count>
+
+    def test_shortcut_and_non_shortcut_count(self):
+        shortcut_fields = [
+            field for field in SETTING_FIELDS if field.primary == "Shortcuts"
+        ]
+>       self.assertEqual(len(shortcut_fields), 88)
+E       AssertionError: 89 != 88
+
+tests\test_settings\test_schema.py:33: AssertionError
+============================ slowest 30 durations =============================
+3.01s call     tests/test_labeling/test_image_switch.py::test_switch_drops_old_objects_and_batches_list_updates
+2.65s call     tests/test_labeling/test_optional_qtmultimedia.py::test_widgets_import_without_qtmultimedia
+2.58s call     tests/test_labeling/test_optional_qtmultimedia.py::test_unrelated_video_classifier_import_error_is_not_suppressed
+2.57s call     tests/test_canvas/test_navigation.py::test_shared_view_tracks_revisits_and_reset
+2.48s setup    tests/test_dense_review/test_workspace.py::test_configured_batches_keep_membership_after_relabel
+2.41s setup    tests/test_dense_review/test_workspace.py::test_full_image_roundtrip_restores_user_zoom
+2.31s setup    tests/test_dense_review/test_workspace.py::test_save_failure_keeps_memory_progress
+2.28s setup    tests/test_dense_review/test_workspace.py::test_new_copy_enters_pending_without_inheriting
+2.23s call     tests/test_canvas/test_navigation.py::test_image_switch_restores_fractional_zoom_and_pan_and_fit_resets
+2.22s setup    tests/test_inspection/test_inspector_dialog.py::test_resume_marks_changed_annotation_as_stale
+2.22s setup    tests/test_dense_review/test_workspace.py::test_hidden_and_filtered_objects_are_excluded_but_focus_is_not
+2.21s setup    tests/test_dense_review/test_workspace.py::test_relabel_move_and_undo_invalidate_progress
+2.20s setup    tests/test_labeling/test_image_switch.py::test_switch_drops_old_objects_and_batches_list_updates
+2.18s setup    tests/test_dense_review/test_workspace.py::test_dense_shortcuts_are_window_scoped
+2.18s setup    tests/test_labeling/test_check_status.py::test_check_status_actions_save_and_reload
+2.17s setup    tests/test_dense_review/test_workspace.py::test_main_window_undo_reverts_latest_move_after_manual_roundtrip
+2.16s setup    tests/test_labeling/test_candidate_review_regressions.py::test_failed_image_load_cancels_extreme_draft
+2.16s setup    tests/test_inspection/test_inspector_dialog.py::test_candidate_accept_uses_formal_shape_identity
+2.15s setup    tests/test_labeling/test_candidate_review_regressions.py::test_image_adjustment_preserves_extreme_draft
+2.15s setup    tests/test_dense_review/test_workspace.py::test_external_change_is_detected_before_save
+2.15s setup    tests/test_dense_review/test_workspace.py::test_changed_bounds_request_fresh_card
+2.13s setup    tests/test_labeling/test_candidate_review_regressions.py::test_extreme_available_on_first_blank_image
+2.13s setup    tests/test_labeling/test_candidate_review_regressions.py::test_size_warning_returns_after_filter_unhides_shape
+2.12s setup    tests/test_inspection/test_inspector_dialog.py::test_english_translations_cover_workbench
+2.10s setup    tests/test_labeling/test_drag_commit.py::test_undo_is_available_after_the_drag
+2.10s setup    tests/test_dense_review/test_workspace.py::test_closing_workspace_restores_canvas_and_writes_nothing
+2.10s setup    tests/test_inspection/test_inspector_dialog.py::test_feedback_and_navigation_keep_states_separate
+2.09s setup    tests/test_dense_review/test_workspace.py::test_output_directory_keeps_independent_progress
+2.09s setup    tests/test_inspection/test_inspector_dialog.py::test_inspector_entry_and_current_image_run
+2.09s setup    tests/test_labeling/test_candidate_review_regressions.py::test_close_image_cancels_extreme_draft
+=========================== short test summary info ===========================
+FAILED tests/test_canvas/test_groups.py::TestCanvasGroups::test_shape_label_keeps_fixed_screen_size_while_zooming - AssertionError: 179 != 139
+FAILED tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_batch_edit_resets_only_shapes_with_changed_labels - AttributeError: 'types.SimpleNamespace' object has no attribute 'copy'
+FAILED tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_save_attributes_uses_standard_shape_serialization - AttributeError: 'types.SimpleNamespace' object has no attribute '_metadata_...
+FAILED tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_window_title_includes_annotation_checked_status - AssertionError: 'X-AnyLabeling - D:\\tmp\\image.jpg [Check Passed] [640x480...
+SUBFAILED(initially_enabled=False) tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_upload_preserves_auto_switch_signal_state - AssertionError: False is not true
+SUBFAILED(initially_enabled=True) tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_upload_preserves_auto_switch_signal_state - AssertionError: False is not true
+FAILED tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_valid_upload_rebuilds_open_attribute_panel - AssertionError: unexpectedly identical: <PyQt6.QtWidgets.QWidget object at ...
+FAILED tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_streamed_body_contains_complete_video_data - PermissionError: [Errno 13] Permission denied: 'D:\\X-AnyLabeling-4.2.1\\.l...
+FAILED tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_streaming_stops_when_cancelled - PermissionError: [Errno 13] Permission denied: 'D:\\X-AnyLabeling-4.2.1\\.l...
+FAILED tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_prediction_forwards_selected_classes - PermissionError: [Errno 13] Permission denied: 'D:\\X-AnyLabeling-4.2.1\\.l...
+FAILED tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_selecting_all_classes_sends_empty_filter_override - PermissionError: [Errno 13] Permission denied: 'D:\\X-AnyLabeling-4.2.1\\.l...
+FAILED tests/test_settings/test_schema.py::TestSettingsSchema::test_field_count - AssertionError: 145 != 144
+FAILED tests/test_settings/test_schema.py::TestSettingsSchema::test_fields_for_primary - AssertionError: 89 != 88
+FAILED tests/test_settings/test_schema.py::TestSettingsSchema::test_shortcut_and_non_shortcut_count - AssertionError: 89 != 88
+14 failed, 1031 passed, 1 skipped, 143 subtests passed in 157.51s (0:02:37)

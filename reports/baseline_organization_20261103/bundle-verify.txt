@@ -1,0 +1,6 @@
+The bundle contains these 2 refs:
+6b98b76eefd06e499089fbb2082e18dde98aeea4 refs/heads/feat/ui-polish-p2
+6b98b76eefd06e499089fbb2082e18dde98aeea4 refs/tags/backup/4.2.1-20261103-pre-baseline-cleanup
+The bundle records a complete history.
+The bundle uses this hash algorithm: sha1
+backups/4.2.1-20261103-pre-baseline-cleanup.bundle is okay

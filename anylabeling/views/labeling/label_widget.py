@@ -76,7 +76,11 @@ from ...services.dense_review.storage import (
 )
 from .label_file import LabelFile, LabelFileError
 from .editing_commands import apply_field_changes, store_undo_step
-from .correction_metrics.hooks import notify_metrics
+from .correction_metrics.hooks import (
+    metrics_available,
+    metrics_pending_message,
+    notify_metrics,
+)
 from .logger import logger
 from .schema import IMAGE_TAGS_FIELD
 from .settings import SettingsController, SettingsDialog
@@ -1357,6 +1361,11 @@ class LabelingWidget(LabelDialog):
             shortcuts.get("open_correction_metrics"),
             icon="list-checks",
         )
+        if not metrics_available():
+            open_correction_metrics.setEnabled(False)
+            open_correction_metrics.setToolTip(
+                metrics_pending_message(self._config.get("language"))
+            )
         open_pointcloud = action(
             self.tr("Point Cloud"),
             self.open_pointcloud,
@@ -4120,6 +4129,11 @@ class LabelingWidget(LabelDialog):
         self.set_dirty()
 
     def open_correction_metrics(self):
+        if not metrics_available():
+            self.status(
+                metrics_pending_message(self._config.get("language")), 5000
+            )
+            return
         if self.correction_metrics is not None:
             self.correction_metrics.show_panel()
             return
