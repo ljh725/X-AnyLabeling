@@ -14,6 +14,8 @@ sys.path.insert(0, HERE)
 from PyQt6 import QtCore, QtGui, QtWidgets  # noqa: E402
 
 import render_ui  # noqa: E402
+
+OUTDIR = os.environ.get("UI_REVIEW_OUT", HERE)
 from anylabeling.views.labeling.utils.theme import (  # noqa: E402
     get_app_stylesheet,
     get_dark_palette,
@@ -60,7 +62,7 @@ def main():
     if dialog.issue_table.rowCount():
         dialog.issue_table.selectRow(0)
         pump(app)
-    dialog.grab().save(os.path.join(HERE, "07_inspector_dark.png"))
+    dialog.grab().save(os.path.join(OUTDIR, "06_inspector_dark.png"))
     dialog.close()
 
     view.open_dense_review()
@@ -69,7 +71,7 @@ def main():
     workspace.setMinimumSize(1280, 860)
     workspace.resize(1280, 860)
     pump(app, 40)
-    workspace.grab().save(os.path.join(HERE, "08_dense_dark.png"))
+    workspace.grab().save(os.path.join(OUTDIR, "08_dense_dark.png"))
     print("saved dark renders")
 
 

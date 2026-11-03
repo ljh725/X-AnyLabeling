@@ -100,3 +100,4 @@
 | 2026-11-02 | 恢复核验纳入未保存画布 | 增加规范化 shape 摘要与 memory_files 对照；未保存变化 pending，磁盘/配置变化 stale | 80 项新测试通过 |
 | 2026-11-02 | 密集复核交接可用 | `handoff.py` 改为 `dense_review_available=True`、`dense-review.v1`；更新交接测试 | `tests/test_inspection` 80 passed；真实交接 UI 未人工验证 |
 | 2026-11-03 | UI 重构（P0） | 接入 `get_dialog_style()` + `get_workbench_qss()`；工具条两行化；外部候选并入右栏标签；问题表改 5 列自适应；五轴改徽标行；按钮主次变体；空状态与运行后自动选中 | `tests/test_inspection` 80 passed；截图见 `reports/ui_review_20261103/`；详见 [实施记录](../../reports/ui_review_20261103/UI-IMPLEMENTATION.md) |
+| 2026-11-03 | UI 打磨（P2，`feat/ui-polish-p2`） | 详情改六节结构并全部走主题色；`F5` 开始检查、表格内 `Enter` 定位；118 处界面文案包 `tr()`、标签字典改 `QT_TRANSLATE_NOOP`；主操作图标；en_US/zh_CN 翻译补全至 2500 条 | `tests/test_inspection` 83 passed；见 [验证](../../openspec/changes/polish-inspector-dense-review-ui/verification.md) 与 [P2 实施记录](../../reports/ui_review_20261103/UI-P2-IMPLEMENTATION.md) |

@@ -15,6 +15,7 @@ from anylabeling.services.inspection.candidates import Candidate
 from anylabeling.services.inspection.models import Decision
 from anylabeling.views.labeling.settings.schema import load_template_config
 from anylabeling.views.mainwindow import MainWindow
+from anylabeling.views.labeling.utils.theme import DARK
 from PIL import Image
 
 
@@ -119,9 +120,10 @@ def test_inspector_entry_and_current_image_run(window, tmp_path):
     assert dialog.storage is not None
     reports = dialog.storage.reports.list_reports()
     assert reports
-    assert dialog.storage.reports.load_manifest(
-        reports[0]["run_id"]
-    ).file_count == 1
+    assert (
+        dialog.storage.reports.load_manifest(reports[0]["run_id"]).file_count
+        == 1
+    )
     dialog.report = None
     dialog._resume_last()
     assert dialog.report is not None
@@ -149,14 +151,15 @@ def test_feedback_and_navigation_keep_states_separate(window, tmp_path):
     issue = dialog.report.issues[0]
     assert issue.decision is Decision.FALSE_POSITIVE
     snapshot = dialog.storage.feedback.load()
-    assert snapshot.records[issue.family_key].decision is Decision.FALSE_POSITIVE
+    assert (
+        snapshot.records[issue.family_key].decision is Decision.FALSE_POSITIVE
+    )
     assert dialog._session is not None
 
     dialog._locate_selected()
     app.processEvents()
     selected_ids = {
-        shape.xanylabeling_shape_id
-        for shape in widget.canvas.selected_shapes
+        shape.xanylabeling_shape_id for shape in widget.canvas.selected_shapes
     }
     assert selected_ids == {"id1", "id2"}
     widget.canvas.shape_moved.emit()
@@ -182,8 +185,7 @@ def test_delete_only_removes_canvas_selected_issue_object(window, tmp_path):
     dialog.issue_table.selectRow(0)
     app.processEvents()
     shapes = {
-        shape.xanylabeling_shape_id: shape
-        for shape in widget.canvas.shapes
+        shape.xanylabeling_shape_id: shape for shape in widget.canvas.shapes
     }
     widget.canvas.select_shapes([shapes["id1"]])
     app.processEvents()
@@ -195,9 +197,7 @@ def test_delete_only_removes_canvas_selected_issue_object(window, tmp_path):
     ):
         dialog._delete_selected()
     app.processEvents()
-    remaining = {
-        shape.xanylabeling_shape_id for shape in widget.canvas.shapes
-    }
+    remaining = {shape.xanylabeling_shape_id for shape in widget.canvas.shapes}
     assert remaining == {"id2"}
 
 
@@ -211,9 +211,7 @@ def test_resume_marks_changed_annotation_as_stale(window, tmp_path):
     dialog.profile_combo.setCurrentIndex(
         dialog.profile_combo.findData("generic")
     )
-    dialog.scope_combo.setCurrentIndex(
-        dialog.scope_combo.findData("dataset")
-    )
+    dialog.scope_combo.setCurrentIndex(dialog.scope_combo.findData("dataset"))
     dialog._start_run()
     assert _wait_until(app, lambda: dialog.report is not None)
     dialog.issue_table.selectRow(0)
@@ -250,9 +248,7 @@ def test_resume_keeps_unsaved_canvas_edit_pending(window, tmp_path):
     dialog.profile_combo.setCurrentIndex(
         dialog.profile_combo.findData("generic")
     )
-    dialog.scope_combo.setCurrentIndex(
-        dialog.scope_combo.findData("dataset")
-    )
+    dialog.scope_combo.setCurrentIndex(dialog.scope_combo.findData("dataset"))
     dialog._start_run()
     assert _wait_until(app, lambda: dialog.report is not None)
     dialog.issue_table.selectRow(0)
@@ -332,9 +328,7 @@ def test_dataset_run_delete_and_recheck_marks_not_detected(window, tmp_path):
     assert widget.load_file(image_path)
     widget.open_inspector()
     dialog = widget.inspector_dialog
-    dialog.scope_combo.setCurrentIndex(
-        dialog.scope_combo.findData("dataset")
-    )
+    dialog.scope_combo.setCurrentIndex(dialog.scope_combo.findData("dataset"))
     dialog.profile_combo.setCurrentIndex(
         dialog.profile_combo.findData("generic")
     )
@@ -403,7 +397,76 @@ def test_candidate_accept_uses_formal_shape_identity(window, tmp_path):
         for shape in widget.canvas.shapes
         if shape.xanylabeling_shape_id == shape_id
     )
-    assert (
-        accepted.attributes["inspection_candidate_id"] == "candidate-1"
-    )
+    assert accepted.attributes["inspection_candidate_id"] == "candidate-1"
     assert accepted.label == "person"
+
+
+def test_detail_sections_follow_theme(window, tmp_path, monkeypatch):
+    app = QtWidgets.QApplication.instance()
+    widget = window.labeling_widget.view
+    image_path = _prepare_image(tmp_path)
+    assert widget.load_file(image_path)
+    widget.open_inspector()
+    dialog = widget.inspector_dialog
+    index = dialog.profile_combo.findData("generic")
+    dialog.profile_combo.setCurrentIndex(index)
+    dialog._start_run()
+    assert _wait_until(app, lambda: dialog.report is not None)
+    assert dialog.issue_table.rowCount() >= 1
+    dialog.issue_table.selectRow(0)
+    app.processEvents()
+    text = dialog.details.toPlainText()
+    for title in ("规则命中", "位置", "建议", "状态", "备注"):
+        assert title in text
+    from anylabeling.views.labeling.inspector import dialog as dialog_module
+
+    monkeypatch.setattr(dialog_module, "get_theme", lambda: DARK)
+    dialog._show_selected_details()
+    html_text = dialog.details.toHtml().lower()
+    assert DARK["text_secondary"].lower() in html_text
+    assert DARK["text"].lower() in html_text
+
+
+def test_english_translations_cover_workbench(window, tmp_path):
+    app = QtWidgets.QApplication.instance()
+    translator = QtCore.QTranslator()
+    assert translator.load(":/languages/translations/en_US.qm")
+    app.installTranslator(translator)
+    try:
+        widget = window.labeling_widget.view
+        assert widget.load_file(_prepare_image(tmp_path))
+        widget.open_inspector()
+        dialog = widget.inspector_dialog
+        assert dialog.start_button.text() == "Start inspection"
+        assert dialog.issue_table.horizontalHeaderItem(0).text() == "Risk"
+    finally:
+        app.removeTranslator(translator)
+
+
+def test_inspector_shortcuts_scope_and_start(window, tmp_path):
+    app = QtWidgets.QApplication.instance()
+    widget = window.labeling_widget.view
+    image_path = _prepare_image(tmp_path)
+    assert widget.load_file(image_path)
+    widget.open_inspector()
+    dialog = widget.inspector_dialog
+    assert dialog.start_shortcut.key().toString() == "F5"
+    assert dialog.start_shortcut.context() == (
+        QtCore.Qt.ShortcutContext.WindowShortcut
+    )
+    assert dialog.locate_shortcut.context() == (
+        QtCore.Qt.ShortcutContext.WidgetShortcut
+    )
+    assert "Return" in dialog.locate_shortcut.key().toString()
+    for button in (
+        dialog.start_button,
+        dialog.locate_button,
+        dialog.recheck_button,
+    ):
+        assert not button.icon().isNull()
+        assert button.iconSize().width() == 15
+    index = dialog.profile_combo.findData("generic")
+    dialog.profile_combo.setCurrentIndex(index)
+    assert dialog.start_button.isEnabled()
+    dialog._start_run_shortcut()
+    assert _wait_until(app, lambda: dialog.report is not None)

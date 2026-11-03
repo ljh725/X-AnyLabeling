@@ -8,6 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6.QtTest import QTest
 
 from anylabeling import config as app_config
 from anylabeling.resources import resources  # noqa: F401
@@ -230,6 +231,54 @@ def test_spatial_review_requires_explicit_region_completion(window, tmp_path):
     assert session.completion_status().coverage_complete is True
     assert session.completion_status().complete is False
     assert session.completion_status().supported is False
+
+
+def test_dense_shortcuts_are_window_scoped(window, tmp_path):
+    widget = window.labeling_widget.view
+    image_path = _prepare_image(tmp_path)
+    assert widget.load_file(image_path)
+    widget.open_dense_review()
+    workspace = widget.dense_review_workspace
+    assert workspace._shortcuts
+    for shortcut in workspace._shortcuts:
+        assert shortcut.context() == (QtCore.Qt.ShortcutContext.WindowShortcut)
+    assert "Ctrl+Return" in workspace.complete_batch_button.toolTip()
+    assert "Alt+Return" in workspace.complete_object_button.toolTip()
+    for button in (
+        workspace.start_button,
+        workspace.complete_batch_button,
+        workspace.complete_object_button,
+        workspace.full_image_button,
+    ):
+        assert not button.icon().isNull()
+        assert button.iconSize().width() == 15
+
+
+def test_coverage_grid_click_selects_matching_region(window, tmp_path):
+    app = QtWidgets.QApplication.instance()
+    widget = window.labeling_widget.view
+    image_path = _prepare_image(tmp_path)
+    assert widget.load_file(image_path)
+    widget.open_dense_review()
+    workspace = widget.dense_review_workspace
+    workspace._complete_batch()
+    workspace.tabs.setCurrentIndex(1)
+    app.processEvents()
+    plan = workspace.session.state.coverage
+    assert plan is not None and plan.regions
+    grid = workspace.coverage_grid
+    target = plan.regions[-1]
+    cell = grid._cell_rect(target, grid._content_rect())
+    QTest.mouseClick(
+        grid,
+        QtCore.Qt.MouseButton.LeftButton,
+        pos=QtCore.QPoint(int(cell.center().x()), int(cell.center().y())),
+    )
+    app.processEvents()
+    assert workspace.session.state.coverage.current_region == target.region_id
+    current = workspace.region_list.currentItem()
+    assert current is not None
+    assert current.data(QtCore.Qt.ItemDataRole.UserRole) == target.region_id
 
 
 def test_external_change_is_detected_before_save(window, tmp_path):

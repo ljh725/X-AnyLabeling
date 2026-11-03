@@ -57,21 +57,36 @@ from anylabeling.views.labeling.utils.style import (
     get_dialog_style,
     get_workbench_qss,
 )
+from anylabeling.views.labeling.utils.qt import themed_icon
 from anylabeling.views.labeling.utils.theme import get_theme
 
 from .controller import InspectionController
 
+DIALOG_CONTEXT = "InspectorDialog"
+
+
+def _translate_label(text: str) -> str:
+    """Translate a module-level label through the dialog context."""
+    return QtCore.QCoreApplication.translate(DIALOG_CONTEXT, text)
+
+
 STAGE_LABELS = {
-    "pre_label": "预标注清洗",
-    "in_progress": "标注中",
-    "post_label": "完成后检查",
+    "pre_label": QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "预标注清洗"),
+    "in_progress": QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "标注中"),
+    "post_label": QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "完成后检查"),
 }
 
 SCOPE_LABELS = {
-    RunScope.CURRENT_IMAGE: "当前图片",
-    RunScope.SELECTED_FILES: "选定文件",
-    RunScope.DATASET: "当前数据集",
-    RunScope.CHANGED_FILES: "已变更文件（保守全量）",
+    RunScope.CURRENT_IMAGE: QtCore.QT_TRANSLATE_NOOP(
+        DIALOG_CONTEXT, "当前图片"
+    ),
+    RunScope.SELECTED_FILES: QtCore.QT_TRANSLATE_NOOP(
+        DIALOG_CONTEXT, "选定文件"
+    ),
+    RunScope.DATASET: QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "当前数据集"),
+    RunScope.CHANGED_FILES: QtCore.QT_TRANSLATE_NOOP(
+        DIALOG_CONTEXT, "已变更文件（保守全量）"
+    ),
 }
 
 
@@ -86,40 +101,57 @@ def _variant_button(text, variant=None, tip=None):
 
 
 _STATUS_WORDS = {
-    "available": "可用",
-    "passed": "通过",
-    "failed": "未通过",
-    "unchanged": "未改变",
+    "available": QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "可用"),
+    "passed": QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "通过"),
+    "failed": QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "未通过"),
+    "unchanged": QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "未改变"),
 }
 
 
 def _state_word(payload) -> str:
     state = str(payload.get("state", ""))
-    return _STATUS_WORDS.get(state, str(payload.get("label", state) or "未知"))
+    label = _STATUS_WORDS.get(
+        state, str(payload.get("label", state) or "未知")
+    )
+    return _translate_label(label)
 
 
 DECISION_LABELS = {
-    Decision.PENDING: "待处理",
-    Decision.CONFIRMED_ERROR: "确认错误",
-    Decision.FALSE_POSITIVE: "误报",
-    Decision.ACCEPTABLE: "可接受",
-    Decision.NEEDS_DISCUSSION: "需讨论",
+    Decision.PENDING: QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "待处理"),
+    Decision.CONFIRMED_ERROR: QtCore.QT_TRANSLATE_NOOP(
+        DIALOG_CONTEXT, "确认错误"
+    ),
+    Decision.FALSE_POSITIVE: QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "误报"),
+    Decision.ACCEPTABLE: QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "可接受"),
+    Decision.NEEDS_DISCUSSION: QtCore.QT_TRANSLATE_NOOP(
+        DIALOG_CONTEXT, "需讨论"
+    ),
 }
 
 VERIFICATION_LABELS = {
-    VerificationState.CURRENT: "当前",
-    VerificationState.STALE: "已过期",
-    VerificationState.PENDING_RECHECK: "待复查",
-    VerificationState.NOT_DETECTED: "成功复查未再检出",
-    VerificationState.UNVERIFIABLE: "无法核验",
+    VerificationState.CURRENT: QtCore.QT_TRANSLATE_NOOP(
+        DIALOG_CONTEXT, "当前"
+    ),
+    VerificationState.STALE: QtCore.QT_TRANSLATE_NOOP(
+        DIALOG_CONTEXT, "已过期"
+    ),
+    VerificationState.PENDING_RECHECK: QtCore.QT_TRANSLATE_NOOP(
+        DIALOG_CONTEXT, "待复查"
+    ),
+    VerificationState.NOT_DETECTED: QtCore.QT_TRANSLATE_NOOP(
+        DIALOG_CONTEXT, "成功复查未再检出"
+    ),
+    VerificationState.UNVERIFIABLE: QtCore.QT_TRANSLATE_NOOP(
+        DIALOG_CONTEXT, "无法核验"
+    ),
 }
 
 ACTION_LABELS = {
-    ActionState.UNCHANGED: "未改",
-    ActionState.MODIFIED: "已修改",
-    ActionState.DELETED: "已删除",
-    ActionState.RELABELED: "已重标",
-    ActionState.ADDED: "已新增",
+    ActionState.UNCHANGED: QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "未改"),
+    ActionState.MODIFIED: QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "已修改"),
+    ActionState.DELETED: QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "已删除"),
+    ActionState.RELABELED: QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "已重标"),
+    ActionState.ADDED: QtCore.QT_TRANSLATE_NOOP(DIALOG_CONTEXT, "已新增"),
 }
 
 
@@ -160,15 +192,17 @@ class InspectorDialog(QtWidgets.QDialog):
         self._build_ui()
         self.setStyleSheet(get_dialog_style() + get_workbench_qss())
         self._connect()
+        self._install_shortcuts()
+        self._apply_icons()
         self._load_builtin_profiles()
-        self._set_status("请选择方案和范围后开始检查。")
+        self._set_status(self.tr("请选择方案和范围后开始检查。"))
         self._show_details_placeholder()
         for label, text in (
-            (self.execution_label, "执行 -"),
-            (self.issue_handling_label, "问题 -"),
-            (self.object_review_label, "对象 -"),
-            (self.spatial_label, "空间 -"),
-            (self.formal_label, "正式 -"),
+            (self.execution_label, self.tr("执行 -")),
+            (self.issue_handling_label, self.tr("问题 -")),
+            (self.object_review_label, self.tr("对象 -")),
+            (self.spatial_label, self.tr("空间 -")),
+            (self.formal_label, self.tr("正式 -")),
         ):
             label.setText(self.tr(text))
         self.setWindowTitle(self.tr("Annotation Inspector"))
@@ -194,11 +228,11 @@ class InspectorDialog(QtWidgets.QDialog):
         )
         self.stage_combo = QtWidgets.QComboBox()
         for value, label in STAGE_LABELS.items():
-            self.stage_combo.addItem(label, value)
+            self.stage_combo.addItem(_translate_label(label), value)
         self.stage_combo.setMinimumWidth(118)
         self.scope_combo = QtWidgets.QComboBox()
         for value, label in SCOPE_LABELS.items():
-            self.scope_combo.addItem(label, value.value)
+            self.scope_combo.addItem(_translate_label(label), value.value)
         self.scope_combo.setMinimumWidth(150)
         self.scope_combo.setSizeAdjustPolicy(
             QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
@@ -258,6 +292,7 @@ class InspectorDialog(QtWidgets.QDialog):
         self.cancel_button = _variant_button(self.tr("取消"))
         self.cancel_button.setEnabled(False)
         self.start_button = _variant_button(self.tr("开始检查"), "primary")
+        self.start_button.setToolTip(self.tr("开始检查（F5）"))
         toolbar_layout.addWidget(self.cancel_button)
         toolbar_layout.addWidget(self.start_button)
         layout.addWidget(toolbar)
@@ -302,14 +337,14 @@ class InspectorDialog(QtWidgets.QDialog):
         filter_row = QtWidgets.QHBoxLayout()
         filter_row.setSpacing(6)
         self.filter_combo = QtWidgets.QComboBox()
-        self.filter_combo.addItem("全部", "all")
-        self.filter_combo.addItem("待处理", "pending")
-        self.filter_combo.addItem("已处理", "handled")
-        self.filter_combo.addItem("待复查", "pending_recheck")
-        self.filter_combo.addItem("误报", "false_positive")
-        self.filter_combo.addItem("可接受", "acceptable")
-        self.filter_combo.addItem("需讨论", "needs_discussion")
-        self.filter_combo.addItem("确认错误", "confirmed_error")
+        self.filter_combo.addItem(self.tr("全部"), "all")
+        self.filter_combo.addItem(self.tr("待处理"), "pending")
+        self.filter_combo.addItem(self.tr("已处理"), "handled")
+        self.filter_combo.addItem(self.tr("待复查"), "pending_recheck")
+        self.filter_combo.addItem(self.tr("误报"), "false_positive")
+        self.filter_combo.addItem(self.tr("可接受"), "acceptable")
+        self.filter_combo.addItem(self.tr("需讨论"), "needs_discussion")
+        self.filter_combo.addItem(self.tr("确认错误"), "confirmed_error")
         self.issue_count_label = QtWidgets.QLabel()
         self.issue_count_label.setObjectName("fieldLabel")
         self.prev_issue_button = _variant_button(self.tr("上一个"), "quiet")
@@ -323,6 +358,7 @@ class InspectorDialog(QtWidgets.QDialog):
 
         self.issue_stack = QtWidgets.QStackedWidget()
         self.issue_table = QtWidgets.QTableWidget(0, 5)
+        self.issue_table.setToolTip(self.tr("双击或按 Enter 定位到画布对象"))
         self.issue_table.setHorizontalHeaderLabels(
             [
                 self.tr("风险"),
@@ -652,14 +688,16 @@ class InspectorDialog(QtWidgets.QDialog):
             self.stage_combo.blockSignals(False)
         self.profile_summary.setText(
             f"{profile.description}\n适用阶段："
-            f"{STAGE_LABELS.get(profile.stage, profile.stage)}；"
+            f"{_translate_label(STAGE_LABELS.get(profile.stage, profile.stage))}；"
             f"版本：{profile.version}"
         )
         names = []
         for rule in profile.enabled_rules:
             meta = self.catalog.meta(rule.rule_id)
             names.append(meta.name if meta else rule.rule_id)
-        self.rule_summary.setText("、".join(names) if names else "无启用规则")
+        self.rule_summary.setText(
+            "、".join(names) if names else self.tr("无启用规则")
+        )
 
     def _copy_profile(self) -> None:
         if not self._ensure_storage() or self.storage is None:
@@ -669,8 +707,8 @@ class InspectorDialog(QtWidgets.QDialog):
             return
         name, ok = QtWidgets.QInputDialog.getText(
             self,
-            "复制检查方案",
-            "新方案名称：",
+            self.tr("复制检查方案"),
+            self.tr("新方案名称："),
             text=f"{profile.name} 副本",
         )
         if not ok or not name.strip():
@@ -681,7 +719,7 @@ class InspectorDialog(QtWidgets.QDialog):
         try:
             save_profile(path, copied)
         except OSError as error:
-            self._show_error("复制方案失败", str(error))
+            self._show_error(self.tr("复制方案失败"), str(error))
             return
         self._profiles[new_id] = copied
         self._custom_profile_paths[new_id] = path
@@ -693,20 +731,20 @@ class InspectorDialog(QtWidgets.QDialog):
             return
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
-            "导入检查方案",
+            self.tr("导入检查方案"),
             self.storage.root,
-            "JSON (*.json);;所有文件 (*)",
+            self.tr("JSON (*.json);;所有文件 (*)"),
         )
         if not path:
             return
         try:
             profile = load_profile(path)
         except (OSError, ValueError) as error:
-            self._show_error("导入方案失败", str(error))
+            self._show_error(self.tr("导入方案失败"), str(error))
             return
         validation = validate_profile(profile, self.catalog)
         if validation.errors:
-            self._show_error("方案无效", "\n".join(validation.errors))
+            self._show_error(self.tr("方案无效"), "\n".join(validation.errors))
             return
         target = osp.join(
             self.storage.root, "profiles", f"{profile.profile_id}.json"
@@ -714,7 +752,7 @@ class InspectorDialog(QtWidgets.QDialog):
         try:
             save_profile(target, profile)
         except OSError as error:
-            self._show_error("保存方案失败", str(error))
+            self._show_error(self.tr("保存方案失败"), str(error))
             return
         self._profiles[profile.profile_id] = profile
         self._custom_profile_paths[profile.profile_id] = target
@@ -722,10 +760,10 @@ class InspectorDialog(QtWidgets.QDialog):
         if validation.missing_rule_ids:
             QtWidgets.QMessageBox.warning(
                 self,
-                "方案含缺失规则",
-                "本机未登记：\n"
+                self.tr("方案含缺失规则"),
+                self.tr("本机未登记：\n")
                 + "\n".join(validation.missing_rule_ids)
-                + "\n\n运行时可选择仅执行可用子集。",
+                + self.tr("\n\n运行时可选择仅执行可用子集。"),
             )
         else:
             self._set_status(f"已导入方案 {profile.name}。")
@@ -736,7 +774,7 @@ class InspectorDialog(QtWidgets.QDialog):
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self,
-            "导出检查方案",
+            self.tr("导出检查方案"),
             f"{profile.profile_id}.json",
             "JSON (*.json)",
         )
@@ -745,7 +783,7 @@ class InspectorDialog(QtWidgets.QDialog):
         try:
             save_profile(path, profile)
         except OSError as error:
-            self._show_error("导出方案失败", str(error))
+            self._show_error(self.tr("导出方案失败"), str(error))
             return
         self._set_status(f"已导出方案 {path}。")
 
@@ -787,22 +825,27 @@ class InspectorDialog(QtWidgets.QDialog):
         self.report = replace(self.report, issues=tuple(issues))
         self._populate_table()
         self._update_status()
-        self._set_status("画布已修改，相关问题标记为待复查。")
+        self._set_status(self.tr("画布已修改，相关问题标记为待复查。"))
 
     def _ask_dirty_batch(self) -> str:
         box = QtWidgets.QMessageBox(self)
-        box.setWindowTitle("存在未保存修改")
+        box.setWindowTitle(self.tr("存在未保存修改"))
         box.setText(
-            "批量检查范围包含当前未保存文档。请选择保存后运行、"
-            "明确排除该图片，或取消。"
+            self.tr(
+                "批量检查范围包含当前未保存文档。请选择保存后运行、"
+                "明确排除该图片，或取消。"
+            )
         )
         save_button = box.addButton(
-            "保存后运行", QtWidgets.QMessageBox.ButtonRole.AcceptRole
+            self.tr("保存后运行"), QtWidgets.QMessageBox.ButtonRole.AcceptRole
         )
         exclude_button = box.addButton(
-            "排除未保存图片", QtWidgets.QMessageBox.ButtonRole.DestructiveRole
+            self.tr("排除未保存图片"),
+            QtWidgets.QMessageBox.ButtonRole.DestructiveRole,
         )
-        box.addButton("取消", QtWidgets.QMessageBox.ButtonRole.RejectRole)
+        box.addButton(
+            self.tr("取消"), QtWidgets.QMessageBox.ButtonRole.RejectRole
+        )
         box.exec()
         clicked = box.clickedButton()
         if clicked is save_button:
@@ -815,12 +858,12 @@ class InspectorDialog(QtWidgets.QDialog):
         dataset_root = self.host.inspection_dataset_root()
         output_dir = self.host.inspection_output_dir()
         if not dataset_root:
-            self._set_status("无法确定数据集目录。")
+            self._set_status(self.tr("无法确定数据集目录。"))
             return False
         try:
             storage = InspectionStorage.open(dataset_root, output_dir)
         except OSError as error:
-            self._show_error("无法建立检查存储", str(error))
+            self._show_error(self.tr("无法建立检查存储"), str(error))
             return False
         if self.storage is None or self.storage.root != storage.root:
             self.storage = storage
@@ -906,23 +949,25 @@ class InspectorDialog(QtWidgets.QDialog):
     def _prepare_run_profile(self):
         profile = self._selected_profile()
         if profile is None:
-            self._show_error("检查", "请选择检查方案。")
+            self._show_error(self.tr("检查"), self.tr("请选择检查方案。"))
             return None
         stage = str(self.stage_combo.currentData())
         if stage != profile.stage:
             profile = replace(profile, stage=stage)
         validation = validate_profile(profile, self.catalog)
         if validation.errors:
-            self._show_error("方案无法运行", "\n".join(validation.errors))
+            self._show_error(
+                self.tr("方案无法运行"), "\n".join(validation.errors)
+            )
             return None
         allow_partial = False
         if validation.missing_rule_ids:
             answer = QtWidgets.QMessageBox.question(
                 self,
-                "规则缺失",
-                "方案引用本机未登记规则：\n"
+                self.tr("规则缺失"),
+                self.tr("方案引用本机未登记规则：\n")
                 + "\n".join(validation.missing_rule_ids)
-                + "\n\n仅运行可用子集？",
+                + self.tr("\n\n仅运行可用子集？"),
                 QtWidgets.QMessageBox.StandardButton.Yes
                 | QtWidgets.QMessageBox.StandardButton.No,
             )
@@ -937,12 +982,16 @@ class InspectorDialog(QtWidgets.QDialog):
         if scope is RunScope.CURRENT_IMAGE:
             manifest = self.host.inspection_current_manifest()
             if manifest is None:
-                self._show_error("检查", "当前没有可检查的图片。")
+                self._show_error(
+                    self.tr("检查"), self.tr("当前没有可检查的图片。")
+                )
                 return None, None, False
         elif scope is RunScope.SELECTED_FILES:
             paths = self.host.inspection_selected_image_paths()
             if not paths:
-                self._show_error("检查", "请先在文件列表选择文件。")
+                self._show_error(
+                    self.tr("检查"), self.tr("请先在文件列表选择文件。")
+                )
                 return None, None, False
         else:
             if dataset_root:
@@ -950,11 +999,15 @@ class InspectorDialog(QtWidgets.QDialog):
             else:
                 paths = self.host.inspection_image_paths()
             if not paths and not dataset_root:
-                self._show_error("检查", "当前数据集没有可检查文件。")
+                self._show_error(
+                    self.tr("检查"), self.tr("当前数据集没有可检查文件。")
+                )
                 return None, None, False
             if scope is RunScope.CHANGED_FILES:
                 self._set_status(
-                    "正在核验上一份清单；无可信清单时按保守范围全量检查。"
+                    self.tr(
+                        "正在核验上一份清单；无可信清单时按保守范围全量检查。"
+                    )
                 )
         return manifest, paths, True
 
@@ -973,7 +1026,8 @@ class InspectorDialog(QtWidgets.QDialog):
             self.host.save_file()
             if getattr(self.host, "dirty", False):
                 self._show_error(
-                    "保存失败", "未保存修改仍然存在，已取消检查。"
+                    self.tr("保存失败"),
+                    self.tr("未保存修改仍然存在，已取消检查。"),
                 )
                 return paths, excluded, False
             return paths, excluded, True
@@ -981,7 +1035,9 @@ class InspectorDialog(QtWidgets.QDialog):
             return paths, {self.host.filename}, True
         remaining = [path for path in paths if path != self.host.filename]
         if not remaining:
-            self._show_error("检查", "排除未保存图片后范围为空。")
+            self._show_error(
+                self.tr("检查"), self.tr("排除未保存图片后范围为空。")
+            )
             return paths, excluded, False
         return remaining, excluded, True
 
@@ -1018,7 +1074,7 @@ class InspectorDialog(QtWidgets.QDialog):
         self.start_button.setEnabled(False)
         self.cancel_button.setEnabled(True)
         self.progress.setRange(0, 0)
-        self._set_status("扫描文件")
+        self._set_status(self.tr("扫描文件"))
         try:
             self.controller.start(
                 profile,
@@ -1035,7 +1091,7 @@ class InspectorDialog(QtWidgets.QDialog):
         except RuntimeError as error:
             self.start_button.setEnabled(True)
             self.cancel_button.setEnabled(False)
-            self._show_error("检查", str(error))
+            self._show_error(self.tr("检查"), str(error))
 
     def _on_progress(self, index: int, total: int, path: str) -> None:
         self.progress.setRange(0, max(1, total))
@@ -1048,7 +1104,7 @@ class InspectorDialog(QtWidgets.QDialog):
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         self._set_status(f"检查失败: {message}")
-        self._show_error("检查失败", message)
+        self._show_error(self.tr("检查失败"), message)
 
     def _on_finished(self, report: RunReport, manifest) -> None:
         self.start_button.setEnabled(True)
@@ -1079,7 +1135,7 @@ class InspectorDialog(QtWidgets.QDialog):
             self.storage.reports.save(self.report, self.manifest)
         except (OSError, StorageError) as error:
             self._show_error(
-                "报告保存失败",
+                self.tr("报告保存失败"),
                 f"{error}\n结果仍保留在当前窗口中，可选择导出。",
             )
             return
@@ -1214,22 +1270,26 @@ class InspectorDialog(QtWidgets.QDialog):
                 ", ".join(issue.location.object_ids)
                 if issue.location.object_ids
                 else (
-                    "区域 "
+                    self.tr("区域 ")
                     + ", ".join(
                         f"{value:.1f}" for value in issue.location.region
                     )
                     if issue.location.region
-                    else "图片"
+                    else self.tr("图片")
                 )
             )
             values = (
                 self._severity_text(issue),
                 rule_names,
                 f"{issue.location.relative_path} · {object_text}",
-                VERIFICATION_LABELS.get(
-                    issue.verification, issue.verification.value
+                _translate_label(
+                    VERIFICATION_LABELS.get(
+                        issue.verification, issue.verification.value
+                    )
                 ),
-                DECISION_LABELS.get(issue.decision, issue.decision.value),
+                _translate_label(
+                    DECISION_LABELS.get(issue.decision, issue.decision.value)
+                ),
             )
             for column, value in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(str(value))
@@ -1284,10 +1344,10 @@ class InspectorDialog(QtWidgets.QDialog):
 
     def _severity_text(self, issue: InspectionIssue) -> str:
         if issue.severity.value == "error":
-            return "错误"
+            return self.tr("错误")
         if issue.severity.value == "warning":
-            return "疑似"
-        return "提示"
+            return self.tr("疑似")
+        return self.tr("提示")
 
     def _selected_issue(self) -> Optional[InspectionIssue]:
         row = self.issue_table.currentRow()
@@ -1318,10 +1378,13 @@ class InspectorDialog(QtWidgets.QDialog):
         self.relabel_button.setEnabled(bool(target_ids))
         if target_ids:
             self.delete_button.setToolTip(
-                "仅删除当前画布中选中的问题对象：" + ", ".join(target_ids)
+                self.tr("仅删除当前画布中选中的问题对象：")
+                + ", ".join(target_ids)
             )
         else:
-            self.delete_button.setToolTip("请先在画布中选中要删除的问题对象")
+            self.delete_button.setToolTip(
+                self.tr("请先在画布中选中要删除的问题对象")
+            )
 
     def _selected_candidate(self) -> Optional[Candidate]:
         row = self.candidate_table.currentRow()
@@ -1333,12 +1396,59 @@ class InspectorDialog(QtWidgets.QDialog):
         candidate_id = str(item.data(QtCore.Qt.ItemDataRole.UserRole))
         return self._candidate_records.get(candidate_id)
 
+    def _section(self, title: str, body: str) -> str:
+        """Render one labelled block of the issue detail page."""
+        theme = get_theme()
+        return (
+            '<div style="margin:0 0 16px 0;">'
+            '<div style="color:{};font-size:11px;margin:0 0 6px 0;">'
+            "{}</div>"
+            '<div style="color:{};font-size:13px;line-height:1.7;">{}</div>'
+            "</div>"
+        ).format(
+            theme["text_secondary"],
+            html.escape(title),
+            theme["text"],
+            body,
+        )
+
+    def _kv_table(self, rows) -> str:
+        theme = get_theme()
+        cells = []
+        for label, value in rows:
+            cells.append(
+                '<tr><td style="color:{};font-size:11px;padding:1px 14px '
+                '1px 0;white-space:nowrap;vertical-align:top;">{}</td>'
+                '<td style="color:{};font-size:12px;padding:1px 0;">'
+                "{}</td></tr>".format(
+                    theme["text_secondary"],
+                    html.escape(label),
+                    theme["text"],
+                    value,
+                )
+            )
+        return (
+            '<table cellspacing="0" cellpadding="0" '
+            'style="border-collapse:collapse;">{}</table>'.format(
+                "".join(cells)
+            )
+        )
+
+    @staticmethod
+    def _format_metric(value) -> str:
+        if isinstance(value, float):
+            return f"{value:.4f}"
+        return html.escape(str(value))
+
     def _show_details_placeholder(self) -> None:
+        theme = get_theme()
         self.details.setHtml(
-            '<div style="color:#86868b;font-size:13px;'
-            'line-height:1.7;padding:16px 4px;">'
-            "选择左侧问题查看规则、证据与建议。<br/>"
-            "双击问题行可直接定位到画布对象。</div>"
+            '<div style="color:{};font-size:13px;line-height:1.7;'
+            'padding:16px 4px;">{}<br/>{}</div>'.format(
+                theme["text_secondary"],
+                self.tr("选择左侧问题查看规则、证据与建议。"),
+                self.tr("双击问题行或按 Enter 可定位到画布对象。"),
+            )
         )
 
     def _show_selected_details(self) -> None:
@@ -1347,57 +1457,156 @@ class InspectorDialog(QtWidgets.QDialog):
             self._show_details_placeholder()
             self._update_action_buttons()
             return
+        theme = get_theme()
         evidence_blocks = []
         for evidence in issue.evidence:
-            metrics = " · ".join(
-                f"{key}={value:.4f}" for key, value in evidence.metrics.items()
+            metrics = self._kv_table(
+                [
+                    (str(key), self._format_metric(value))
+                    for key, value in evidence.metrics.items()
+                ]
             )
+            if not evidence.metrics:
+                metrics = ""
             evidence_blocks.append(
-                '<p style="margin:0 0 2px 0;"><b>{}</b></p>'
-                '<p style="color:#86868b; margin:0 0 4px 0;">{}</p>'
-                '<p style="color:#86868b; font-size:11px; '
-                'margin:0 0 10px 0;">{}</p>'.format(
+                '<div style="margin:0 0 10px 0;">'
+                '<div style="font-size:13px;font-weight:600;">{}</div>'
+                '<div style="color:{};font-size:12px;margin:2px 0 4px 0;">'
+                "{}</div>{}</div>".format(
                     html.escape(evidence.rule_name),
+                    theme["text_secondary"],
                     html.escape(evidence.message),
-                    html.escape(metrics),
+                    metrics,
+                )
+            )
+        if not evidence_blocks:
+            evidence_blocks.append(
+                '<div style="color:{};font-size:12px;">{}</div>'.format(
+                    theme["text_secondary"],
+                    self.tr("本轮没有规则证据。"),
                 )
             )
         payload = handoff_payload(issue)
         notes = [
-            "检查只读；定位/导航不会修改标签或审核状态。",
-            "问题队列清空不能替代独立空间查漏。",
+            self.tr("检查只读；定位/导航不会修改标签或审核状态。"),
+            self.tr("问题队列清空不能替代独立空间查漏。"),
         ]
         if payload.get("available"):
-            notes.append("可交接至密集复核工作区。")
+            notes.append(self.tr("可交接至密集复核工作区。"))
         else:
-            notes.append("密集复核不可用，请在普通画布处理。")
+            notes.append(self.tr("密集复核不可用，请在普通画布处理。"))
         region = (
             ", ".join(f"{value:.1f}" for value in issue.location.region)
             if issue.location.region
-            else "无"
+            else self.tr("无")
         )
-        body = f"""
-        <div style="font-size:13px; line-height:1.75;">
-        <h3 style="margin:0 0 4px 0;">{html.escape(issue.title)}</h3>
-        <p style="color:#86868b; margin:0 0 10px 0;">
-        {html.escape(issue.message)}</p>
-        <p style="margin:0 0 10px 0;">
-        <b>文件</b> {html.escape(issue.location.relative_path)}<br/>
-        <b>对象</b> {html.escape(", ".join(issue.location.object_ids) or "无")}<br/>
-        <b>区域</b> {html.escape(region)}<br/>
-        <b>建议</b> {html.escape(issue.suggested_action)}</p>
-        <hr/>
-        {''.join(evidence_blocks)}
-        <hr/>
-        <p style="margin:0 0 6px 0;">
-        <b>人工判断</b> {DECISION_LABELS.get(issue.decision, issue.decision.value)}
-        &nbsp; <b>动作</b> {ACTION_LABELS.get(issue.action, issue.action.value)}
-        &nbsp; <b>机器</b> {VERIFICATION_LABELS.get(issue.verification, issue.verification.value)}</p>
-        <p style="color:#86868b; margin:0;">{'<br/>'.join(html.escape(note) for note in notes)}</p>
-        </div>
-        """
+        objects = ", ".join(issue.location.object_ids) or self.tr("无")
+        suggestion = issue.suggested_action or self.tr("无建议动作。")
+        status_rows = self._kv_table(
+            [
+                (
+                    self.tr("人工判断"),
+                    html.escape(
+                        _translate_label(
+                            DECISION_LABELS.get(
+                                issue.decision, issue.decision.value
+                            )
+                        )
+                    ),
+                ),
+                (
+                    self.tr("动作"),
+                    html.escape(
+                        _translate_label(
+                            ACTION_LABELS.get(issue.action, issue.action.value)
+                        )
+                    ),
+                ),
+                (
+                    self.tr("机器状态"),
+                    html.escape(
+                        _translate_label(
+                            VERIFICATION_LABELS.get(
+                                issue.verification,
+                                issue.verification.value,
+                            )
+                        )
+                    ),
+                ),
+            ]
+        )
+        sections = [
+            self._section(self.tr("规则命中"), "".join(evidence_blocks)),
+            self._section(
+                self.tr("位置"),
+                self._kv_table(
+                    [
+                        (
+                            self.tr("文件"),
+                            html.escape(issue.location.relative_path),
+                        ),
+                        (self.tr("对象"), html.escape(objects)),
+                        (self.tr("区域"), html.escape(region)),
+                    ]
+                ),
+            ),
+            self._section(self.tr("建议"), html.escape(suggestion)),
+            self._section(self.tr("状态"), status_rows),
+            self._section(
+                self.tr("备注"),
+                '<div style="color:{};font-size:12px;line-height:1.7;">'
+                "{}</div>".format(
+                    theme["text_secondary"],
+                    "<br/>".join(html.escape(note) for note in notes),
+                ),
+            ),
+        ]
+        body = (
+            '<div style="font-size:13px;">'
+            '<div style="font-size:16px;font-weight:600;color:{};'
+            'margin:0 0 4px 0;">{}</div>'
+            '<div style="color:{};font-size:12px;line-height:1.6;'
+            'margin:0 0 16px 0;">{}</div>'
+            "{}</div>"
+        ).format(
+            theme["text"],
+            html.escape(issue.title),
+            theme["text_secondary"],
+            html.escape(issue.message),
+            "".join(sections),
+        )
         self.details.setHtml(body)
         self._update_action_buttons()
+
+    def _install_shortcuts(self) -> None:
+        self.start_shortcut = QtGui.QShortcut(QtGui.QKeySequence("F5"), self)
+        self.start_shortcut.setContext(
+            QtCore.Qt.ShortcutContext.WindowShortcut
+        )
+        self.start_shortcut.activated.connect(self._start_run_shortcut)
+        self.locate_shortcut = QtGui.QShortcut(
+            QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
+            self.issue_table,
+        )
+        self.locate_shortcut.setContext(
+            QtCore.Qt.ShortcutContext.WidgetShortcut
+        )
+        self.locate_shortcut.activated.connect(self._locate_selected)
+
+    def _start_run_shortcut(self) -> None:
+        if self.start_button.isEnabled():
+            self._start_run()
+
+    def _apply_icons(self) -> None:
+        theme = get_theme()
+        icons = (
+            (self.start_button, "play", theme["selection_text"]),
+            (self.locate_button, "scan-search", theme["text_secondary"]),
+            (self.recheck_button, "rotate-cw", theme["text_secondary"]),
+        )
+        for button, name, color in icons:
+            button.setIcon(themed_icon(name, color))
+            button.setIconSize(QtCore.QSize(15, 15))
 
     def _locate_selected(self) -> None:
         issue = self._selected_issue()
@@ -1409,7 +1618,9 @@ class InspectorDialog(QtWidgets.QDialog):
             issue.location.region,
         )
         if not ok:
-            self._set_status("无法定位对象；对象可能已删除或身份待重检。")
+            self._set_status(
+                self.tr("无法定位对象；对象可能已删除或身份待重检。")
+            )
 
     def _set_decision(self, decision: Decision) -> None:
         issue = self._selected_issue()
@@ -1420,9 +1631,11 @@ class InspectorDialog(QtWidgets.QDialog):
             VerificationState.UNVERIFIABLE,
         ):
             self._show_error(
-                "问题已过期",
-                "当前输入或配置已变化，请先复查当前图或重新运行检查，"
-                "再记录人工结论。",
+                self.tr("问题已过期"),
+                self.tr(
+                    "当前输入或配置已变化，请先复查当前图或重新运行检查，"
+                    "再记录人工结论。"
+                ),
             )
             return
         verification_state = (
@@ -1500,13 +1713,13 @@ class InspectorDialog(QtWidgets.QDialog):
             )
         except RevisionConflict as error:
             self._show_error(
-                "反馈冲突",
+                self.tr("反馈冲突"),
                 f"{error}\n冲突版本已保留：{error.conflict_path}",
             )
             self._load_feedback()
             return False
         except (OSError, StorageError) as error:
-            self._show_error("反馈保存失败", str(error))
+            self._show_error(self.tr("反馈保存失败"), str(error))
             return False
         self.feedback[record.family_key] = record
         return True
@@ -1534,16 +1747,18 @@ class InspectorDialog(QtWidgets.QDialog):
             return
         manifest = self.host.inspection_current_manifest()
         if manifest is None:
-            self._show_error("复查", "当前没有可复查的图片。")
+            self._show_error(
+                self.tr("复查"), self.tr("当前没有可复查的图片。")
+            )
             return
         if self._active_profile is None:
-            self._show_error("复查", "没有可用的检查方案。")
+            self._show_error(self.tr("复查"), self.tr("没有可用的检查方案。"))
             return
         self._recheck_issue = issue
         self.start_button.setEnabled(False)
         self.cancel_button.setEnabled(True)
         self.progress.setRange(0, 0)
-        self._set_status("复查当前图片")
+        self._set_status(self.tr("复查当前图片"))
         self.controller.start(
             self._active_profile,
             RunScope.CURRENT_IMAGE,
@@ -1622,7 +1837,7 @@ class InspectorDialog(QtWidgets.QDialog):
         self._save_run()
         self._populate_table()
         self._update_status()
-        self._set_status("复查完成。")
+        self._set_status(self.tr("复查完成。"))
 
     def _coverage_successful(
         self, report: RunReport, issue: InspectionIssue
@@ -1649,18 +1864,20 @@ class InspectorDialog(QtWidgets.QDialog):
         target_ids = self._selected_target_ids(issue)
         if issue is None or not target_ids:
             self._show_error(
-                "删除",
-                "请先在画布中选中要删除的未锁定问题对象；"
-                "不会自动删除整对对象。",
+                self.tr("删除"),
+                self.tr(
+                    "请先在画布中选中要删除的未锁定问题对象；"
+                    "不会自动删除整对对象。"
+                ),
             )
             return
         answer = QtWidgets.QMessageBox.question(
             self,
-            "删除确认",
-            "仅删除以下画布选中对象（共 {} 个）：\n{}\n\n"
-            "未选中的对象会保留；此操作可通过撤销恢复。".format(
-                len(target_ids), "\n".join(target_ids)
-            ),
+            self.tr("删除确认"),
+            self.tr(
+                "仅删除以下画布选中对象（共 {} 个）：\n{}\n\n"
+                "未选中的对象会保留；此操作可通过撤销恢复。"
+            ).format(len(target_ids), "\n".join(target_ids)),
             QtWidgets.QMessageBox.StandardButton.Yes
             | QtWidgets.QMessageBox.StandardButton.No,
         )
@@ -1668,7 +1885,7 @@ class InspectorDialog(QtWidgets.QDialog):
             return
         ok, reason = self.host.inspection_delete_shapes(target_ids)
         if not ok:
-            self._show_error("删除失败", reason)
+            self._show_error(self.tr("删除失败"), reason)
             return
         old = self.feedback.get(issue.family_key)
         record = (
@@ -1696,8 +1913,8 @@ class InspectorDialog(QtWidgets.QDialog):
         target_ids = self._selected_target_ids(issue)
         if issue is None or not target_ids:
             self._show_error(
-                "重标",
-                "请先在画布中选中要重标的未锁定问题对象。",
+                self.tr("重标"),
+                self.tr("请先在画布中选中要重标的未锁定问题对象。"),
             )
             return
         labels = []
@@ -1709,15 +1926,15 @@ class InspectorDialog(QtWidgets.QDialog):
         if labels:
             label, ok = QtWidgets.QInputDialog.getItem(
                 self,
-                "重标选中框",
-                "目标类别：",
+                self.tr("重标选中框"),
+                self.tr("目标类别："),
                 labels,
                 0,
                 False,
             )
         else:
             label, ok = QtWidgets.QInputDialog.getText(
-                self, "重标选中框", "目标类别："
+                self, self.tr("重标选中框"), self.tr("目标类别：")
             )
         if not ok or not label:
             return
@@ -1725,7 +1942,7 @@ class InspectorDialog(QtWidgets.QDialog):
             target_ids, label
         )
         if not success:
-            self._show_error("重标失败", reason)
+            self._show_error(self.tr("重标失败"), reason)
             return
         old = self.feedback.get(issue.family_key)
         record = (
@@ -1775,7 +1992,9 @@ class InspectorDialog(QtWidgets.QDialog):
                 failed=execution.get("failed", 0),
                 not_run=execution.get("not_run", 0),
                 source=(
-                    "内存" if self.report.source_kind == "memory" else "磁盘"
+                    self.tr("内存")
+                    if self.report.source_kind == "memory"
+                    else self.tr("磁盘")
                 ),
             )
         )
@@ -1826,7 +2045,8 @@ class InspectorDialog(QtWidgets.QDialog):
         notes = list(status.notes)
         if self._verification_reasons:
             notes.append(
-                "历史报告核验：" + "；".join(self._verification_reasons[:5])
+                self.tr("历史报告核验：")
+                + "；".join(self._verification_reasons[:5])
             )
         self.note_label.setText(" ".join(notes))
 
@@ -1841,16 +2061,16 @@ class InspectorDialog(QtWidgets.QDialog):
     def _import_issues(self) -> None:
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
-            "导入旧问题",
+            self.tr("导入旧问题"),
             self.host.inspection_dataset_root(),
-            "问题文件 (*.tsv *.csv *.json);;所有文件 (*)",
+            self.tr("问题文件 (*.tsv *.csv *.json);;所有文件 (*)"),
         )
         if not path:
             return
         try:
             result = import_legacy_report(path, manifest=self.manifest)
         except (OSError, ValueError) as error:
-            self._show_error("导入失败", str(error))
+            self._show_error(self.tr("导入失败"), str(error))
             return
         if self.report is not None and result.issues:
             known = {issue.issue_id for issue in self.report.issues}
@@ -1868,16 +2088,18 @@ class InspectorDialog(QtWidgets.QDialog):
             f"歧义 {len(result.ambiguous)} 条",
         ]
         QtWidgets.QMessageBox.information(
-            self, "导入旧问题", "\n".join(summary)
+            self, self.tr("导入旧问题"), "\n".join(summary)
         )
 
     def _export_report(self) -> None:
         if self.report is None:
-            self._show_error("导出", "当前没有可导出的报告。")
+            self._show_error(
+                self.tr("导出"), self.tr("当前没有可导出的报告。")
+            )
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self,
-            "导出检查报告",
+            self.tr("导出检查报告"),
             osp.join(
                 self.host.inspection_output_dir()
                 or self.host.inspection_dataset_root(),
@@ -1891,7 +2113,7 @@ class InspectorDialog(QtWidgets.QDialog):
         try:
             export_report(self.report, path, tsv_path)
         except OSError as error:
-            self._show_error("导出失败", str(error))
+            self._show_error(self.tr("导出失败"), str(error))
             return
         self._set_status(f"已导出：{path} 与 {tsv_path}（TSV 为简化格式）")
 
@@ -1900,9 +2122,9 @@ class InspectorDialog(QtWidgets.QDialog):
             return
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
-            "导入外部候选",
+            self.tr("导入外部候选"),
             self.host.inspection_dataset_root(),
-            "JSON (*.json);;所有文件 (*)",
+            self.tr("JSON (*.json);;所有文件 (*)"),
         )
         if not path:
             return
@@ -1914,7 +2136,7 @@ class InspectorDialog(QtWidgets.QDialog):
                 allowed_labels=allowed or None,
             )
         except (OSError, ValueError) as error:
-            self._show_error("候选导入失败", str(error))
+            self._show_error(self.tr("候选导入失败"), str(error))
             return
         self._load_candidates()
         records = dict(self._candidate_records)
@@ -1925,14 +2147,14 @@ class InspectorDialog(QtWidgets.QDialog):
                 records, self._candidate_revision
             )
         except (OSError, StorageError) as error:
-            self._show_error("候选保存失败", str(error))
+            self._show_error(self.tr("候选保存失败"), str(error))
             return
         self._candidate_records = records
         self._populate_candidate_table()
         QtWidgets.QMessageBox.information(
             self,
-            "候选导入",
-            "导入 {} 条，拒绝 {} 条，歧义 {} 条。".format(
+            self.tr("候选导入"),
+            self.tr("导入 {} 条，拒绝 {} 条，歧义 {} 条。").format(
                 len(result.candidates),
                 len(result.errors),
                 len(result.ambiguous),
@@ -1980,12 +2202,14 @@ class InspectorDialog(QtWidgets.QDialog):
         if candidate is None or self.storage is None:
             return
         if candidate.status is CandidateStatus.ACCEPTED:
-            self._show_error("候选", "该候选已接受，不能重复新增。")
+            self._show_error(
+                self.tr("候选"), self.tr("该候选已接受，不能重复新增。")
+            )
             return
         if self._candidate_store is None or self._intent_store is None:
             self._load_candidates()
         if self._candidate_store is None or self._intent_store is None:
-            self._show_error("候选", "候选存储不可用。")
+            self._show_error(self.tr("候选"), self.tr("候选存储不可用。"))
             return
         shape_id = new_shape_id()
         try:
@@ -1995,14 +2219,14 @@ class InspectorDialog(QtWidgets.QDialog):
                 shape_id,
             )
         except AlreadyAccepted as error:
-            self._show_error("候选", str(error))
+            self._show_error(self.tr("候选"), str(error))
             return
         ok, payload = self.host.inspection_accept_candidate(
             candidate, shape_id
         )
         if not ok:
             self._intent_store.abandon(candidate.candidate_id)
-            self._show_error("接受候选失败", str(payload))
+            self._show_error(self.tr("接受候选失败"), str(payload))
             return
         self._intent_store.confirm(candidate.candidate_id)
         self._candidate_store.mark(
@@ -2020,7 +2244,7 @@ class InspectorDialog(QtWidgets.QDialog):
         try:
             self._candidate_store.mark(candidate, status)
         except (OSError, StorageError) as error:
-            self._show_error("候选状态保存失败", str(error))
+            self._show_error(self.tr("候选状态保存失败"), str(error))
             return
         self._load_candidates()
 
@@ -2108,7 +2332,9 @@ class InspectorDialog(QtWidgets.QDialog):
             return
         entries = self.storage.reports.list_reports()
         if not entries:
-            self._show_error("继续处理", "没有可恢复的检查报告。")
+            self._show_error(
+                self.tr("继续处理"), self.tr("没有可恢复的检查报告。")
+            )
             return
         self._load_report(str(entries[0].get("run_id", "")))
 
@@ -2118,7 +2344,7 @@ class InspectorDialog(QtWidgets.QDialog):
         try:
             report = self.storage.reports.load(run_id)
         except (OSError, StorageError) as error:
-            self._show_error("恢复失败", str(error))
+            self._show_error(self.tr("恢复失败"), str(error))
             return
         try:
             self.manifest = self.storage.reports.load_manifest(run_id)
@@ -2176,7 +2402,7 @@ class InspectorDialog(QtWidgets.QDialog):
             if isinstance(rule, Mapping) and rule.get("enabled", True)
         ]
         self.profile_summary.setText(
-            "历史方案：{} v{}；配置摘要 {}".format(
+            self.tr("历史方案：{} v{}；配置摘要 {}").format(
                 profile.get("name", profile_id),
                 profile.get("profile_version", "?"),
                 report.profile_snapshot.get("snapshot_digest", "")[:12],
@@ -2194,8 +2420,8 @@ class InspectorDialog(QtWidgets.QDialog):
         if self.controller.is_running():
             answer = QtWidgets.QMessageBox.question(
                 self,
-                "检查仍在运行",
-                "取消当前检查并关闭 Inspector？",
+                self.tr("检查仍在运行"),
+                self.tr("取消当前检查并关闭 Inspector？"),
                 QtWidgets.QMessageBox.StandardButton.Yes
                 | QtWidgets.QMessageBox.StandardButton.No,
             )

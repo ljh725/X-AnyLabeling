@@ -82,6 +82,29 @@ def new_icon_path(icon, ext="png"):
     return f":/images/images/{icon}.{ext}"
 
 
+def themed_icon(icon, color, ext="svg", size=32):
+    """Render a monochrome icon in one explicit theme colour."""
+    source = QtGui.QPixmap(new_icon_path(icon, ext))
+    if source.isNull():
+        return QtGui.QIcon()
+    source = source.scaled(
+        size,
+        size,
+        QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+        QtCore.Qt.TransformationMode.SmoothTransformation,
+    )
+    canvas = QtGui.QPixmap(source.size())
+    canvas.fill(QtCore.Qt.GlobalColor.transparent)
+    painter = QtGui.QPainter(canvas)
+    painter.drawPixmap(0, 0, source)
+    painter.setCompositionMode(
+        QtGui.QPainter.CompositionMode.CompositionMode_SourceIn
+    )
+    painter.fillRect(canvas.rect(), QtGui.QColor(color))
+    painter.end()
+    return QtGui.QIcon(canvas)
+
+
 def new_provider_icon(icon, ext="png", size=24):
     scale = 2
     pixmap = QtGui.QPixmap(size * scale, size * scale)

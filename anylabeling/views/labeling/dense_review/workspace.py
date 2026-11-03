@@ -12,6 +12,7 @@ from anylabeling.services.dense_review.models import (
     CoverageSettings,
 )
 
+from ..utils.qt import themed_icon
 from ..utils.style import blend_hex, get_dialog_style, get_workbench_qss
 from ..utils.theme import get_theme
 from .config_dialog import DenseReviewConfigDialog
@@ -295,6 +296,219 @@ class _RegionDelegate(QtWidgets.QStyledItemDelegate):
         painter.restore()
 
 
+class _CoverageGrid(QtWidgets.QWidget):
+    """Spatial overview of the coverage plan drawn from region geometry."""
+
+    region_clicked = QtCore.pyqtSignal(str)
+    MARGIN = 10
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._plan = None
+        self._current = ""
+        self._hover = ""
+        self.setMinimumSize(220, 170)
+        self.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.setMouseTracking(True)
+        self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
+
+    def sizeHint(self):
+        return QtCore.QSize(340, 240)
+
+    def set_plan(self, plan, current: str = "") -> None:
+        self._plan = plan
+        self._current = current or ""
+        self.update()
+
+    def set_current(self, region_id: str) -> None:
+        region_id = region_id or ""
+        if region_id == self._current:
+            return
+        self._current = region_id
+        self.update()
+
+    def _content_rect(self) -> QtCore.QRectF:
+        area = QtCore.QRectF(self.rect()).adjusted(
+            self.MARGIN,
+            self.MARGIN,
+            -self.MARGIN,
+            -self.MARGIN,
+        )
+        plan = self._plan
+        width = getattr(plan, "image_width", 0) or 0
+        height = getattr(plan, "image_height", 0) or 0
+        if area.width() <= 1 or area.height() <= 1:
+            return QtCore.QRectF()
+        if width <= 0 or height <= 0:
+            return area
+        scale = min(area.width() / width, area.height() / height)
+        scaled = QtCore.QSizeF(width * scale, height * scale)
+        return QtCore.QRectF(
+            area.center().x() - scaled.width() / 2,
+            area.center().y() - scaled.height() / 2,
+            scaled.width(),
+            scaled.height(),
+        )
+
+    def _cell_rect(self, region, content: QtCore.QRectF) -> QtCore.QRectF:
+        plan = self._plan
+        width = plan.image_width or 1
+        height = plan.image_height or 1
+        x1, y1, x2, y2 = region.rect
+        return QtCore.QRectF(
+            content.left() + x1 * content.width() / width,
+            content.top() + y1 * content.height() / height,
+            max(0.0, x2 - x1) * content.width() / width,
+            max(0.0, y2 - y1) * content.height() / height,
+        )
+
+    def _hit(self, point) -> Optional[object]:
+        plan = self._plan
+        if plan is None or not plan.regions:
+            return None
+        content = self._content_rect()
+        if content.isEmpty():
+            return None
+        point = QtCore.QPointF(point)
+        for region in reversed(plan.regions):
+            if self._cell_rect(region, content).contains(point):
+                return region
+        return None
+
+    @staticmethod
+    def _state(region) -> str:
+        if region.difficult:
+            return "difficult"
+        if region.skipped:
+            return "skipped"
+        if region.completed:
+            return "done"
+        return "pending"
+
+    def _state_label(self, state: str) -> str:
+        labels = {
+            "done": self.tr("已完成"),
+            "difficult": self.tr("疑难"),
+            "skipped": self.tr("暂跳"),
+            "pending": self.tr("待查"),
+        }
+        return labels.get(state, self.tr("待查"))
+
+    def _fill_color(self, state: str):
+        theme = get_theme()
+        mapping = {
+            "done": theme["success"],
+            "difficult": theme["warning"],
+            "skipped": theme["primary"],
+            "pending": theme["surface"],
+        }
+        color = mapping.get(state, theme["surface"])
+        if state == "pending":
+            color = blend_hex(color, theme["background"], 0.85)
+        return QtGui.QColor(color)
+
+    def paintEvent(self, event):  # noqa: N802
+        theme = get_theme()
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        outer = QtCore.QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        painter.setPen(QtGui.QPen(QtGui.QColor(theme["border"]), 1))
+        painter.setBrush(QtGui.QColor(theme["background"]))
+        painter.drawRoundedRect(outer, 8, 8)
+
+        plan = self._plan
+        content = self._content_rect()
+        font = QtGui.QFont(self.font())
+        font.setPixelSize(11)
+        painter.setFont(font)
+        if plan is None or not plan.regions or content.isEmpty():
+            painter.setPen(QtGui.QColor(theme["text_secondary"]))
+            painter.drawText(
+                outer,
+                QtCore.Qt.AlignmentFlag.AlignCenter,
+                self.tr("尚无区域计划\n点「重建区域计划」后显示"),
+            )
+            painter.end()
+            return
+
+        painter.save()
+        painter.setClipRect(outer)
+        for region in plan.regions:
+            rect = self._cell_rect(region, content)
+            state = self._state(region)
+            painter.setBrush(self._fill_color(state))
+            selected = region.region_id == self._current
+            pen = theme["primary"] if selected else theme["border"]
+            painter.setPen(
+                QtGui.QPen(QtGui.QColor(pen), 2.0 if selected else 1.0)
+            )
+            painter.drawRect(rect.adjusted(0.5, 0.5, -0.5, -0.5))
+            if rect.width() < 30 or rect.height() < 18:
+                continue
+            index = region.row * plan.columns + region.column + 1
+            text_color = (
+                theme["text_secondary"]
+                if state == "pending"
+                else theme["selection_text"]
+            )
+            painter.setPen(QtGui.QColor(text_color))
+            painter.drawText(
+                rect,
+                QtCore.Qt.AlignmentFlag.AlignCenter,
+                str(index),
+            )
+        if self._hover:
+            hovered = next(
+                (
+                    region
+                    for region in plan.regions
+                    if region.region_id == self._hover
+                ),
+                None,
+            )
+            if hovered is not None:
+                painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+                painter.setPen(QtGui.QPen(QtGui.QColor(theme["primary"]), 1))
+                painter.drawRect(self._cell_rect(hovered, content))
+        painter.restore()
+        painter.end()
+
+    def mouseMoveEvent(self, event):  # noqa: N802
+        region = self._hit(event.position())
+        hover = region.region_id if region is not None else ""
+        if hover != self._hover:
+            self._hover = hover
+            self.update()
+        if region is None:
+            self.setToolTip("")
+        else:
+            self.setToolTip(
+                self.tr("区域 {region} · {state}").format(
+                    region=region.region_id,
+                    state=self._state_label(self._state(region)),
+                )
+            )
+        super().mouseMoveEvent(event)
+
+    def leaveEvent(self, event):  # noqa: N802
+        if self._hover:
+            self._hover = ""
+            self.update()
+        super().leaveEvent(event)
+
+    def mousePressEvent(self, event):  # noqa: N802
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            region = self._hit(event.position())
+            if region is not None:
+                self.region_clicked.emit(region.region_id)
+                return
+        super().mousePressEvent(event)
+
+
 class DenseReviewWorkspace(QtWidgets.QDialog):
     """Batch, card and spatial-review controls over the existing canvas."""
 
@@ -327,6 +541,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.setStyleSheet(get_dialog_style() + get_workbench_qss())
         self._connect()
         self._install_shortcuts()
+        self._apply_icons()
         self.refresh_all(initial=True)
 
     @property
@@ -609,7 +824,15 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.region_list.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
         )
-        layout.addWidget(self.region_list, 1)
+        self.coverage_grid = _CoverageGrid()
+        coverage_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        coverage_split.setChildrenCollapsible(False)
+        coverage_split.addWidget(self.coverage_grid)
+        coverage_split.addWidget(self.region_list)
+        coverage_split.setStretchFactor(0, 3)
+        coverage_split.setStretchFactor(1, 2)
+        coverage_split.setSizes([420, 280])
+        layout.addWidget(coverage_split, 1)
         buttons = QtWidgets.QHBoxLayout()
         self.complete_region_button = QtWidgets.QPushButton(
             self.tr("完成区域并下一区")
@@ -683,6 +906,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.compare_button.clicked.connect(self._compare_selected)
         self.tabs.currentChanged.connect(self._on_tab_changed)
         self.region_list.currentItemChanged.connect(self._on_region_selected)
+        self.coverage_grid.region_clicked.connect(self._on_grid_region_clicked)
         self.rebuild_plan_button.clicked.connect(self._rebuild_coverage)
         self.complete_region_button.clicked.connect(
             self._complete_current_region
@@ -1614,6 +1838,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             self.coverage_stats_label.setText(
                 self.tr("查漏计划尚未建立；重建区域计划后可开始。")
             )
+            self.coverage_grid.set_plan(None)
             self.region_list.blockSignals(False)
             return
         self.columns_spin.blockSignals(True)
@@ -1656,6 +1881,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
                 selected_row = row
         self.region_list.setCurrentRow(selected_row)
         self.region_list.blockSignals(False)
+        self.coverage_grid.set_plan(plan, plan.current_region)
         completed = sum(1 for region in plan.regions if region.completed)
         difficult = sum(1 for region in plan.regions if region.difficult)
         skipped = sum(1 for region in plan.regions if region.skipped)
@@ -1680,6 +1906,18 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             return
         self.session.set_current_region(str(region_id))
         self.host.dense_review_show_coverage_region(str(region_id))
+        self.coverage_grid.set_current(str(region_id))
+
+    def _on_grid_region_clicked(self, region_id: str) -> None:
+        item = self._region_items.get(region_id)
+        if item is not None:
+            self.region_list.setCurrentItem(item)
+            return
+        if self.session is None:
+            return
+        self.session.set_current_region(region_id)
+        self.host.dense_review_show_coverage_region(region_id)
+        self.coverage_grid.set_current(region_id)
 
     def _show_current_region(self) -> None:
         session = self.session
@@ -1690,6 +1928,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             return
         self.session.set_current_region(region_id)
         self.host.dense_review_show_coverage_region(region_id)
+        self.coverage_grid.set_current(region_id)
         item = self._region_items.get(region_id)
         if item is not None:
             self.region_list.setCurrentItem(item)
@@ -1789,12 +2028,60 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
                 )
                 continue
             shortcut = QtGui.QShortcut(QtGui.QKeySequence(sequence), self)
-            shortcut.setContext(QtCore.Qt.ShortcutContext.ApplicationShortcut)
+            shortcut.setContext(QtCore.Qt.ShortcutContext.WindowShortcut)
             shortcut.activated.connect(slot)
             shortcut.setEnabled(False)
             self._shortcuts.append(shortcut)
         if self._shortcut_warnings:
             self.status_label.setText("；".join(self._shortcut_warnings))
+        self._apply_shortcut_hints()
+
+    def _apply_icons(self) -> None:
+        theme = get_theme()
+        icons = (
+            (self.start_button, "play", theme["selection_text"]),
+            (self.complete_batch_button, "check", theme["selection_text"]),
+            (
+                self.complete_object_button,
+                "circle-check",
+                theme["text_secondary"],
+            ),
+            (self.full_image_button, "eye", theme["text_secondary"]),
+        )
+        for button, name, color in icons:
+            button.setIcon(themed_icon(name, color))
+            button.setIconSize(QtCore.QSize(15, 15))
+
+    def _apply_shortcut_hints(self) -> None:
+        hints = (
+            (
+                self.complete_batch_button,
+                "dense_review_complete_batch",
+                "Ctrl+Return",
+            ),
+            (
+                self.complete_object_button,
+                "dense_review_complete_object",
+                "Alt+Return",
+            ),
+            (self.skip_button, "dense_review_skip", "Alt+N"),
+            (self.difficult_button, "dense_review_difficult", "Alt+X"),
+            (
+                self.full_image_button,
+                "dense_review_toggle_view",
+                "Alt+V",
+            ),
+        )
+        for button, config_key, default in hints:
+            sequence = self.host.dense_review_shortcut(config_key, default)
+            if not sequence:
+                continue
+            button.setToolTip(
+                self.tr("{action}（{key}）").format(
+                    action=button.text(),
+                    key=sequence,
+                )
+            )
 
     def _apply_card_roles(self, card, item) -> None:
         markers = []
