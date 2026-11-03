@@ -1,0 +1,11 @@
+{
+  "diagnostic_script_sha256": {
+    "benchmark.py": "71abbb6ed12b27a80e0e10473a2d9a8e52098e2c228a23e61160e4f58364d31f",
+    "capture_crosshair.py": "5a112904e315d259f288e0e083ef27eaa1beef13d18199f0ec06e2bdffd72262",
+    "organize_code.py": "50267780a6d85b2a730aa43eb3b35fb076e1ff310216daca1376588ac0505c54",
+    "verify_artifacts.py": "0a63d3c5bfa521b1eac42cfcf4a7902e10c1c829905378d51c3d4a3d989ae2b6"
+  },
+  "report_links_checked": true,
+  "full_scans_completed": 2,
+  "source_sha256_unchanged": true
+}

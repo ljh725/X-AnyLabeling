@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-02",
+  "repository": "https://github.com/ljh725/X-AnyLabeling",
+  "published_commit": "ffb092cfe32e72c0f69ac8fc8b15224dd9c08e9a",
+  "main_before": "fcf2d1d09e70b064728da6567b1d7ec700e543b9",
+  "main_after": "ffb092cfe32e72c0f69ac8fc8b15224dd9c08e9a",
+  "old_refs_preserved_except_main_documentation_commit": true,
+  "branch_count": 13,
+  "tag_count": 89,
+  "new_refs_verified": {
+    "refs/heads/versions/4.0.0-beta.4": "fcf2d1d09e70b064728da6567b1d7ec700e543b9",
+    "refs/heads/versions/4.2.1": "9a37c5474c390e93243e33a88e8232a19c833280",
+    "refs/tags/v4.2.1": "fa619e8c0b27841cdc3805fa2dfa64065776925e",
+    "refs/tags/v4.2.1^{}": "6d250499d2dd81f78723b9217c7a9abf0443ca25",
+    "refs/tags/backup/pre-drag-fix-20261030": "ea011625ecce14e5b1917c47200c5caa69203b3c",
+    "refs/tags/backup/pre-drag-fix-20261030^{}": "d4c7256e1def6e171ea0439ed6bce998b488758a"
+  },
+  "published_files_verified": [
+    "README.md",
+    "README_zh-CN.md",
+    "版本与备份目录.md",
+    "docs/version-management/README.md",
+    "docs/version-management/inventory-2026-11-02.json"
+  ],
+  "original_workspace_head_unchanged": true,
+  "original_tracked_diff_unchanged": true,
+  "validation": "Remote refs, raw published file content, JSON inventory counts, new relative links, staged diff scope and whitespace; no application tests needed for documentation-only changes."
+}

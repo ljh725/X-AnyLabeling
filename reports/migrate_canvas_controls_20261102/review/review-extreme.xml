@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="5.198" timestamp="2026-11-02T12:49:59.151766+08:00" hostname="DESKTOP-RBDJ37M"><testcase classname="reports.migrate_canvas_controls_20261102.review.test_review_gaps" name="test_four_extreme_draft_defers_mode_switch" time="2.320"><failure message="AssertionError: navigation mode remapped while a four-extreme draft is active&#10;assert 'traditional' == 'direct'&#10;  &#10;  #x1B[0m#x1B[91m- direct#x1B[39;49;00m#x1B[90m#x1B[39;49;00m&#10;  #x1B[92m+ traditional#x1B[39;49;00m#x1B[90m#x1B[39;49;00m">window = &lt;anylabeling.views.mainwindow.MainWindow object at 0x0000020909D5D270&gt;
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/reports/migrate_canvas_controls_20261102/review-extreme-pytest/test_four_extreme_draft_defers0')
+
+    def test_four_extreme_draft_defers_mode_switch(window, tmp_path):
+        widget = window.labeling_widget.view
+        path = image_path(tmp_path, "extreme.png", size=(1600,1200))
+        assert widget.load_file(path)
+        creation = widget.canvas.rectangle_creation
+        creation.start_extreme()
+        assert creation.draft.accept(100, 100)
+        creation.refresh()
+        assert widget.canvas.current is None
+        widget.apply_wheel_navigation_mode("traditional")
+&gt;       assert widget.canvas.wheel_navigation_mode == "direct", "navigation mode remapped while a four-extreme draft is active"
+E       AssertionError: navigation mode remapped while a four-extreme draft is active
+E       assert 'traditional' == 'direct'
+E         
+E         #x1B[0m#x1B[91m- direct#x1B[39;49;00m#x1B[90m#x1B[39;49;00m
+E         #x1B[92m+ traditional#x1B[39;49;00m#x1B[90m#x1B[39;49;00m
+
+reports\migrate_canvas_controls_20261102\review\test_review_gaps.py:68: AssertionError</failure></testcase></testsuite></testsuites>

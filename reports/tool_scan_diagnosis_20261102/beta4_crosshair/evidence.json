@@ -1,0 +1,200 @@
+[
+  {
+    "version": "original_beta4",
+    "path": "D:\\X-AnyLabeling-4.0.0-beta.4\\anylabeling\\configs\\xanylabeling_config.yaml",
+    "sha256": "b5ea2d0f90349f3a7d6664e3e04333e57c5af866a97cee7528e595a2f3dc1812",
+    "snippets": [
+      {
+        "name": "canvas.crosshair",
+        "line": 109,
+        "end": 113,
+        "source": "  crosshair:\n    show: true\n    width: 2.0\n    color: \"#00FF00\"\n    opacity: 0.5"
+      }
+    ]
+  },
+  {
+    "version": "original_beta4",
+    "path": "D:\\X-AnyLabeling-4.0.0-beta.4\\anylabeling\\views\\labeling\\widgets\\canvas.py",
+    "sha256": "f52152fce26d40ff349d6e6fd57a5f35a7c5dfa6c7d34deeb368691ed2e4b1a7",
+    "snippets": [
+      {
+        "name": "set_cross_line",
+        "line": 3605,
+        "end": 3611,
+        "source": "    def set_cross_line(self, show, width, color, opacity):\n        \"\"\"Set cross line options\"\"\"\n        self.cross_line_show = show\n        self.cross_line_width = width\n        self.cross_line_color = color\n        self.cross_line_opacity = opacity\n        self.update()"
+      }
+    ]
+  },
+  {
+    "version": "original_beta4",
+    "path": "D:\\X-AnyLabeling-4.0.0-beta.4\\anylabeling\\views\\labeling\\widgets\\crosshair_settings_dialog.py",
+    "sha256": "577533172e57ffebdde94453be72833e2051b7dc79f712965238323f556a5903",
+    "snippets": [
+      {
+        "name": "choose_color",
+        "line": 216,
+        "end": 219,
+        "source": "    def choose_color(self):\n        color = QtWidgets.QColorDialog.getColor()\n        if color.isValid():\n            self.color_lineedit.setText(color.name())"
+      },
+      {
+        "name": "get_settings",
+        "line": 229,
+        "end": 235,
+        "source": "    def get_settings(self):\n        return {\n            \"show\": self.show_checkbox.isChecked(),\n            \"width\": self.width_spinbox.value(),\n            \"color\": self.color_lineedit.text(),\n            \"opacity\": self.opacity_spinbox.value(),\n        }"
+      }
+    ]
+  },
+  {
+    "version": "original_beta4",
+    "path": "D:\\X-AnyLabeling-4.0.0-beta.4\\anylabeling\\views\\labeling\\settings\\runtime_applier.py",
+    "sha256": "c8627371c34890ae87c99225bd6b76319baa85593a2f0cffe07a5b53355174af",
+    "snippets": [
+      {
+        "name": "apply_canvas_crosshair",
+        "line": 320,
+        "end": 328,
+        "source": "    def apply_canvas_crosshair(self) -> None:\n        crosshair = self._widget._config[\"canvas\"][\"crosshair\"]\n        self._widget.canvas.set_cross_line(\n            bool(crosshair[\"show\"]),\n            float(crosshair[\"width\"]),\n            str(crosshair[\"color\"]),\n            float(crosshair[\"opacity\"]),\n        )\n        self._widget.crosshair_settings = dict(crosshair)"
+      }
+    ]
+  },
+  {
+    "version": "personal_beta4",
+    "path": "D:\\xinjiegou-X-AnyLabeling-4.0.0-beta.4\\anylabeling\\configs\\xanylabeling_config.yaml",
+    "sha256": "9c63e02a81593b36683202c2eb07120e6093df8f7601d5094c7e6f02562248c5",
+    "snippets": [
+      {
+        "name": "canvas.crosshair",
+        "line": 64,
+        "end": 69,
+        "source": "  crosshair:\n    color: '#00FF00'\n    opacity: 0.5\n    show: true\n    show_when_drawing: true\n    width: 2.0"
+      }
+    ]
+  },
+  {
+    "version": "personal_beta4",
+    "path": "D:\\xinjiegou-X-AnyLabeling-4.0.0-beta.4\\anylabeling\\views\\labeling\\widgets\\canvas.py",
+    "sha256": "617c42d2f860538514b40b25afe72e2f09ae158ba3f0e11ef68edb4114d62894",
+    "snippets": [
+      {
+        "name": "_rectangle_creation_crosshair_enabled",
+        "line": 1494,
+        "end": 1509,
+        "source": "    def _rectangle_creation_crosshair_enabled(\n        self, cursor_active: bool | None = None\n    ) -> bool:\n        \"\"\"Return whether the rectangle creation crosshair is visible.\"\"\"\n        workflow = getattr(self, \"rectangle_creation\", None)\n        if cursor_active is None:\n            cursor_active = self._crosshair_cursor_active\n        return bool(\n            self.cross_line_show\n            and self.drawing()\n            and self.create_mode == \"rectangle\"\n            and self.pixmap is not None\n            and not self.pixmap.isNull()\n            and (workflow is None or workflow.draft is None)\n            and cursor_active\n        )"
+      },
+      {
+        "name": "_draw_crosshair",
+        "line": 6347,
+        "end": 6363,
+        "source": "    def _draw_crosshair(self, painter: QtGui.QPainter) -> None:\n        \"\"\"Draw two-point rectangle creation guides across the full image.\"\"\"\n        if not self._rectangle_creation_crosshair_enabled():\n            return\n\n        bounds = QtCore.QRectF(\n            0.0,\n            0.0,\n            float(self.pixmap.width()),\n            float(self.pixmap.height()),\n        )\n        self._rectangle_guide_renderer.render(\n            painter,\n            self.prev_move_point,\n            bounds,\n            image_scale=self.scale,\n        )"
+      },
+      {
+        "name": "set_cross_line",
+        "line": 7269,
+        "end": 7272,
+        "source": "    def set_cross_line(self, show):\n        \"\"\"Enable or disable the two-point rectangle creation crosshair.\"\"\"\n        self.cross_line_show = bool(show)\n        self.update()"
+      }
+    ]
+  },
+  {
+    "version": "personal_beta4",
+    "path": "D:\\xinjiegou-X-AnyLabeling-4.0.0-beta.4\\anylabeling\\views\\labeling\\widgets\\rectangle_guide_overlay.py",
+    "sha256": "7374bb08630eb2ae7fd8231554c86481f6e62bbab306f9c59aa783f6bac9fff2",
+    "snippets": [
+      {
+        "name": "RectangleGuidePalette",
+        "line": 11,
+        "end": 16,
+        "source": "class RectangleGuidePalette:\n    \"\"\"Colors used by rectangle positioning and candidate feedback.\"\"\"\n\n    guide: tuple[int, int, int, int] = (0, 150, 230, 220)\n    candidate: tuple[int, int, int, int] = (220, 130, 0, 255)\n    rejected: tuple[int, int, int, int] = (210, 60, 60, 255)"
+      },
+      {
+        "name": "RectangleGuideOverlayRenderer",
+        "line": 19,
+        "end": 101,
+        "source": "class RectangleGuideOverlayRenderer:\n    \"\"\"Render shared crosshair, candidate, and rejection feedback.\"\"\"\n\n    def __init__(self, palette: RectangleGuidePalette | None = None) -> None:\n        \"\"\"Initialize the renderer with an optional visual palette.\"\"\"\n        self.palette = palette or RectangleGuidePalette()\n\n    def guide_pen(self) -> QtGui.QPen:\n        \"\"\"Return the fixed-screen-width cyan guide pen.\"\"\"\n        pen = QtGui.QPen(QtGui.QColor(*self.palette.guide))\n        pen.setCosmetic(True)\n        pen.setWidthF(1.5)\n        pen.setStyle(QtCore.Qt.PenStyle.DashLine)\n        return pen\n\n    def candidate_pen(self) -> QtGui.QPen:\n        \"\"\"Return the valid-candidate pen derived from the guide style.\"\"\"\n        pen = self.guide_pen()\n        pen.setColor(QtGui.QColor(*self.palette.candidate))\n        return pen\n\n    def rejected_pen(self) -> QtGui.QPen:\n        \"\"\"Return the rejected-position pen derived from the guide style.\"\"\"\n        pen = self.guide_pen()\n        pen.setColor(QtGui.QColor(*self.palette.rejected))\n        pen.setWidthF(2.0)\n        return pen\n\n    def render(\n        self,\n        painter: QtGui.QPainter,\n        point: QtCore.QPointF,\n        bounds: QtCore.QRectF,\n        *,\n        candidate_rect: QtCore.QRectF | None = None,\n        rejected: bool = False,\n        rejected_text: str = \"\",\n        image_scale: float = 1.0,\n    ) -> None:\n        \"\"\"Draw rectangle positioning guides without leaking painter state.\n\n        Args:\n            painter: Active painter operating in image coordinates.\n            point: Current pointer position in image coordinates.\n            bounds: Area spanned by the horizontal and vertical guides.\n            candidate_rect: Optional valid rectangle proposal.\n            rejected: Whether to draw an invalid-position marker.\n            rejected_text: Optional message placed beside the marker.\n            image_scale: Current canvas scale used for image-space marker size.\n        \"\"\"\n        painter.save()\n        try:\n            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)\n            painter.setPen(self.guide_pen())\n            painter.drawLine(\n                QtCore.QPointF(point.x(), bounds.top()),\n                QtCore.QPointF(point.x(), bounds.bottom()),\n            )\n            painter.drawLine(\n                QtCore.QPointF(bounds.left(), point.y()),\n                QtCore.QPointF(bounds.right(), point.y()),\n            )\n            if candidate_rect is not None:\n                painter.setPen(self.candidate_pen())\n                painter.drawRect(candidate_rect)\n            elif rejected:\n                painter.setPen(self.rejected_pen())\n                radius = 6 / max(float(image_scale), 1e-6)\n                painter.drawLine(\n                    QtCore.QPointF(point.x() - radius, point.y() - radius),\n                    QtCore.QPointF(point.x() + radius, point.y() + radius),\n                )\n                painter.drawLine(\n                    QtCore.QPointF(point.x() - radius, point.y() + radius),\n                    QtCore.QPointF(point.x() + radius, point.y() - radius),\n                )\n                if rejected_text:\n                    painter.drawText(\n                        QtCore.QPointF(point.x() + radius, point.y() - radius),\n                        rejected_text,\n                    )\n        finally:\n            painter.restore()"
+      }
+    ]
+  },
+  {
+    "version": "personal_beta4",
+    "path": "D:\\xinjiegou-X-AnyLabeling-4.0.0-beta.4\\anylabeling\\views\\labeling\\settings\\runtime_applier.py",
+    "sha256": "5a6b6b0378b5a9f9464a0a9d78581b9c1a084e3baffe0f2b6adeb428e358417e",
+    "snippets": [
+      {
+        "name": "apply_canvas_crosshair",
+        "line": 385,
+        "end": 390,
+        "source": "    def apply_canvas_crosshair(self) -> None:\n        \"\"\"Apply the rectangle-creation crosshair visibility setting.\"\"\"\n        crosshair = self._widget._config[\"canvas\"][\"crosshair\"]\n        self._widget.canvas.set_cross_line(\n            bool(crosshair[\"show_when_drawing\"])\n        )"
+      }
+    ]
+  },
+  {
+    "version": "current_421",
+    "path": "D:\\X-AnyLabeling-4.2.1\\anylabeling\\configs\\xanylabeling_config.yaml",
+    "sha256": "a07cc0fafccec7cf60cd4eff94a71022d62b599dffafd3652ff6dc795dc2bc19",
+    "snippets": [
+      {
+        "name": "canvas.crosshair",
+        "line": 113,
+        "end": 119,
+        "source": "  crosshair:\n    show: true\n    width: 2.0\n    color: \"#00FF00\"\n    opacity: 0.5\n    # Fork addition: guide shown only while drawing two-point rectangles.\n    show_when_drawing: true"
+      }
+    ]
+  },
+  {
+    "version": "current_421",
+    "path": "D:\\X-AnyLabeling-4.2.1\\anylabeling\\views\\labeling\\widgets\\canvas.py",
+    "sha256": "6c004a6c4360692072d1793847e3950fc72d8dd7419635b6ec595a8e2b222997",
+    "snippets": [
+      {
+        "name": "set_cross_line",
+        "line": 6102,
+        "end": 6111,
+        "source": "    def set_cross_line(\n        self, show, width, color, opacity, show_when_drawing=True\n    ):\n        \"\"\"Set cross line options\"\"\"\n        self.cross_line_show = show\n        self.cross_line_width = width\n        self.cross_line_color = color\n        self.cross_line_opacity = opacity\n        self.set_rectangle_creation_crosshair(show_when_drawing)\n        self.update()"
+      },
+      {
+        "name": "_cross_line_pen",
+        "line": 6121,
+        "end": 6126,
+        "source": "    def _cross_line_pen(self) -> QtGui.QPen:\n        pen = QtGui.QPen(QtGui.QColor(self.cross_line_color))\n        pen.setWidthF(float(self.cross_line_width))\n        pen.setStyle(Qt.PenStyle.DashLine)\n        pen.setCosmetic(True)\n        return pen"
+      }
+    ]
+  },
+  {
+    "version": "current_421",
+    "path": "D:\\X-AnyLabeling-4.2.1\\anylabeling\\views\\labeling\\widgets\\rectangle_crosshair.py",
+    "sha256": "7dca55ce43d9de9ef8231c33fb6d52150d9199d78a0720cd0a1092b16638612b",
+    "snippets": [
+      {
+        "name": "guide_constants",
+        "line": 7,
+        "end": 8,
+        "source": "GUIDE_COLOR = QtGui.QColor(0, 150, 230, 220)\nGUIDE_WIDTH = 1.5"
+      },
+      {
+        "name": "_native_crosshair_enabled",
+        "line": 39,
+        "end": 49,
+        "source": "    def _native_crosshair_enabled(self) -> bool:\n        \"\"\"Return whether the always-on native crosshair should be painted.\n\n        While the two-point creation guide is visible the native lines are\n        suppressed so the canvas never shows two superimposed crosshairs\n        with different styling.\n        \"\"\"\n        return bool(\n            self.cross_line_show\n            and not self._rectangle_creation_crosshair_enabled()\n        )"
+      },
+      {
+        "name": "_draw_rectangle_crosshair",
+        "line": 76,
+        "end": 101,
+        "source": "    def _draw_rectangle_crosshair(self, painter: QtGui.QPainter) -> None:\n        \"\"\"Draw the fork's cyan guide across the image when eligible.\"\"\"\n        if not self._rectangle_creation_crosshair_enabled():\n            return\n        bounds = QtCore.QRectF(\n            0.0, 0.0, float(self.pixmap.width()), float(self.pixmap.height())\n        )\n        point = self.prev_move_point\n        painter.save()\n        try:\n            pen = QtGui.QPen(QtGui.QColor(GUIDE_COLOR))\n            pen.setCosmetic(True)\n            pen.setWidthF(GUIDE_WIDTH)\n            pen.setStyle(QtCore.Qt.PenStyle.DashLine)\n            painter.setPen(pen)\n            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)\n            painter.drawLine(\n                QtCore.QPointF(point.x(), bounds.top()),\n                QtCore.QPointF(point.x(), bounds.bottom()),\n            )\n            painter.drawLine(\n                QtCore.QPointF(bounds.left(), point.y()),\n                QtCore.QPointF(bounds.right(), point.y()),\n            )\n        finally:\n            painter.restore()"
+      }
+    ]
+  },
+  {
+    "version": "current_421",
+    "path": "D:\\X-AnyLabeling-4.2.1\\anylabeling\\views\\labeling\\settings\\runtime_applier.py",
+    "sha256": "5cf800a5b69ffabb719a28f1461e460dd0bdd7fc498ac0b90ebf2196da66a6ac",
+    "snippets": [
+      {
+        "name": "apply_canvas_crosshair",
+        "line": 342,
+        "end": 357,
+        "source": "    def apply_canvas_crosshair(self, key: str = \"\", value: Any = None) -> None:\n        crosshair = self._widget._config[\"canvas\"][\"crosshair\"]\n        width = (\n            value\n            if key == \"canvas.crosshair.width\" and value is not None\n            else crosshair[\"width\"]\n        )\n        self._widget.canvas.set_cross_line(\n            bool(crosshair[\"show\"]),\n            float(width),\n            str(crosshair[\"color\"]),\n            float(crosshair[\"opacity\"]),\n            bool(crosshair.get(\"show_when_drawing\", True)),\n        )\n        self._widget.crosshair_settings = dict(crosshair)\n        self._widget.crosshair_settings[\"width\"] = float(width)"
+      }
+    ]
+  }
+]

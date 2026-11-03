@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from PyQt6 import QtCore, QtGui
 
+from ..rectangle_preview import (
+    build_creation_outline,
+    rectangle_box_from_points,
+)
+
 GUIDE_COLOR = QtGui.QColor(0, 150, 230, 220)
 GUIDE_WIDTH = 1.5
 
@@ -43,9 +48,33 @@ class RectangleCrosshairMixin:
         suppressed so the canvas never shows two superimposed crosshairs
         with different styling.
         """
+        preview = getattr(self, "_point_fit_preview", None)
+        if preview is None:
+            preview = self._build_point_fit_preview()
+        fit_owns_guide = bool(
+            preview is not None and preview.valid and preview.candidate_differs
+        )
         return bool(
             self.cross_line_show
+            and not fit_owns_guide
             and not self._rectangle_creation_crosshair_enabled()
+        )
+
+    def _rectangle_creation_outline(
+        self,
+    ) -> QtGui.QPainterPath | None:
+        """Return the draft outline without edges under the guide."""
+        if (
+            not self._rectangle_creation_crosshair_enabled()
+            or self.create_mode != "rectangle"
+            or len(self.line.points) != 2
+        ):
+            return None
+        box = rectangle_box_from_points(self.line.points)
+        if box is None:
+            return None
+        return build_creation_outline(
+            box, self.prev_move_point.x(), self.prev_move_point.y()
         )
 
     def _update_crosshair_cursor(self, pos: QtCore.QPointF) -> None:

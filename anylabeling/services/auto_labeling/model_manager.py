@@ -52,6 +52,60 @@ _AUTO_SEGMENTATION_MODELS = {
 _TIMEOUT_MODELS = {"florence2", "geco"}
 
 
+def _prediction_source(config, prompt):
+    """Freeze only documented model settings. Never copy arbitrary adapter config."""
+    from anylabeling.services.correction_metrics.core import (
+        digest,
+        safe_provenance,
+        uid,
+    )
+
+    model = config["model"]
+    knobs = {}
+    for key, attributes in (
+        ("conf_threshold", ("conf_thres", "conf_threshold", "box_threshold", "bbox_threshold")),
+        ("iou_threshold", ("iou_thres", "iou_threshold")),
+        ("text_threshold", ("text_threshold",)),
+    ):
+        value = config.get(key)
+        for attribute in attributes:
+            runtime = getattr(model, attribute, None)
+            if type(runtime) in (int, float):
+                value = runtime
+                break
+        if type(value) in (int, float):
+            knobs[key] = value
+    selected = getattr(model, "current_model_id", None)
+    if not isinstance(selected, str) or not selected:
+        selected = config.get("name", config.get("display_name"))
+    classes = getattr(model, "classes", None)
+    if not isinstance(classes, (list, tuple, dict)) or not classes:
+        classes = config.get("classes")
+    source = safe_provenance({
+        "run_id": uid(),
+        "model_name": selected,
+        "model_type": config.get("type"),
+        "model_version": config.get("model_version"),
+        "weight_version": config.get("weights_sha256") or config.get("weight_version"),
+        "category_version": config.get("category_version") or (digest(classes) if classes else None),
+        "thresholds": knobs,
+        "prompt": prompt,
+        "started_at": time.time(),
+    })
+    if re.search(r"(?i)\b(authorization\s*:|bearer\s+|api[_-]?key\s*[:=]|token\s*[:=])", str(prompt)):
+        source.pop("prompt", None)
+    settings = {
+        key: config[key] for key in ("engine", "input_height", "input_width", "max_det")
+        if type(config.get(key)) in (int, float, str, bool)
+    }
+    settings.update({
+        key: source[key] for key in ("model_name", "model_type", "model_version", "weight_version", "category_version", "thresholds")
+        if key in source
+    })
+    source["config_digest"] = digest(settings)
+    return source
+
+
 def _get_model_class(model_type):  # noqa: C901
     if model_type == "yolov5":
         from .yolov5 import YOLOv5
@@ -441,6 +495,8 @@ class ModelManager(QObject):
     auto_segmentation_model_unselected = pyqtSignal()
     prediction_started = pyqtSignal()
     prediction_finished = pyqtSignal()
+    prediction_unapplied = pyqtSignal(str, object)
+    batch_prediction_saved = pyqtSignal(str, str, object, object, object, bool)
     request_next_files_requested = pyqtSignal()
     output_modes_changed = pyqtSignal(dict, str)
     download_progress = pyqtSignal(int, int)
@@ -449,6 +505,7 @@ class ModelManager(QObject):
     def __init__(self):
         super().__init__()
         self.model_configs = []
+        self.collect_prediction_provenance = False
 
         self.loaded_model_config = None
         self.loaded_model_config_lock = Lock()
@@ -1080,6 +1137,16 @@ class ModelManager(QObject):
             self.prediction_finished.emit()
             return
 
+        source = None
+        if getattr(self, "collect_prediction_provenance", False):
+            try:
+                source = _prediction_source(model_config, text_prompt)
+            except (AttributeError, TypeError, ValueError) as e:
+                from uuid import uuid4
+
+                logger.warning("Unavailable prediction metadata: %s", type(e).__name__)
+                source = {"run_id": uuid4().hex, "started_at": time.time()}
+        started = time.monotonic() if source else None
         try:
             if text_prompt is not None:
                 auto_labeling_result = model_config["model"].predict_shapes(
@@ -1100,6 +1167,14 @@ class ModelManager(QObject):
 
             if isinstance(auto_labeling_result, AutoLabelingResult):
                 auto_labeling_result.image_path = filename
+                if source:
+                    source.update(status="success", ended_at=time.time(),
+                                  inference_seconds=time.monotonic() - started)
+                    auto_labeling_result.provenance = source
+            elif source:
+                source.update(status="failed", ended_at=time.time(),
+                              inference_seconds=time.monotonic() - started)
+                self.prediction_unapplied.emit(str(filename or ""), source)
 
             if batch:
                 return auto_labeling_result
@@ -1110,6 +1185,10 @@ class ModelManager(QObject):
                 )
 
         except Exception as e:  # noqa
+            if source and source.get("status") != "failed":
+                source.update(status="failed", ended_at=time.time(),
+                              inference_seconds=time.monotonic() - started)
+                self.prediction_unapplied.emit(str(filename or ""), source)
             logger.error(f"Error in predict_shapes: {e}")
             template = "Error in model prediction: {error_message}"
             translated_template = self.tr(template)

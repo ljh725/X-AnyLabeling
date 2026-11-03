@@ -1,0 +1,152 @@
+[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m [ 33%]
+[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m [ 67%]
+[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m [ 98%]
+[0m[31mF[0m[31mF[0m[32m.[0m[31m                                                                      [100%][0m
+================================== FAILURES ===================================
+[31m[1m____ TestRemoteServerClassFilter.test_prediction_forwards_selected_classes ____[0m
+
+self = <test_remote_server.TestRemoteServerClassFilter testMethod=test_prediction_forwards_selected_classes>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_prediction_forwards_selected_classes[39;49;00m([96mself[39;49;00m):[90m[39;49;00m
+        [96mself[39;49;00m.model.set_model_id([33m"[39;49;00m[33myolo[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+        [96mself[39;49;00m.model.set_auto_labeling_filter_classes([[33m"[39;49;00m[33mcar[39;49;00m[33m"[39;49;00m])[90m[39;49;00m
+        response = Mock()[90m[39;49;00m
+        response.json.return_value = {[33m"[39;49;00m[33mdata[39;49;00m[33m"[39;49;00m: {[33m"[39;49;00m[33mshapes[39;49;00m[33m"[39;49;00m: []}}[90m[39;49;00m
+    [90m[39;49;00m
+        [94mwith[39;49;00m tempfile.NamedTemporaryFile(suffix=[33m"[39;49;00m[33m.jpg[39;49;00m[33m"[39;49;00m) [94mas[39;49;00m image_file:[90m[39;49;00m
+            image_file.write([33mb[39;49;00m[33m"[39;49;00m[33mimage[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+            image_file.flush()[90m[39;49;00m
+            [94mwith[39;49;00m patch([90m[39;49;00m
+                [33m"[39;49;00m[33manylabeling.services.auto_labeling.remote_server.requests.post[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+                return_value=response,[90m[39;49;00m
+            ) [94mas[39;49;00m post:[90m[39;49;00m
+>               [96mself[39;49;00m.model.predict_shapes([96mobject[39;49;00m(), image_file.name)[90m[39;49;00m
+
+[1m[31mtests\test_auto_labeling\test_remote_server.py[0m:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <anylabeling.services.auto_labeling.remote_server.RemoteServer object at 0x000001BA56AC13B0>
+image = <object object at 0x000001BA553A6EF0>
+image_path = 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmpqbl17y7j.jpg'
+text_prompt = None, run_tracker = False
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mpredict_shapes[39;49;00m([90m[39;49;00m
+        [96mself[39;49;00m, image, image_path=[94mNone[39;49;00m, text_prompt=[94mNone[39;49;00m, run_tracker=[94mFalse[39;49;00m[90m[39;49;00m
+    ):[90m[39;49;00m
+        [94mif[39;49;00m image [95mis[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+            [94mreturn[39;49;00m AutoLabelingResult([], replace=[96mself[39;49;00m.replace)[90m[39;49;00m
+    [90m[39;49;00m
+        [94mif[39;49;00m [96mself[39;49;00m.current_model_id [95mis[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+            logger.warning([33m"[39;49;00m[33mNo model selected[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+            [94mreturn[39;49;00m AutoLabelingResult([], replace=[96mself[39;49;00m.replace)[90m[39;49;00m
+    [90m[39;49;00m
+        batch_mode = [96mself[39;49;00m.get_batch_processing_mode()[90m[39;49;00m
+        [94mif[39;49;00m batch_mode == [33m"[39;49;00m[33mvideo[39;49;00m[33m"[39;49;00m [95mand[39;49;00m text_prompt:[90m[39;49;00m
+            [94mreturn[39;49;00m [96mself[39;49;00m._handle_video_prompt(image_path, text_prompt)[90m[39;49;00m
+        [94melif[39;49;00m batch_mode == [33m"[39;49;00m[33mvideo[39;49;00m[33m"[39;49;00m [95mand[39;49;00m [96mself[39;49;00m.marks:[90m[39;49;00m
+            result = [96mself[39;49;00m._handle_video_point_prompt(image_path)[90m[39;49;00m
+            [94mif[39;49;00m run_tracker:[90m[39;49;00m
+                logger.info([33m"[39;49;00m[33mStarting video propagation after point prompt...[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+                [94mreturn[39;49;00m [96mself[39;49;00m._handle_video_propagation()[90m[39;49;00m
+            [94mreturn[39;49;00m result[90m[39;49;00m
+        [94melif[39;49;00m batch_mode == [33m"[39;49;00m[33mvideo[39;49;00m[33m"[39;49;00m [95mand[39;49;00m run_tracker:[90m[39;49;00m
+            logger.info([33m"[39;49;00m[33mStarting video propagation...[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+            [94mreturn[39;49;00m [96mself[39;49;00m._handle_video_propagation()[90m[39;49;00m
+    [90m[39;49;00m
+        [94mif[39;49;00m image_path [95mand[39;49;00m os.path.exists(image_path):[90m[39;49;00m
+>           [94mwith[39;49;00m [96mopen[39;49;00m(image_path, [33m"[39;49;00m[33mrb[39;49;00m[33m"[39;49;00m) [94mas[39;49;00m f:[90m[39;49;00m
+                 ^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE           PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmpqbl17y7j.jpg'[0m
+
+[1m[31manylabeling\services\auto_labeling\remote_server.py[0m:179: PermissionError
+[31m[1m_ TestRemoteServerClassFilter.test_selecting_all_classes_sends_empty_filter_override _[0m
+
+self = <test_remote_server.TestRemoteServerClassFilter testMethod=test_selecting_all_classes_sends_empty_filter_override>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_selecting_all_classes_sends_empty_filter_override[39;49;00m([96mself[39;49;00m):[90m[39;49;00m
+        [96mself[39;49;00m.model.set_model_id([33m"[39;49;00m[33myolo[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+        [96mself[39;49;00m.model.set_auto_labeling_filter_classes([96mself[39;49;00m.model.classes)[90m[39;49;00m
+        response = Mock()[90m[39;49;00m
+        response.json.return_value = {[33m"[39;49;00m[33mdata[39;49;00m[33m"[39;49;00m: {[33m"[39;49;00m[33mshapes[39;49;00m[33m"[39;49;00m: []}}[90m[39;49;00m
+    [90m[39;49;00m
+        [94mwith[39;49;00m tempfile.NamedTemporaryFile(suffix=[33m"[39;49;00m[33m.jpg[39;49;00m[33m"[39;49;00m) [94mas[39;49;00m image_file:[90m[39;49;00m
+            image_file.write([33mb[39;49;00m[33m"[39;49;00m[33mimage[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+            image_file.flush()[90m[39;49;00m
+            [94mwith[39;49;00m patch([90m[39;49;00m
+                [33m"[39;49;00m[33manylabeling.services.auto_labeling.remote_server.requests.post[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+                return_value=response,[90m[39;49;00m
+            ) [94mas[39;49;00m post:[90m[39;49;00m
+>               [96mself[39;49;00m.model.predict_shapes([96mobject[39;49;00m(), image_file.name)[90m[39;49;00m
+
+[1m[31mtests\test_auto_labeling\test_remote_server.py[0m:68: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <anylabeling.services.auto_labeling.remote_server.RemoteServer object at 0x000001BA56AC1B30>
+image = <object object at 0x000001BA553A5B10>
+image_path = 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmp8dvr4d14.jpg'
+text_prompt = None, run_tracker = False
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mpredict_shapes[39;49;00m([90m[39;49;00m
+        [96mself[39;49;00m, image, image_path=[94mNone[39;49;00m, text_prompt=[94mNone[39;49;00m, run_tracker=[94mFalse[39;49;00m[90m[39;49;00m
+    ):[90m[39;49;00m
+        [94mif[39;49;00m image [95mis[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+            [94mreturn[39;49;00m AutoLabelingResult([], replace=[96mself[39;49;00m.replace)[90m[39;49;00m
+    [90m[39;49;00m
+        [94mif[39;49;00m [96mself[39;49;00m.current_model_id [95mis[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+            logger.warning([33m"[39;49;00m[33mNo model selected[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+            [94mreturn[39;49;00m AutoLabelingResult([], replace=[96mself[39;49;00m.replace)[90m[39;49;00m
+    [90m[39;49;00m
+        batch_mode = [96mself[39;49;00m.get_batch_processing_mode()[90m[39;49;00m
+        [94mif[39;49;00m batch_mode == [33m"[39;49;00m[33mvideo[39;49;00m[33m"[39;49;00m [95mand[39;49;00m text_prompt:[90m[39;49;00m
+            [94mreturn[39;49;00m [96mself[39;49;00m._handle_video_prompt(image_path, text_prompt)[90m[39;49;00m
+        [94melif[39;49;00m batch_mode == [33m"[39;49;00m[33mvideo[39;49;00m[33m"[39;49;00m [95mand[39;49;00m [96mself[39;49;00m.marks:[90m[39;49;00m
+            result = [96mself[39;49;00m._handle_video_point_prompt(image_path)[90m[39;49;00m
+            [94mif[39;49;00m run_tracker:[90m[39;49;00m
+                logger.info([33m"[39;49;00m[33mStarting video propagation after point prompt...[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+                [94mreturn[39;49;00m [96mself[39;49;00m._handle_video_propagation()[90m[39;49;00m
+            [94mreturn[39;49;00m result[90m[39;49;00m
+        [94melif[39;49;00m batch_mode == [33m"[39;49;00m[33mvideo[39;49;00m[33m"[39;49;00m [95mand[39;49;00m run_tracker:[90m[39;49;00m
+            logger.info([33m"[39;49;00m[33mStarting video propagation...[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+            [94mreturn[39;49;00m [96mself[39;49;00m._handle_video_propagation()[90m[39;49;00m
+    [90m[39;49;00m
+        [94mif[39;49;00m image_path [95mand[39;49;00m os.path.exists(image_path):[90m[39;49;00m
+>           [94mwith[39;49;00m [96mopen[39;49;00m(image_path, [33m"[39;49;00m[33mrb[39;49;00m[33m"[39;49;00m) [94mas[39;49;00m f:[90m[39;49;00m
+                 ^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE           PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmp8dvr4d14.jpg'[0m
+
+[1m[31manylabeling\services\auto_labeling\remote_server.py[0m:179: PermissionError
+============================ slowest 30 durations =============================
+2.33s setup    tests/test_inspection/test_inspector_dialog.py::test_candidate_accept_uses_formal_shape_identity
+2.28s setup    tests/test_dense_review/test_workspace.py::test_changed_bounds_request_fresh_card
+2.24s setup    tests/test_inspection/test_inspector_dialog.py::test_resume_keeps_unsaved_canvas_edit_pending
+2.23s setup    tests/test_inspection/test_inspector_dialog.py::test_delete_only_removes_canvas_selected_issue_object
+2.20s setup    tests/test_inspection/test_inspector_dialog.py::test_inspector_entry_and_current_image_run
+2.20s setup    tests/test_dense_review/test_workspace.py::test_hidden_and_filtered_objects_are_excluded_but_focus_is_not
+2.19s setup    tests/test_dense_review/test_workspace.py::test_main_window_undo_reverts_latest_move_after_manual_roundtrip
+2.18s setup    tests/test_inspection/test_inspector_dialog.py::test_run_respects_profile_selected_after_binding
+2.17s setup    tests/test_dense_review/test_workspace.py::test_unknown_progress_is_preserved_until_explicit_rebuild
+2.13s setup    tests/test_dense_review/test_workspace.py::test_configured_batches_keep_membership_after_relabel
+2.11s setup    tests/test_dense_review/test_workspace.py::test_save_failure_keeps_memory_progress
+2.08s setup    tests/test_dense_review/test_workspace.py::test_spatial_review_requires_explicit_region_completion
+2.07s setup    tests/test_inspection/test_inspector_dialog.py::test_resume_marks_changed_annotation_as_stale
+2.06s setup    tests/test_dense_review/test_workspace.py::test_open_confirm_and_save_round_trip
+2.04s setup    tests/test_dense_review/test_workspace.py::test_display_modes_and_full_image_restore
+2.03s setup    tests/test_inspection/test_inspector_dialog.py::test_feedback_and_navigation_keep_states_separate
+2.03s setup    tests/test_inspection/test_inspector_dialog.py::test_dataset_run_delete_and_recheck_marks_not_detected
+1.99s call     tests/test_auto_labeling/test_layout.py::TestAutoLabelingLayout::test_initial_show_reflows_model_selection_row
+1.98s setup    tests/test_dense_review/test_workspace.py::test_batch_confirmation_is_one_undo_without_touching_labels
+1.97s setup    tests/test_dense_review/test_workspace.py::test_closing_workspace_restores_canvas_and_writes_nothing
+1.97s setup    tests/test_dense_review/test_workspace.py::test_full_image_roundtrip_restores_user_zoom
+1.96s setup    tests/test_dense_review/test_workspace.py::test_relabel_move_and_undo_invalidate_progress
+1.95s setup    tests/test_dense_review/test_workspace.py::test_quick_difficult_shortcut_marks_without_dialog
+1.94s setup    tests/test_dense_review/test_workspace.py::test_output_directory_keeps_independent_progress
+1.93s setup    tests/test_dense_review/test_workspace.py::test_new_copy_enters_pending_without_inheriting
+1.88s setup    tests/test_dense_review/test_workspace.py::test_external_change_is_detected_before_save
+0.50s call     tests/test_inspection/test_inspector_dialog.py::test_dataset_run_delete_and_recheck_marks_not_detected
+0.41s call     tests/test_inspection/test_inspector_dialog.py::test_run_respects_profile_selected_after_binding
+0.33s call     tests/test_inspection/test_inspector_dialog.py::test_delete_only_removes_canvas_selected_issue_object
+0.32s call     tests/test_inspection/test_inspector_dialog.py::test_resume_marks_changed_annotation_as_stale
+[36m[1m=========================== short test summary info ===========================[0m
+[31mFAILED[0m tests/test_auto_labeling/test_remote_server.py::[1mTestRemoteServerClassFilter::test_prediction_forwards_selected_classes[0m - PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\...
+[31mFAILED[0m tests/test_auto_labeling/test_remote_server.py::[1mTestRemoteServerClassFilter::test_selecting_all_classes_sends_empty_filter_override[0m - PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\...
+[31m[31m[1m2 failed[0m, [32m211 passed[0m, [32m6 subtests passed[0m[31m in 61.83s (0:01:01)[0m[0m

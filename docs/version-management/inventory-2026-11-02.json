@@ -1,0 +1,980 @@
+{
+  "repository": "https://github.com/ljh725/X-AnyLabeling",
+  "captured_at": "2026-11-02T15:25:49+08:00",
+  "snapshot_phase": "before_organization_publication",
+  "version_evidence": "anylabeling/app_info.py at each commit; metadata does not certify all features or stability",
+  "default_branch": "main",
+  "github_refs": [
+    {
+      "ref": "refs/heads/backup/4.2.1-20261029",
+      "kind": "branch",
+      "object_sha": "4043583b06d765875e263442920ddfe574b2cf20",
+      "commit_sha": "4043583b06d765875e263442920ddfe574b2cf20",
+      "matches_upstream_tag": false,
+      "declared_version": "4.2.1",
+      "category": "personal-4.2.1"
+    },
+    {
+      "ref": "refs/heads/backup/rectangle-click-tested-20260910",
+      "kind": "branch",
+      "object_sha": "8955add57f8b950d9290302d00c2bc7ff945beea",
+      "commit_sha": "8955add57f8b950d9290302d00c2bc7ff945beea",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/heads/backup/refactor-data-inspector-workflow-20261102",
+      "kind": "branch",
+      "object_sha": "9a37c5474c390e93243e33a88e8232a19c833280",
+      "commit_sha": "9a37c5474c390e93243e33a88e8232a19c833280",
+      "matches_upstream_tag": false,
+      "declared_version": "4.2.1",
+      "category": "personal-4.2.1"
+    },
+    {
+      "ref": "refs/heads/backup/unify-student-action-review-workbench-pre-apply-20260914",
+      "kind": "branch",
+      "object_sha": "9a5bc396aaea6453a8e25b6eae87564df588c50e",
+      "commit_sha": "9a5bc396aaea6453a8e25b6eae87564df588c50e",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/heads/codex/rectangle-interaction-improvements",
+      "kind": "branch",
+      "object_sha": "5767933892cb1d0bc37049bdd2e26f5a71418518",
+      "commit_sha": "5767933892cb1d0bc37049bdd2e26f5a71418518",
+      "matches_upstream_tag": false,
+      "declared_version": "4.2.1",
+      "category": "personal-4.2.1"
+    },
+    {
+      "ref": "refs/heads/feat/pose-label-improvements",
+      "kind": "branch",
+      "object_sha": "3d4300197e506e55a188561feea7f58d38359662",
+      "commit_sha": "3d4300197e506e55a188561feea7f58d38359662",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/heads/feature/inspector-selction-update-change",
+      "kind": "branch",
+      "object_sha": "bed5021f2a7af91eece9f728dcd13df15ed37711",
+      "commit_sha": "bed5021f2a7af91eece9f728dcd13df15ed37711",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/heads/feature/label-display-mode",
+      "kind": "branch",
+      "object_sha": "a2d7f9d29c6263b29130c6849ea70b624f366d20",
+      "commit_sha": "a2d7f9d29c6263b29130c6849ea70b624f366d20",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/heads/feature/selection-optimization",
+      "kind": "branch",
+      "object_sha": "8955add57f8b950d9290302d00c2bc7ff945beea",
+      "commit_sha": "8955add57f8b950d9290302d00c2bc7ff945beea",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/heads/main",
+      "kind": "branch",
+      "object_sha": "fcf2d1d09e70b064728da6567b1d7ec700e543b9",
+      "commit_sha": "fcf2d1d09e70b064728da6567b1d7ec700e543b9",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/heads/perf/lazy-label-loading",
+      "kind": "branch",
+      "object_sha": "3c13fbcef18ba89c353ab8eea25a2452044ccdf4",
+      "commit_sha": "3c13fbcef18ba89c353ab8eea25a2452044ccdf4",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/archive/feature/Data_Inspector_Feature_Update",
+      "kind": "tag",
+      "object_sha": "476ad1fabe7340ca503d81a44751dae787879439",
+      "commit_sha": "476ad1fabe7340ca503d81a44751dae787879439",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/archive/feature/Filter-Results-Navigation",
+      "kind": "tag",
+      "object_sha": "ac970137487b431f20f2dd989e7f5590ec0b93c0",
+      "commit_sha": "ac970137487b431f20f2dd989e7f5590ec0b93c0",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/archive/feature/Image-Tag-Loading-Mechanism-Adjustment",
+      "kind": "tag",
+      "object_sha": "18d0c36ffe052e56881d2cf38a4ca2f3e00f5c93",
+      "commit_sha": "18d0c36ffe052e56881d2cf38a4ca2f3e00f5c93",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/archive/feature/Inspector_Panel",
+      "kind": "tag",
+      "object_sha": "8b7a2c2c8c448f17f746b714326afb0df451bc24",
+      "commit_sha": "8b7a2c2c8c448f17f746b714326afb0df451bc24",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/archive/feature/Label_shapetype_Filter",
+      "kind": "tag",
+      "object_sha": "a48fff57714fe7e614b5a8320d4d521c6232057e",
+      "commit_sha": "a48fff57714fe7e614b5a8320d4d521c6232057e",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/archive/feature/dataset_filter_index_design",
+      "kind": "tag",
+      "object_sha": "e245a6b8c842398c2d5f702bcc3f11e8951aed6a",
+      "commit_sha": "e245a6b8c842398c2d5f702bcc3f11e8951aed6a",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/archive/feature/file_filter_engine",
+      "kind": "tag",
+      "object_sha": "fe070e7a8c4bf51a4a10adc8d5fe4a876c10e349",
+      "commit_sha": "fe070e7a8c4bf51a4a10adc8d5fe4a876c10e349",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/archive/feature/keypoin_tool_window_remove_default_filter",
+      "kind": "tag",
+      "object_sha": "e8c681afd30ad650d80df9a7a320f7a8b713156e",
+      "commit_sha": "e8c681afd30ad650d80df9a7a320f7a8b713156e",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/archive/feature/label_filter_mutle_label_and_Optimization",
+      "kind": "tag",
+      "object_sha": "a3e6bb871c7558ef3c5c6d9c46ede16724f07c5a",
+      "commit_sha": "a3e6bb871c7558ef3c5c6d9c46ede16724f07c5a",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/archive/feature/port-3.3.8-extensions",
+      "kind": "tag",
+      "object_sha": "6cdf1069e3b3631fc14257ffe3e00821003c1df2",
+      "commit_sha": "6cdf1069e3b3631fc14257ffe3e00821003c1df2",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/backup-before-add-dataset-label-thumbnail-browser",
+      "kind": "tag",
+      "object_sha": "57564564dddc4c2068206a73cccf623910d2ef92",
+      "commit_sha": "1cd89e8dd3565b90ab14391d6c978b7033124bcb",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/backup-v4.2.1-20261029",
+      "kind": "tag",
+      "object_sha": "e8b91eea349fe525e0693282a5f40a261d130074",
+      "commit_sha": "4043583b06d765875e263442920ddfe574b2cf20",
+      "matches_upstream_tag": false,
+      "declared_version": "4.2.1",
+      "category": "personal-4.2.1"
+    },
+    {
+      "ref": "refs/tags/backup/before-layout-optimization",
+      "kind": "tag",
+      "object_sha": "af97a6f9ab5f943ee17c53dc33d5c103aacd9c24",
+      "commit_sha": "a375aa8ea52d7df92cdeb796d5e9d211e04693df",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/backup/before-native-bbox",
+      "kind": "tag",
+      "object_sha": "39c87ad263960e98f783594e9beecb776ae8ef75",
+      "commit_sha": "2172e7880f83ce33b1d7bf0e8f9471672eb631ec",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/backup/before-pose-decouple",
+      "kind": "tag",
+      "object_sha": "d06e15dc047ad7829de9c58980fdffd7c5f7675b",
+      "commit_sha": "918f386be3b43028cb4494c6ac6224ea6208050f",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/backup/before-pose-filter-refactor",
+      "kind": "tag",
+      "object_sha": "871cb5dc91a7fe882a745181a2e5c3d7ad24150d",
+      "commit_sha": "0a39ebea7cdd590445c4551b40ed475cd9b6c504",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/backup/pre-l1l2-qc-20260703",
+      "kind": "tag",
+      "object_sha": "e361739f9f495a6fd369ac9577ea0161a57071fb",
+      "commit_sha": "f63568b6f0a4fb0d3e39d13cf7715b2376337c46",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/backup/rectangle-click-tested-20260910",
+      "kind": "tag",
+      "object_sha": "d9ba26b8f3f1fcb10c8b6f90b820ec51bacd93ed",
+      "commit_sha": "8955add57f8b950d9290302d00c2bc7ff945beea",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/backup/refactor-data-inspector-workflow-20261102",
+      "kind": "tag",
+      "object_sha": "87d254bfd8c8d9e59928e81ecffeca68b40d89a1",
+      "commit_sha": "9a37c5474c390e93243e33a88e8232a19c833280",
+      "matches_upstream_tag": false,
+      "declared_version": "4.2.1",
+      "category": "personal-4.2.1"
+    },
+    {
+      "ref": "refs/tags/backup/refine-dataset-thumbnail-ux-complete-20260903",
+      "kind": "tag",
+      "object_sha": "6c8921bec331f73a8604700f398b789b7d44251a",
+      "commit_sha": "0fc7fa9f6da478b8f3bc62ebbf8dd755930fa9b8",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/backup/thumbnail-complete-20260903",
+      "kind": "tag",
+      "object_sha": "143b0baa3743978b085b7e734a675e00f425483a",
+      "commit_sha": "f9cc405d73754dc056fd934c15fa65ef0129ec93",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/selection-migration/baseline-2026-06-29",
+      "kind": "tag",
+      "object_sha": "5c9a0df159faccf996ed9dfe446bb3d87af2748f",
+      "commit_sha": "a2d7f9d29c6263b29130c6849ea70b624f366d20",
+      "matches_upstream_tag": false,
+      "declared_version": "4.0.0-beta.4",
+      "category": "personal-4.0.0-beta.4"
+    },
+    {
+      "ref": "refs/tags/v0.1.0",
+      "kind": "tag",
+      "object_sha": "26885ee9e05f086e48514081696596ef21818dca",
+      "commit_sha": "26885ee9e05f086e48514081696596ef21818dca",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v0.1.1",
+      "kind": "tag",
+      "object_sha": "7e0a9606f6dad39c7df7d3f8ab5b9568a22a5045",
+      "commit_sha": "7e0a9606f6dad39c7df7d3f8ab5b9568a22a5045",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v0.1.2",
+      "kind": "tag",
+      "object_sha": "d5cc7de5c648ca87f5b61e531a7354a611a0714a",
+      "commit_sha": "d5cc7de5c648ca87f5b61e531a7354a611a0714a",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v0.2.0",
+      "kind": "tag",
+      "object_sha": "a685b6eba17dcb1869685f095181e2a79e46c746",
+      "commit_sha": "a685b6eba17dcb1869685f095181e2a79e46c746",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v0.2.1",
+      "kind": "tag",
+      "object_sha": "7d8fe5bfecdf636fd105454419a313849df3dfb2",
+      "commit_sha": "7d8fe5bfecdf636fd105454419a313849df3dfb2",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v0.2.2",
+      "kind": "tag",
+      "object_sha": "203d98d9301931065f75a4d243641d9b10c289a6",
+      "commit_sha": "203d98d9301931065f75a4d243641d9b10c289a6",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v0.2.3",
+      "kind": "tag",
+      "object_sha": "df2c6eda182ad31e882618602da70638d5204516",
+      "commit_sha": "df2c6eda182ad31e882618602da70638d5204516",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v0.2.4",
+      "kind": "tag",
+      "object_sha": "78e501032adc9ec373fd5a7787865317192424e5",
+      "commit_sha": "78e501032adc9ec373fd5a7787865317192424e5",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v0.3.0",
+      "kind": "tag",
+      "object_sha": "34906ebf848571a69810961ea84be9a98d8550d7",
+      "commit_sha": "34906ebf848571a69810961ea84be9a98d8550d7",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v1.0.0",
+      "kind": "tag",
+      "object_sha": "170a29469fbffc754c5da2d63aa1ba6f093072cd",
+      "commit_sha": "170a29469fbffc754c5da2d63aa1ba6f093072cd",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v1.1.0",
+      "kind": "tag",
+      "object_sha": "f8553460e274af099bc0613427e025179247a7ee",
+      "commit_sha": "f8553460e274af099bc0613427e025179247a7ee",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.0.0",
+      "kind": "tag",
+      "object_sha": "7d8db1c24860408f643df6c0a65a3a67676bb071",
+      "commit_sha": "7d8db1c24860408f643df6c0a65a3a67676bb071",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.1.0",
+      "kind": "tag",
+      "object_sha": "06c93298d93caa717af0c3d9f17d9aaf40f15e07",
+      "commit_sha": "06c93298d93caa717af0c3d9f17d9aaf40f15e07",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.2.0",
+      "kind": "tag",
+      "object_sha": "54582522e527c625386dc90e54d94b1c46ad12a8",
+      "commit_sha": "54582522e527c625386dc90e54d94b1c46ad12a8",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.3.0",
+      "kind": "tag",
+      "object_sha": "1edd6ccaec893143ad9531c4c71918abcf9f1426",
+      "commit_sha": "1edd6ccaec893143ad9531c4c71918abcf9f1426",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.3.1",
+      "kind": "tag",
+      "object_sha": "d2974c8c5b70125663532bdaed1a15a760937229",
+      "commit_sha": "d2974c8c5b70125663532bdaed1a15a760937229",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.3.2",
+      "kind": "tag",
+      "object_sha": "e3f48c76caba36b204e7ee101549533afcc51a7e",
+      "commit_sha": "e3f48c76caba36b204e7ee101549533afcc51a7e",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.3.3",
+      "kind": "tag",
+      "object_sha": "83a73dd48310e47a3ccd51ab1339f0a8bae2d70a",
+      "commit_sha": "83a73dd48310e47a3ccd51ab1339f0a8bae2d70a",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.3.4",
+      "kind": "tag",
+      "object_sha": "ea435b0c28d89fe245c8d4d82908df26b372ae3f",
+      "commit_sha": "ea435b0c28d89fe245c8d4d82908df26b372ae3f",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.3.5",
+      "kind": "tag",
+      "object_sha": "59e200b9f8a054c080e1d45896a85824c882a924",
+      "commit_sha": "59e200b9f8a054c080e1d45896a85824c882a924",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.3.6",
+      "kind": "tag",
+      "object_sha": "08a108170abae094343012c3fe24116bf511e293",
+      "commit_sha": "08a108170abae094343012c3fe24116bf511e293",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.3.7",
+      "kind": "tag",
+      "object_sha": "98a95db7f7a310b1a5c094c912bc8a4aea2a86cd",
+      "commit_sha": "98a95db7f7a310b1a5c094c912bc8a4aea2a86cd",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.4.0",
+      "kind": "tag",
+      "object_sha": "3f683939d6c9e386bab67eaafde97957515a6a06",
+      "commit_sha": "3f683939d6c9e386bab67eaafde97957515a6a06",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.4.1",
+      "kind": "tag",
+      "object_sha": "6186dcf5455b0b4f0eb5cf990b0fc067e6ad6a1d",
+      "commit_sha": "6186dcf5455b0b4f0eb5cf990b0fc067e6ad6a1d",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.4.2",
+      "kind": "tag",
+      "object_sha": "d9302d6655c9c8ca8b626ce80447297319f25494",
+      "commit_sha": "d9302d6655c9c8ca8b626ce80447297319f25494",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.4.3",
+      "kind": "tag",
+      "object_sha": "5a599e8192877da641fd226237656550688b9191",
+      "commit_sha": "5a599e8192877da641fd226237656550688b9191",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.4.4",
+      "kind": "tag",
+      "object_sha": "723a77285af8770c02a918a4a6f3c4fbf624cd7e",
+      "commit_sha": "723a77285af8770c02a918a4a6f3c4fbf624cd7e",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.4.5-alpha",
+      "kind": "tag",
+      "object_sha": "ba719c553e9af247d54cf6f0f6377913b89b9eff",
+      "commit_sha": "ba719c553e9af247d54cf6f0f6377913b89b9eff",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.5.0",
+      "kind": "tag",
+      "object_sha": "8f5768bf56dae94e0d300ed008a4ee0496e159fa",
+      "commit_sha": "8f5768bf56dae94e0d300ed008a4ee0496e159fa",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.5.1",
+      "kind": "tag",
+      "object_sha": "110e0f3604f9602b312f82fc1fa261da94765f66",
+      "commit_sha": "110e0f3604f9602b312f82fc1fa261da94765f66",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.5.2",
+      "kind": "tag",
+      "object_sha": "1ddd5d4a0f897d63686e1025116789c346bb41ca",
+      "commit_sha": "1ddd5d4a0f897d63686e1025116789c346bb41ca",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.5.3",
+      "kind": "tag",
+      "object_sha": "50f3a935b643a6e851198a002473c52d5ef46d42",
+      "commit_sha": "50f3a935b643a6e851198a002473c52d5ef46d42",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v2.5.4",
+      "kind": "tag",
+      "object_sha": "988d51fefddfe62994d59a000598272ca3c54962",
+      "commit_sha": "988d51fefddfe62994d59a000598272ca3c54962",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.0.0",
+      "kind": "tag",
+      "object_sha": "392558a5901855d1d6eca145806ea8be7263ea48",
+      "commit_sha": "392558a5901855d1d6eca145806ea8be7263ea48",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.0.1",
+      "kind": "tag",
+      "object_sha": "add26b6230ae9ee08373e883181e7a7afcd9f0b7",
+      "commit_sha": "add26b6230ae9ee08373e883181e7a7afcd9f0b7",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.0.2",
+      "kind": "tag",
+      "object_sha": "4d4c5949af2c2772cead04a8b78dca68a563241e",
+      "commit_sha": "4d4c5949af2c2772cead04a8b78dca68a563241e",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.0.3",
+      "kind": "tag",
+      "object_sha": "8d53085e846eb414450a421fe7f237df35052933",
+      "commit_sha": "8d53085e846eb414450a421fe7f237df35052933",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.1.0",
+      "kind": "tag",
+      "object_sha": "14c6660aeb296f2f9ba770f1ce97b661e789d40b",
+      "commit_sha": "14c6660aeb296f2f9ba770f1ce97b661e789d40b",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.1.1",
+      "kind": "tag",
+      "object_sha": "50ab11bf6c89b1242f9b237afbb96db21d733b04",
+      "commit_sha": "50ab11bf6c89b1242f9b237afbb96db21d733b04",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.1.2",
+      "kind": "tag",
+      "object_sha": "df989680ac153a440dd9f60e4cb66f9f11b51526",
+      "commit_sha": "df989680ac153a440dd9f60e4cb66f9f11b51526",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.2.0",
+      "kind": "tag",
+      "object_sha": "0820bbc21aaa632ab19c8a4c234a047e2871e34e",
+      "commit_sha": "0820bbc21aaa632ab19c8a4c234a047e2871e34e",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.2.1",
+      "kind": "tag",
+      "object_sha": "34f48800dd406ac118f69ab270614a7671eee269",
+      "commit_sha": "34f48800dd406ac118f69ab270614a7671eee269",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.2.2",
+      "kind": "tag",
+      "object_sha": "368799cf2a301613169f70193d4488f40e66faa8",
+      "commit_sha": "368799cf2a301613169f70193d4488f40e66faa8",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.2.3",
+      "kind": "tag",
+      "object_sha": "c5fab4b5c4a5a1d9437f79bfef0453d07aeaff71",
+      "commit_sha": "c5fab4b5c4a5a1d9437f79bfef0453d07aeaff71",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.2.4",
+      "kind": "tag",
+      "object_sha": "333847b5bd534604774f9f07351f23098a644db2",
+      "commit_sha": "333847b5bd534604774f9f07351f23098a644db2",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.2.5",
+      "kind": "tag",
+      "object_sha": "1f884ff37eb145bf9c2b1e7f0e5af400a5cebbe4",
+      "commit_sha": "1f884ff37eb145bf9c2b1e7f0e5af400a5cebbe4",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.2.6",
+      "kind": "tag",
+      "object_sha": "965578fd0dfb06a698b7a182d72fd3292dfad63e",
+      "commit_sha": "965578fd0dfb06a698b7a182d72fd3292dfad63e",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.3.0",
+      "kind": "tag",
+      "object_sha": "5ef1dff8d76e17de1dead26bfb6cf9b1202590d4",
+      "commit_sha": "5ef1dff8d76e17de1dead26bfb6cf9b1202590d4",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.3.1",
+      "kind": "tag",
+      "object_sha": "2215d9fd04e056db5144f37ba10d2ae520434afb",
+      "commit_sha": "2215d9fd04e056db5144f37ba10d2ae520434afb",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.3.10",
+      "kind": "tag",
+      "object_sha": "7abf2a73669d3bd94843535064e760c1757921fc",
+      "commit_sha": "7abf2a73669d3bd94843535064e760c1757921fc",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.3.2",
+      "kind": "tag",
+      "object_sha": "d60d392e35ea9a31702828cf3860a6c9e9a75166",
+      "commit_sha": "d60d392e35ea9a31702828cf3860a6c9e9a75166",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.3.3",
+      "kind": "tag",
+      "object_sha": "5ae03baad001aeee6172fed616f0c6860d1a1def",
+      "commit_sha": "5ae03baad001aeee6172fed616f0c6860d1a1def",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.3.4",
+      "kind": "tag",
+      "object_sha": "0d246a11bab2e95fb1adae77f457c25f3b5c491b",
+      "commit_sha": "0d246a11bab2e95fb1adae77f457c25f3b5c491b",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.3.5",
+      "kind": "tag",
+      "object_sha": "d86eca6f086d779fb5101a1ec8b642244da13572",
+      "commit_sha": "d86eca6f086d779fb5101a1ec8b642244da13572",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.3.6",
+      "kind": "tag",
+      "object_sha": "28a09d267380eb71eafbdf98a26a7654088396c0",
+      "commit_sha": "28a09d267380eb71eafbdf98a26a7654088396c0",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.3.7",
+      "kind": "tag",
+      "object_sha": "330e1b897da89dbffe8599d1631a6981dbc6555f",
+      "commit_sha": "330e1b897da89dbffe8599d1631a6981dbc6555f",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.3.8",
+      "kind": "tag",
+      "object_sha": "43153ec34abf1dd9b6036c5dbfdc93b87a9d3de4",
+      "commit_sha": "43153ec34abf1dd9b6036c5dbfdc93b87a9d3de4",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v3.3.9",
+      "kind": "tag",
+      "object_sha": "ca35d9ab20cf068878b4c8894d40a333b0039fe4",
+      "commit_sha": "ca35d9ab20cf068878b4c8894d40a333b0039fe4",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v4.0.0-beta.1",
+      "kind": "tag",
+      "object_sha": "4db008a05d1f66c593591acf54d9a4f0642575be",
+      "commit_sha": "4db008a05d1f66c593591acf54d9a4f0642575be",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v4.0.0-beta.2",
+      "kind": "tag",
+      "object_sha": "483f5b46a43787ad5e6064ee42d5d8b2c463f38e",
+      "commit_sha": "483f5b46a43787ad5e6064ee42d5d8b2c463f38e",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v4.0.0-beta.3",
+      "kind": "tag",
+      "object_sha": "84f89e589d58fbfc1aff97c542bbf0959227247d",
+      "commit_sha": "84f89e589d58fbfc1aff97c542bbf0959227247d",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v4.0.0-beta.4",
+      "kind": "tag",
+      "object_sha": "76490f90002e8bb27d992b4524d0c9c4bd32f484",
+      "commit_sha": "76490f90002e8bb27d992b4524d0c9c4bd32f484",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v4.0.0-beta.5",
+      "kind": "tag",
+      "object_sha": "4487643041c390f054fa0222a0f47b9fad4e0ea9",
+      "commit_sha": "4487643041c390f054fa0222a0f47b9fad4e0ea9",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v4.0.0-beta.6",
+      "kind": "tag",
+      "object_sha": "4f83ed6bcfbc687a269909964d79d100739f8545",
+      "commit_sha": "4f83ed6bcfbc687a269909964d79d100739f8545",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    },
+    {
+      "ref": "refs/tags/v4.0.0-beta.7",
+      "kind": "tag",
+      "object_sha": "6e1a7efac6834fc4956e50fc9489a8eccbeaec79",
+      "commit_sha": "6e1a7efac6834fc4956e50fc9489a8eccbeaec79",
+      "matches_upstream_tag": true,
+      "declared_version": null,
+      "category": "official-baseline"
+    }
+  ],
+  "local_refs": [
+    {
+      "ref": "refs/heads/backup/4.2.1-20261029",
+      "object_sha": "4043583b06d765875e263442920ddfe574b2cf20",
+      "commit_sha": "4043583b06d765875e263442920ddfe574b2cf20",
+      "present_on_github_at_capture": true
+    },
+    {
+      "ref": "refs/heads/backup/refactor-data-inspector-workflow-20261102",
+      "object_sha": "9a37c5474c390e93243e33a88e8232a19c833280",
+      "commit_sha": "9a37c5474c390e93243e33a88e8232a19c833280",
+      "present_on_github_at_capture": true
+    },
+    {
+      "ref": "refs/heads/codex/pre-drag-fix-20261030",
+      "object_sha": "d4c7256e1def6e171ea0439ed6bce998b488758a",
+      "commit_sha": "d4c7256e1def6e171ea0439ed6bce998b488758a",
+      "present_on_github_at_capture": false
+    },
+    {
+      "ref": "refs/heads/codex/rectangle-interaction-improvements",
+      "object_sha": "5767933892cb1d0bc37049bdd2e26f5a71418518",
+      "commit_sha": "5767933892cb1d0bc37049bdd2e26f5a71418518",
+      "present_on_github_at_capture": true
+    },
+    {
+      "ref": "refs/heads/codex/refactor-data-inspector-workflow",
+      "object_sha": "9a37c5474c390e93243e33a88e8232a19c833280",
+      "commit_sha": "9a37c5474c390e93243e33a88e8232a19c833280",
+      "present_on_github_at_capture": false
+    },
+    {
+      "ref": "refs/heads/codex/smooth-canvas-dragging",
+      "object_sha": "625e87a686498d3a5e197c7593f024b399b64697",
+      "commit_sha": "625e87a686498d3a5e197c7593f024b399b64697",
+      "present_on_github_at_capture": false
+    },
+    {
+      "ref": "refs/tags/backup-v4.2.1-20261029",
+      "object_sha": "e8b91eea349fe525e0693282a5f40a261d130074",
+      "commit_sha": "4043583b06d765875e263442920ddfe574b2cf20",
+      "present_on_github_at_capture": true
+    },
+    {
+      "ref": "refs/tags/backup/pre-drag-fix-20261030",
+      "object_sha": "ea011625ecce14e5b1917c47200c5caa69203b3c",
+      "commit_sha": "d4c7256e1def6e171ea0439ed6bce998b488758a",
+      "present_on_github_at_capture": false
+    },
+    {
+      "ref": "refs/tags/backup/refactor-data-inspector-workflow-20261102",
+      "object_sha": "87d254bfd8c8d9e59928e81ecffeca68b40d89a1",
+      "commit_sha": "9a37c5474c390e93243e33a88e8232a19c833280",
+      "present_on_github_at_capture": true
+    },
+    {
+      "ref": "refs/tags/v4.2.1",
+      "object_sha": "fa619e8c0b27841cdc3805fa2dfa64065776925e",
+      "commit_sha": "6d250499d2dd81f78723b9217c7a9abf0443ca25",
+      "present_on_github_at_capture": false
+    }
+  ],
+  "local_bundle": {
+    "path": "backups/pre-drag-fix-20261030.bundle",
+    "bytes": 237013869,
+    "sha256": "60629aa53e08891e5909a87f7664a61ed29cde0476d5533388b6a4f24e0b5d27",
+    "commit_sha": "d4c7256e1def6e171ea0439ed6bce998b488758a",
+    "hash_rechecked": true,
+    "restore_validation": "Historical receipt records independent clone and fsck passed; these were not rerun during organization."
+  },
+  "publication_refs": [
+    {
+      "ref": "refs/heads/versions/4.0.0-beta.4",
+      "commit_sha": "fcf2d1d09e70b064728da6567b1d7ec700e543b9"
+    },
+    {
+      "ref": "refs/heads/versions/4.2.1",
+      "commit_sha": "9a37c5474c390e93243e33a88e8232a19c833280"
+    },
+    {
+      "ref": "refs/tags/v4.2.1",
+      "commit_sha": "6d250499d2dd81f78723b9217c7a9abf0443ca25"
+    },
+    {
+      "ref": "refs/tags/backup/pre-drag-fix-20261030",
+      "commit_sha": "d4c7256e1def6e171ea0439ed6bce998b488758a"
+    }
+  ],
+  "workspace_note": "Current inspector workflow has uncommitted changes; this inventory and version entries do not back up those changes."
+}

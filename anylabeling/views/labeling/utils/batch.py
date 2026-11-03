@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from anylabeling.app_info import __version__
+from anylabeling.services.inspection.storage import atomic_write_json
 from anylabeling.views.labeling.utils.theme import get_theme
 from anylabeling.services.auto_labeling import (
     _BATCH_PROCESSING_AUTO_GRID_MODELS,
@@ -296,6 +297,8 @@ def finish_processing(self, progress_dialog):
         progress_dialog.close()
         return
 
+    failures = getattr(self, "_batch_failed_count", 0)
+    cancelled = getattr(self, "cancel_processing", False)
     try:
         target_file = self.image_list[self.current_index]
         self.import_image_folder(osp.dirname(target_file), load=False)
@@ -311,10 +314,16 @@ def finish_processing(self, progress_dialog):
         _reset_batch_processing_state(self)
         progress_dialog.close()
 
+    if cancelled:
+        message = self.tr("Processing cancelled.")
+    elif failures:
+        message = self.tr("Failed images: %d") % failures
+    else:
+        message = self.tr("Processing completed successfully!")
     popup = Popup(
-        self.tr("Processing completed successfully!"),
+        message,
         self,
-        icon=new_icon_path("copy-green", "svg"),
+        icon=new_icon_path("error" if failures else "copy-green", "svg"),
     )
     popup.show_popup(self, position="center")
 
@@ -325,6 +334,7 @@ def cancel_operation(self):
 
 def _start_batch_processing(self):
     self._batch_processing_active = True
+    self._batch_failed_count = 0
     show_progress_dialog_and_process(self)
 
 
@@ -350,28 +360,25 @@ def _reset_auto_labeling_tracker(self):
 
 
 def save_auto_labeling_result(self, image_file, auto_labeling_result):
+    """Save one prediction, publish its baseline only after the atomic replace."""
+    if auto_labeling_result is None:
+        return False
+    manager = getattr(getattr(self, "auto_labeling_widget", None), "model_manager", None)
+    collect = getattr(manager, "collect_prediction_provenance", False) is True
+    source = getattr(auto_labeling_result, "provenance", None)
     try:
         label_file = osp.splitext(image_file)[0] + ".json"
         if self.output_dir:
             label_file = osp.join(self.output_dir, osp.basename(label_file))
 
-        if auto_labeling_result is None:
-            new_shapes = []
-            new_description = ""
-            new_tags = None
-            new_flags = None
-            replace = True
-        else:
-            new_shapes = [
-                shape.to_dict() for shape in auto_labeling_result.shapes
-            ]
-            new_description = auto_labeling_result.description
-            new_tags = getattr(auto_labeling_result, "tags", None)
-            new_flags = getattr(auto_labeling_result, "flags", None)
-            replace = auto_labeling_result.replace
+        new_shapes = [shape.to_dict() for shape in auto_labeling_result.shapes]
+        new_description = auto_labeling_result.description
+        new_tags = getattr(auto_labeling_result, "tags", None)
+        new_flags = getattr(auto_labeling_result, "flags", None)
+        replace = auto_labeling_result.replace
 
         if osp.exists(label_file):
-            with io_open(label_file, "r") as f:
+            with open(label_file, encoding="utf-8") as f:
                 data = json.load(f)
 
             if replace:
@@ -433,13 +440,24 @@ def save_auto_labeling_result(self, image_file, auto_labeling_result):
                 data["checked"] = False
             flags.update(new_flags)
 
-        with io_open(label_file, "w") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        atomic_write_json(label_file, data)
 
     except Exception as e:
         logger.error(
             f"Failed to save auto labeling result for image file '{image_file}': {str(e)}"
         )
+        if collect:
+            manager.prediction_unapplied.emit(
+                str(image_file), {**(source or {}), "status": "save-failed"}
+            )
+        return False
+    if collect:
+        predicted_ids = [shape.get("xanylabeling_shape_id") for shape in new_shapes]
+        manager.batch_prediction_saved.emit(
+            str(image_file), str(label_file), data["shapes"], source,
+            predicted_ids, bool(replace),
+        )
+    return True
 
 
 class BatchProcessingThread(QThread):
@@ -505,7 +523,16 @@ class BatchProcessingThread(QThread):
                         existing_shapes=existing_shapes,
                     )
 
-                save_auto_labeling_result(self.app, image_file, result)
+                if self.app.cancel_processing:
+                    manager = self.app.auto_labeling_widget.model_manager
+                    if getattr(manager, "collect_prediction_provenance", False) is True:
+                        manager.prediction_unapplied.emit(
+                            str(image_file),
+                            {**(getattr(result, "provenance", None) or {}), "status": "cancelled"},
+                        )
+                    break
+                if save_auto_labeling_result(self.app, image_file, result) is False:
+                    self.app._batch_failed_count += 1
                 self.image_index += 1
                 completed = self.image_index - start_index
                 self.progress_updated.emit(
@@ -644,9 +671,10 @@ def process_next_image(self, progress_dialog, batch=True):
                 )
 
             if batch:
-                save_auto_labeling_result(
+                if save_auto_labeling_result(
                     self, image_file, auto_labeling_result
-                )
+                ) is False:
+                    self._batch_failed_count += 1
 
             self.image_index += 1
             completed = self.image_index - self._batch_start_index

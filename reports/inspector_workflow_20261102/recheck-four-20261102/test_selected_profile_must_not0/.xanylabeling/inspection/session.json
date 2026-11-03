@@ -1,0 +1,15 @@
+{
+  "schema_version": "inspection-session.v1",
+  "report_id": "20261102T082855Z-generic-e7b09052",
+  "dataset_root": "D:\\X-AnyLabeling-4.2.1\\reports\\inspector_workflow_20261102\\recheck-four-20261102\\test_selected_profile_must_not0",
+  "output_root": "",
+  "filters": {
+    "queue": "all"
+  },
+  "cursor": {
+    "issue_id": "",
+    "family_key": ""
+  },
+  "updated_at": "2026-11-02T08:28:55+00:00",
+  "revision": 1
+}

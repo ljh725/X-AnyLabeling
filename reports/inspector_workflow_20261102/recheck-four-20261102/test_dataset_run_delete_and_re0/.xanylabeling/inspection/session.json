@@ -1,0 +1,15 @@
+{
+  "schema_version": "inspection-session.v1",
+  "report_id": "20261102T082846Z-generic-1c4e0b63",
+  "dataset_root": "D:\\X-AnyLabeling-4.2.1\\reports\\inspector_workflow_20261102\\recheck-four-20261102\\test_dataset_run_delete_and_re0",
+  "output_root": "",
+  "filters": {
+    "queue": "all"
+  },
+  "cursor": {
+    "issue_id": "",
+    "family_key": ""
+  },
+  "updated_at": "2026-11-02T08:28:46+00:00",
+  "revision": 1
+}

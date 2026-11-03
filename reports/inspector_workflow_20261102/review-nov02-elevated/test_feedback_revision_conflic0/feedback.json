@@ -1,0 +1,18 @@
+{
+  "schema_version": "inspection-feedback.v1",
+  "revision": 1,
+  "updated_at": "2026-11-02T07:45:58+00:00",
+  "records": {
+    "f1": {
+      "family_key": "f1",
+      "issue_id": "i1",
+      "decision": "confirmed_error",
+      "action": "unchanged",
+      "verification": "current",
+      "note": "",
+      "evidence_digest": "",
+      "updated_at": "2026-11-02T07:45:58+00:00",
+      "history": []
+    }
+  }
+}

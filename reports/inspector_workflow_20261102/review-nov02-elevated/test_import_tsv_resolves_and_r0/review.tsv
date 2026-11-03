@@ -1,0 +1,4 @@
+issue_id	file_path	shape_index	shape_id	rule_name	severity	message	label	group_id
+i1	a.jpg	0	id1	dup	warning	overlap	person	
+i2	unknown.jpg	0	id9	dup	warning	missing	person	
+								

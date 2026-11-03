@@ -1,0 +1,38 @@
+{
+  "schema_version": "inspection-report.v1",
+  "run_id": "run-1",
+  "state": "completed",
+  "scope": "dataset",
+  "dataset_root": "D:/data",
+  "output_root": "D:/labels",
+  "manifest_fingerprint": "fingerprint",
+  "profile": {
+    "profile": {
+      "profile_id": "generic"
+    }
+  },
+  "coverage": [],
+  "issues": [],
+  "summary": {
+    "requested_files": 1,
+    "completed_files": 1,
+    "failed_files": 0,
+    "excluded_files": 0,
+    "not_run_files": 0,
+    "issue_count": 0,
+    "object_count": 0,
+    "truncated": false
+  },
+  "started_at": "2026-11-02T07:45:58+00:00",
+  "finished_at": "",
+  "requested_files": 1,
+  "completed_files": 1,
+  "failed_files": 0,
+  "excluded_files": 0,
+  "not_run_files": 0,
+  "truncated": false,
+  "error": "",
+  "generation": 0,
+  "source_kind": "disk",
+  "saved_at": "2026-11-02T07:45:58+00:00"
+}

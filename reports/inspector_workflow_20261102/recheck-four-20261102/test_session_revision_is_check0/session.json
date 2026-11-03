@@ -1,0 +1,10 @@
+{
+  "schema_version": "inspection-session.v1",
+  "report_id": "run-1",
+  "dataset_root": "D:/data",
+  "output_root": "D:/labels",
+  "filters": {},
+  "cursor": {},
+  "updated_at": "2026-11-02T08:28:50+00:00",
+  "revision": 1
+}

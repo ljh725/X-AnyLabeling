@@ -36,6 +36,7 @@ SETTINGS_SHORTCUT_SECTIONS = (
     QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "File"),
     QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Shape"),
     QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "View"),
+    QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Dense Review"),
 )
 
 
@@ -47,8 +48,10 @@ def _settings_translation_markers() -> None:
     QCoreApplication.translate("SettingsDialog", "AI")
     QCoreApplication.translate("SettingsDialog", "Dialog")
     QCoreApplication.translate("SettingsDialog", "Open Point Cloud Workspace")
+    QCoreApplication.translate("SettingsDialog", "Correction Cost Statistics")
     QCoreApplication.translate("SettingsDialog", "File")
     QCoreApplication.translate("SettingsDialog", "View")
+    QCoreApplication.translate("SettingsDialog", "Dense Review")
     QCoreApplication.translate("SettingsDialog", "Display Label Popup")
     QCoreApplication.translate("SettingsDialog", "Auto Highlight Shape")
     QCoreApplication.translate(
@@ -523,6 +526,33 @@ def _shortcut_label(short_key: str) -> str:
         ),
         "open_settings": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Open Settings Dialog"
+        ),
+        "open_dense_review": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Open Dense Review Workspace",
+        ),
+        "open_correction_metrics": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Correction Cost Statistics"
+        ),
+        "dense_review_complete_batch": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Dense Review: Complete Batch and Next",
+        ),
+        "dense_review_complete_object": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Dense Review: Complete Object and Next",
+        ),
+        "dense_review_skip": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Dense Review: Skip Object",
+        ),
+        "dense_review_difficult": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Dense Review: Mark Difficult",
+        ),
+        "dense_review_toggle_view": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT,
+            "Dense Review: Toggle Full Image View",
         ),
         "open_vqa": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Open VQA Dialog"
@@ -1385,6 +1415,7 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
         ),
         "Dialog": (
             "open_settings",
+            "open_correction_metrics",
             "open_chatbot",
             "open_vqa",
             "open_image_classifier",
@@ -1465,6 +1496,14 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "zoom_in",
             "zoom_out",
             "zoom_to_original",
+        ),
+        "Dense Review": (
+            "open_dense_review",
+            "dense_review_complete_batch",
+            "dense_review_complete_object",
+            "dense_review_skip",
+            "dense_review_difficult",
+            "dense_review_toggle_view",
         ),
     }
 

@@ -1,0 +1,30 @@
+{
+  "schema_version": "inspection-candidate.v1",
+  "revision": 2,
+  "updated_at": "2026-11-02T07:45:48+00:00",
+  "candidates": {
+    "11f7249f3b2a774a51f93e7e": {
+      "schema_version": "inspection-candidate.v1",
+      "candidate_id": "11f7249f3b2a774a51f93e7e",
+      "source": "model-a",
+      "source_version": "1",
+      "relative_path": "a.jpg",
+      "image_path": "",
+      "label": "person",
+      "region": [
+        1.0,
+        2.0,
+        11.0,
+        12.0
+      ],
+      "image_width": 100,
+      "image_height": 80,
+      "orientation": "",
+      "score": 0.9,
+      "status": "accepted",
+      "reason": "",
+      "accepted_shape_id": "shape-1",
+      "accepted_at": "2026-11-02T07:45:48+00:00"
+    }
+  }
+}

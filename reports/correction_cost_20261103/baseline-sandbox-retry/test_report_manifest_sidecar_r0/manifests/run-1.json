@@ -1,0 +1,29 @@
+{
+  "schema_version": "inspection-manifest.v1",
+  "run_id": "run-1",
+  "saved_at": "2026-11-03T05:24:34+00:00",
+  "manifest": {
+    "dataset_root": "D:/data",
+    "output_root": "D:/labels",
+    "files": [
+      {
+        "relative_path": "a.jpg",
+        "image_path": "D:/data/a.jpg",
+        "annotation_path": "D:/labels/a.json",
+        "image_width": 0,
+        "image_height": 0,
+        "annotation_digest": "digest",
+        "shape_digest": "",
+        "image_digest": "",
+        "shapes": [],
+        "annotation_state": "present",
+        "error": "",
+        "unsaved": false,
+        "read_at": "2026-11-03T05:24:34+00:00"
+      }
+    ],
+    "errors": [],
+    "generated_at": "2026-11-03T05:24:34+00:00",
+    "complete": true
+  }
+}

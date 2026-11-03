@@ -218,6 +218,13 @@ shortcuts:
   toggle_auto_use_last_gid: Ctrl+Shift+G
   toggle_visibility_shapes: Ctrl+H
   toggle_compare_view: Ctrl+Alt+C
+  open_dense_review: Ctrl+Alt+R
+  open_correction_metrics: null
+  dense_review_complete_batch: Ctrl+Return
+  dense_review_complete_object: Alt+Return
+  dense_review_skip: Alt+N
+  dense_review_difficult: Alt+X
+  dense_review_toggle_view: Alt+V
 
   auto_label: Ctrl+A
   auto_run: Ctrl+B

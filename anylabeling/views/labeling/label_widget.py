@@ -53,8 +53,30 @@ from .utils.style import (
     get_toolbar_scroll_area_style,
 )
 from ...config import get_config, save_config
+from ...services.dense_review.config import (
+    ReviewConfigFileError,
+    config_root_for,
+    load_config as load_dense_review_config,
+    save_config as save_dense_review_config,
+)
+from ...services.dense_review.models import (
+    CoverageSettings,
+    IncompatibleReviewState,
+    ReviewConfig,
+)
+from ...services.dense_review.session import (
+    DenseReviewSession,
+    ReviewConfigError,
+)
+from ...services.dense_review.storage import (
+    DENSE_REVIEW_FIELD,
+    annotation_state,
+    image_fingerprint,
+    load_payload,
+)
 from .label_file import LabelFile, LabelFileError
 from .editing_commands import apply_field_changes, store_undo_step
+from .correction_metrics.hooks import notify_metrics
 from .logger import logger
 from .schema import IMAGE_TAGS_FIELD
 from .settings import SettingsController, SettingsDialog
@@ -196,7 +218,9 @@ class FileNameDelegate(QtWidgets.QStyledItemDelegate):
             index.data(Qt.ItemDataRole.UserRole + 1) != generation
             or index.data(Qt.ItemDataRole.UserRole + 2) == "unknown"
         ):
-            QtWidgets.QToolTip.showText(event.globalPos(), self.tr("Checking annotation"), view)
+            QtWidgets.QToolTip.showText(
+                event.globalPos(), self.tr("Checking annotation"), view
+            )
             return True
         return super().helpEvent(event, view, option, index)
 
@@ -270,6 +294,18 @@ class LabelingWidget(LabelDialog):
             config = get_config()
         self._config = config
         self.label_flags = self._config["label_flags"]
+        self.correction_metrics = None
+        self.dense_review_workspace = None
+        self.dense_review_session = None
+        self.dense_review_settings = ReviewConfig()
+        self._dense_review_annotation_path = ""
+        self._dense_review_annotation_stat = None
+        self._dense_review_image_hash = ""
+        self._dense_review_image_size = (0, 0)
+        self._dense_review_round_generation = 0
+        self._dense_review_display_mode = "all"
+        self._dense_review_original_visibility = None
+        self._dense_review_full_view = None
         self.label_loop_count = -1
         self.label_loop_shapes = None
         self.label_loop_popup = None
@@ -469,7 +505,9 @@ class LabelingWidget(LabelDialog):
         self.file_list_widget.setItemDelegate(
             FileNameDelegate(self.file_list_widget)
         )
-        self.file_list_widget.itemDelegate().metadata_generation = lambda: self._metadata_generation
+        self.file_list_widget.itemDelegate().metadata_generation = (
+            lambda: self._metadata_generation
+        )
         self.file_list_widget.setIconSize(QtCore.QSize(10, 12))
         self.file_list_widget.setStyleSheet(
             "QListWidget#FileList::indicator { margin-right: 0; }"
@@ -620,7 +658,7 @@ class LabelingWidget(LabelDialog):
         self.canvas.scroll_request.connect(self.scroll_request)
         self.canvas.new_shape.connect(self.new_shape)
         self.canvas.show_shape.connect(self.show_shape)
-        self.canvas.shape_moved.connect(self.set_dirty)
+        self.canvas.shape_moved.connect(self._on_geometry_committed)
         self.canvas.shape_rotated.connect(self.set_dirty)
         self.canvas.shapes_deleted.connect(self.on_canvas_shapes_deleted)
         self.canvas.selection_changed.connect(self.shape_selection_changed)
@@ -1297,6 +1335,27 @@ class LabelingWidget(LabelDialog):
             shortcuts["open_vqa"],
             icon="message-circle-question-mark",
             tip=self.tr("Open VQA dialog"),
+        )
+        open_inspector = action(
+            self.tr("Inspector"),
+            self.open_inspector,
+            icon="scan-search",
+            tip=self.tr("Open the annotation inspection workflow"),
+        )
+        open_dense_review = action(
+            self.tr("Dense Review"),
+            self.open_dense_review,
+            shortcuts.get("open_dense_review"),
+            icon="list-checks",
+            tip=self.tr("Open the dense annotation review workspace"),
+        )
+        from .correction_metrics.i18n import tr as metrics_text
+
+        open_correction_metrics = action(
+            metrics_text("title", self._config.get("language")),
+            self.open_correction_metrics,
+            shortcuts.get("open_correction_metrics"),
+            icon="list-checks",
         )
         open_pointcloud = action(
             self.tr("Point Cloud"),
@@ -2170,6 +2229,9 @@ class LabelingWidget(LabelDialog):
             open_prev_unchecked_image=open_prev_unchecked_image,
             open_chatbot=open_chatbot,
             open_vqa=open_vqa,
+            open_inspector=open_inspector,
+            open_dense_review=open_dense_review,
+            open_correction_metrics=open_correction_metrics,
             open_pointcloud=open_pointcloud,
             open_image_classifier=open_image_classifier,
             open_classifier=open_image_classifier,
@@ -2350,6 +2412,9 @@ class LabelingWidget(LabelDialog):
             (
                 open_chatbot,
                 open_vqa,
+                open_inspector,
+                open_dense_review,
+                open_correction_metrics,
                 open_pointcloud,
                 open_image_classifier,
                 open_video_classifier,
@@ -3040,7 +3105,9 @@ class LabelingWidget(LabelDialog):
         self.settings = QtCore.QSettings("anylabeling", "anylabeling")
         self.recent_files = self.settings.value("recent_files", []) or []
         if not startup_directory:
-            self.last_open_dir = self.settings.value("last_open_dir", None) or None
+            self.last_open_dir = (
+                self.settings.value("last_open_dir", None) or None
+            )
 
         # Populate the File menu dynamically.
         self.update_file_menu()
@@ -3453,10 +3520,22 @@ class LabelingWidget(LabelDialog):
         )
         utils.add_actions(self.menus.edit, actions + self.actions.editMenu)
 
+    def _dense_review_undo_available(self):
+        session = self.dense_review_session
+        if session is None:
+            return self.canvas.is_shape_restorable
+        if session.next_undo_kind() == "progress":
+            return True
+        return self.canvas.is_shape_restorable
+
     def set_dirty(self):
+        if getattr(self, "correction_metrics", None) is not None:
+            notify_metrics(self, "reconcile_dirty")
+        if self.dense_review_session is not None:
+            self._dense_review_sync_from_canvas()
         self.actions.save.setIcon(utils.new_icon("save"))
         # Even if we autosave the file, we keep the ability to undo
-        self.actions.undo.setEnabled(self.canvas.is_shape_restorable)
+        self.actions.undo.setEnabled(self._dense_review_undo_available())
 
         if self._config["auto_save"]:
             label_file = osp.splitext(self.image_path)[0] + ".json"
@@ -3646,7 +3725,9 @@ class LabelingWidget(LabelDialog):
         self.refresh_panel_controls()
 
     def reset_state(self):
+        notify_metrics(self, "leave_image")
         self._remember_shape_locks()
+        self._dense_review_reset_session()
         self._zoom_animation.stop()
         self._reset_label_loop()
         self.select_loop_count = -1
@@ -3786,10 +3867,22 @@ class LabelingWidget(LabelDialog):
             self.canvas.brush_undo()
             self.actions.undo.setEnabled(self.canvas.brush_can_undo())
             return
+        session = self.dense_review_session
+        if session is not None and session.next_undo_kind() == "progress":
+            if session.undo_progress():
+                notify_metrics(self, "review_event", "undo-review")
+                self.dense_review_after_progress_change()
+                return
+        if not self.canvas.is_shape_restorable:
+            self.actions.undo.setEnabled(self._dense_review_undo_available())
+            return
         self.canvas.restore_shape()
         self.label_list.clear()
         self.load_shapes(self.canvas.shapes, update_last_label=False)
-        self.actions.undo.setEnabled(self.canvas.is_shape_restorable)
+        if session is not None:
+            session.undo_after_canvas(self.dense_review_shapes())
+        notify_metrics(self, "edit", "undo")
+        self.actions.undo.setEnabled(self._dense_review_undo_available())
         self.set_dirty()
 
     def get_label_file_list(self):
@@ -3999,6 +4092,780 @@ class LabelingWidget(LabelDialog):
             self.vqa_window.activateWindow()
         else:
             self.vqa_window.show()
+
+    def open_inspector(self):
+        if not self.image_list and not self.filename:
+            self.error_message(
+                self.tr("No images loaded"),
+                self.tr(
+                    "Please load an image folder before opening the Inspector."
+                ),
+            )
+            return
+        if getattr(self, "inspector_dialog", None) is None:
+            from .inspector import InspectorDialog
+
+            self.inspector_dialog = InspectorDialog(self)
+            self.inspector_dialog.setAttribute(
+                Qt.WidgetAttribute.WA_DeleteOnClose, False
+            )
+        if self.inspector_dialog.isVisible():
+            self.inspector_dialog.raise_()
+            self.inspector_dialog.activateWindow()
+        else:
+            self.inspector_dialog.show()
+
+    def _on_geometry_committed(self):
+        notify_metrics(self, "geometry")
+        self.set_dirty()
+
+    def open_correction_metrics(self):
+        if self.correction_metrics is not None:
+            self.correction_metrics.show_panel()
+            return
+        from .correction_metrics.controller import start_metrics
+
+        start_metrics(self)
+
+    def open_dense_review(self):
+        if self.filename is None or self.image.isNull():
+            self.error_message(
+                self.tr("No images loaded"),
+                self.tr("Please open an image before opening dense review."),
+            )
+            return
+        if self.dense_review_workspace is None:
+            from .dense_review import DenseReviewWorkspace
+
+            self.dense_review_workspace = DenseReviewWorkspace(self)
+            self.dense_review_workspace.setAttribute(
+                Qt.WidgetAttribute.WA_DeleteOnClose, False
+            )
+        ok, message = self.dense_review_start_round(force_new=False)
+        if not ok:
+            self.dense_review_workspace._status(message)
+        self.dense_review_workspace.show()
+        self.dense_review_workspace.raise_()
+        self.dense_review_workspace.activateWindow()
+
+    def dense_review_shapes(self):
+        special = {
+            AutoLabelingMode.OBJECT,
+            AutoLabelingMode.ADD,
+            AutoLabelingMode.REMOVE,
+        }
+        return [
+            shape for shape in self.canvas.shapes if shape.label not in special
+        ]
+
+    def dense_review_dataset_root(self):
+        return getattr(self, "_full_image_dir", "") or (
+            osp.dirname(self.filename) if self.filename else ""
+        )
+
+    def dense_review_config_root(self):
+        return config_root_for(
+            self.dense_review_dataset_root(),
+            self.output_dir or "",
+        )
+
+    def dense_review_available_labels(self):
+        labels = set(self._config.get("labels", ()) or ())
+        labels.update(self.label_info)
+        labels.update(shape.label for shape in self.dense_review_shapes())
+        labels.update(self.dense_review_settings.rules.rules)
+        return sorted(label for label in labels if label)
+
+    def dense_review_load_config(self):
+        root = self.dense_review_config_root()
+        if not root:
+            return ReviewConfig(), None
+        try:
+            config = load_dense_review_config(root)
+        except ReviewConfigFileError as error:
+            return ReviewConfig(), str(error)
+        self.dense_review_settings = config
+        return config, None
+
+    def dense_review_save_config(self, config):
+        root = self.dense_review_config_root()
+        if not root:
+            return False, self.tr("没有可写入复核配置的目录")
+        try:
+            path = save_dense_review_config(root, config)
+        except ReviewConfigFileError as error:
+            return False, str(error)
+        self.dense_review_settings = config.normalized()
+        return True, self.tr("复核配置已保存到 %s") % path
+
+    def dense_review_apply_config(self, config):
+        session = self.dense_review_session
+        if session is None:
+            self.dense_review_settings = config.normalized()
+            return True, self.tr("复核配置已保存；进入本轮后生效。")
+        try:
+            session.apply_config(config, self.dense_review_shapes())
+        except ReviewConfigError as error:
+            return False, str(error)
+        self.dense_review_after_progress_change()
+        return True, self.tr(
+            "复核配置已应用；批次归属如需更新，请显式重建剩余队列。"
+        )
+
+    def dense_review_image_info(self):
+        if not self._dense_review_image_hash:
+            data = self.image_data
+            if data is None and self.image_path:
+                data = LabelFile.load_image_file(self.image_path)
+            self._dense_review_image_hash = image_fingerprint(data or b"")
+        if not self.image.isNull():
+            self._dense_review_image_size = (
+                self.image.width(),
+                self.image.height(),
+            )
+        return (
+            self._dense_review_image_hash,
+            *self._dense_review_image_size,
+        )
+
+    def dense_review_image_source(self):
+        return self.image_path or self.filename or "", self.image_data
+
+    def _dense_review_sync_annotation_stat(self):
+        path = self.get_label_file() if self.filename else ""
+        self._dense_review_annotation_path = path
+        self._dense_review_annotation_stat = annotation_state(path)
+
+    def dense_review_start_round(self, force_new=False):
+        if self.filename is None or self.image.isNull():
+            return False, self.tr("请先打开图片")
+        if self.dense_review_session is not None and not force_new:
+            if self.dense_review_workspace is not None:
+                self.dense_review_workspace.refresh_all(force_cards=True)
+            return True, self.tr("继续当前内存中的复核进度")
+        config, warning = self.dense_review_load_config()
+        self.dense_review_settings = config
+        payload = None
+        if not force_new:
+            try:
+                payload = load_payload(self.other_data)
+            except IncompatibleReviewState as error:
+                self.dense_review_session = None
+                return False, str(error)
+        fingerprint, width, height = self.dense_review_image_info()
+        try:
+            session = DenseReviewSession.from_shapes(
+                config,
+                self.dense_review_shapes(),
+                fingerprint,
+                width,
+                height,
+                payload,
+            )
+        except (IncompatibleReviewState, ReviewConfigError) as error:
+            self.dense_review_session = None
+            return False, str(error)
+        self.dense_review_session = session
+        self._dense_review_round_generation += 1
+        self._dense_review_sync_annotation_stat()
+        if force_new:
+            self.other_data[DENSE_REVIEW_FIELD] = session.to_payload()
+            session.dirty = True
+            self.set_dirty()
+        message = self.tr("已开始新一轮密集复核")
+        if payload is not None:
+            if session.dirty:
+                message = self.tr(
+                    "已恢复进度；图像、规则或对象内容变化使相关确认失效。"
+                )
+            else:
+                message = self.tr("已恢复保存的密集复核进度")
+        if warning:
+            message = f"{warning}；{message}"
+        if self.dense_review_workspace is not None:
+            self.dense_review_workspace._generation += 1
+            self.dense_review_workspace.thumbnails.start_generation(
+                self.dense_review_workspace._generation
+            )
+            self.dense_review_workspace.refresh_all(force_cards=True)
+            self.dense_review_workspace._focus_current()
+        return True, message
+
+    def _dense_review_sync_from_canvas(self):
+        session = self.dense_review_session
+        if session is None:
+            return
+        session.sync_shapes(self.dense_review_shapes())
+        if self._dense_review_display_mode == "original":
+            self._dense_review_apply_original_visibility()
+        if (
+            self.dense_review_workspace is not None
+            and self.dense_review_workspace.isVisible()
+        ):
+            self.dense_review_workspace.refresh_all()
+
+    def _dense_review_prepare_save(self):
+        session = self.dense_review_session
+        if session is None:
+            return
+        session.sync_shapes(self.dense_review_shapes())
+        if session.dirty or session.has_payload:
+            self.other_data[DENSE_REVIEW_FIELD] = session.to_payload()
+
+    def _dense_review_after_save(self, filename):
+        self._dense_review_annotation_path = filename
+        self._dense_review_annotation_stat = annotation_state(filename)
+        if self.dense_review_session is not None:
+            self.dense_review_session.mark_saved()
+        if (
+            self.dense_review_workspace is not None
+            and self.dense_review_workspace.isVisible()
+        ):
+            self.dense_review_workspace.refresh_all()
+
+    def dense_review_after_progress_change(self):
+        self.set_dirty()
+
+    def _dense_review_has_progress(self):
+        if DENSE_REVIEW_FIELD in self.other_data:
+            return True
+        session = self.dense_review_session
+        return bool(
+            session is not None and (session.dirty or session.has_payload)
+        )
+
+    def _dense_review_external_conflict(self):
+        if not self._dense_review_has_progress():
+            return False
+        path = self._dense_review_annotation_path or self.get_label_file()
+        if not path or self._dense_review_annotation_stat is None:
+            return False
+        return annotation_state(path).changed_from(
+            self._dense_review_annotation_stat
+        )
+
+    def _dense_review_resolve_conflict(self):
+        if not self._dense_review_external_conflict():
+            return True
+        box = QtWidgets.QMessageBox(self)
+        box.setWindowTitle(self.tr("标注文件已在外部变化"))
+        box.setText(
+            self.tr(
+                "磁盘上的标注文件在本会话期间发生变化。"
+                "直接保存会覆盖外部修改。请明确选择处理方式。"
+            )
+        )
+        reload_button = box.addButton(
+            self.tr("重载外部文件"),
+            QtWidgets.QMessageBox.ButtonRole.AcceptRole,
+        )
+        save_button = box.addButton(
+            self.tr("保留本地并保存"),
+            QtWidgets.QMessageBox.ButtonRole.DestructiveRole,
+        )
+        cancel_button = box.addButton(
+            self.tr("取消"), QtWidgets.QMessageBox.ButtonRole.RejectRole
+        )
+        box.exec()
+        clicked = box.clickedButton()
+        if clicked is reload_button:
+            if self.filename:
+                self.load_file(self.filename)
+            return False
+        if clicked is cancel_button or clicked is None:
+            self.status(self.tr("保存已取消；未覆盖外部标注文件。"))
+            return False
+        if clicked is save_button:
+            return True
+        return False
+
+    def dense_review_exclusion_ids(self):
+        shapes = self.dense_review_shapes()
+        manual = {
+            shape.xanylabeling_shape_id
+            for shape in shapes
+            if shape in self._manually_hidden_shapes
+        }
+        label = self.label_filter_combobox.text_box.currentText()
+        gid = self.gid_filter_combobox.gid_box.currentText() or "-1"
+        filtered = set()
+        for shape in shapes:
+            visible = desired_visibility(
+                shape,
+                label=label,
+                gid=gid,
+                label_visible=self.label_info.get(shape.label, {}).get(
+                    "visible", True
+                ),
+                invert=self._invert_shape_filter,
+                manually_hidden=False,
+            )
+            if not visible:
+                filtered.add(shape.xanylabeling_shape_id)
+        return manual, filtered
+
+    def _dense_review_find_shape(self, shape_id):
+        for shape in self.dense_review_shapes():
+            if shape.xanylabeling_shape_id == shape_id:
+                return shape
+        return None
+
+    def _dense_review_cancel_pending_edit(self):
+        if self.canvas.current is not None:
+            self.canvas.cancel_drawing()
+        workflow = getattr(self, "rectangle_creation", None)
+        if workflow is not None:
+            workflow.before_tool_change(True, self.canvas.create_mode)
+
+    def dense_review_focus_object(self, shape_id):
+        shape = self._dense_review_find_shape(shape_id)
+        if shape is None:
+            return
+        self._dense_review_cancel_pending_edit()
+        self.canvas.select_shapes([shape])
+        if self._dense_review_display_mode == "focus":
+            self.canvas.hide_background_shapes(True)
+            self.canvas.set_hiding(True)
+        rect = shape.bounding_rect()
+        if rect.width() <= 0 and rect.height() <= 0:
+            return
+        bounds = (
+            rect.x(),
+            rect.y(),
+            rect.x() + rect.width(),
+            rect.y() + rect.height(),
+        )
+        self.set_zoom(self._dense_review_zoom_for_bounds(bounds))
+        self._dense_review_center_on(
+            (bounds[0] + bounds[2]) / 2.0,
+            (bounds[1] + bounds[3]) / 2.0,
+        )
+        self.canvas.update()
+
+    def _dense_review_zoom_for_bounds(self, bounds, context=None):
+        if context is None:
+            context = 0.35
+            workspace = self.dense_review_workspace
+            if workspace is not None:
+                context = workspace.context_spin.value() / 100.0
+        viewport_width = max(1.0, self.central_widget().width() - 2.0)
+        viewport_height = max(1.0, self.central_widget().height() - 2.0)
+        box_width = max(30.0, bounds[2] - bounds[0])
+        box_height = max(30.0, bounds[3] - bounds[1])
+        area_width = box_width * (1.0 + 2.0 * context)
+        area_height = box_height * (1.0 + 2.0 * context)
+        raw = (
+            min(
+                viewport_width / area_width,
+                viewport_height / area_height,
+            )
+            * 100.0
+        )
+        levels = (
+            25,
+            33,
+            50,
+            67,
+            75,
+            100,
+            125,
+            150,
+            200,
+            250,
+            300,
+            400,
+            600,
+            800,
+        )
+        level = max(
+            (candidate for candidate in levels if candidate <= raw),
+            default=levels[0],
+        )
+        return max(
+            self.zoom_widget.minimum(),
+            min(self.zoom_widget.maximum(), level),
+        )
+
+    def _dense_review_center_on(self, x, y):
+        if self.image.isNull():
+            return
+        viewport_width = max(1.0, self.central_widget().width() - 2.0)
+        viewport_height = max(1.0, self.central_widget().height() - 2.0)
+        image_width = max(1.0, float(self.canvas.pixmap.width()))
+        image_height = max(1.0, float(self.canvas.pixmap.height()))
+        scale = max(self.canvas.scale, 1e-6)
+        horizontal = self.scroll_bars[Qt.Orientation.Horizontal]
+        vertical = self.scroll_bars[Qt.Orientation.Vertical]
+        screen_width = viewport_width / scale
+        screen_height = viewport_height / scale
+        x_scroll = int(
+            (x - screen_width / 2.0)
+            / image_width
+            * (horizontal.maximum() + horizontal.pageStep())
+        )
+        y_scroll = int(
+            (y - screen_height / 2.0)
+            / image_height
+            * (vertical.maximum() + vertical.pageStep())
+        )
+        self.set_scroll(
+            Qt.Orientation.Horizontal,
+            min(max(0, x_scroll), horizontal.maximum()),
+        )
+        self.set_scroll(
+            Qt.Orientation.Vertical,
+            min(max(0, y_scroll), vertical.maximum()),
+        )
+
+    def dense_review_set_display_mode(self, mode):
+        if mode not in ("focus", "all", "original"):
+            return
+        if mode != "original":
+            self._dense_review_restore_visibility()
+        self._dense_review_display_mode = mode
+        if mode == "focus":
+            if (
+                not self.canvas.selected_shapes
+                and self.dense_review_session is not None
+            ):
+                current = self.dense_review_session.current_object()
+                if current is not None:
+                    shape = self._dense_review_find_shape(current.shape_id)
+                    if shape is not None:
+                        self.canvas.select_shapes([shape])
+            self.canvas.hide_background_shapes(True)
+            self.canvas.set_hiding(True)
+        elif mode == "all":
+            self.canvas.hide_background_shapes(False)
+            self.canvas.set_hiding(False)
+        else:
+            self.canvas.hide_background_shapes(False)
+            self.canvas.set_hiding(False)
+            if self._dense_review_original_visibility is None:
+                self._dense_review_original_visibility = {
+                    shape: self.canvas.visible.get(shape, True)
+                    for shape in self.canvas.shapes
+                }
+            self._dense_review_apply_original_visibility()
+        self.canvas.update()
+
+    def _dense_review_apply_original_visibility(self):
+        for shape in self.canvas.shapes:
+            self.canvas.visible[shape] = False
+        self.canvas.update()
+
+    def _dense_review_restore_visibility(self):
+        if self._dense_review_original_visibility is None:
+            return
+        for shape, visible in self._dense_review_original_visibility.items():
+            if shape in self.canvas.shapes:
+                self.canvas.visible[shape] = visible
+        self._dense_review_original_visibility = None
+
+    def dense_review_toggle_full_image(self):
+        self._dense_review_cancel_pending_edit()
+        if self._dense_review_full_view is None:
+            self._dense_review_full_view = {
+                "zoom_mode": self.zoom_mode,
+                "zoom": self.zoom_widget.value(),
+                "scroll": {
+                    orientation: bar.value()
+                    for orientation, bar in self.scroll_bars.items()
+                },
+                "pan": QtCore.QPointF(self.canvas.pan_offset),
+            }
+            self.set_fit_window(True)
+            self.canvas.set_hiding(False)
+            self.canvas.hide_background_shapes(False)
+            return True
+        saved = self._dense_review_full_view
+        self._dense_review_full_view = None
+        self.set_zoom(saved["zoom"])
+        self.canvas.pan_offset = QtCore.QPointF(saved["pan"])
+        for orientation, value in saved["scroll"].items():
+            self.set_scroll(orientation, value)
+        self.canvas.update()
+        return False
+
+    def dense_review_show_coverage_region(self, region_id):
+        session = self.dense_review_session
+        if session is None or session.state.coverage is None:
+            return
+        region = session.state.coverage.region(region_id)
+        if region is None:
+            return
+        self._dense_review_cancel_pending_edit()
+        label = f"{region.region_id} · 查漏区域"
+        self.canvas.set_dense_review_region(region.rect, label)
+        self.canvas.hide_background_shapes(False)
+        self.canvas.set_hiding(False)
+        self.set_zoom(self._dense_review_zoom_for_bounds(region.rect, 0.04))
+        self._dense_review_center_on(
+            (region.rect[0] + region.rect[2]) / 2.0,
+            (region.rect[1] + region.rect[3]) / 2.0,
+        )
+
+    def dense_review_workspace_closed(self):
+        self._dense_review_restore_visibility()
+        self.canvas.set_dense_review_region(None)
+        self.canvas.hide_background_shapes(False)
+        self.canvas.set_hiding(False)
+        if self._dense_review_full_view is not None:
+            self.dense_review_toggle_full_image()
+        self._dense_review_display_mode = "all"
+        if self.dense_review_workspace is not None:
+            self.dense_review_workspace._full_image = False
+
+    def dense_review_shortcut(self, key, default):
+        value = self._config.get("shortcuts", {}).get(key, default)
+        if isinstance(value, (list, tuple)):
+            value = value[0] if value else default
+        return value or default
+
+    def existing_shortcut_sequences(self):
+        sequences = set()
+        dense_keys = {
+            "dense_review_complete_batch",
+            "dense_review_complete_object",
+            "dense_review_skip",
+            "dense_review_difficult",
+            "dense_review_toggle_view",
+        }
+        shortcuts = self._config.get("shortcuts", {}) or {}
+        for key, value in shortcuts.items():
+            if key in dense_keys or not value:
+                continue
+            values = value if isinstance(value, (list, tuple)) else (value,)
+            for item in values:
+                if item:
+                    sequences.add(str(item))
+        return sequences
+
+    def _dense_review_reset_session(self):
+        self._dense_review_restore_visibility()
+        self._dense_review_display_mode = "all"
+        self._dense_review_full_view = None
+        self.dense_review_session = None
+        self._dense_review_annotation_path = ""
+        self._dense_review_annotation_stat = None
+        self._dense_review_image_hash = ""
+        self._dense_review_image_size = (0, 0)
+        self._dense_review_round_generation += 1
+        self.canvas.set_dense_review_region(None)
+        self.canvas.set_hiding(False)
+        if (
+            self.dense_review_workspace is not None
+            and self.dense_review_workspace.isVisible()
+        ):
+            self.dense_review_workspace.refresh_all()
+
+    def _dense_review_on_file_loaded(self):
+        self._dense_review_image_hash = ""
+        if not self.image.isNull():
+            self._dense_review_image_size = (
+                self.image.width(),
+                self.image.height(),
+            )
+        self._dense_review_sync_annotation_stat()
+        if (
+            self.dense_review_workspace is not None
+            and self.dense_review_workspace.isVisible()
+        ):
+            ok, message = self.dense_review_start_round(force_new=False)
+            if not ok:
+                self.dense_review_workspace._status(message)
+                return
+            mode = (
+                self.dense_review_workspace.display_combo.currentData()
+                or "focus"
+            )
+            self.dense_review_set_display_mode(mode)
+            self.dense_review_workspace._focus_current()
+
+    def inspection_dataset_root(self):
+        root = getattr(self, "_full_image_dir", "") or ""
+        if not root and self.filename:
+            root = osp.dirname(self.filename)
+        return root
+
+    def inspection_output_dir(self):
+        return self.output_dir or ""
+
+    def inspection_image_paths(self):
+        paths = list(self.image_list)
+        if self.filename and self.filename not in paths:
+            paths.append(self.filename)
+        return paths
+
+    def inspection_selected_image_paths(self):
+        items = self.file_list_widget.selectedItems()
+        return [item.text() for item in items]
+
+    def inspection_current_relative_path(self):
+        if not self.filename:
+            return ""
+        root = self.inspection_dataset_root()
+        if root:
+            try:
+                return osp.relpath(self.filename, root).replace("\\", "/")
+            except ValueError:
+                pass
+        return osp.basename(self.filename)
+
+    def inspection_current_manifest(self):
+        if not self.filename:
+            return None
+        from anylabeling.services.inspection.manifest import (
+            memory_file_snapshot,
+        )
+        from anylabeling.services.inspection.models import Manifest
+
+        shapes = [
+            item.shape().to_dict()
+            for item in self.label_list
+            if item.shape().label
+            not in (
+                AutoLabelingMode.OBJECT,
+                AutoLabelingMode.ADD,
+                AutoLabelingMode.REMOVE,
+            )
+        ]
+        image = self.image
+        snapshot = memory_file_snapshot(
+            self.filename,
+            self.inspection_current_relative_path(),
+            shapes,
+            image_width=image.width() if image is not None else 0,
+            image_height=image.height() if image is not None else 0,
+            output_dir=self.output_dir or "",
+            unsaved=bool(self.dirty),
+        )
+        return Manifest(
+            dataset_root=self.inspection_dataset_root(),
+            output_root=self.output_dir or "",
+            files=(snapshot,),
+            complete=True,
+        )
+
+    def _inspection_resolve_image_path(self, relative_path):
+        raw = str(relative_path or "").replace("\\", "/")
+        if not raw:
+            return None
+        if osp.isabs(raw) and osp.isfile(raw):
+            return raw
+        paths = self.inspection_image_paths()
+        matches = []
+        for path in paths:
+            normalized = path.replace("\\", "/")
+            if normalized.endswith("/" + raw) or normalized == raw:
+                matches.append(path)
+            elif osp.basename(path) == raw:
+                matches.append(path)
+        unique = list(dict.fromkeys(matches))
+        if len(unique) == 1:
+            return unique[0]
+        return None
+
+    def inspection_navigate_to(
+        self, relative_path, object_ids=(), region=None
+    ):
+        target = self._inspection_resolve_image_path(relative_path)
+        if not target:
+            self.status(
+                self.tr("Cannot resolve inspection target: %s") % relative_path
+            )
+            return False
+        if self.filename != target:
+            if not self.may_continue():
+                return False
+            self.load_file(target)
+        ids = {str(item) for item in object_ids if str(item)}
+        shapes = [
+            shape
+            for shape in self.canvas.shapes
+            if getattr(shape, "xanylabeling_shape_id", "") in ids
+        ]
+        if shapes:
+            self.canvas.select_shapes(shapes)
+            self.canvas.update()
+            return True
+        if ids:
+            self.status(
+                self.tr(
+                    "The inspected objects no longer exist; the issue "
+                    "needs rechecking."
+                )
+            )
+            return False
+        return True
+
+    def inspection_delete_shapes(self, object_ids):
+        ids = {str(item) for item in object_ids if str(item)}
+        shapes = [
+            shape
+            for shape in self.canvas.shapes
+            if getattr(shape, "xanylabeling_shape_id", "") in ids
+        ]
+        deletable = [shape for shape in shapes if not shape.locked]
+        if not deletable:
+            return False, self.tr("No unlocked target objects to delete")
+        for shape in deletable:
+            self.canvas.delete_shape(shape)
+        self.remove_labels(deletable)
+        self.shape_selection_changed(self.canvas.selected_shapes)
+        notify_metrics(self, "edit", "delete", "inspection_edit", removed=deletable)
+        self.set_dirty()
+        return True, ""
+
+    def inspection_relabel_shapes(self, object_ids, label):
+        ids = {str(item) for item in object_ids if str(item)}
+        shapes = [
+            shape
+            for shape in self.canvas.shapes
+            if getattr(shape, "xanylabeling_shape_id", "") in ids
+        ]
+        if not shapes:
+            return False, self.tr("The inspected objects no longer exist")
+        changed = self._apply_field_patch(
+            shapes, {"label": label}, {"label"}, source="inspection_edit"
+        )
+        return bool(changed), ""
+
+    def inspection_accept_candidate(self, candidate, shape_id=None):
+        from PyQt6.QtCore import QPointF
+
+        from .shape import Shape
+
+        target = self._inspection_resolve_image_path(candidate.relative_path)
+        if not target:
+            return False, self.tr("Cannot resolve candidate image")
+        if self.filename != target:
+            if not self.may_continue():
+                return False, self.tr("Navigation cancelled")
+            self.load_file(target)
+        if self.label_info and candidate.label not in self.label_info:
+            return (
+                False,
+                self.tr("Candidate label is not in the current label set"),
+            )
+        shape = Shape(
+            label=candidate.label,
+            shape_type="rectangle",
+            description=self.tr("Accepted external candidate"),
+            attributes={
+                "inspection_candidate_id": candidate.candidate_id,
+                "inspection_candidate_source": candidate.source,
+            },
+            shape_id=shape_id or Shape.new_shape_id(),
+        )
+        shape.points = [
+            QPointF(candidate.region[0], candidate.region[1]),
+            QPointF(candidate.region[2], candidate.region[3]),
+        ]
+        self.load_shapes([shape], replace=False, update_last_label=False)
+        notify_metrics(self, "edit", "create", "inspection_edit", changed=[shape])
+        self.set_dirty()
+        return True, shape.xanylabeling_shape_id
 
     def open_pointcloud(self):
         if self.pointcloud_window is None:
@@ -4743,7 +5610,10 @@ class LabelingWidget(LabelDialog):
     def _metadata_state(self, item):
         if self._metadata_generation is None:
             return "ready"
-        if item.data(Qt.ItemDataRole.UserRole + 1) != self._metadata_generation:
+        if (
+            item.data(Qt.ItemDataRole.UserRole + 1)
+            != self._metadata_generation
+        ):
             return "unknown"
         return item.data(Qt.ItemDataRole.UserRole + 2) or "unknown"
 
@@ -4769,25 +5639,40 @@ class LabelingWidget(LabelDialog):
                 item.setData(Qt.ItemDataRole.UserRole + 2, metadata.review)
                 if metadata.presence == "error":
                     self._metadata_error_paths.add(path)
-                    self._metadata_errors = self._metadata_search_errors + len(self._metadata_error_paths)
+                    self._metadata_errors = self._metadata_search_errors + len(
+                        self._metadata_error_paths
+                    )
                     item.setIcon(QtGui.QIcon())
                     item.setCheckState(Qt.CheckState.PartiallyChecked)
-                    item.setToolTip(f"{path}\n{self.tr('Annotation read error')}: {metadata.error}")
+                    item.setToolTip(
+                        f"{path}\n{self.tr('Annotation read error')}: {metadata.error}"
+                    )
                     continue
                 self._metadata_error_paths.discard(path)
-                self._metadata_errors = self._metadata_search_errors + len(self._metadata_error_paths)
+                self._metadata_errors = self._metadata_search_errors + len(
+                    self._metadata_error_paths
+                )
                 item.setCheckState(
-                    Qt.CheckState.Checked if metadata.presence == "present"
+                    Qt.CheckState.Checked
+                    if metadata.presence == "present"
                     else Qt.CheckState.Unchecked
                 )
-                checked = {"passed": True, "failed": "failed", "unchecked": False}[metadata.review]
+                checked = {
+                    "passed": True,
+                    "failed": "failed",
+                    "unchecked": False,
+                }[metadata.review]
                 self._set_file_item_checked(item, checked)
         if self._pending_review_navigation is not None:
             self._continue_review_navigation()
         if records:
             self.status(
                 self.tr("Checking annotations: %s/%s; errors: %s")
-                % (self._metadata_processed, self._metadata_total, self._metadata_errors),
+                % (
+                    self._metadata_processed,
+                    self._metadata_total,
+                    self._metadata_errors,
+                ),
                 3000,
             )
         if not controller.is_running() and not self._metadata_results:
@@ -4795,7 +5680,8 @@ class LabelingWidget(LabelDialog):
             if not records:
                 self._metadata_timer.stop()
                 self.status(
-                    self.tr("Annotation check complete; errors: %s") % self._metadata_errors,
+                    self.tr("Annotation check complete; errors: %s")
+                    % self._metadata_errors,
                     5000,
                 )
 
@@ -4849,17 +5735,24 @@ class LabelingWidget(LabelDialog):
         if item is not None:
             with QtCore.QSignalBlocker(self.file_list_widget):
                 item.setCheckState(
-                    Qt.CheckState.Checked if self.label_file is not None
+                    Qt.CheckState.Checked
+                    if self.label_file is not None
                     else Qt.CheckState.Unchecked
                 )
                 self._set_file_item_checked(item, self._annotation_checked())
                 if self._metadata_generation is not None:
                     path = item.text()
-                    self._metadata_revisions[path] = self._metadata_revisions.get(path, 0) + 1
-                    item.setData(Qt.ItemDataRole.UserRole + 1, self._metadata_generation)
+                    self._metadata_revisions[path] = (
+                        self._metadata_revisions.get(path, 0) + 1
+                    )
+                    item.setData(
+                        Qt.ItemDataRole.UserRole + 1, self._metadata_generation
+                    )
                     item.setData(Qt.ItemDataRole.UserRole + 2, "ready")
                     self._metadata_error_paths.discard(path)
-                    self._metadata_errors = self._metadata_search_errors + len(self._metadata_error_paths)
+                    self._metadata_errors = self._metadata_search_errors + len(
+                        self._metadata_error_paths
+                    )
 
     def _sync_annotation_checked_state(self):
         self._update_annotation_checked_action()
@@ -5044,7 +5937,7 @@ class LabelingWidget(LabelDialog):
             self.label_dialog.add_label_history(text)
         return True
 
-    def _apply_field_patch(self, shapes, values, touched):
+    def _apply_field_patch(self, shapes, values, touched, source="manual"):
         """Apply a validated field patch, one undo step and a UI refresh."""
         changed = apply_field_changes(
             self.canvas,
@@ -5077,6 +5970,10 @@ class LabelingWidget(LabelDialog):
                 self.unique_label_list.set_item_label(
                     unique_label_item, label, rgb, LABEL_OPACITY
                 )
+        notify_metrics(
+            self, "edit", "relabel" if "label" in touched else "attributes",
+            source, changed=changed
+        )
         self.set_dirty()
         self._refresh_shape_filters()
         self.canvas.invalidate_rectangle_size_issues()
@@ -5194,7 +6091,11 @@ class LabelingWidget(LabelDialog):
         self.file_search_changed()
 
     def _refresh_attribute_search_after_save(self):
-        if self.last_open_dir and parse_search_pattern(self.file_search.text()).mode == "attribute":
+        if (
+            self.last_open_dir
+            and parse_search_pattern(self.file_search.text()).mode
+            == "attribute"
+        ):
             self._view_controller.cancel()
             QtCore.QTimer.singleShot(0, self.file_search_changed)
 
@@ -5650,6 +6551,14 @@ class LabelingWidget(LabelDialog):
             self.scroll_area.setVisible(False)
 
     def save_attributes(self, _shapes):
+        resolve_conflict = getattr(
+            self, "_dense_review_resolve_conflict", None
+        )
+        if resolve_conflict is not None and not resolve_conflict():
+            return False
+        prepare_save = getattr(self, "_dense_review_prepare_save", None)
+        if prepare_save is not None:
+            prepare_save()
         filename = osp.splitext(self.image_path)[0] + ".json"
         if self.output_dir:
             label_file_without_path = osp.basename(filename)
@@ -5709,9 +6618,14 @@ class LabelingWidget(LabelDialog):
                     items[0], self._annotation_checked()
                 )
                 if self._metadata_generation is not None:
-                    items[0].setData(Qt.ItemDataRole.UserRole + 1, self._metadata_generation)
+                    items[0].setData(
+                        Qt.ItemDataRole.UserRole + 1, self._metadata_generation
+                    )
                     items[0].setData(Qt.ItemDataRole.UserRole + 2, "ready")
             self._refresh_attribute_search_after_save()
+            after_save = getattr(self, "_dense_review_after_save", None)
+            if after_save is not None:
+                after_save(filename)
             # disable allows next and previous image to proceed
             # self.filename = filename
             return True
@@ -5919,6 +6833,7 @@ class LabelingWidget(LabelDialog):
 
     def on_canvas_shapes_deleted(self, shapes):
         self.remove_labels(shapes)
+        notify_metrics(self, "edit", "delete", removed=shapes)
         self.set_dirty()
         if self.no_shape():
             for action in self.actions.on_shapes_present:
@@ -6113,6 +7028,7 @@ class LabelingWidget(LabelDialog):
         del blocker
 
     def save_labels(self, filename):
+        self._dense_review_prepare_save()
         label_file = LabelFile()
         # Get current shapes
         # Excluding auto labeling special shapes
@@ -6141,6 +7057,7 @@ class LabelingWidget(LabelDialog):
             if osp.dirname(filename) and not osp.exists(osp.dirname(filename)):
                 os.makedirs(osp.dirname(filename))
 
+            metrics_token = notify_metrics(self, "prepare_save", filename, shapes)
             label_file.save(
                 filename=filename,
                 shapes=shapes,
@@ -6151,6 +7068,7 @@ class LabelingWidget(LabelDialog):
                 other_data=self.other_data,
                 flags=flags,
             )
+            notify_metrics(self, "save_result", metrics_token, True)
             self.label_file = label_file
             if self._metadata_generation is not None and self.filename:
                 self._metadata_revisions[self.filename] = (
@@ -6168,13 +7086,17 @@ class LabelingWidget(LabelDialog):
                     items[0], self._annotation_checked()
                 )
                 if self._metadata_generation is not None:
-                    items[0].setData(Qt.ItemDataRole.UserRole + 1, self._metadata_generation)
+                    items[0].setData(
+                        Qt.ItemDataRole.UserRole + 1, self._metadata_generation
+                    )
                     items[0].setData(Qt.ItemDataRole.UserRole + 2, "ready")
             self._refresh_attribute_search_after_save()
+            self._dense_review_after_save(filename)
             # disable allows next and previous image to proceed
             # self.filename = filename
             return True
         except LabelFileError as e:
+            notify_metrics(self, "save_result", metrics_token, False)
             self.error_message(
                 self.tr("Error saving label data"), self.tr("<b>%s</b>") % e
             )
@@ -6191,6 +7113,7 @@ class LabelingWidget(LabelDialog):
             self.label_list.setUpdatesEnabled(True)
         if added_shapes:
             self._refresh_shape_filters()
+            notify_metrics(self, "edit", "duplicate", changed=added_shapes)
         self.set_dirty()
 
     def paste_selected_shape(self):
@@ -6218,6 +7141,7 @@ class LabelingWidget(LabelDialog):
             shapes, self._copied_group_id
         )
         self.load_shapes(shapes, replace=False)
+        notify_metrics(self, "edit", "paste", changed=shapes)
         self.set_dirty()
 
     def toggle_system_clipboard(self, system_clipboard):
@@ -6370,6 +7294,7 @@ class LabelingWidget(LabelDialog):
             self.actions.edit_mode.setEnabled(True)
             self.actions.undo_last_point.setEnabled(False)
             self.actions.undo.setEnabled(True)
+            notify_metrics(self, "edit", "create", changed=[shape])
             self.set_dirty()
             if (
                 self.canvas.drawing()
@@ -7031,7 +7956,11 @@ class LabelingWidget(LabelDialog):
 
         if filename and str(filename) != str(self.filename):
             self._cancel_pending_review()
-        if filename and self._view_timer.isActive() and self._view_first_pending:
+        if (
+            filename
+            and self._view_timer.isActive()
+            and self._view_first_pending
+        ):
             self._view_first_pending = False
             self._view_preserve = str(filename)
 
@@ -7267,6 +8196,8 @@ class LabelingWidget(LabelDialog):
         self.canvas.setFocus()
         self._sync_annotation_checked_state()
         self.update_thumbnail_display()
+        self._dense_review_on_file_loaded()
+        notify_metrics(self, "enter_image")
 
         # Reveal the adjustment panel now that an image is loaded.
         self.canvas_adjustment.show()
@@ -7410,14 +8341,20 @@ class LabelingWidget(LabelDialog):
             return
         exif_thread = self.async_exif_scanner.thread
         exif_running = exif_thread is not None and exif_thread.isRunning()
-        if self._metadata_controller.is_running() or self._view_controller.is_running() or exif_running:
+        if (
+            self._metadata_controller.is_running()
+            or self._view_controller.is_running()
+            or exif_running
+        ):
             self._metadata_controller.cancel()
             self._view_controller.cancel()
             self._exif_generation += 1
             self._exif_pending = False
             self.async_exif_scanner.stop_scan()
             event.ignore()
-            self.status(self.tr("Waiting for annotation reads to finish"), 3000)
+            self.status(
+                self.tr("Waiting for annotation reads to finish"), 3000
+            )
             QtCore.QTimer.singleShot(100, self.window().close)
             return
         if self.pointcloud_window is not None:
@@ -7463,6 +8400,9 @@ class LabelingWidget(LabelDialog):
 
         if self._settings_controller is not None:
             self._settings_controller.close_session()
+        notify_metrics(self, "stop")
+        if self.dense_review_workspace is not None:
+            self.dense_review_workspace.shutdown()
 
         save_config(self._config)
 
@@ -7515,7 +8455,9 @@ class LabelingWidget(LabelDialog):
         if index is None and not self._view_timer.isActive():
             return
         self._pending_review_navigation = (
-            direction, self.filename, self._metadata_generation,
+            direction,
+            self.filename,
+            self._metadata_generation,
             None if index is None else index + direction,
         )
         self._continue_review_navigation()
@@ -7535,34 +8477,58 @@ class LabelingWidget(LabelDialog):
                     self._pending_review_navigation = None
                 return
             index = anchor_index + direction
-            self._pending_review_navigation = (direction, anchor, generation, index)
+            self._pending_review_navigation = (
+                direction,
+                anchor,
+                generation,
+                index,
+            )
         while 0 <= index < self.file_list_widget.count():
             item = self.file_list_widget.item(index)
             state = self._metadata_state(item)
             if state == "unknown":
                 self._metadata_controller.prioritize(item.text())
-                self.status(self.tr("Checking annotation for review navigation"), 3000)
+                self.status(
+                    self.tr("Checking annotation for review navigation"), 3000
+                )
                 return
             if state == "error":
                 if self._last_review_error == item.text():
                     path = item.text()
                     item.setData(Qt.ItemDataRole.UserRole + 2, "unknown")
-                    self._metadata_controller.retry(path, self.output_dir, self._metadata_revisions.get(path, 0))
+                    self._metadata_controller.retry(
+                        path,
+                        self.output_dir,
+                        self._metadata_revisions.get(path, 0),
+                    )
                     self._metadata_total += 1
                     self._last_review_error = None
                     self._metadata_timer.start()
-                    self.status(self.tr("Retrying annotation: %s") % path, 5000)
+                    self.status(
+                        self.tr("Retrying annotation: %s") % path, 5000
+                    )
                     return
                 self._last_review_error = item.text()
                 self._pending_review_navigation = None
-                self.status(self.tr("Cannot read annotation: %s. Repeat navigation to retry.") % item.text(), 10000)
+                self.status(
+                    self.tr(
+                        "Cannot read annotation: %s. Repeat navigation to retry."
+                    )
+                    % item.text(),
+                    10000,
+                )
                 return
             if not self._file_item_annotation_checked(item):
                 self._pending_review_navigation = None
                 self.load_file(item.text())
                 return
             index += direction
-            self._pending_review_navigation = (direction, anchor, generation, index)
+            self._pending_review_navigation = (
+                direction,
+                anchor,
+                generation,
+                index,
+            )
         if direction > 0 and self._view_timer.isActive():
             return
         self._pending_review_navigation = None
@@ -7663,7 +8629,11 @@ class LabelingWidget(LabelDialog):
             return
 
         current_filename = self.filename
-        if self.file_search.text() or self._view_timer.isActive() or not current_filename:
+        if (
+            self.file_search.text()
+            or self._view_timer.isActive()
+            or not current_filename
+        ):
             self._metadata_controller.cancel()
             self._metadata_generation = None
             self._metadata_timer.stop()
@@ -7676,7 +8646,9 @@ class LabelingWidget(LabelDialog):
                 finally:
                     self._config["keep_prev"] = keep_prev
             if self.last_open_dir:
-                self._start_view(self.last_open_dir, self.file_search.text(), False, False)
+                self._start_view(
+                    self.last_open_dir, self.file_search.text(), False, False
+                )
             return
 
         self.output_dir = output_dir
@@ -7697,7 +8669,9 @@ class LabelingWidget(LabelDialog):
         self._metadata_search_errors = 0
         self._metadata_processed = 0
         self._metadata_total = len(paths)
-        self._metadata_generation = self._metadata_controller.request(paths, output_dir, {})
+        self._metadata_generation = self._metadata_controller.request(
+            paths, output_dir, {}
+        )
         self.file_list_widget.viewport().update()
         # A directory switch must never copy shapes from the old directory.
         keep_prev = self._config["keep_prev"]
@@ -7708,7 +8682,11 @@ class LabelingWidget(LabelDialog):
             self._config["keep_prev"] = keep_prev
         item = self._current_file_item()
         if item is not None:
-            item.setCheckState(Qt.CheckState.Checked if self.label_file else Qt.CheckState.Unchecked)
+            item.setCheckState(
+                Qt.CheckState.Checked
+                if self.label_file
+                else Qt.CheckState.Unchecked
+            )
         self.status(self.tr("Checking annotations in background"))
         self._metadata_timer.start()
 
@@ -7766,9 +8744,13 @@ class LabelingWidget(LabelDialog):
         return filename
 
     def _save_file(self, filename):
+        if not self._dense_review_resolve_conflict():
+            return False
         if filename and self.save_labels(filename):
             self.add_recent_file(filename)
             self.set_clean()
+            return True
+        return False
 
     def close_file(self, _value=False):
         if not self.may_continue():
@@ -7877,7 +8859,9 @@ class LabelingWidget(LabelDialog):
                 item.setCheckState(Qt.CheckState.Unchecked)
                 self._set_file_item_checked(item, False)
             if self.filename:
-                self._metadata_revisions[self.filename] = self._metadata_revisions.get(self.filename, 0) + 1
+                self._metadata_revisions[self.filename] = (
+                    self._metadata_revisions.get(self.filename, 0) + 1
+                )
 
             filename = self.filename
             self.reset_state()
@@ -7990,6 +8974,7 @@ class LabelingWidget(LabelDialog):
             mb.StandardButton.Save,
         )
         if answer == mb.StandardButton.Discard:
+            notify_metrics(self, "discard")
             return True
         if answer == mb.StandardButton.Save:
             self.save_file()
@@ -8048,8 +9033,10 @@ class LabelingWidget(LabelDialog):
             )
             if answer != QtWidgets.QMessageBox.StandardButton.Yes:
                 return
-        self.remove_labels(self.canvas.delete_selected())
+        removed = self.canvas.delete_selected()
+        self.remove_labels(removed)
         self.shape_selection_changed(self.canvas.selected_shapes)
+        notify_metrics(self, "edit", "delete", removed=removed)
         self.set_dirty()
         if self.no_shape():
             for action in self.actions.on_shapes_present:
@@ -8066,10 +9053,12 @@ class LabelingWidget(LabelDialog):
         if self.canvas.selected_shapes:
             self._refresh_shape_filters()
         self.label_list.clearSelection()
+        notify_metrics(self, "edit", "duplicate", changed=self.canvas.selected_shapes)
         self.set_dirty()
 
     def move_shape(self):
         self.canvas.end_move(copy=False)
+        notify_metrics(self, "edit", "geometry", changed=self.canvas.selected_shapes)
         self.set_dirty()
 
     def open_folder_dialog(self, _value=False, dirpath=None):
@@ -8165,7 +9154,9 @@ class LabelingWidget(LabelDialog):
         self._view_pending_dropped = []
         self._view_finished = False
         self._view_error_message = None
-        self._view_first_load = bool(load or (not new_directory and self.filename is None))
+        self._view_first_load = bool(
+            load or (not new_directory and self.filename is None)
+        )
         self._view_first_pending = new_directory or self.filename is None
         self._view_preserve = None if new_directory else self.filename
         if new_directory:
@@ -8179,7 +9170,9 @@ class LabelingWidget(LabelDialog):
         with QtCore.QSignalBlocker(self.file_list_widget):
             self.file_list_widget.clear()
         self.fn_to_index.clear()
-        paths = self._full_image_paths if self._full_image_dir == dirpath else None
+        paths = (
+            self._full_image_paths if self._full_image_dir == dirpath else None
+        )
         self._view_controller.request(
             directory=dirpath,
             extensions=utils.get_supported_image_extensions(),
@@ -8197,7 +9190,9 @@ class LabelingWidget(LabelDialog):
                 if kind == "paths":
                     scanned = set(value)
                     self._full_image_paths = value + [
-                        path for path in self._dropped_image_paths if path not in scanned
+                        path
+                        for path in self._dropped_image_paths
+                        if path not in scanned
                     ]
                     self._full_image_dir = self.last_open_dir
                 elif kind == "matches":
@@ -8209,14 +9204,18 @@ class LabelingWidget(LabelDialog):
                     self._view_finished = True
                     self._view_errors = 1
                     self._view_error_message = value
-                    self.status(self.tr("Image scan failed: %s") % value, 10000)
+                    self.status(
+                        self.tr("Image scan failed: %s") % value, 10000
+                    )
         with QtCore.QSignalBlocker(self.file_list_widget):
             for _ in range(min(100, len(self._view_buffer))):
                 path = self._view_buffer.popleft()
                 if path in self.fn_to_index:
                     continue
                 item = QtWidgets.QListWidgetItem(path)
-                flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+                flags = (
+                    Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+                )
                 if self._config.get("file_list_checkbox_editable", False):
                     flags |= Qt.ItemFlag.ItemIsUserCheckable
                 item.setFlags(flags)
@@ -8233,7 +9232,8 @@ class LabelingWidget(LabelDialog):
             self._continue_review_navigation()
         if not self._view_finished or self._view_buffer:
             self.status(
-                self.tr("Filtering images: %s matches so far") % self.file_list_widget.count(),
+                self.tr("Filtering images: %s matches so far")
+                % self.file_list_widget.count(),
                 3000,
             )
         if self._view_finished and not self._view_buffer:
@@ -8247,9 +9247,17 @@ class LabelingWidget(LabelDialog):
             self.actions.open_prev_unchecked_image.setEnabled(bool(paths))
             if not paths:
                 if self._view_error_message:
-                    self.status(self.tr("Image scan failed: %s") % self._view_error_message, 10000)
+                    self.status(
+                        self.tr("Image scan failed: %s")
+                        % self._view_error_message,
+                        10000,
+                    )
                 elif self._view_errors:
-                    self.status(self.tr("No matches; unreadable annotations: %s") % self._view_errors, 10000)
+                    self.status(
+                        self.tr("No matches; unreadable annotations: %s")
+                        % self._view_errors,
+                        10000,
+                    )
                 else:
                     self.status(self.tr("No matching images"), 5000)
                 return
@@ -8260,26 +9268,41 @@ class LabelingWidget(LabelDialog):
             self._metadata_search_errors = self._view_errors
             self._metadata_processed = 0
             self._metadata_total = len(paths)
-            self._metadata_generation = self._metadata_controller.request(paths, self.output_dir, {})
+            self._metadata_generation = self._metadata_controller.request(
+                paths, self.output_dir, {}
+            )
             if self._pending_review_navigation is not None:
                 direction, anchor, _, index = self._pending_review_navigation
-                self._pending_review_navigation = (direction, anchor, self._metadata_generation, index)
+                self._pending_review_navigation = (
+                    direction,
+                    anchor,
+                    self._metadata_generation,
+                    index,
+                )
             if self.filename in self.fn_to_index and self.image_path:
                 item = self._current_file_item()
                 self._update_current_file_checked_item()
-                item.setCheckState(Qt.CheckState.Checked if self.label_file else Qt.CheckState.Unchecked)
+                item.setCheckState(
+                    Qt.CheckState.Checked
+                    if self.label_file
+                    else Qt.CheckState.Unchecked
+                )
             self.file_list_widget.viewport().update()
             self._metadata_timer.start()
             if self._exif_pending:
                 generation = self._exif_generation
-                QtCore.QTimer.singleShot(150, lambda: self._start_pending_exif(generation))
+                QtCore.QTimer.singleShot(
+                    150, lambda: self._start_pending_exif(generation)
+                )
 
     def _start_pending_exif(self, generation):
         if generation != self._exif_generation or not self._exif_pending:
             return
         thread = self.async_exif_scanner.thread
         if thread is not None:
-            QtCore.QTimer.singleShot(200, lambda: self._start_pending_exif(generation))
+            QtCore.QTimer.singleShot(
+                200, lambda: self._start_pending_exif(generation)
+            )
             return
         self._exif_pending = False
         if self._full_image_paths:
@@ -8306,6 +9329,10 @@ class LabelingWidget(LabelDialog):
             current_filename = osp.normpath(osp.abspath(self.filename))
             result_filename = osp.normpath(osp.abspath(result_image_path))
             if result_filename != current_filename:
+                notify_metrics(
+                    self, "prediction_unapplied", result_image_path,
+                    getattr(auto_labeling_result, "provenance", None) or {},
+                )
                 logger.warning(
                     "Ignore stale auto labeling result for "
                     f"{result_filename}; current file is {current_filename}"
@@ -8390,6 +9417,8 @@ class LabelingWidget(LabelDialog):
             self._sync_annotation_checked_state()
 
         if tags_changed or not tags_only_result:
+            if auto_labeling_result.replace or auto_labeling_result.shapes:
+                notify_metrics(self, "prediction_applied", auto_labeling_result)
             self.set_dirty()
 
     def clear_auto_labeling_marks(self):

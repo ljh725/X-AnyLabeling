@@ -957,6 +957,142 @@ def get_dialog_style() -> str:
     """
 
 
+def blend_hex(foreground: str, background: str, ratio: float) -> str:
+    """Blend two hex colors; used for theme-aware selection tints."""
+
+    def channels(value: str) -> tuple[int, int, int]:
+        value = value.lstrip("#")
+        if len(value) == 3:
+            value = "".join(char * 2 for char in value)
+        return tuple(int(value[index : index + 2], 16) for index in (0, 2, 4))
+
+    fg = channels(foreground)
+    bg = channels(background)
+    mixed = tuple(
+        round(bg[index] + (fg[index] - bg[index]) * ratio)
+        for index in range(3)
+    )
+    return "#{:02X}{:02X}{:02X}".format(*mixed)
+
+
+def get_workbench_qss() -> str:
+    """Scoped overrides for the Inspector and Dense Review workbenches.
+
+    Meant to be appended to :func:`get_dialog_style` on the two workflow
+    dialogs only, so the shared dialog look stays untouched. Control
+    emphasis is expressed through the dynamic ``variant`` property.
+    """
+    t = get_theme()
+    selection_tint = blend_hex(t["selection"], t["background"], 0.14)
+    return f"""
+        QFrame#workbenchToolbar, QFrame#workbenchStatus {{
+            background-color: {t["background_secondary"]};
+            border: none;
+            border-radius: 0;
+        }}
+        QLabel#fieldLabel {{
+            color: {t["text_secondary"]};
+            font-size: 11px;
+        }}
+        QLabel#statusChip {{
+            color: {t["text_secondary"]};
+            font-size: 11px;
+            padding: 0 2px;
+        }}
+        QLabel#emptyState {{
+            color: {t["text_secondary"]};
+            font-size: 13px;
+        }}
+        QPushButton[variant="primary"] {{
+            background-color: {t["primary"]};
+            color: #FFFFFF;
+            border: 1px solid {t["primary"]};
+            font-weight: 500;
+        }}
+        QPushButton[variant="primary"]:hover {{
+            background-color: {t["primary_hover"]};
+            border-color: {t["primary_hover"]};
+        }}
+        QPushButton[variant="primary"]:pressed {{
+            background-color: {t["primary_pressed"]};
+            border-color: {t["primary_pressed"]};
+        }}
+        QPushButton[variant="primary"]:disabled {{
+            background-color: {t["surface"]};
+            color: {t["text_secondary"]};
+            border-color: {t["border"]};
+        }}
+        QPushButton[variant="quiet"] {{
+            background-color: transparent;
+            border: 1px solid transparent;
+            color: {t["text_secondary"]};
+            min-width: 0;
+            padding: 0 8px;
+        }}
+        QPushButton[variant="quiet"]:hover {{
+            background-color: {t["surface_hover"]};
+            color: {t["text"]};
+        }}
+        QPushButton[variant="danger"] {{
+            color: {t["error"]};
+        }}
+        QTableWidget {{
+            border: none;
+            background-color: {t["background"]};
+            gridline-color: transparent;
+        }}
+        QTableWidget::item {{
+            border-bottom: 1px solid {t["border"]};
+            padding: 0 8px;
+        }}
+        QTableWidget::item:selected {{
+            background-color: {selection_tint};
+            color: {t["text"]};
+        }}        QHeaderView::section {{
+            background-color: transparent;
+            border: none;
+            border-bottom: 1px solid {t["border"]};
+            color: {t["text_secondary"]};
+            font-size: 11px;
+            padding: 6px 8px;
+        }}
+        QTabWidget::pane {{
+            border: none;
+            border-top: 1px solid {t["border"]};
+        }}
+        QTabBar::tab {{
+            background: transparent;
+            border: none;
+            padding: 7px 12px;
+            color: {t["text_secondary"]};
+        }}
+        QTabBar::tab:selected {{
+            color: {t["text"]};
+            border-bottom: 2px solid {t["primary"]};
+        }}
+        QTabBar::tab:hover:!selected {{
+            color: {t["text"]};
+        }}
+        QSplitter::handle {{
+            background-color: {t["border"]};
+        }}
+        QProgressBar {{
+            border: none;
+            border-radius: 3px;
+            background-color: {t["border"]};
+            max-height: 6px;
+        }}
+        QProgressBar::chunk {{
+            border-radius: 3px;
+            background-color: {t["primary"]};
+        }}
+        QTextBrowser {{
+            border: none;
+            background: transparent;
+        }}
+    """
+
+
 def get_download_progress_bar_style():
     t = get_theme()
     return f"""

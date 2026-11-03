@@ -172,6 +172,7 @@ class Canvas(
         self._point_fit_pending_box = None
         self._point_fit_cursor = None
         self._point_fit_anchor = None
+        self._point_fit_preview = None
         self._rectangle_edge_enabled = False
         self._rectangle_edge_hover = None
         self._rectangle_edge_drag = None
@@ -199,6 +200,8 @@ class Canvas(
         self.scale = 1.0
         self.pixmap = QtGui.QPixmap()
         self.visible = {}
+        self.dense_review_region = None
+        self.dense_review_region_label = ""
         self._hide_backround = False
         self.hide_backround = False
         self.h_shape = None
@@ -4616,6 +4619,15 @@ class Canvas(
         # labels are restored to full opacity before being painted.
         p.setOpacity(self.shape_opacity)
 
+        # One frame snapshot keeps ordinary, mask, and candidate outlines
+        # consistent during a Shift / Shift+Alt fit preview.
+        self._point_fit_preview = self._build_point_fit_preview()
+        preview = self._point_fit_preview
+        preview_target = preview.target if preview is not None else None
+        preview_outline = (
+            preview.outline_path if preview is not None else None
+        )
+
         # Draw KIE linking
         if self.show_linking:
             pen = QtGui.QPen(QtGui.QColor("#AAAAAA"), 2, Qt.PenStyle.SolidLine)
@@ -4776,7 +4788,12 @@ class Canvas(
                     pen.setStyle(Qt.PenStyle.DashLine)
                 p.setPen(pen)
                 p.setBrush(Qt.BrushStyle.NoBrush)
-                p.drawPath(mask_path)
+                p.drawPath(
+                    mask_path
+                    if shape is not preview_target
+                    or preview_outline is None
+                    else preview_outline
+                )
 
         # Draw degrees
         for shape in self.shapes:
@@ -4791,7 +4808,14 @@ class Canvas(
                 )
                 # Brush-edited shapes are drawn from their mask instead.
                 if not getattr(shape, "_brush_using_mask", False):
-                    shape.paint(p)
+                    shape.paint(
+                        p,
+                        outline_path=(
+                            preview_outline
+                            if shape is preview_target
+                            else None
+                        ),
+                    )
 
             if (
                 shape.shape_type == "rotation"
@@ -4855,18 +4879,20 @@ class Canvas(
 
         self._paint_groups(p)
 
+        self._paint_dense_review_region(p)
+
         # Draw live brush-edit overlays on top of the regular shapes.
         self._paint_brush_overlays(p)
         self._paint_magic_wand_overlay(p)
-
-        self._draw_rectangle_crosshair(p)
 
         if self.rectangle_creation is not None:
             self.rectangle_creation.paint_draft(p)
 
         if self.current:
             self.current.paint(p)
-            self.line.paint(p)
+            self.line.paint(
+                p, outline_path=self._rectangle_creation_outline()
+            )
 
             if (
                 self.create_mode == "quadrilateral"
@@ -4912,6 +4938,10 @@ class Canvas(
             drawing_shape.fill = True
             drawing_shape._closed = True
             drawing_shape.paint(p)
+
+        # The creation guide sits above the draft preview but below the
+        # label/size text added in the following sections.
+        self._draw_rectangle_crosshair(p)
 
         # Restore full opacity so labels/scores/attributes stay readable.
         p.setOpacity(1.0)
@@ -5290,6 +5320,7 @@ class Canvas(
         self._paint_rectangle_edge(p)
         self._paint_rectangle_size(p)
 
+        self._point_fit_preview = None
         p.end()
 
     def render_visualization(
@@ -6056,6 +6087,45 @@ class Canvas(
         self.invalidate_rectangle_size_issues()
         self.update()
 
+    def set_dense_review_region(self, rect=None, label=""):
+        """Temporarily outline one spatial-review region in image coords."""
+        self.dense_review_region = (
+            tuple(float(value) for value in rect) if rect else None
+        )
+        self.dense_review_region_label = str(label or "")
+        self.update()
+
+    def _paint_dense_review_region(self, painter):
+        rect = self.dense_review_region
+        if not rect:
+            return
+        pen = QtGui.QPen(
+            QtGui.QColor(255, 165, 0, 230),
+            max(1.0, 2.0 / max(self.scale, 1e-6)),
+            Qt.PenStyle.DashLine,
+        )
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRect(
+            QtCore.QRectF(
+                rect[0],
+                rect[1],
+                rect[2] - rect[0],
+                rect[3] - rect[1],
+            )
+        )
+        if self.dense_review_region_label:
+            painter.setFont(
+                QtGui.QFont(
+                    "Arial",
+                    int(max(6.0, round(10.0 / max(self.scale, 1e-6)))),
+                )
+            )
+            painter.drawText(
+                QtCore.QPointF(rect[0] + 4.0, rect[1] + 12.0),
+                self.dense_review_region_label,
+            )
+
     def current_cursor(self):
         """Current cursor"""
         cursor = QtWidgets.QApplication.overrideCursor()
@@ -6092,6 +6162,8 @@ class Canvas(
         self.restore_cursor()
         self.pixmap = None
         self.shapes_backups = []
+        self.dense_review_region = None
+        self.dense_review_region_label = ""
         self.is_move_editing = False
         self.compare_pixmap = None
         self._selected_group_id = None

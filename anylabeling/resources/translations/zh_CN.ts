@@ -7564,6 +7564,7 @@ The main application remains available.</source>
   </context>
   <context>
     <name>SettingsDialog</name>
+    <message><source>Correction Cost Statistics</source><translation>修正成本统计</translation></message>
     <message>
       <location filename="../../views/labeling/settings/dialog.py" line="393" />
       <location filename="../../views/labeling/settings/dialog.py" line="106" />
@@ -10596,5 +10597,125 @@ Response preview:
       <source>Rule row {0}: {1}</source>
       <translation>规则第 {0} 行：{1}</translation>
     </message>
+  </context>
+  <context>
+    <name>CorrectionCost</name>
+    <message><source>Correction Cost Statistics</source><translation>修正成本统计</translation></message>
+    <message><source>Open an image first.</source><translation>请先打开图片。</translation></message>
+    <message><source>Save the current version before marking it complete.</source><translation>请先成功保存当前版本，再完成本轮。</translation></message>
+    <message><source>Correction cost records are incomplete.</source><translation>修正统计记录不完整。</translation></message>
+    <message><source>Scope</source><translation>统计范围</translation></message>
+    <message><source>Start recording</source><translation>开始统计</translation></message>
+    <message><source>First image</source><translation>起始图片</translation></message>
+    <message><source>Last image</source><translation>结束图片</translation></message>
+    <message><source>All</source><translation>全部</translation></message>
+    <message><source>Current image</source><translation>仅当前图</translation></message>
+    <message><source>{count} images</source><translation>共 {count} 张</translation></message>
+    <message><source>{count} image(s): {first} … {last}</source><translation>{count} 张图：{first} … {last}</translation></message>
+    <message><source>Cancel</source><translation>取消</translation></message>
+    <message><source>Close</source><translation>关闭</translation></message>
+    <message><source>Show details</source><translation>展开明细</translation></message>
+    <message><source>Hide details</source><translation>收起明细</translation></message>
+    <message><source>Pause timer</source><translation>暂停计时</translation></message>
+    <message><source>Resume timer</source><translation>继续计时</translation></message>
+    <message><source>Stop recording</source><translation>停止统计</translation></message>
+    <message><source>Finish round</source><translation>完成本轮</translation></message>
+    <message><source>Continue correction</source><translation>继续修正</translation></message>
+    <message><source>Start review</source><translation>开始复核</translation></message>
+    <message><source>Report</source><translation>查看汇总</translation></message>
+    <message><source>Keep as review time</source><translation>保留为审图时间</translation></message>
+    <message><source>Exclude idle time</source><translation>扣除空闲时间</translation></message>
+    <message><source>Image</source><translation>图片</translation></message>
+    <message><source>Round</source><translation>轮次</translation></message>
+    <message><source>Starting boxes</source><translation>起始框数</translation></message>
+    <message><source>Saved result</source><translation>已保存结果</translation></message>
+    <message><source>Current draft</source><translation>当前草稿</translation></message>
+    <message><source>Quality assessment</source><translation>质量验收</translation></message>
+    <message><source>Processing status</source><translation>处理状态</translation></message>
+    <message><source>In-app processing</source><translation>应用内处理时间</translation></message>
+    <message><source>{seconds} s</source><translation>{seconds} 秒</translation></message>
+    <message><source>Timer</source><translation>计时状态</translation></message>
+    <message><source>Operations / touches / unique objects</source><translation>操作次数 / 触达次数 / 去重对象</translation></message>
+    <message><source>Record integrity</source><translation>记录完整性</translation></message>
+    <message><source>No recorded gaps</source><translation>无已知缺口</translation></message>
+    <message><source>Added {added} · Deleted {deleted} · Geometry {geometry_changed} · Class {class_changed}</source><translation>新增 {added} · 删除 {deleted} · 改框 {geometry_changed} · 改类 {class_changed}</translation></message>
+    <message><source>In progress</source><translation>未完成</translation></message>
+    <message><source>Completed</source><translation>本轮已完成</translation></message>
+    <message><source>Not assessed</source><translation>未评估</translation></message>
+    <message><source>Existing annotations, unknown source</source><translation>已有标注，来源未知</translation></message>
+    <message><source>Replacement prediction</source><translation>替换预测</translation></message>
+    <message><source>Appended prediction</source><translation>追加预测</translation></message>
+    <message><source>Correction</source><translation>修正</translation></message>
+    <message><source>Processing</source><translation>处理中</translation></message>
+    <message><source>Inactive</source><translation>应用后台或系统锁定</translation></message>
+    <message><source>Waiting</source><translation>阻塞等待</translation></message>
+    <message><source>Loading</source><translation>尚未就绪</translation></message>
+    <message><source>Paused</source><translation>已暂停</translation></message>
+    <message><source>Stopped</source><translation>已停止</translation></message>
+    <message><source>Pending idle: {seconds} s (included until confirmed)</source><translation>待确认空闲 {seconds} 秒（确认前仍计时）</translation></message>
+    <message><source>Correction Cost Report</source><translation>修正成本汇总</translation></message>
+    <message><source>Refresh snapshot</source><translation>刷新快照</translation></message>
+    <message><source>Snapshot {stamp}</source><translation>快照 {stamp}</translation></message>
+    <message><source>Image rounds</source><translation>图片及轮次</translation></message>
+    <message><source>Class changes</source><translation>类别变化</translation></message>
+    <message><source>By density and model</source><translation>按目标数量与模型</translation></message>
+    <message><source>Current results only</source><translation>仅当前结果</translation></message>
+    <message><source>Search image, class or model</source><translation>搜索图片、类别或模型</translation></message>
+    <message><source>Stage</source><translation>阶段</translation></message>
+    <message><source>Model version</source><translation>模型版本</translation></message>
+    <message><source>Rounds</source><translation>轮次</translation></message>
+    <message><source>Distinct images</source><translation>去重图片数</translation></message>
+    <message><source>{images} completed image(s) · {eligible}/{rounds} comparable rounds</source><translation>已完成 {images} 张 · 可比轮次 {eligible}/{rounds}</translation></message>
+    <message><source>Excluded reasons</source><translation>排除原因</translation></message>
+    <message><source>Comparable saved rounds only. Density uses final rectangles. Sequential runs on the same image are dependent.</source><translation>分组使用已完成且可比的保存轮次，按最终矩形数分档。同图顺序换模型属于关联观测。</translation></message>
+    <message><source>Previous page</source><translation>上一页</translation></message>
+    <message><source>Next page</source><translation>下一页</translation></message>
+    <message><source>Page {page}/{pages} · {count} rows</source><translation>第 {page}/{pages} 页 · 共 {count} 行</translation></message>
+    <message><source>Finish selected rounds…</source><translation>完成选中轮次…</translation></message>
+    <message><source>Mark only the following {count} saved round(s) complete?</source><translation>将以下 {count} 个已保存轮次标为处理完成？</translation></message>
+    <message><source>Revalidate revisions before applying. Changed or ineligible rows will be skipped.</source><translation>执行前核对保存版本，已变化或不符合条件的行将跳过。</translation></message>
+    <message><source>Select current saved rows on the Images tab.</source><translation>请在图片及轮次页选择当前已保存的记录。</translation></message>
+    <message><source>No recorded image</source><translation>暂无统计图片</translation></message>
+    <message><source>Export CSV…</source><translation>导出 CSV…</translation></message>
+    <message><source>Metric dictionary</source><translation>指标字典</translation></message>
+    <message><source>Loading report…</source><translation>正在加载汇总…</translation></message>
+    <message><source>Writing CSV…</source><translation>正在写入 CSV…</translation></message>
+    <message><source>Exported {file}</source><translation>已导出 {file}</translation></message>
+    <message><source>Operation failed</source><translation>操作失败</translation></message>
+    <message><source>Yes</source><translation>是</translation></message>
+    <message><source>No</source><translation>否</translation></message>
+    <message><source>Current</source><translation>当前</translation></message>
+    <message><source>Initial boxes</source><translation>初始框</translation></message>
+    <message><source>AI boxes</source><translation>本轮预测框</translation></message>
+    <message><source>Saved boxes</source><translation>最终框</translation></message>
+    <message><source>Added</source><translation>新增</translation></message>
+    <message><source>Deleted</source><translation>删除</translation></message>
+    <message><source>Geometry edits</source><translation>改框对象</translation></message>
+    <message><source>Class edits</source><translation>改类对象</translation></message>
+    <message><source>Operations</source><translation>事务数</translation></message>
+    <message><source>Processing (s)</source><translation>处理时间（秒）</translation></message>
+    <message><source>Median seconds/round</source><translation>轮次用时中位数（秒）</translation></message>
+    <message><source>Seconds / 100 boxes</source><translation>每百框秒数</translation></message>
+    <message><source>Limitations</source><translation>范围及缺口</translation></message>
+    <message><source>Model</source><translation>模型</translation></message>
+    <message><source>Class vocabulary version</source><translation>类别版本</translation></message>
+    <message><source>Metric</source><translation>指标</translation></message>
+    <message><source>Initial class</source><translation>初始类别</translation></message>
+    <message><source>Final class</source><translation>最终类别</translation></message>
+    <message><source>Objects</source><translation>对象数</translation></message>
+    <message><source>Denominator</source><translation>分母</translation></message>
+    <message><source>Baseline source</source><translation>起点来源</translation></message>
+    <message><source>Changed original boxes</source><translation>修改原框数</translation></message>
+    <message><source>Changed / initial</source><translation>修改原框率</translation></message>
+    <message><source>Final boxes per image</source><translation>每图最终框数</translation></message>
+    <message><source>Initial</source><translation>初始</translation></message>
+    <message><source>Final</source><translation>最终</translation></message>
+    <message><source>Geometry</source><translation>几何</translation></message>
+    <message><source>Unsaved</source><translation>未保存</translation></message>
+    <message><source>Partial rectangle scope</source><translation>矩形范围不完整</translation></message>
+    <message><source>Unknown source</source><translation>未知来源</translation></message>
+    <message><source>Interrupted timing</source><translation>计时中断</translation></message>
+    <message><source>Historical</source><translation>历史</translation></message>
+    <message><source>Idle prompt after (s)</source><translation>空闲提示阈值（秒）</translation></message>
   </context>
 </TS>

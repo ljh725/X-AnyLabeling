@@ -4,12 +4,6 @@ class DownloadCancelledError(Exception):
     pass
 
 
-class DownloadCancelledError(Exception):
-    """Raised when a model download is cancelled by the user."""
-
-    pass
-
-
 class AutoLabelingResult:
     def __init__(
         self,
@@ -19,6 +13,7 @@ class AutoLabelingResult:
         image_path=None,
         tags=None,
         flags=None,
+        provenance=None,
     ):
         """Initialize AutoLabelingResult
 
@@ -33,6 +28,7 @@ class AutoLabelingResult:
             tags (List[str], optional): Image-level tags. Defaults to None.
             flags (Dict[str, bool], optional): Image-level classification
                 flags to update. Defaults to None.
+            provenance (dict, optional): Prediction run metadata when collected.
         """
 
         self.shapes = shapes
@@ -41,6 +37,7 @@ class AutoLabelingResult:
         self.image_path = image_path
         self.tags = tags
         self.flags = flags
+        self.provenance = provenance
 
 
 class AutoLabelingMode:

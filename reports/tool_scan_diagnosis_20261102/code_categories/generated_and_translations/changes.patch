@@ -1,0 +1,1096 @@
+diff --git a/anylabeling/resources/translations/en_US.ts b/anylabeling/resources/translations/en_US.ts
+index 1a4d3f6a..2ca447a7 100644
+--- a/anylabeling/resources/translations/en_US.ts
++++ b/anylabeling/resources/translations/en_US.ts
+@@ -661,6 +661,14 @@ Review the prompt before generating.</translation>
+   </context>
+   <context>
+     <name>Canvas</name>
++    <message>
++      <source>Unable to infer corner.</source>
++      <translation>Unable to infer corner.</translation>
++    </message>
++    <message>
++      <source>Rectangle is outside the image or too small.</source>
++      <translation>Rectangle is outside the image or too small.</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/widgets/canvas.py" line="252" />
+       <source>Loading...</source>
+@@ -753,6 +761,10 @@ Review the prompt before generating.</translation>
+       <source>Click &amp; drag to move %s</source>
+       <translation>Click &amp; drag to move %s</translation>
+     </message>
++    <message>
++      <source>W %.1f px  H %.1f px</source>
++      <translation>W %.1f px  H %.1f px</translation>
++    </message>
+   </context>
+   <context>
+     <name>CanvasAdjustmentWidget</name>
+@@ -2924,6 +2936,30 @@ Continue?</translation>
+   </context>
+   <context>
+     <name>LabelingWidget</name>
++    <message>
++      <source>Share View Across Same-Size Images</source>
++      <translation>Share View Across Same-Size Images</translation>
++    </message>
++    <message>
++      <source>Same-size images keep one zoom and centre until you change it</source>
++      <translation>Same-size images keep one zoom and centre until you change it</translation>
++    </message>
++    <message>
++      <source>Reset Shared View</source>
++      <translation>Reset Shared View</translation>
++    </message>
++    <message>
++      <source>Forget the shared view of the current image size</source>
++      <translation>Forget the shared view of the current image size</translation>
++    </message>
++    <message>
++      <source>Reset the view shared by same-size images</source>
++      <translation>Reset the view shared by same-size images</translation>
++    </message>
++    <message>
++      <source>Rectangle Edge Editing</source>
++      <translation>Rectangle Edge Editing</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/label_widget.py" line="307" />
+       <source>Flags</source>
+@@ -3897,6 +3933,16 @@ Press Enter to search.</translation>
+       <source>Show Labels</source>
+       <translation>Show Labels</translation>
+     </message>
++    <message>
++      <location filename="../../views/labeling/label_widget.py" line="1440" />
++      <source>Show Labels Only for Selected</source>
++      <translation>Show Labels Only for Selected</translation>
++    </message>
++    <message>
++      <location filename="../../views/labeling/label_widget.py" line="1440" />
++      <source>Show labels only for selected shapes; hovering previews others</source>
++      <translation>Show labels only for selected shapes; hovering previews others</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/label_widget.py" line="1428" />
+       <source>Show label inside shapes</source>
+@@ -4604,6 +4650,11 @@ Reset the label as {}.</translation>
+       <source>Filter by Group ID</source>
+       <translation>Filter by Group ID</translation>
+     </message>
++    <message>
++      <location filename="../../views/labeling/label_widget.py" line="4674" />
++      <source>Invert Filter Result</source>
++      <translation>Invert Filter Result</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/label_widget.py" line="4610" />
+       <source>All Labels</source>
+@@ -4979,6 +5030,34 @@ Results have been saved to:
+ Results have been saved to:
+ %s</translation>
+     </message>
++    <message>
++      <source>Show Rectangle Size</source>
++      <translation>Show Rectangle Size</translation>
++    </message>
++    <message>
++      <source>Live width/height readout for the rectangle being created, dragged, hovered or selected</source>
++      <translation>Live width/height readout for the rectangle being created, dragged, hovered or selected</translation>
++    </message>
++    <message>
++      <source>Show Size Rule Warnings</source>
++      <translation>Show Size Rule Warnings</translation>
++    </message>
++    <message>
++      <source>Warn about rectangles at or below their label minimum size; configure rules first</source>
++      <translation>Warn about rectangles at or below their label minimum size; configure rules first</translation>
++    </message>
++    <message>
++      <source>Rectangle Size Rules...</source>
++      <translation>Rectangle Size Rules...</translation>
++    </message>
++    <message>
++      <source>Edit minimum width/height rules per label</source>
++      <translation>Edit minimum width/height rules per label</translation>
++    </message>
++    <message>
++      <source>Rectangle size rules updated</source>
++      <translation>Rectangle size rules updated</translation>
++    </message>
+   </context>
+   <context>
+     <name>Model</name>
+@@ -7983,6 +8062,14 @@ Changes will not be saved until you click Save.</translation>
+       <source>Show Crosshair</source>
+       <translation>Show Crosshair</translation>
+     </message>
++    <message>
++      <source>Rectangle Drawing Crosshair</source>
++      <translation>Rectangle Drawing Crosshair</translation>
++    </message>
++    <message>
++      <source>Show full-image guides while drawing two-point rectangles.</source>
++      <translation>Show full-image guides while drawing two-point rectangles.</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/settings/schema.py" line="111" />
+       <source>Crosshair Width</source>
+@@ -10383,4 +10470,133 @@ Response preview:
+       <translation>Could not create an OpenGL display context.</translation>
+     </message>
+   </context>
++  <context>
++    <name>RectangleWorkflow</name>
++    <message>
++      <source>Four extremes</source>
++      <translation>Four extremes</translation>
++    </message>
++    <message>
++      <source>Submit draft</source>
++      <translation>Submit draft</translation>
++    </message>
++    <message>
++      <source>Back one boundary</source>
++      <translation>Back one boundary</translation>
++    </message>
++    <message>
++      <source>Continue drawing</source>
++      <translation>Continue drawing</translation>
++    </message>
++    <message>
++      <source>Draft ready: submit or go back.</source>
++      <translation>Draft ready: submit or go back.</translation>
++    </message>
++    <message>
++      <source>Click boundary {step}/4: {edge}</source>
++      <translation>Click boundary {step}/4: {edge}</translation>
++    </message>
++    <message>
++      <source>Rejected: image bounds or minimum size.</source>
++      <translation>Rejected: image bounds or minimum size.</translation>
++    </message>
++    <message>
++      <source>Top</source>
++      <translation>Top</translation>
++    </message>
++    <message>
++      <source>Right</source>
++      <translation>Right</translation>
++    </message>
++    <message>
++      <source>Bottom</source>
++      <translation>Bottom</translation>
++    </message>
++    <message>
++      <source>Left</source>
++      <translation>Left</translation>
++    </message>
++  </context>
++  <context>
++    <name>RectangleSizeRuleTable</name>
++    <message>
++      <source>Enabled</source>
++      <translation>Enabled</translation>
++    </message>
++    <message>
++      <source>Min width (px)</source>
++      <translation>Min width (px)</translation>
++    </message>
++    <message>
++      <source>Min height (px)</source>
++      <translation>Min height (px)</translation>
++    </message>
++    <message>
++      <source>Trigger</source>
++      <translation>Trigger</translation>
++    </message>
++    <message>
++      <source>Add rule</source>
++      <translation>Add rule</translation>
++    </message>
++    <message>
++      <source>Exact label</source>
++      <translation>Exact label</translation>
++    </message>
++    <message>
++      <source>Any configured dimension</source>
++      <translation>Any configured dimension</translation>
++    </message>
++    <message>
++      <source>All configured dimensions</source>
++      <translation>All configured dimensions</translation>
++    </message>
++    <message>
++      <source>Not checked</source>
++      <translation>Not checked</translation>
++    </message>
++  </context>
++  <context>
++    <name>RectangleSizeRuleDialog</name>
++    <message>
++      <source>Rectangle size rules</source>
++      <translation>Rectangle size rules</translation>
++    </message>
++    <message>
++      <source>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</source>
++      <translation>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</translation>
++    </message>
++    <message>
++      <source>Cannot apply rules: {0}</source>
++      <translation>Cannot apply rules: {0}</translation>
++    </message>
++    <message>
++      <source>Label must not be empty.</source>
++      <translation>Label must not be empty.</translation>
++    </message>
++    <message>
++      <source>The label '{0}' is duplicated.</source>
++      <translation>The label '{0}' is duplicated.</translation>
++    </message>
++    <message>
++      <source>Width threshold must be a positive finite number.</source>
++      <translation>Width threshold must be a positive finite number.</translation>
++    </message>
++    <message>
++      <source>Height threshold must be a positive finite number.</source>
++      <translation>Height threshold must be a positive finite number.</translation>
++    </message>
++    <message>
++      <source>An enabled rule needs at least one W/H threshold.</source>
++      <translation>An enabled rule needs at least one W/H threshold.</translation>
++    </message>
++    <message>
++      <source>Trigger must be 'any' or 'all'.</source>
++      <translation>Trigger must be 'any' or 'all'.</translation>
++    </message>
++    <message>
++      <source>Rule row {0}: {1}</source>
++      <translation>Rule row {0}: {1}</translation>
++    </message>
++  </context>
+ </TS>
+diff --git a/anylabeling/resources/translations/ja_JP.ts b/anylabeling/resources/translations/ja_JP.ts
+index 27e2730a..cb3cd41b 100644
+--- a/anylabeling/resources/translations/ja_JP.ts
++++ b/anylabeling/resources/translations/ja_JP.ts
+@@ -661,6 +661,14 @@ Review the prompt before generating.</source>
+   </context>
+   <context>
+     <name>Canvas</name>
++    <message>
++      <source>Unable to infer corner.</source>
++      <translation>角を判定できません。</translation>
++    </message>
++    <message>
++      <source>Rectangle is outside the image or too small.</source>
++      <translation>矩形が画像の範囲外か、小さすぎます。</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/widgets/canvas.py" line="252" />
+       <source>Loading...</source>
+@@ -753,6 +761,10 @@ Review the prompt before generating.</source>
+       <source>Click &amp; drag to move %s</source>
+       <translation>クリックしてドラッグし、%s を移動</translation>
+     </message>
++    <message>
++      <source>W %.1f px  H %.1f px</source>
++      <translation>幅 %.1f px  高さ %.1f px</translation>
++    </message>
+   </context>
+   <context>
+     <name>CanvasAdjustmentWidget</name>
+@@ -2923,6 +2935,30 @@ Continue?</source>
+   </context>
+   <context>
+     <name>LabelingWidget</name>
++    <message>
++      <source>Share View Across Same-Size Images</source>
++      <translation>Share View Across Same-Size Images</translation>
++    </message>
++    <message>
++      <source>Same-size images keep one zoom and centre until you change it</source>
++      <translation>Same-size images keep one zoom and centre until you change it</translation>
++    </message>
++    <message>
++      <source>Reset Shared View</source>
++      <translation>Reset Shared View</translation>
++    </message>
++    <message>
++      <source>Forget the shared view of the current image size</source>
++      <translation>Forget the shared view of the current image size</translation>
++    </message>
++    <message>
++      <source>Reset the view shared by same-size images</source>
++      <translation>Reset the view shared by same-size images</translation>
++    </message>
++    <message>
++      <source>Rectangle Edge Editing</source>
++      <translation>矩形の辺を編集</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/label_widget.py" line="307" />
+       <source>Flags</source>
+@@ -3896,6 +3932,16 @@ Enter キーを押して検索します。</translation>
+       <source>Show Labels</source>
+       <translation>ラベルを表示</translation>
+     </message>
++    <message>
++      <location filename="../../views/labeling/label_widget.py" line="1440" />
++      <source>Show Labels Only for Selected</source>
++      <translation>選択時のみラベルを表示</translation>
++    </message>
++    <message>
++      <location filename="../../views/labeling/label_widget.py" line="1440" />
++      <source>Show labels only for selected shapes; hovering previews others</source>
++      <translation>選択した図形のラベルのみ表示し、ホバー時は一時的に表示します</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/label_widget.py" line="1428" />
+       <source>Show label inside shapes</source>
+@@ -4602,6 +4648,11 @@ Reset the label as {}.</source>
+       <source>Filter by Group ID</source>
+       <translation>グループIDでフィルター</translation>
+     </message>
++    <message>
++      <location filename="../../views/labeling/label_widget.py" line="4674" />
++      <source>Invert Filter Result</source>
++      <translation>フィルタ結果を反転</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/label_widget.py" line="4610" />
+       <source>All Labels</source>
+@@ -4977,6 +5028,34 @@ Results have been saved to:
+ 結果の保存先：
+ %s</translation>
+     </message>
++    <message>
++      <source>Show Rectangle Size</source>
++      <translation>矩形サイズを表示</translation>
++    </message>
++    <message>
++      <source>Live width/height readout for the rectangle being created, dragged, hovered or selected</source>
++      <translation>作成・ドラッグ・ホバー・選択中の矩形の幅と高さをリアルタイム表示</translation>
++    </message>
++    <message>
++      <source>Show Size Rule Warnings</source>
++      <translation>サイズ規則の警告を表示</translation>
++    </message>
++    <message>
++      <source>Warn about rectangles at or below their label minimum size; configure rules first</source>
++      <translation>ラベルの最小サイズ以下の矩形を警告します。先に規則を設定してください</translation>
++    </message>
++    <message>
++      <source>Rectangle Size Rules...</source>
++      <translation>矩形サイズ規則...</translation>
++    </message>
++    <message>
++      <source>Edit minimum width/height rules per label</source>
++      <translation>ラベルごとの最小幅・高さ規則を編集</translation>
++    </message>
++    <message>
++      <source>Rectangle size rules updated</source>
++      <translation>矩形サイズ規則を更新しました</translation>
++    </message>
+   </context>
+   <context>
+     <name>Model</name>
+@@ -7981,6 +8060,14 @@ Changes will not be saved until you click Save.</source>
+       <source>Show Crosshair</source>
+       <translation>クロスヘアを表示</translation>
+     </message>
++    <message>
++      <source>Rectangle Drawing Crosshair</source>
++      <translation>矩形描画時のクロスヘア</translation>
++    </message>
++    <message>
++      <source>Show full-image guides while drawing two-point rectangles.</source>
++      <translation>2点矩形の描画中に全画像のガイドを表示します。</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/settings/schema.py" line="111" />
+       <source>Crosshair Width</source>
+@@ -10381,4 +10468,133 @@ Response preview:
+       <translation>OpenGL表示コンテキストを作成できません。</translation>
+     </message>
+   </context>
++  <context>
++    <name>RectangleWorkflow</name>
++    <message>
++      <source>Four extremes</source>
++      <translation>四隅値の作成</translation>
++    </message>
++    <message>
++      <source>Submit draft</source>
++      <translation>下書きを確定</translation>
++    </message>
++    <message>
++      <source>Back one boundary</source>
++      <translation>境界を1つ戻す</translation>
++    </message>
++    <message>
++      <source>Continue drawing</source>
++      <translation>描画を続ける</translation>
++    </message>
++    <message>
++      <source>Draft ready: submit or go back.</source>
++      <translation>下書きが完成しました：確定するか戻ってください。</translation>
++    </message>
++    <message>
++      <source>Click boundary {step}/4: {edge}</source>
++      <translation>境界 {step}/4 をクリック：{edge}</translation>
++    </message>
++    <message>
++      <source>Rejected: image bounds or minimum size.</source>
++      <translation>拒否されました：画像範囲外またはサイズ不足。</translation>
++    </message>
++    <message>
++      <source>Top</source>
++      <translation>上</translation>
++    </message>
++    <message>
++      <source>Right</source>
++      <translation>右</translation>
++    </message>
++    <message>
++      <source>Bottom</source>
++      <translation>下</translation>
++    </message>
++    <message>
++      <source>Left</source>
++      <translation>左</translation>
++    </message>
++  </context>
++  <context>
++    <name>RectangleSizeRuleTable</name>
++    <message>
++      <source>Enabled</source>
++      <translation>有効</translation>
++    </message>
++    <message>
++      <source>Min width (px)</source>
++      <translation>最小幅 (px)</translation>
++    </message>
++    <message>
++      <source>Min height (px)</source>
++      <translation>最小高さ (px)</translation>
++    </message>
++    <message>
++      <source>Trigger</source>
++      <translation>トリガー</translation>
++    </message>
++    <message>
++      <source>Add rule</source>
++      <translation>規則を追加</translation>
++    </message>
++    <message>
++      <source>Exact label</source>
++      <translation>完全一致ラベル</translation>
++    </message>
++    <message>
++      <source>Any configured dimension</source>
++      <translation>設定したいずれかの次元</translation>
++    </message>
++    <message>
++      <source>All configured dimensions</source>
++      <translation>設定したすべての次元</translation>
++    </message>
++    <message>
++      <source>Not checked</source>
++      <translation>チェックしない</translation>
++    </message>
++  </context>
++  <context>
++    <name>RectangleSizeRuleDialog</name>
++    <message>
++      <source>Rectangle size rules</source>
++      <translation>矩形サイズ規則</translation>
++    </message>
++    <message>
++      <source>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</source>
++      <translation>実際の値がしきい値以下の矩形を異常とします。空欄の次元は検査しません。</translation>
++    </message>
++    <message>
++      <source>Cannot apply rules: {0}</source>
++      <translation>規則を適用できません: {0}</translation>
++    </message>
++    <message>
++      <source>Label must not be empty.</source>
++      <translation>ラベルを空にできません。</translation>
++    </message>
++    <message>
++      <source>The label '{0}' is duplicated.</source>
++      <translation>ラベル「{0}」が重複しています。</translation>
++    </message>
++    <message>
++      <source>Width threshold must be a positive finite number.</source>
++      <translation>幅のしきい値は正の有限数である必要があります。</translation>
++    </message>
++    <message>
++      <source>Height threshold must be a positive finite number.</source>
++      <translation>高さのしきい値は正の有限数である必要があります。</translation>
++    </message>
++    <message>
++      <source>An enabled rule needs at least one W/H threshold.</source>
++      <translation>有効な規則には少なくとも 1 つの幅/高さしきい値が必要です。</translation>
++    </message>
++    <message>
++      <source>Trigger must be 'any' or 'all'.</source>
++      <translation>トリガーは 'any' または 'all' である必要があります。</translation>
++    </message>
++    <message>
++      <source>Rule row {0}: {1}</source>
++      <translation>規則 {0} 行目: {1}</translation>
++    </message>
++  </context>
+ </TS>
+diff --git a/anylabeling/resources/translations/ko_KR.ts b/anylabeling/resources/translations/ko_KR.ts
+index 3fc66a30..209fa3a1 100755
+--- a/anylabeling/resources/translations/ko_KR.ts
++++ b/anylabeling/resources/translations/ko_KR.ts
+@@ -661,6 +661,14 @@ Review the prompt before generating.</source>
+   </context>
+   <context>
+     <name>Canvas</name>
++    <message>
++      <source>Unable to infer corner.</source>
++      <translation>꼭짓점을 판단할 수 없습니다.</translation>
++    </message>
++    <message>
++      <source>Rectangle is outside the image or too small.</source>
++      <translation>사각형이 이미지 범위를 벗어났거나 너무 작습니다.</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/widgets/canvas.py" line="252" />
+       <source>Loading...</source>
+@@ -753,6 +761,10 @@ Review the prompt before generating.</source>
+       <source>Click &amp; drag to move %s</source>
+       <translation>클릭하고 드래그하여 %s 이동</translation>
+     </message>
++    <message>
++      <source>W %.1f px  H %.1f px</source>
++      <translation>너비 %.1f px  높이 %.1f px</translation>
++    </message>
+   </context>
+   <context>
+     <name>CanvasAdjustmentWidget</name>
+@@ -2924,6 +2936,30 @@ Continue?</source>
+   </context>
+   <context>
+     <name>LabelingWidget</name>
++    <message>
++      <source>Share View Across Same-Size Images</source>
++      <translation>Share View Across Same-Size Images</translation>
++    </message>
++    <message>
++      <source>Same-size images keep one zoom and centre until you change it</source>
++      <translation>Same-size images keep one zoom and centre until you change it</translation>
++    </message>
++    <message>
++      <source>Reset Shared View</source>
++      <translation>Reset Shared View</translation>
++    </message>
++    <message>
++      <source>Forget the shared view of the current image size</source>
++      <translation>Forget the shared view of the current image size</translation>
++    </message>
++    <message>
++      <source>Reset the view shared by same-size images</source>
++      <translation>Reset the view shared by same-size images</translation>
++    </message>
++    <message>
++      <source>Rectangle Edge Editing</source>
++      <translation>사각형 모서리 편집</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/label_widget.py" line="307" />
+       <source>Flags</source>
+@@ -3897,6 +3933,16 @@ Enter 키를 눌러 검색합니다.</translation>
+       <source>Show Labels</source>
+       <translation>레이블만 표시</translation>
+     </message>
++    <message>
++      <location filename="../../views/labeling/label_widget.py" line="1440" />
++      <source>Show Labels Only for Selected</source>
++      <translation>선택된 항목만 레이블 표시</translation>
++    </message>
++    <message>
++      <location filename="../../views/labeling/label_widget.py" line="1440" />
++      <source>Show labels only for selected shapes; hovering previews others</source>
++      <translation>선택한 도형의 레이블만 표시하고, 마우스를 올리면 임시로 표시합니다</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/label_widget.py" line="1428" />
+       <source>Show label inside shapes</source>
+@@ -4604,6 +4650,11 @@ Reset the label as {}.</source>
+       <source>Filter by Group ID</source>
+       <translation>그룹 ID로 필터링</translation>
+     </message>
++    <message>
++      <location filename="../../views/labeling/label_widget.py" line="4674" />
++      <source>Invert Filter Result</source>
++      <translation>필터 결과 반전</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/label_widget.py" line="4610" />
+       <source>All Labels</source>
+@@ -4979,6 +5030,34 @@ Results have been saved to:
+ 결과가 다음 위치에 저장되었습니다:
+ %s</translation>
+     </message>
++    <message>
++      <source>Show Rectangle Size</source>
++      <translation>사각형 크기 표시</translation>
++    </message>
++    <message>
++      <source>Live width/height readout for the rectangle being created, dragged, hovered or selected</source>
++      <translation>생성·드래그·호버·선택 중인 사각형의 너비와 높이를 실시간 표시</translation>
++    </message>
++    <message>
++      <source>Show Size Rule Warnings</source>
++      <translation>크기 규칙 경고 표시</translation>
++    </message>
++    <message>
++      <source>Warn about rectangles at or below their label minimum size; configure rules first</source>
++      <translation>레이블 최소 크기 이하인 사각형을 경고합니다. 먼저 규칙을 설정하세요</translation>
++    </message>
++    <message>
++      <source>Rectangle Size Rules...</source>
++      <translation>사각형 크기 규칙...</translation>
++    </message>
++    <message>
++      <source>Edit minimum width/height rules per label</source>
++      <translation>레이블별 최소 너비/높이 규칙 편집</translation>
++    </message>
++    <message>
++      <source>Rectangle size rules updated</source>
++      <translation>사각형 크기 규칙이 업데이트되었습니다</translation>
++    </message>
+   </context>
+   <context>
+     <name>Model</name>
+@@ -7983,6 +8062,14 @@ Changes will not be saved until you click Save.</source>
+       <source>Show Crosshair</source>
+       <translation>십자선 표시</translation>
+     </message>
++    <message>
++      <source>Rectangle Drawing Crosshair</source>
++      <translation>사각형 그리기 십자선</translation>
++    </message>
++    <message>
++      <source>Show full-image guides while drawing two-point rectangles.</source>
++      <translation>두 점 사각형을 그리는 동안 전체 이미지 가이드를 표시합니다.</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/settings/schema.py" line="111" />
+       <source>Crosshair Width</source>
+@@ -10383,4 +10470,133 @@ Response preview:
+       <translation>OpenGL 디스플레이 컨텍스트를 생성할 수 없습니다.</translation>
+     </message>
+   </context>
++  <context>
++    <name>RectangleWorkflow</name>
++    <message>
++      <source>Four extremes</source>
++      <translation>네 극값 그리기</translation>
++    </message>
++    <message>
++      <source>Submit draft</source>
++      <translation>초안 커밋</translation>
++    </message>
++    <message>
++      <source>Back one boundary</source>
++      <translation>경계 하나 되돌리기</translation>
++    </message>
++    <message>
++      <source>Continue drawing</source>
++      <translation>계속 그리기</translation>
++    </message>
++    <message>
++      <source>Draft ready: submit or go back.</source>
++      <translation>초안이 준비되었습니다: 커밋하거나 되돌리세요.</translation>
++    </message>
++    <message>
++      <source>Click boundary {step}/4: {edge}</source>
++      <translation>경계 {step}/4 클릭: {edge}</translation>
++    </message>
++    <message>
++      <source>Rejected: image bounds or minimum size.</source>
++      <translation>거부됨: 이미지 범위를 벗어났거나 크기가 너무 작습니다.</translation>
++    </message>
++    <message>
++      <source>Top</source>
++      <translation>위</translation>
++    </message>
++    <message>
++      <source>Right</source>
++      <translation>오른쪽</translation>
++    </message>
++    <message>
++      <source>Bottom</source>
++      <translation>아래</translation>
++    </message>
++    <message>
++      <source>Left</source>
++      <translation>왼쪽</translation>
++    </message>
++  </context>
++  <context>
++    <name>RectangleSizeRuleTable</name>
++    <message>
++      <source>Enabled</source>
++      <translation>사용</translation>
++    </message>
++    <message>
++      <source>Min width (px)</source>
++      <translation>최소 너비 (px)</translation>
++    </message>
++    <message>
++      <source>Min height (px)</source>
++      <translation>최소 높이 (px)</translation>
++    </message>
++    <message>
++      <source>Trigger</source>
++      <translation>트리거</translation>
++    </message>
++    <message>
++      <source>Add rule</source>
++      <translation>규칙 추가</translation>
++    </message>
++    <message>
++      <source>Exact label</source>
++      <translation>정확한 레이블</translation>
++    </message>
++    <message>
++      <source>Any configured dimension</source>
++      <translation>설정된 차원 중 하나</translation>
++    </message>
++    <message>
++      <source>All configured dimensions</source>
++      <translation>설정된 모든 차원</translation>
++    </message>
++    <message>
++      <source>Not checked</source>
++      <translation>검사 안 함</translation>
++    </message>
++  </context>
++  <context>
++    <name>RectangleSizeRuleDialog</name>
++    <message>
++      <source>Rectangle size rules</source>
++      <translation>사각형 크기 규칙</translation>
++    </message>
++    <message>
++      <source>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</source>
++      <translation>실제 값이 임계값 이하인 사각형을 이상으로 간주합니다. 비어 있는 차원은 검사하지 않습니다.</translation>
++    </message>
++    <message>
++      <source>Cannot apply rules: {0}</source>
++      <translation>규칙을 적용할 수 없습니다: {0}</translation>
++    </message>
++    <message>
++      <source>Label must not be empty.</source>
++      <translation>레이블은 비워 둘 수 없습니다.</translation>
++    </message>
++    <message>
++      <source>The label '{0}' is duplicated.</source>
++      <translation>레이블 '{0}'이(가) 중복됩니다.</translation>
++    </message>
++    <message>
++      <source>Width threshold must be a positive finite number.</source>
++      <translation>너비 임계값은 양의 유한수여야 합니다.</translation>
++    </message>
++    <message>
++      <source>Height threshold must be a positive finite number.</source>
++      <translation>높이 임계값은 양의 유한수여야 합니다.</translation>
++    </message>
++    <message>
++      <source>An enabled rule needs at least one W/H threshold.</source>
++      <translation>활성 규칙에는 최소 하나의 너비/높이 임계값이 필요합니다.</translation>
++    </message>
++    <message>
++      <source>Trigger must be 'any' or 'all'.</source>
++      <translation>트리거는 'any' 또는 'all'이어야 합니다.</translation>
++    </message>
++    <message>
++      <source>Rule row {0}: {1}</source>
++      <translation>규칙 {0}행: {1}</translation>
++    </message>
++  </context>
+ </TS>
+diff --git a/anylabeling/resources/translations/zh_CN.ts b/anylabeling/resources/translations/zh_CN.ts
+index 026be94c..44a7e477 100755
+--- a/anylabeling/resources/translations/zh_CN.ts
++++ b/anylabeling/resources/translations/zh_CN.ts
+@@ -661,6 +661,14 @@ Review the prompt before generating.</source>
+   </context>
+   <context>
+     <name>Canvas</name>
++    <message>
++      <source>Unable to infer corner.</source>
++      <translation>无法判断角点。</translation>
++    </message>
++    <message>
++      <source>Rectangle is outside the image or too small.</source>
++      <translation>矩形超出图像边界或尺寸过小。</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/widgets/canvas.py" line="252" />
+       <source>Loading...</source>
+@@ -753,6 +761,10 @@ Review the prompt before generating.</source>
+       <source>Click &amp; drag to move %s</source>
+       <translation>单击并拖拽以移动 %s</translation>
+     </message>
++    <message>
++      <source>W %.1f px  H %.1f px</source>
++      <translation>宽 %.1f px  高 %.1f px</translation>
++    </message>
+   </context>
+   <context>
+     <name>CanvasAdjustmentWidget</name>
+@@ -2923,6 +2935,30 @@ Continue?</source>
+   </context>
+   <context>
+     <name>LabelingWidget</name>
++    <message>
++      <source>Share View Across Same-Size Images</source>
++      <translation>相同尺寸图片共享视图</translation>
++    </message>
++    <message>
++      <source>Same-size images keep one zoom and centre until you change it</source>
++      <translation>相同尺寸图片共享缩放比例和中心点，直到手动调整</translation>
++    </message>
++    <message>
++      <source>Reset Shared View</source>
++      <translation>重置共享视图</translation>
++    </message>
++    <message>
++      <source>Forget the shared view of the current image size</source>
++      <translation>清除当前图片尺寸的共享视图</translation>
++    </message>
++    <message>
++      <source>Reset the view shared by same-size images</source>
++      <translation>已重置相同尺寸图片的共享视图</translation>
++    </message>
++    <message>
++      <source>Rectangle Edge Editing</source>
++      <translation>矩形框编辑</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/label_widget.py" line="307" />
+       <source>Flags</source>
+@@ -3896,6 +3932,16 @@ Press Enter to search.</source>
+       <source>Show Labels</source>
+       <translation>显示标签</translation>
+     </message>
++    <message>
++      <location filename="../../views/labeling/label_widget.py" line="1440" />
++      <source>Show Labels Only for Selected</source>
++      <translation>仅选中时显示标签</translation>
++    </message>
++    <message>
++      <location filename="../../views/labeling/label_widget.py" line="1440" />
++      <source>Show labels only for selected shapes; hovering previews others</source>
++      <translation>仅显示选中对象的标签；悬停未选中对象时临时预览</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/label_widget.py" line="1428" />
+       <source>Show label inside shapes</source>
+@@ -4602,6 +4648,11 @@ Reset the label as {}.</source>
+       <source>Filter by Group ID</source>
+       <translation>按组 ID 筛选</translation>
+     </message>
++    <message>
++      <location filename="../../views/labeling/label_widget.py" line="4674" />
++      <source>Invert Filter Result</source>
++      <translation>反选筛选结果</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/label_widget.py" line="4610" />
+       <source>All Labels</source>
+@@ -4977,6 +5028,34 @@ Results have been saved to:
+ 结果已保存到：
+ %s</translation>
+     </message>
++    <message>
++      <source>Show Rectangle Size</source>
++      <translation>显示矩形尺寸</translation>
++    </message>
++    <message>
++      <source>Live width/height readout for the rectangle being created, dragged, hovered or selected</source>
++      <translation>实时显示正在创建、拖动、悬停或选中的矩形宽高</translation>
++    </message>
++    <message>
++      <source>Show Size Rule Warnings</source>
++      <translation>显示尺寸规则提示</translation>
++    </message>
++    <message>
++      <source>Warn about rectangles at or below their label minimum size; configure rules first</source>
++      <translation>对小于等于标签最小尺寸的矩形给出警告；请先配置规则</translation>
++    </message>
++    <message>
++      <source>Rectangle Size Rules...</source>
++      <translation>矩形尺寸规则...</translation>
++    </message>
++    <message>
++      <source>Edit minimum width/height rules per label</source>
++      <translation>按标签编辑最小宽度/高度规则</translation>
++    </message>
++    <message>
++      <source>Rectangle size rules updated</source>
++      <translation>矩形尺寸规则已更新</translation>
++    </message>
+   </context>
+   <context>
+     <name>Model</name>
+@@ -7981,6 +8060,14 @@ Changes will not be saved until you click Save.</source>
+       <source>Show Crosshair</source>
+       <translation>显示十字线</translation>
+     </message>
++    <message>
++      <source>Rectangle Drawing Crosshair</source>
++      <translation>矩形绘制十字线</translation>
++    </message>
++    <message>
++      <source>Show full-image guides while drawing two-point rectangles.</source>
++      <translation>绘制两点矩形时显示全图引导线。</translation>
++    </message>
+     <message>
+       <location filename="../../views/labeling/settings/schema.py" line="111" />
+       <source>Crosshair Width</source>
+@@ -10381,4 +10468,133 @@ Response preview:
+       <translation>无法创建 OpenGL 显示上下文。</translation>
+     </message>
+   </context>
++  <context>
++    <name>RectangleWorkflow</name>
++    <message>
++      <source>Four extremes</source>
++      <translation>四极值画框</translation>
++    </message>
++    <message>
++      <source>Submit draft</source>
++      <translation>提交草稿</translation>
++    </message>
++    <message>
++      <source>Back one boundary</source>
++      <translation>回退一条边界</translation>
++    </message>
++    <message>
++      <source>Continue drawing</source>
++      <translation>继续绘制</translation>
++    </message>
++    <message>
++      <source>Draft ready: submit or go back.</source>
++      <translation>草稿已完成：提交或回退。</translation>
++    </message>
++    <message>
++      <source>Click boundary {step}/4: {edge}</source>
++      <translation>点击第 {step}/4 条边界：{edge}</translation>
++    </message>
++    <message>
++      <source>Rejected: image bounds or minimum size.</source>
++      <translation>已拒绝：超出图像范围或尺寸过小。</translation>
++    </message>
++    <message>
++      <source>Top</source>
++      <translation>上</translation>
++    </message>
++    <message>
++      <source>Right</source>
++      <translation>右</translation>
++    </message>
++    <message>
++      <source>Bottom</source>
++      <translation>下</translation>
++    </message>
++    <message>
++      <source>Left</source>
++      <translation>左</translation>
++    </message>
++  </context>
++  <context>
++    <name>RectangleSizeRuleTable</name>
++    <message>
++      <source>Enabled</source>
++      <translation>启用</translation>
++    </message>
++    <message>
++      <source>Min width (px)</source>
++      <translation>最小宽度 (px)</translation>
++    </message>
++    <message>
++      <source>Min height (px)</source>
++      <translation>最小高度 (px)</translation>
++    </message>
++    <message>
++      <source>Trigger</source>
++      <translation>触发条件</translation>
++    </message>
++    <message>
++      <source>Add rule</source>
++      <translation>添加规则</translation>
++    </message>
++    <message>
++      <source>Exact label</source>
++      <translation>精确标签</translation>
++    </message>
++    <message>
++      <source>Any configured dimension</source>
++      <translation>任一已配置维度</translation>
++    </message>
++    <message>
++      <source>All configured dimensions</source>
++      <translation>全部已配置维度</translation>
++    </message>
++    <message>
++      <source>Not checked</source>
++      <translation>不检查</translation>
++    </message>
++  </context>
++  <context>
++    <name>RectangleSizeRuleDialog</name>
++    <message>
++      <source>Rectangle size rules</source>
++      <translation>矩形尺寸规则</translation>
++    </message>
++    <message>
++      <source>A rectangle is abnormal when its actual value is less than or equal to the threshold. Blank dimensions are ignored.</source>
++      <translation>矩形实际值小于等于阈值时视为异常；留空的维度不参与检查。</translation>
++    </message>
++    <message>
++      <source>Cannot apply rules: {0}</source>
++      <translation>无法应用规则：{0}</translation>
++    </message>
++    <message>
++      <source>Label must not be empty.</source>
++      <translation>标签不能为空。</translation>
++    </message>
++    <message>
++      <source>The label '{0}' is duplicated.</source>
++      <translation>标签“{0}”重复。</translation>
++    </message>
++    <message>
++      <source>Width threshold must be a positive finite number.</source>
++      <translation>宽度阈值必须是正的有限数值。</translation>
++    </message>
++    <message>
++      <source>Height threshold must be a positive finite number.</source>
++      <translation>高度阈值必须是正的有限数值。</translation>
++    </message>
++    <message>
++      <source>An enabled rule needs at least one W/H threshold.</source>
++      <translation>启用规则至少需要一个宽/高阈值。</translation>
++    </message>
++    <message>
++      <source>Trigger must be 'any' or 'all'.</source>
++      <translation>触发条件必须是 any 或 all。</translation>
++    </message>
++    <message>
++      <source>Rule row {0}: {1}</source>
++      <translation>规则第 {0} 行：{1}</translation>
++    </message>
++  </context>
+ </TS>

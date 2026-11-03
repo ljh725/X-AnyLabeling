@@ -1,0 +1,1 @@
+{"candidates": [{"relative_path": "a.jpg", "label": "person", "region": [1, 2, 11, 12], "image_width": 100, "image_height": 80, "source": "model-a", "source_version": "1", "score": 0.9}]}

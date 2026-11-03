@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-02",
+  "published_refs": {
+    "refs/heads/versions/4.0.0-beta.4": "938c276faefe6965c24f1a21c3760b9734d836f7",
+    "refs/heads/versions/4.2.1": "3bd370712592936f6e854277cd46ee1b74bb0f19",
+    "refs/heads/main": "eac2877253ea8b5dfbb1e6943af67d52920962c5"
+  },
+  "only_these_three_remote_heads_changed": true,
+  "all_existing_tags_and_other_branches_unchanged": true,
+  "branch_count": 13,
+  "tag_count": 89,
+  "published_files_verified_before_workspace_ownership_check": [
+    "old:README.md",
+    "old:README_zh-CN.md",
+    "new:README.md",
+    "new:README_zh-CN.md",
+    "main:GitHub操作说明.md",
+    "main:README.md",
+    "main:README_zh-CN.md",
+    "main:docs/version-management/README.md",
+    "main:docs/version-management/操作记录.md",
+    "main:docs/version-management/重复关系核对-2026-11-02.md",
+    "main:版本与备份目录.md"
+  ],
+  "application_and_tests_trees_unchanged_for_all_three_branches": true,
+  "original_workspace_head_and_tracked_changes_unchanged": true,
+  "homepages": {
+    "old_lines": 23,
+    "new_lines": 24
+  },
+  "duplicate_groups_before_homepage_update": 4,
+  "duplicate_backup_branch_candidates": 3,
+  "branches_deleted": 0
+}

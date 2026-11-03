@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="6" time="15.079" timestamp="2026-11-02T12:49:01.486424+08:00" hostname="DESKTOP-RBDJ37M"><testcase classname="reports.migrate_canvas_controls_20261102.review.test_review_gaps" name="test_keep_latest_pending_display_value[brightness]" time="2.145"><failure message="AssertionError: retained stale brightness: 70, expected latest slider value 90&#10;assert 70 == 90">window = &lt;anylabeling.views.mainwindow.MainWindow object at 0x00000243D25709B0&gt;
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/reports/migrate_canvas_controls_20261102/review-gap-pytest/test_keep_latest_pending_displ0')
+parameter = 'brightness'
+
+    @pytest.mark.parametrize("parameter", ["brightness", "contrast"])
+    def test_keep_latest_pending_display_value(window, tmp_path, parameter):
+        widget = window.labeling_widget.view
+        panel = widget.canvas_adjustment
+        first = image_path(tmp_path, "first.png")
+        second = image_path(tmp_path, "second.png")
+        assert widget.load_file(first)
+        widget._on_inline_brightness_contrast(70, 70)
+        panel.set_brightness_contrast(70, 70)
+        getattr(panel, parameter + "_pin").click()
+        getattr(panel, parameter + "_slider").setValue(90)
+        assert panel._bc_update_timer.isActive()
+        assert widget.load_file(second)
+        actual = getattr(panel, parameter + "_slider").value()
+&gt;       assert actual == 90, f"retained stale {parameter}: {actual}, expected latest slider value 90"
+E       AssertionError: retained stale brightness: 70, expected latest slider value 90
+E       assert 70 == 90
+
+reports\migrate_canvas_controls_20261102\review\test_review_gaps.py:23: AssertionError</failure></testcase><testcase classname="reports.migrate_canvas_controls_20261102.review.test_review_gaps" name="test_keep_latest_pending_display_value[contrast]" time="1.982"><failure message="AssertionError: retained stale contrast: 70, expected latest slider value 90&#10;assert 70 == 90">window = &lt;anylabeling.views.mainwindow.MainWindow object at 0x00000243D2619770&gt;
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/reports/migrate_canvas_controls_20261102/review-gap-pytest/test_keep_latest_pending_displ1')
+parameter = 'contrast'
+
+    @pytest.mark.parametrize("parameter", ["brightness", "contrast"])
+    def test_keep_latest_pending_display_value(window, tmp_path, parameter):
+        widget = window.labeling_widget.view
+        panel = widget.canvas_adjustment
+        first = image_path(tmp_path, "first.png")
+        second = image_path(tmp_path, "second.png")
+        assert widget.load_file(first)
+        widget._on_inline_brightness_contrast(70, 70)
+        panel.set_brightness_contrast(70, 70)
+        getattr(panel, parameter + "_pin").click()
+        getattr(panel, parameter + "_slider").setValue(90)
+        assert panel._bc_update_timer.isActive()
+        assert widget.load_file(second)
+        actual = getattr(panel, parameter + "_slider").value()
+&gt;       assert actual == 90, f"retained stale {parameter}: {actual}, expected latest slider value 90"
+E       AssertionError: retained stale contrast: 70, expected latest slider value 90
+E       assert 70 == 90
+
+reports\migrate_canvas_controls_20261102\review\test_review_gaps.py:23: AssertionError</failure></testcase><testcase classname="reports.migrate_canvas_controls_20261102.review.test_review_gaps" name="test_traditional_fit_width_does_not_require_horizontal_scroll" time="2.089" /><testcase classname="reports.migrate_canvas_controls_20261102.review.test_review_gaps" name="test_mode_roundtrip_after_layout_events[size0-150]" time="1.997" /><testcase classname="reports.migrate_canvas_controls_20261102.review.test_review_gaps" name="test_mode_roundtrip_after_layout_events[size1-100]" time="1.984" /><testcase classname="reports.migrate_canvas_controls_20261102.review.test_review_gaps" name="test_mode_roundtrip_after_layout_events[size2-80]" time="2.050" /></testsuite></testsuites>

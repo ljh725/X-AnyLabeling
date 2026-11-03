@@ -7566,6 +7566,7 @@ The main application remains available.</translation>
   </context>
   <context>
     <name>SettingsDialog</name>
+    <message><source>Correction Cost Statistics</source><translation>Correction Cost Statistics</translation></message>
     <message>
       <location filename="../../views/labeling/settings/dialog.py" line="393" />
       <location filename="../../views/labeling/settings/dialog.py" line="106" />
@@ -10598,5 +10599,125 @@ Response preview:
       <source>Rule row {0}: {1}</source>
       <translation>Rule row {0}: {1}</translation>
     </message>
+  </context>
+  <context>
+    <name>CorrectionCost</name>
+    <message><source>Correction Cost Statistics</source><translation>Correction Cost Statistics</translation></message>
+    <message><source>Open an image first.</source><translation>Open an image first.</translation></message>
+    <message><source>Save the current version before marking it complete.</source><translation>Save the current version before marking it complete.</translation></message>
+    <message><source>Correction cost records are incomplete.</source><translation>Correction cost records are incomplete.</translation></message>
+    <message><source>Scope</source><translation>Scope</translation></message>
+    <message><source>Start recording</source><translation>Start recording</translation></message>
+    <message><source>First image</source><translation>First image</translation></message>
+    <message><source>Last image</source><translation>Last image</translation></message>
+    <message><source>All</source><translation>All</translation></message>
+    <message><source>Current image</source><translation>Current image</translation></message>
+    <message><source>{count} images</source><translation>{count} images</translation></message>
+    <message><source>{count} image(s): {first} … {last}</source><translation>{count} image(s): {first} … {last}</translation></message>
+    <message><source>Cancel</source><translation>Cancel</translation></message>
+    <message><source>Close</source><translation>Close</translation></message>
+    <message><source>Show details</source><translation>Show details</translation></message>
+    <message><source>Hide details</source><translation>Hide details</translation></message>
+    <message><source>Pause timer</source><translation>Pause timer</translation></message>
+    <message><source>Resume timer</source><translation>Resume timer</translation></message>
+    <message><source>Stop recording</source><translation>Stop recording</translation></message>
+    <message><source>Finish round</source><translation>Finish round</translation></message>
+    <message><source>Continue correction</source><translation>Continue correction</translation></message>
+    <message><source>Start review</source><translation>Start review</translation></message>
+    <message><source>Report</source><translation>Report</translation></message>
+    <message><source>Keep as review time</source><translation>Keep as review time</translation></message>
+    <message><source>Exclude idle time</source><translation>Exclude idle time</translation></message>
+    <message><source>Image</source><translation>Image</translation></message>
+    <message><source>Round</source><translation>Round</translation></message>
+    <message><source>Starting boxes</source><translation>Starting boxes</translation></message>
+    <message><source>Saved result</source><translation>Saved result</translation></message>
+    <message><source>Current draft</source><translation>Current draft</translation></message>
+    <message><source>Quality assessment</source><translation>Quality assessment</translation></message>
+    <message><source>Processing status</source><translation>Processing status</translation></message>
+    <message><source>In-app processing</source><translation>In-app processing</translation></message>
+    <message><source>{seconds} s</source><translation>{seconds} s</translation></message>
+    <message><source>Timer</source><translation>Timer</translation></message>
+    <message><source>Operations / touches / unique objects</source><translation>Operations / touches / unique objects</translation></message>
+    <message><source>Record integrity</source><translation>Record integrity</translation></message>
+    <message><source>No recorded gaps</source><translation>No recorded gaps</translation></message>
+    <message><source>Added {added} · Deleted {deleted} · Geometry {geometry_changed} · Class {class_changed}</source><translation>Added {added} · Deleted {deleted} · Geometry {geometry_changed} · Class {class_changed}</translation></message>
+    <message><source>In progress</source><translation>In progress</translation></message>
+    <message><source>Completed</source><translation>Completed</translation></message>
+    <message><source>Not assessed</source><translation>Not assessed</translation></message>
+    <message><source>Existing annotations, unknown source</source><translation>Existing annotations, unknown source</translation></message>
+    <message><source>Replacement prediction</source><translation>Replacement prediction</translation></message>
+    <message><source>Appended prediction</source><translation>Appended prediction</translation></message>
+    <message><source>Correction</source><translation>Correction</translation></message>
+    <message><source>Processing</source><translation>Processing</translation></message>
+    <message><source>Inactive</source><translation>Inactive</translation></message>
+    <message><source>Waiting</source><translation>Waiting</translation></message>
+    <message><source>Loading</source><translation>Loading</translation></message>
+    <message><source>Paused</source><translation>Paused</translation></message>
+    <message><source>Stopped</source><translation>Stopped</translation></message>
+    <message><source>Pending idle: {seconds} s (included until confirmed)</source><translation>Pending idle: {seconds} s (included until confirmed)</translation></message>
+    <message><source>Correction Cost Report</source><translation>Correction Cost Report</translation></message>
+    <message><source>Refresh snapshot</source><translation>Refresh snapshot</translation></message>
+    <message><source>Snapshot {stamp}</source><translation>Snapshot {stamp}</translation></message>
+    <message><source>Image rounds</source><translation>Image rounds</translation></message>
+    <message><source>Class changes</source><translation>Class changes</translation></message>
+    <message><source>By density and model</source><translation>By density and model</translation></message>
+    <message><source>Current results only</source><translation>Current results only</translation></message>
+    <message><source>Search image, class or model</source><translation>Search image, class or model</translation></message>
+    <message><source>Stage</source><translation>Stage</translation></message>
+    <message><source>Model version</source><translation>Model version</translation></message>
+    <message><source>Rounds</source><translation>Rounds</translation></message>
+    <message><source>Distinct images</source><translation>Distinct images</translation></message>
+    <message><source>{images} completed image(s) · {eligible}/{rounds} comparable rounds</source><translation>{images} completed image(s) · {eligible}/{rounds} comparable rounds</translation></message>
+    <message><source>Excluded reasons</source><translation>Excluded reasons</translation></message>
+    <message><source>Comparable saved rounds only. Density uses final rectangles. Sequential runs on the same image are dependent.</source><translation>Comparable saved rounds only. Density uses final rectangles. Sequential runs on the same image are dependent.</translation></message>
+    <message><source>Previous page</source><translation>Previous page</translation></message>
+    <message><source>Next page</source><translation>Next page</translation></message>
+    <message><source>Page {page}/{pages} · {count} rows</source><translation>Page {page}/{pages} · {count} rows</translation></message>
+    <message><source>Finish selected rounds…</source><translation>Finish selected rounds…</translation></message>
+    <message><source>Mark only the following {count} saved round(s) complete?</source><translation>Mark only the following {count} saved round(s) complete?</translation></message>
+    <message><source>Revalidate revisions before applying. Changed or ineligible rows will be skipped.</source><translation>Revalidate revisions before applying. Changed or ineligible rows will be skipped.</translation></message>
+    <message><source>Select current saved rows on the Images tab.</source><translation>Select current saved rows on the Images tab.</translation></message>
+    <message><source>No recorded image</source><translation>No recorded image</translation></message>
+    <message><source>Export CSV…</source><translation>Export CSV…</translation></message>
+    <message><source>Metric dictionary</source><translation>Metric dictionary</translation></message>
+    <message><source>Loading report…</source><translation>Loading report…</translation></message>
+    <message><source>Writing CSV…</source><translation>Writing CSV…</translation></message>
+    <message><source>Exported {file}</source><translation>Exported {file}</translation></message>
+    <message><source>Operation failed</source><translation>Operation failed</translation></message>
+    <message><source>Yes</source><translation>Yes</translation></message>
+    <message><source>No</source><translation>No</translation></message>
+    <message><source>Current</source><translation>Current</translation></message>
+    <message><source>Initial boxes</source><translation>Initial boxes</translation></message>
+    <message><source>AI boxes</source><translation>AI boxes</translation></message>
+    <message><source>Saved boxes</source><translation>Saved boxes</translation></message>
+    <message><source>Added</source><translation>Added</translation></message>
+    <message><source>Deleted</source><translation>Deleted</translation></message>
+    <message><source>Geometry edits</source><translation>Geometry edits</translation></message>
+    <message><source>Class edits</source><translation>Class edits</translation></message>
+    <message><source>Operations</source><translation>Operations</translation></message>
+    <message><source>Processing (s)</source><translation>Processing (s)</translation></message>
+    <message><source>Median seconds/round</source><translation>Median seconds/round</translation></message>
+    <message><source>Seconds / 100 boxes</source><translation>Seconds / 100 boxes</translation></message>
+    <message><source>Limitations</source><translation>Limitations</translation></message>
+    <message><source>Model</source><translation>Model</translation></message>
+    <message><source>Class vocabulary version</source><translation>Class vocabulary version</translation></message>
+    <message><source>Metric</source><translation>Metric</translation></message>
+    <message><source>Initial class</source><translation>Initial class</translation></message>
+    <message><source>Final class</source><translation>Final class</translation></message>
+    <message><source>Objects</source><translation>Objects</translation></message>
+    <message><source>Denominator</source><translation>Denominator</translation></message>
+    <message><source>Baseline source</source><translation>Baseline source</translation></message>
+    <message><source>Changed original boxes</source><translation>Changed original boxes</translation></message>
+    <message><source>Changed / initial</source><translation>Changed / initial</translation></message>
+    <message><source>Final boxes per image</source><translation>Final boxes per image</translation></message>
+    <message><source>Initial</source><translation>Initial</translation></message>
+    <message><source>Final</source><translation>Final</translation></message>
+    <message><source>Geometry</source><translation>Geometry</translation></message>
+    <message><source>Unsaved</source><translation>Unsaved</translation></message>
+    <message><source>Partial rectangle scope</source><translation>Partial rectangle scope</translation></message>
+    <message><source>Unknown source</source><translation>Unknown source</translation></message>
+    <message><source>Interrupted timing</source><translation>Interrupted timing</translation></message>
+    <message><source>Historical</source><translation>Historical</translation></message>
+    <message><source>Idle prompt after (s)</source><translation>Idle prompt after (s)</translation></message>
   </context>
 </TS>

@@ -1,0 +1,44 @@
+{
+  "schema_version": "inspection-report.v1",
+  "updated_at": "2026-11-03T05:24:28+00:00",
+  "reports": [
+    {
+      "run_id": "20261103T052428Z-screen_corners-2066b264",
+      "state": "completed",
+      "scope": "current_image",
+      "started_at": "2026-11-03T05:24:28+00:00",
+      "finished_at": "2026-11-03T05:24:28+00:00",
+      "issue_count": 1,
+      "summary": {
+        "requested_files": 1,
+        "completed_files": 1,
+        "failed_files": 0,
+        "excluded_files": 0,
+        "not_run_files": 0,
+        "issue_count": 1,
+        "object_count": 2,
+        "truncated": false
+      },
+      "profile_id": "screen_corners"
+    },
+    {
+      "run_id": "20261103T052428Z-generic-96e78bfc",
+      "state": "completed",
+      "scope": "current_image",
+      "started_at": "2026-11-03T05:24:28+00:00",
+      "finished_at": "2026-11-03T05:24:28+00:00",
+      "issue_count": 1,
+      "summary": {
+        "requested_files": 1,
+        "completed_files": 1,
+        "failed_files": 0,
+        "excluded_files": 0,
+        "not_run_files": 0,
+        "issue_count": 1,
+        "object_count": 2,
+        "truncated": false
+      },
+      "profile_id": "generic"
+    }
+  ]
+}

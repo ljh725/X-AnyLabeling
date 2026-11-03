@@ -1,0 +1,50 @@
+{
+  "builtin": false,
+  "created_at": "2026-11-02T08:28:49+00:00",
+  "description": "不依赖特定业务假设的标签、形状、几何和疑似重复框检查。",
+  "exceptions": {},
+  "label_bindings": {},
+  "name": "项目方案",
+  "profile_id": "custom-1",
+  "profile_version": 1,
+  "relations": {},
+  "rules": [
+    {
+      "enabled": true,
+      "parameters": {},
+      "rule_id": "label_required"
+    },
+    {
+      "enabled": true,
+      "parameters": {},
+      "rule_id": "shape_type_binding"
+    },
+    {
+      "enabled": true,
+      "parameters": {},
+      "rule_id": "points_required"
+    },
+    {
+      "enabled": true,
+      "parameters": {},
+      "rule_id": "group_id_required"
+    },
+    {
+      "enabled": true,
+      "parameters": {},
+      "rule_id": "bbox_geometry_valid"
+    },
+    {
+      "enabled": true,
+      "parameters": {
+        "max_pairs": 5000,
+        "preset": "medium",
+        "relations": {}
+      },
+      "rule_id": "duplicate_boxes"
+    }
+  ],
+  "schema_version": "inspection-profile.v1",
+  "stage": "post_label",
+  "updated_at": "2026-11-02T08:28:49+00:00"
+}

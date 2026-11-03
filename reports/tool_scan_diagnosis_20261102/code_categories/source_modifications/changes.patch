@@ -1,0 +1,3422 @@
+diff --git a/anylabeling/configs/xanylabeling_config.yaml b/anylabeling/configs/xanylabeling_config.yaml
+index c07268d7..a7a3dd57 100644
+--- a/anylabeling/configs/xanylabeling_config.yaml
++++ b/anylabeling/configs/xanylabeling_config.yaml
+@@ -8,6 +8,7 @@ display_label_popup: true
+ store_data: false
+ keep_prev: false
+ keep_prev_scale: false
++share_view_across_same_size: true
+ keep_prev_brightness: false
+ keep_prev_contrast: false
+ auto_use_last_label: false
+@@ -19,6 +20,10 @@ show_groups: false
+ show_masks: true
+ show_texts: true
+ show_labels: true
++show_labels_only_selected: false
++show_rectangle_pixels: false
++show_rectangle_size_violations: false
++rectangle_size_rules: null
+ show_scores: true
+ show_degrees: false
+ show_shapes: true
+@@ -110,6 +115,8 @@ canvas:
+     width: 2.0
+     color: "#00FF00"
+     opacity: 0.5
++    # Fork addition: guide shown only while drawing two-point rectangles.
++    show_when_drawing: true
+   attributes:
+     background_color: [33, 33, 33, 255]
+     border_color: [66, 66, 66, 255]
+diff --git a/anylabeling/views/labeling/label_file.py b/anylabeling/views/labeling/label_file.py
+index 9ba78ac6..780d5399 100644
+--- a/anylabeling/views/labeling/label_file.py
++++ b/anylabeling/views/labeling/label_file.py
+@@ -18,6 +18,13 @@ from .schema import (
+     create_xlabel_template,
+ )
+ from .shape import Shape
++from .shape_identity import (
++    MISSING_SHAPE_ID,
++    SHAPE_ID_FIELD,
++    describe_shape_identity_diagnostics,
++    normalize_shape_identities,
++    validate_shape_identities,
++)
+ 
+ 
+ class LabelFileError(Exception):
+@@ -127,7 +134,28 @@ class LabelFile:
+ 
+             utils.get_pil_img_dim(image_data)
+ 
+-            shapes = [Shape().load_from_dict(s) for s in data["shapes"]]
++            identity_result = normalize_shape_identities(
++                (
++                    shape.get(SHAPE_ID_FIELD, MISSING_SHAPE_ID)
++                    for shape in data["shapes"]
++                )
++            )
++            shapes = []
++            for raw_shape, shape_id in zip(
++                data["shapes"], identity_result.identities
++            ):
++                normalized_shape = dict(raw_shape)
++                normalized_shape[SHAPE_ID_FIELD] = shape_id
++                shapes.append(Shape().load_from_dict(normalized_shape))
++            if identity_result.diagnostics:
++                logger.warning(
++                    "Repaired %d Shape identities while loading %s: %s",
++                    identity_result.repaired_count,
++                    filename,
++                    describe_shape_identity_diagnostics(
++                        identity_result.diagnostics
++                    ),
++                )
+ 
+         except Exception as e:  # noqa
+             raise LabelFileError(e) from e
+@@ -169,6 +197,21 @@ class LabelFile:
+         other_data=None,
+         flags=None,
+     ):
++        identity_violations = validate_shape_identities(
++            (
++                (
++                    shape.get(SHAPE_ID_FIELD, MISSING_SHAPE_ID)
++                    if isinstance(shape, dict)
++                    else getattr(shape, SHAPE_ID_FIELD, MISSING_SHAPE_ID)
++                )
++                for shape in (shapes or ())
++            )
++        )
++        if identity_violations:
++            raise LabelFileError(
++                "Invalid Shape identities: "
++                + describe_shape_identity_diagnostics(identity_violations)
++            )
+         if image_data is not None:
+             image_height, image_width = self._check_image_height_and_width(
+                 image_data, image_height, image_width
+diff --git a/anylabeling/views/labeling/label_widget.py b/anylabeling/views/labeling/label_widget.py
+index ce58482d..f191c231 100644
+--- a/anylabeling/views/labeling/label_widget.py
++++ b/anylabeling/views/labeling/label_widget.py
+@@ -7,7 +7,8 @@ import os.path as osp
+ import re
+ import shutil
+ import zlib
+-from typing import Optional
++from collections import deque
++from typing import Callable, Optional
+ 
+ import cv2
+ import numpy as np
+@@ -53,6 +54,7 @@ from .utils.style import (
+ )
+ from ...config import get_config, save_config
+ from .label_file import LabelFile, LabelFileError
++from .editing_commands import apply_field_changes, store_undo_step
+ from .logger import logger
+ from .schema import IMAGE_TAGS_FIELD
+ from .settings import SettingsController, SettingsDialog
+@@ -63,11 +65,20 @@ from .settings.schema import (
+     load_template_config,
+ )
+ from .shape import Shape
++from .shape_filter import desired_visibility
++from .shared_view_state import SharedViewState, SharedViewStateStore
++from .rectangle_size import (
++    RectangleSizeConfigError,
++    load_rectangle_size_rules,
++    serialize_rectangle_size_rules,
++)
++from .widgets.rectangle_size_rule_dialog import RectangleSizeRuleDialog
+ from .utils.file_search import (
+     parse_search_pattern,
+     matches_filename,
+     matches_label_attribute,
+ )
++from .utils.staged_annotation_loading import MetadataController, ViewController
+ from .utils.qt import new_icon_path
+ from .utils.theme import get_theme
+ from .pointcloud.icons import get_icon
+@@ -167,6 +178,28 @@ class FileNameDelegate(QtWidgets.QStyledItemDelegate):
+     def displayText(self, value, locale):
+         return osp.basename(super().displayText(value, locale))
+ 
++    def initStyleOption(self, option, index):
++        super().initStyleOption(option, index)
++        get_generation = getattr(self, "metadata_generation", None)
++        generation = get_generation() if get_generation else None
++        if generation is not None and (
++            index.data(Qt.ItemDataRole.UserRole + 1) != generation
++            or index.data(Qt.ItemDataRole.UserRole + 2) == "unknown"
++        ):
++            option.icon = QtGui.QIcon()
++            option.checkState = Qt.CheckState.PartiallyChecked
++
++    def helpEvent(self, event, view, option, index):
++        get_generation = getattr(self, "metadata_generation", None)
++        generation = get_generation() if get_generation else None
++        if generation is not None and (
++            index.data(Qt.ItemDataRole.UserRole + 1) != generation
++            or index.data(Qt.ItemDataRole.UserRole + 2) == "unknown"
++        ):
++            QtWidgets.QToolTip.showText(event.globalPos(), self.tr("Checking annotation"), view)
++            return True
++        return super().helpEvent(event, view, option, index)
++
+ 
+ class FileListWidget(QtWidgets.QListWidget):
+     def mousePressEvent(self, event):
+@@ -276,6 +309,37 @@ class LabelingWidget(LabelDialog):
+ 
+         super(LabelDialog, self).__init__()
+ 
++        self._metadata_controller = MetadataController()
++        self._metadata_revisions = {}
++        self._metadata_generation = None
++        self._metadata_results = deque()
++        self._metadata_errors = 0
++        self._metadata_error_paths = set()
++        self._metadata_search_errors = 0
++        self._metadata_processed = 0
++        self._metadata_total = 0
++        self._pending_review_navigation = None
++        self._last_review_error = None
++        self._metadata_timer = QtCore.QTimer(self)
++        self._metadata_timer.setInterval(10)
++        self._metadata_timer.timeout.connect(self._poll_metadata)
++        self._view_controller = ViewController()
++        self._view_timer = QtCore.QTimer(self)
++        self._view_timer.setInterval(10)
++        self._view_timer.timeout.connect(self._poll_view)
++        self._view_buffer = deque()
++        self._full_image_paths = None
++        self._full_image_dir = None
++        self._dropped_image_paths = []
++        self._view_pending_dropped = []
++        self._view_finished = False
++        self._view_error_message = None
++        self._view_first_load = False
++        self._view_first_pending = False
++        self._view_preserve = None
++        self._exif_generation = 0
++        self._exif_pending = False
++
+         # Whether we need to save or not.
+         self.dirty = False
+ 
+@@ -283,8 +347,10 @@ class LabelingWidget(LabelDialog):
+         self._session_shape_locks = {}
+         self._copied_shapes = None
+         self._copied_group_id = None
+-        self._batch_edit_warning_shown = False
+         self._batch_processing_active = False
++        self._invert_shape_filter = False
++        self._manually_hidden_shapes = set()
++        self._invert_filter_actions = []
+ 
+         self.brightness_contrast_processor = BrightnessContrastProcessor()
+ 
+@@ -386,6 +452,7 @@ class LabelingWidget(LabelDialog):
+         )
+         self.file_search.returnPressed.connect(self.file_search_changed)
+         self.file_search.returnPressed.connect(self.file_search.setFocus)
++        self.file_search.textChanged.connect(self._file_search_text_changed)
+         self.settings_button = QPushButton(self)
+         self.settings_button.setFixedSize(32, 32)
+         self.settings_button.setCursor(
+@@ -397,10 +464,12 @@ class LabelingWidget(LabelDialog):
+         self.settings_button.setStyleSheet(get_settings_button_style())
+         self.settings_button.clicked.connect(self.open_settings_dialog)
+         self.file_list_widget = FileListWidget()
++        self.file_list_widget.setUniformItemSizes(True)
+         self.file_list_widget.setObjectName("FileList")
+         self.file_list_widget.setItemDelegate(
+             FileNameDelegate(self.file_list_widget)
+         )
++        self.file_list_widget.itemDelegate().metadata_generation = lambda: self._metadata_generation
+         self.file_list_widget.setIconSize(QtCore.QSize(10, 12))
+         self.file_list_widget.setStyleSheet(
+             "QListWidget#FileList::indicator { margin-right: 0; }"
+@@ -484,6 +553,10 @@ class LabelingWidget(LabelDialog):
+         self.canvas.pan_request.connect(self.pan_canvas)
+         self.canvas.interaction_started.connect(self._zoom_animation.stop)
+ 
++        # Rectangle minimum-size rules are read once at startup; invalid
++        # persisted data is ignored instead of blocking the window.
++        self.canvas.set_rectangle_size_rules(self._load_rectangle_size_rules())
++
+         # Compare view support
+         self.compare_view_manager = CompareViewManager(self.canvas, self)
+         self.compare_view_manager.status_message.connect(self.status)
+@@ -1225,6 +1298,12 @@ class LabelingWidget(LabelDialog):
+             icon="message-circle-question-mark",
+             tip=self.tr("Open VQA dialog"),
+         )
++        open_inspector = action(
++            self.tr("Inspector"),
++            self.open_inspector,
++            icon="scan-search",
++            tip=self.tr("Open the annotation inspection workflow"),
++        )
+         open_pointcloud = action(
+             self.tr("Point Cloud"),
+             self.open_pointcloud,
+@@ -1389,6 +1468,27 @@ class LabelingWidget(LabelDialog):
+             checkable=True,
+             enabled=False,
+         )
++        fit_width.setObjectName("fitWidth")
++        share_view_across_same_size = action(
++            self.tr("Share View Across Same-Size Images"),
++            self.set_share_view_enabled,
++            shortcut=None,
++            tip=self.tr(
++                "Same-size images keep one zoom and centre until you change it"
++            ),
++            icon=None,
++            checkable=True,
++            checked=self._config.get("share_view_across_same_size", True),
++            enabled=True,
++        )
++        reset_shared_view = action(
++            self.tr("Reset Shared View"),
++            self.reset_shared_view,
++            shortcut=None,
++            tip=self.tr("Forget the shared view of the current image size"),
++            icon=None,
++            enabled=True,
++        )
+         show_groups = action(
+             self.tr("Show Groups"),
+             lambda x: self.set_canvas_params("show_groups", x),
+@@ -1432,6 +1532,57 @@ class LabelingWidget(LabelDialog):
+             enabled=True,
+             auto_trigger=True,
+         )
++        show_labels_only_selected = action(
++            self.tr("Show Labels Only for Selected"),
++            lambda x: self.set_canvas_params("show_labels_only_selected", x),
++            shortcut=None,
++            tip=self.tr(
++                "Show labels only for selected shapes; hovering previews others"
++            ),
++            icon=None,
++            checkable=True,
++            checked=self._config.get("show_labels_only_selected", False),
++            enabled=True,
++            auto_trigger=True,
++        )
++        show_rectangle_pixels = action(
++            self.tr("Show Rectangle Size"),
++            lambda x: self.set_canvas_params("show_rectangle_pixels", x),
++            shortcut=None,
++            tip=self.tr(
++                "Live width/height readout for the rectangle being created, "
++                "dragged, hovered or selected"
++            ),
++            icon=None,
++            checkable=True,
++            checked=self._config.get("show_rectangle_pixels", False),
++            enabled=True,
++            auto_trigger=True,
++        )
++        show_rectangle_size_violations = action(
++            self.tr("Show Size Rule Warnings"),
++            lambda x: self.set_canvas_params(
++                "show_rectangle_size_violations", x
++            ),
++            shortcut=None,
++            tip=self.tr(
++                "Warn about rectangles at or below their label minimum size; "
++                "configure rules first"
++            ),
++            icon=None,
++            checkable=True,
++            checked=self._config.get("show_rectangle_size_violations", False),
++            enabled=True,
++            auto_trigger=True,
++        )
++        rectangle_size_rules = action(
++            self.tr("Rectangle Size Rules..."),
++            self.open_rectangle_size_rule_dialog,
++            shortcut=None,
++            tip=self.tr("Edit minimum width/height rules per label"),
++            icon=None,
++            enabled=True,
++        )
+         show_scores = action(
+             self.tr("Show Scores"),
+             lambda x: self.set_canvas_params("show_scores", x),
+@@ -2000,10 +2151,16 @@ class LabelingWidget(LabelDialog):
+             keep_prev_contrast=keep_prev_contrast,
+             fit_window=fit_window,
+             fit_width=fit_width,
++            share_view_across_same_size=share_view_across_same_size,
++            reset_shared_view=reset_shared_view,
+             show_groups=show_groups,
+             show_masks=show_masks,
+             show_texts=show_texts,
+             show_labels=show_labels,
++            show_labels_only_selected=show_labels_only_selected,
++            show_rectangle_pixels=show_rectangle_pixels,
++            show_rectangle_size_violations=show_rectangle_size_violations,
++            rectangle_size_rules=rectangle_size_rules,
+             show_scores=show_scores,
+             show_degrees=show_degrees,
+             show_attributes=show_attributes,
+@@ -2019,6 +2176,7 @@ class LabelingWidget(LabelDialog):
+             open_prev_unchecked_image=open_prev_unchecked_image,
+             open_chatbot=open_chatbot,
+             open_vqa=open_vqa,
++            open_inspector=open_inspector,
+             open_pointcloud=open_pointcloud,
+             open_image_classifier=open_image_classifier,
+             open_classifier=open_image_classifier,
+@@ -2199,6 +2357,7 @@ class LabelingWidget(LabelDialog):
+             (
+                 open_chatbot,
+                 open_vqa,
++                open_inspector,
+                 open_pointcloud,
+                 open_image_classifier,
+                 open_video_classifier,
+@@ -2320,10 +2479,17 @@ class LabelingWidget(LabelDialog):
+                 None,
+                 fit_window,
+                 fit_width,
++                share_view_across_same_size,
++                reset_shared_view,
+                 None,
+                 show_masks,
+                 show_texts,
+                 show_labels,
++                show_labels_only_selected,
++                show_rectangle_pixels,
++                show_rectangle_size_violations,
++                rectangle_size_rules,
++                None,
+                 show_scores,
+                 show_degrees,
+                 show_attributes,
+@@ -2336,6 +2502,23 @@ class LabelingWidget(LabelDialog):
+             ),
+         )
+ 
++        self.rectangle_edge_action = QtGui.QAction(
++            QtCore.QCoreApplication.translate(
++                "LabelingWidget", "Rectangle Edge Editing"
++            ),
++            self,
++        )
++        self.rectangle_edge_action.setCheckable(True)
++        self.rectangle_edge_action.setShortcut(
++            self._config.get("shortcuts", {}).get(
++                "toggle_rect_edge_align", "Ctrl+Shift+E"
++            )
++        )
++        self.rectangle_edge_action.triggered.connect(
++            self.canvas.set_rectangle_edge_enabled
++        )
++        self.menus.view.addAction(self.rectangle_edge_action)
++
+         self._view_menu_filter = utils.StayOpenMenuFilter(self.menus.view)
+         self.menus.view.installEventFilter(self._view_menu_filter)
+ 
+@@ -2836,14 +3019,23 @@ class LabelingWidget(LabelDialog):
+         self.fit_window = False
+         self.zoom_values = {}  # key=filename, value=(zoom_mode, zoom_value)
+         self.pan_values = {}
++        # One viewport per image size for the current review round; see
++        # shared_view_state.py. Empty when the user turns sharing off.
++        self.shared_view_store = SharedViewStateStore()
+         self.brightness_contrast_values = {}
+         self.scroll_values = {
+             Qt.Orientation.Horizontal: {},
+             Qt.Orientation.Vertical: {},
+         }  # key=filename, value=scroll_value
+ 
+-        if filename is not None and osp.isdir(filename):
+-            self.import_image_folder(filename, load=False)
++        from .widgets.rectangle_creation import RectangleCreation
++
++        self.rectangle_creation = RectangleCreation(self)
++        self.rectangle_creation.hide()
++
++        startup_directory = filename is not None and osp.isdir(filename)
++        if startup_directory:
++            self.import_image_folder(filename, load=True)
+         else:
+             self.filename = filename
+ 
+@@ -2855,7 +3047,8 @@ class LabelingWidget(LabelDialog):
+         # Restore application settings.
+         self.settings = QtCore.QSettings("anylabeling", "anylabeling")
+         self.recent_files = self.settings.value("recent_files", []) or []
+-        self.last_open_dir = self.settings.value("last_open_dir", None) or None
++        if not startup_directory:
++            self.last_open_dir = self.settings.value("last_open_dir", None) or None
+ 
+         # Populate the File menu dynamically.
+         self.update_file_menu()
+@@ -3539,6 +3732,7 @@ class LabelingWidget(LabelDialog):
+ 
+     def _set_all_objects_visibility(self, visible):
+         """Set all Objects panel checkboxes and shape visibility to visible (True/False)."""
++        self._manually_hidden_shapes.clear()
+         for item in self.label_list:
+             label = item.shape().label
+             if label in self.label_info:
+@@ -3669,7 +3863,7 @@ class LabelingWidget(LabelDialog):
+             else:
+                 polygon_shapes.append([(p.x(), p.y()) for p in points])
+ 
+-        union_shape = shape.copy()
++        union_shape = shape.copy_for_new_object()
+ 
+         if len(rectangle_shapes) > 0:
+             min_x = min([bbox[0] for bbox in rectangle_shapes])
+@@ -3814,6 +4008,212 @@ class LabelingWidget(LabelDialog):
+         else:
+             self.vqa_window.show()
+ 
++    def open_inspector(self):
++        if not self.image_list and not self.filename:
++            self.error_message(
++                self.tr("No images loaded"),
++                self.tr(
++                    "Please load an image folder before opening the Inspector."
++                ),
++            )
++            return
++        if getattr(self, "inspector_dialog", None) is None:
++            from .inspector import InspectorDialog
++
++            self.inspector_dialog = InspectorDialog(self)
++            self.inspector_dialog.setAttribute(
++                Qt.WidgetAttribute.WA_DeleteOnClose, False
++            )
++        if self.inspector_dialog.isVisible():
++            self.inspector_dialog.raise_()
++            self.inspector_dialog.activateWindow()
++        else:
++            self.inspector_dialog.show()
++
++    def inspection_dataset_root(self):
++        root = getattr(self, "_full_image_dir", "") or ""
++        if not root and self.filename:
++            root = osp.dirname(self.filename)
++        return root
++
++    def inspection_output_dir(self):
++        return self.output_dir or ""
++
++    def inspection_image_paths(self):
++        paths = list(self.image_list)
++        if self.filename and self.filename not in paths:
++            paths.append(self.filename)
++        return paths
++
++    def inspection_selected_image_paths(self):
++        items = self.file_list_widget.selectedItems()
++        return [item.text() for item in items]
++
++    def inspection_current_relative_path(self):
++        if not self.filename:
++            return ""
++        root = self.inspection_dataset_root()
++        if root:
++            try:
++                return osp.relpath(self.filename, root).replace("\\", "/")
++            except ValueError:
++                pass
++        return osp.basename(self.filename)
++
++    def inspection_current_manifest(self):
++        if not self.filename:
++            return None
++        from anylabeling.services.inspection.manifest import (
++            memory_file_snapshot,
++        )
++        from anylabeling.services.inspection.models import Manifest
++
++        shapes = [
++            item.shape().to_dict()
++            for item in self.label_list
++            if item.shape().label
++            not in (
++                AutoLabelingMode.OBJECT,
++                AutoLabelingMode.ADD,
++                AutoLabelingMode.REMOVE,
++            )
++        ]
++        image = self.image
++        snapshot = memory_file_snapshot(
++            self.filename,
++            self.inspection_current_relative_path(),
++            shapes,
++            image_width=image.width() if image is not None else 0,
++            image_height=image.height() if image is not None else 0,
++            output_dir=self.output_dir or "",
++            unsaved=bool(self.dirty),
++        )
++        return Manifest(
++            dataset_root=self.inspection_dataset_root(),
++            output_root=self.output_dir or "",
++            files=(snapshot,),
++            complete=True,
++        )
++
++    def _inspection_resolve_image_path(self, relative_path):
++        raw = str(relative_path or "").replace("\\", "/")
++        if not raw:
++            return None
++        if osp.isabs(raw) and osp.isfile(raw):
++            return raw
++        paths = self.inspection_image_paths()
++        matches = []
++        for path in paths:
++            normalized = path.replace("\\", "/")
++            if normalized.endswith("/" + raw) or normalized == raw:
++                matches.append(path)
++            elif osp.basename(path) == raw:
++                matches.append(path)
++        unique = list(dict.fromkeys(matches))
++        if len(unique) == 1:
++            return unique[0]
++        return None
++
++    def inspection_navigate_to(
++        self, relative_path, object_ids=(), region=None
++    ):
++        target = self._inspection_resolve_image_path(relative_path)
++        if not target:
++            self.status(
++                self.tr("Cannot resolve inspection target: %s")
++                % relative_path
++            )
++            return False
++        if self.filename != target:
++            if not self.may_continue():
++                return False
++            self.load_file(target)
++        ids = {str(item) for item in object_ids if str(item)}
++        shapes = [
++            shape
++            for shape in self.canvas.shapes
++            if getattr(shape, "xanylabeling_shape_id", "") in ids
++        ]
++        if shapes:
++            self.canvas.select_shapes(shapes)
++            self.canvas.update()
++            return True
++        if ids:
++            self.status(
++                self.tr(
++                    "The inspected objects no longer exist; the issue "
++                    "needs rechecking."
++                )
++            )
++            return False
++        return True
++
++    def inspection_delete_shapes(self, object_ids):
++        ids = {str(item) for item in object_ids if str(item)}
++        shapes = [
++            shape
++            for shape in self.canvas.shapes
++            if getattr(shape, "xanylabeling_shape_id", "") in ids
++        ]
++        deletable = [shape for shape in shapes if not shape.locked]
++        if not deletable:
++            return False, self.tr("No unlocked target objects to delete")
++        for shape in deletable:
++            self.canvas.delete_shape(shape)
++        self.remove_labels(deletable)
++        self.shape_selection_changed(self.canvas.selected_shapes)
++        self.set_dirty()
++        return True, ""
++
++    def inspection_relabel_shapes(self, object_ids, label):
++        ids = {str(item) for item in object_ids if str(item)}
++        shapes = [
++            shape
++            for shape in self.canvas.shapes
++            if getattr(shape, "xanylabeling_shape_id", "") in ids
++        ]
++        if not shapes:
++            return False, self.tr("The inspected objects no longer exist")
++        changed = self._apply_field_patch(
++            shapes, {"label": label}, {"label"}
++        )
++        return bool(changed), ""
++
++    def inspection_accept_candidate(self, candidate, shape_id=None):
++        from PyQt6.QtCore import QPointF
++
++        from .shape import Shape
++
++        target = self._inspection_resolve_image_path(candidate.relative_path)
++        if not target:
++            return False, self.tr("Cannot resolve candidate image")
++        if self.filename != target:
++            if not self.may_continue():
++                return False, self.tr("Navigation cancelled")
++            self.load_file(target)
++        if self.label_info and candidate.label not in self.label_info:
++            return (
++                False,
++                self.tr("Candidate label is not in the current label set"),
++            )
++        shape = Shape(
++            label=candidate.label,
++            shape_type="rectangle",
++            description=self.tr("Accepted external candidate"),
++            attributes={
++                "inspection_candidate_id": candidate.candidate_id,
++                "inspection_candidate_source": candidate.source,
++            },
++            shape_id=shape_id or Shape.new_shape_id(),
++        )
++        shape.points = [
++            QPointF(candidate.region[0], candidate.region[1]),
++            QPointF(candidate.region[2], candidate.region[3]),
++        ]
++        self.load_shapes([shape], replace=False, update_last_label=False)
++        self.set_dirty()
++        return True, shape.xanylabeling_shape_id
++
+     def open_pointcloud(self):
+         if self.pointcloud_window is None:
+             try:
+@@ -4088,6 +4488,14 @@ class LabelingWidget(LabelDialog):
+         self.update_labeling_instruction()
+ 
+     def create_digit_mode(self, digit_num):
++        """Draw with the digit label, or relabel the current selection.
++
++        One digit-to-label mapping drives both actions: with no selection a
++        digit starts drawing, with a selection it relabels every editable
++        selected shape, and while a shape is being drawn the keys are ignored
++        so the pending geometry is never lost. 4.2.1 has no digit paging, so
++        the mapping index is the digit itself.
++        """
+         if self.drawing_digit_shortcuts is None:
+             return
+ 
+@@ -4100,10 +4508,43 @@ class LabelingWidget(LabelDialog):
+ 
+         if create_mode not in Shape.get_supported_shape():
+             return
++        if self.canvas.current is not None:
++            return
++        workflow = getattr(self, "rectangle_creation", None)
++        if workflow is not None and workflow.draft is not None:
++            return
++
++        selected = [
++            shape
++            for shape in self.canvas.selected_shapes
++            if shape in self.canvas.shapes
++        ]
++        if selected:
++            editable = [
++                shape
++                for shape in selected
++                if not getattr(shape, "locked", False)
++            ]
++            if not editable:
++                return
++            self._relabel_selection(editable, label)
++            return
+ 
+         self.digit_to_label = label
+         self.toggle_draw_mode(edit=False, create_mode=create_mode)
+ 
++    def _relabel_selection(self, shapes, label):
++        """Apply one digit label to the frozen selection as one undo step."""
++        if not self.validate_label(label):
++            self.error_message(
++                self.tr("Invalid label"),
++                self.tr("Invalid label '{}' with validation type '{}'").format(
++                    label, self._config["validate_label"]
++                ),
++            )
++            return []
++        return self._apply_field_patch(shapes, {"label": label}, {"label"})
++
+     def toggle_draw_mode(
+         self,
+         edit=True,
+@@ -4111,6 +4552,9 @@ class LabelingWidget(LabelDialog):
+         disable_auto_labeling=True,
+         preserve_brush_mode=False,
+     ):
++        workflow = getattr(self, "rectangle_creation", None)
++        if workflow is not None:
++            workflow.before_tool_change(edit, create_mode)
+         if not preserve_brush_mode:
+             if getattr(self.canvas, "is_brush_mode", False):
+                 self.canvas.cancel_brush_mode()
+@@ -4501,8 +4945,6 @@ class LabelingWidget(LabelDialog):
+         return False
+ 
+     def _set_file_item_checked(self, item, checked):
+-        if item.data(Qt.ItemDataRole.UserRole) == checked:
+-            return
+         item.setIcon(self.file_status_icons[checked])
+         item.setData(Qt.ItemDataRole.UserRole, checked)
+         item.setToolTip(
+@@ -4512,6 +4954,65 @@ class LabelingWidget(LabelDialog):
+     def _file_item_annotation_checked(self, item):
+         return item.data(Qt.ItemDataRole.UserRole) in (True, "failed")
+ 
++    def _metadata_state(self, item):
++        if self._metadata_generation is None:
++            return "ready"
++        if item.data(Qt.ItemDataRole.UserRole + 1) != self._metadata_generation:
++            return "unknown"
++        return item.data(Qt.ItemDataRole.UserRole + 2) or "unknown"
++
++    def _poll_metadata(self):
++        controller = self._metadata_controller
++        if not self._metadata_results:
++            self._metadata_results.extend(controller.poll())
++        records = []
++        for _ in range(min(20, len(self._metadata_results))):
++            records.append(self._metadata_results.popleft())
++        with QtCore.QSignalBlocker(self.file_list_widget):
++            for generation, path, revision, metadata in records:
++                if generation != self._metadata_generation:
++                    continue
++                self._metadata_processed += 1
++                if self._metadata_revisions.get(path, 0) != revision:
++                    continue
++                index = self.fn_to_index.get(path)
++                if index is None:
++                    continue
++                item = self.file_list_widget.item(index)
++                item.setData(Qt.ItemDataRole.UserRole + 1, generation)
++                item.setData(Qt.ItemDataRole.UserRole + 2, metadata.review)
++                if metadata.presence == "error":
++                    self._metadata_error_paths.add(path)
++                    self._metadata_errors = self._metadata_search_errors + len(self._metadata_error_paths)
++                    item.setIcon(QtGui.QIcon())
++                    item.setCheckState(Qt.CheckState.PartiallyChecked)
++                    item.setToolTip(f"{path}\n{self.tr('Annotation read error')}: {metadata.error}")
++                    continue
++                self._metadata_error_paths.discard(path)
++                self._metadata_errors = self._metadata_search_errors + len(self._metadata_error_paths)
++                item.setCheckState(
++                    Qt.CheckState.Checked if metadata.presence == "present"
++                    else Qt.CheckState.Unchecked
++                )
++                checked = {"passed": True, "failed": "failed", "unchecked": False}[metadata.review]
++                self._set_file_item_checked(item, checked)
++        if self._pending_review_navigation is not None:
++            self._continue_review_navigation()
++        if records:
++            self.status(
++                self.tr("Checking annotations: %s/%s; errors: %s")
++                % (self._metadata_processed, self._metadata_total, self._metadata_errors),
++                3000,
++            )
++        if not controller.is_running() and not self._metadata_results:
++            # A final poll on the next tick drains results published at exit.
++            if not records:
++                self._metadata_timer.stop()
++                self.status(
++                    self.tr("Annotation check complete; errors: %s") % self._metadata_errors,
++                    5000,
++                )
++
+     def _create_file_list_item(self, file, label_file):
+         item = QtWidgets.QListWidgetItem(file)
+         item.setToolTip(file)
+@@ -4560,7 +5061,19 @@ class LabelingWidget(LabelDialog):
+     def _update_current_file_checked_item(self):
+         item = self._current_file_item()
+         if item is not None:
+-            self._set_file_item_checked(item, self._annotation_checked())
++            with QtCore.QSignalBlocker(self.file_list_widget):
++                item.setCheckState(
++                    Qt.CheckState.Checked if self.label_file is not None
++                    else Qt.CheckState.Unchecked
++                )
++                self._set_file_item_checked(item, self._annotation_checked())
++                if self._metadata_generation is not None:
++                    path = item.text()
++                    self._metadata_revisions[path] = self._metadata_revisions.get(path, 0) + 1
++                    item.setData(Qt.ItemDataRole.UserRole + 1, self._metadata_generation)
++                    item.setData(Qt.ItemDataRole.UserRole + 2, "ready")
++                    self._metadata_error_paths.discard(path)
++                    self._metadata_errors = self._metadata_search_errors + len(self._metadata_error_paths)
+ 
+     def _sync_annotation_checked_state(self):
+         self._update_annotation_checked_action()
+@@ -4599,6 +5112,15 @@ class LabelingWidget(LabelDialog):
+             if after_filter_actions:
+                 parent_menu.addSeparator()
+                 utils.add_actions(parent_menu, after_filter_actions)
++        invert_action = QtGui.QAction(
++            self.tr("Invert Filter Result"), parent_menu
++        )
++        invert_action.setCheckable(True)
++        invert_action.setChecked(self._invert_shape_filter)
++        invert_action.setEnabled(self._has_active_shape_filter())
++        invert_action.toggled.connect(self.set_invert_shape_filter)
++        parent_menu.addAction(invert_action)
++        self._invert_filter_actions.append(invert_action)
+         return label_menu, gid_menu
+ 
+     def _populate_label_filter_menu(self, menu):
+@@ -4688,26 +5210,12 @@ class LabelingWidget(LabelDialog):
+         return False
+ 
+     def batch_edit_labels(self, shapes):
+-        if not self._batch_edit_warning_shown:
+-            reply = QtWidgets.QMessageBox.question(
+-                self,
+-                self.tr("Batch Edit"),
+-                self.tr(
+-                    "You are about to edit multiple shapes in batch mode. "
+-                    "This operation cannot be undone.\n\n"
+-                    "This warning will only be shown once. Do you want to continue?"
+-                ),
+-                QtWidgets.QMessageBox.StandardButton.Yes
+-                | QtWidgets.QMessageBox.StandardButton.No,
+-                QtWidgets.QMessageBox.StandardButton.No,
+-            )
+-
+-            if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+-                return
+-
+-            self._batch_edit_warning_shown = True
++        """Edit only the fields the user changed, as one undoable step."""
++        targets = [shape for shape in shapes if shape in self.canvas.shapes]
++        if not targets:
++            return False
+ 
+-        first_shape = shapes[0]
++        first_shape = targets[0]
+         result = self.label_dialog.pop_up(
+             text=first_shape.label,
+             flags=first_shape.flags,
+@@ -4720,64 +5228,79 @@ class LabelingWidget(LabelDialog):
+             ),
+             move_mode="center",
+         )
+-
+         if result[0] is None:
+-            return
++            return False
+ 
+         text, flags, group_id, description, difficult, kie_linking = result
+-
+-        if not self.validate_label(text):
++        touched = self.label_dialog.touched_fields()
++        if "label" in touched and not self.validate_label(text):
+             self.error_message(
+                 self.tr("Invalid label"),
+                 self.tr("Invalid label '{}' with validation type '{}'").format(
+                     text, self._config["validate_label"]
+                 ),
+             )
+-            return
+-
+-        for shape in shapes:
+-            if self.attributes and text and text != shape.label:
+-                text = self.reset_attribute(text, shape)
++            return False
+ 
+-            shape.label = text
+-            shape.flags = flags
+-            shape.group_id = group_id
+-            shape.description = description
+-            shape.difficult = difficult
+-            shape.kie_linking = kie_linking
+-            shape.other_data["review_status"] = (
+-                self.label_dialog.get_review_status()
+-            )
++        values = {
++            "label": text,
++            "flags": flags,
++            "group_id": group_id,
++            "description": description,
++            "difficult": difficult,
++            "kie_linking": kie_linking,
++            "review_status": self.label_dialog.get_review_status(),
++        }
++        changed = self._apply_field_patch(targets, values, touched)
++        if not changed:
++            return False
++        if "label" in touched:
++            self.label_dialog.add_label_history(text)
++        return True
+ 
++    def _apply_field_patch(self, shapes, values, touched):
++        """Apply a validated field patch, one undo step and a UI refresh."""
++        changed = apply_field_changes(
++            self.canvas,
++            shapes,
++            values,
++            touched,
++            label_resolver=self._resolve_label_attributes,
++        )
++        if not changed:
++            return []
++        store_undo_step(self.canvas)
++        self.actions.undo.setEnabled(self.canvas.is_shape_restorable)
++        for shape in changed:
+             self._update_shape_color(shape)
+-
+             item = self.label_list.find_item_by_shape(shape)
+             if item is not None:
++                item.setText(
++                    _format_label_list_text(shape.label, shape.group_id)
++                )
+                 if shape.group_id is None:
+                     color = self._get_rgb_by_label(shape.label)
+-                    item.setText(
+-                        _format_label_list_text(shape.label, shape.group_id)
+-                    )
+                     item.setBackground(QtGui.QColor(*color, LABEL_OPACITY))
+-                else:
+-                    item.setText(
+-                        _format_label_list_text(shape.label, shape.group_id)
+-                    )
+-
+-        self.label_dialog.add_label_history(text)
+-
+-        if not self.unique_label_list.find_items_by_label(text):
+-            unique_label_item = self.unique_label_list.create_item_from_label(
+-                text
+-            )
+-            self.unique_label_list.addItem(unique_label_item)
+-            rgb = self._get_rgb_by_label(text)
+-            self.unique_label_list.set_item_label(
+-                unique_label_item, text, rgb, LABEL_OPACITY
+-            )
+-
++        for label in sorted({shape.label for shape in changed}):
++            if not self.unique_label_list.find_items_by_label(label):
++                unique_label_item = (
++                    self.unique_label_list.create_item_from_label(label)
++                )
++                self.unique_label_list.addItem(unique_label_item)
++                rgb = self._get_rgb_by_label(label)
++                self.unique_label_list.set_item_label(
++                    unique_label_item, label, rgb, LABEL_OPACITY
++                )
+         self.set_dirty()
+         self._refresh_shape_filters()
++        self.canvas.invalidate_rectangle_size_issues()
++        return changed
++
++    def _resolve_label_attributes(self, shape, label):
++        """Resolve label-specific attributes without touching other fields."""
++        if self.attributes and label and label != shape.label:
++            return self.reset_attribute(label, shape)
++        return label
+ 
+     def edit_label(self, item=None):
+         if item and not isinstance(item, LabelListWidgetItem):
+@@ -4872,21 +5395,37 @@ class LabelingWidget(LabelDialog):
+         self.update_attributes(selected_idx)
+ 
+     def file_search_changed(self):
+-        search_text = self.file_search.text()
+-        self.import_image_folder(
+-            self.last_open_dir,
+-            pattern=search_text,
+-            load=False,
+-        )
++        if self.last_open_dir or self._full_image_paths is not None:
++            directory = self.last_open_dir or self._full_image_dir or ""
++            self._start_view(directory, self.file_search.text(), False, False)
++
++    def _cancel_pending_review(self, *_args):
++        self._pending_review_navigation = None
++        self._last_review_error = None
++
++    def _file_search_text_changed(self, *_args):
++        self._cancel_pending_review()
++        self.file_search_changed()
++
++    def _refresh_attribute_search_after_save(self):
++        if self.last_open_dir and parse_search_pattern(self.file_search.text()).mode == "attribute":
++            self._view_controller.cancel()
++            QtCore.QTimer.singleShot(0, self.file_search_changed)
+ 
+     def file_selection_changed(self):
++        self._pending_review_navigation = None
++        self._last_review_error = None
+         items = self.file_list_widget.selectedItems()
+         if not items:
+             return
+         item = items[0]
+-
+         if not self.may_continue():
++            with QtCore.QSignalBlocker(self.file_list_widget):
++                previous = self.fn_to_index.get(str(self.filename), -1)
++                self.file_list_widget.setCurrentRow(previous)
+             return
++        if self._view_timer.isActive():
++            self._view_preserve = item.text()
+ 
+         current_index = self.fn_to_index[str(item.text())]
+         if current_index < len(self.image_list):
+@@ -5368,6 +5907,10 @@ class LabelingWidget(LabelDialog):
+                 flags=flags,
+             )
+             self.label_file = label_file
++            if self._metadata_generation is not None and self.filename:
++                self._metadata_revisions[self.filename] = (
++                    self._metadata_revisions.get(self.filename, 0) + 1
++                )
+             self.actions.save.setIcon(utils.new_icon("save-check"))
+             items = self.file_list_widget.findItems(
+                 self.image_path, Qt.MatchFlag.MatchExactly
+@@ -5379,6 +5922,10 @@ class LabelingWidget(LabelDialog):
+                 self._set_file_item_checked(
+                     items[0], self._annotation_checked()
+                 )
++                if self._metadata_generation is not None:
++                    items[0].setData(Qt.ItemDataRole.UserRole + 1, self._metadata_generation)
++                    items[0].setData(Qt.ItemDataRole.UserRole + 2, "ready")
++            self._refresh_attribute_search_after_save()
+             # disable allows next and previous image to proceed
+             # self.filename = filename
+             return True
+@@ -5592,6 +6139,8 @@ class LabelingWidget(LabelDialog):
+                 action.setEnabled(False)
+ 
+     def load_shapes(self, shapes, replace=True, update_last_label=True):
++        if replace:
++            self._manually_hidden_shapes.clear()
+         self._no_selection_slot = True
+         self.label_list.setUpdatesEnabled(False)
+         try:
+@@ -5618,7 +6167,10 @@ class LabelingWidget(LabelDialog):
+             )
+             self.flag_widget.addItem(item)
+ 
+-    def _sync_label_list_visibility(self, get_visible):
++    def _sync_label_list_visibility(
++        self, get_visible: Callable[[LabelListWidgetItem], bool]
++    ) -> None:
++        """Apply object visibility and invalidate size warnings together."""
+         with QtCore.QSignalBlocker(self.unique_label_list):
+             for row in range(self.unique_label_list.count()):
+                 item = self.unique_label_list.item(row)
+@@ -5649,6 +6201,7 @@ class LabelingWidget(LabelDialog):
+         finally:
+             self.label_list.setUpdatesEnabled(True)
+             del blocker
++        self.canvas.invalidate_rectangle_size_issues()
+         self.canvas.update()
+         self._update_select_toggle_button_tooltip()
+         if (
+@@ -5660,19 +6213,51 @@ class LabelingWidget(LabelDialog):
+     def _refresh_shape_filters(self):
+         self.update_combo_box(block_signal=True)
+         self.update_gid_box(block_signal=True)
+-        current_gid = self.gid_filter_combobox.gid_box.currentText()
+-        if current_gid and current_gid != "-1":
+-            self.gid_selection_changed(
+-                self.gid_filter_combobox.gid_box.currentIndex()
+-            )
+-            return
+-        current_label = self.label_filter_combobox.text_box.currentText()
+-        if current_label:
+-            self.text_selection_changed(
+-                self.label_filter_combobox.text_box.currentIndex()
++        self._apply_shape_filter_visibility()
++
++    def _apply_shape_filter_visibility(self):
++        """Apply the combined label/group filter, invert and manual hides."""
++        label = self.label_filter_combobox.text_box.currentText()
++        gid = self.gid_filter_combobox.gid_box.currentText() or "-1"
++        label_info = self.label_info
++        manual_hidden = self._manually_hidden_shapes
++        invert = self._invert_shape_filter
++        self._sync_label_list_visibility(
++            lambda item: desired_visibility(
++                item.shape(),
++                label=label,
++                gid=gid,
++                label_visible=label_info.get(item.shape().label, {}).get(
++                    "visible", True
++                ),
++                invert=invert,
++                manually_hidden=item.shape() in manual_hidden,
+             )
+-            return
+-        self.apply_label_visibility()
++        )
++        self._sync_invert_filter_actions()
++
++    def _sync_invert_filter_actions(self):
++        """Keep the invert menu entries in sync with the filter state."""
++        active = self._has_active_shape_filter()
++        if not active:
++            self._invert_shape_filter = False
++        alive = []
++        for action in self._invert_filter_actions:
++            try:
++                blocker = QtCore.QSignalBlocker(action)
++            except RuntimeError:
++                # The owning menu was rebuilt and the C++ action is gone.
++                continue
++            action.setChecked(self._invert_shape_filter)
++            action.setEnabled(active)
++            del blocker
++            alive.append(action)
++        self._invert_filter_actions = alive
++
++    def set_invert_shape_filter(self, value):
++        """Invert the combined filter result while a filter is active."""
++        self._invert_shape_filter = bool(value)
++        self._apply_shape_filter_visibility()
+ 
+     def set_label_visibility(self, label, visible):
+         if label not in self.label_info:
+@@ -5688,11 +6273,7 @@ class LabelingWidget(LabelDialog):
+         self._refresh_shape_filters()
+ 
+     def apply_label_visibility(self):
+-        self._sync_label_list_visibility(
+-            lambda item: self.label_info.get(item.shape().label, {}).get(
+-                "visible", True
+-            )
+-        )
++        self._apply_shape_filter_visibility()
+ 
+     def update_combo_box(self, block_signal=False):
+         current_label = self.label_filter_combobox.text_box.currentText()
+@@ -5785,6 +6366,10 @@ class LabelingWidget(LabelDialog):
+                 flags=flags,
+             )
+             self.label_file = label_file
++            if self._metadata_generation is not None and self.filename:
++                self._metadata_revisions[self.filename] = (
++                    self._metadata_revisions.get(self.filename, 0) + 1
++                )
+             self.actions.save.setIcon(utils.new_icon("save-check"))
+             items = self.file_list_widget.findItems(
+                 self.image_path, Qt.MatchFlag.MatchExactly
+@@ -5796,6 +6381,10 @@ class LabelingWidget(LabelDialog):
+                 self._set_file_item_checked(
+                     items[0], self._annotation_checked()
+                 )
++                if self._metadata_generation is not None:
++                    items[0].setData(Qt.ItemDataRole.UserRole + 1, self._metadata_generation)
++                    items[0].setData(Qt.ItemDataRole.UserRole + 2, "ready")
++            self._refresh_attribute_search_after_save()
+             # disable allows next and previous image to proceed
+             # self.filename = filename
+             return True
+@@ -5826,7 +6415,11 @@ class LabelingWidget(LabelDialog):
+             try:
+                 shapeDicts = json.loads(json_str)
+                 for shapeDict in shapeDicts:
+-                    shapes.append(Shape().load_from_dict(shapeDict))
++                    shapes.append(
++                        Shape().load_from_dict(
++                            shapeDict, preserve_shape_id=False
++                        )
++                    )
+             except json.JSONDecodeError as e:
+                 self.error_message(
+                     self.tr("Error pasting shapes"),
+@@ -5859,32 +6452,15 @@ class LabelingWidget(LabelDialog):
+             )
+         else:
+             self._copied_shapes = [
+-                s.copy() for s in self.canvas.selected_shapes
++                s.copy_for_new_object() for s in self.canvas.selected_shapes
+             ]
+             self.actions.paste.setEnabled(len(self._copied_shapes) > 0)
+ 
+     def text_selection_changed(self, index):
+-        label = self.label_filter_combobox.text_box.itemText(index)
+-        self._sync_label_list_visibility(
+-            lambda item: label in ["", item.shape().label]
+-            and self.label_info.get(item.shape().label, {}).get(
+-                "visible", True
+-            )
+-        )
++        self._apply_shape_filter_visibility()
+ 
+     def gid_selection_changed(self, index):
+-        gid = self.gid_filter_combobox.gid_box.itemText(index)
+-        self._sync_label_list_visibility(
+-            lambda item: str(gid)
+-            in (
+-                ["-1", str(item.shape().group_id)]
+-                if item.shape().group_id is not None
+-                else ["-1"]
+-            )
+-            and self.label_info.get(item.shape().label, {}).get(
+-                "visible", True
+-            )
+-        )
++        self._apply_shape_filter_visibility()
+ 
+     def label_selection_changed(self):
+         if self._no_selection_slot:
+@@ -5906,6 +6482,10 @@ class LabelingWidget(LabelDialog):
+         self.canvas.set_shape_visible(
+             shape, item.checkState() == Qt.CheckState.Checked
+         )
++        if shape.visible:
++            self._manually_hidden_shapes.discard(shape)
++        else:
++            self._manually_hidden_shapes.add(shape)
+         self._update_select_toggle_button_tooltip()
+         if (
+             hasattr(self, "navigator_dialog")
+@@ -6037,36 +6617,21 @@ class LabelingWidget(LabelDialog):
+         - shape_width (float): The width of the shape.
+         - pos (QPointF): The current mouse coordinates inside the shape.
+         """
+-        num_images = len(self.image_list)
++        # CUSTOM-003: this slot runs for every mouse move while dragging.
++        # Reading ``image_list`` here rebuilt the whole file list twice per
++        # move, so the cost grew with the dataset size.  The former
++        # "member/not member" branches produced identical text, so the list is
++        # no longer read at all.  Keep the integer formatting, the translated
++        # sources and the "no image, no update" behaviour unchanged.
+         if shape_height > 0 and shape_width > 0:
+-            if num_images and self.filename in self.image_list:
+-                self.status(
+-                    str(self.tr("X: %d, Y: %d | H: %d, W: %d"))
+-                    % (
+-                        int(pos.x()),
+-                        int(pos.y()),
+-                        shape_height,
+-                        shape_width,
+-                    )
+-                )
+-            else:
+-                self.status(
+-                    str(self.tr("X: %d, Y: %d | H: %d, W: %d"))
+-                    % (int(pos.x()), int(pos.y()), shape_height, shape_width)
+-                )
++            self.status(
++                str(self.tr("X: %d, Y: %d | H: %d, W: %d"))
++                % (int(pos.x()), int(pos.y()), shape_height, shape_width)
++            )
+         elif self.image_path:
+-            if num_images and self.filename in self.image_list:
+-                self.status(
+-                    str(self.tr("X: %d, Y: %d"))
+-                    % (
+-                        int(pos.x()),
+-                        int(pos.y()),
+-                    )
+-                )
+-            else:
+-                self.status(
+-                    str(self.tr("X: %d, Y: %d")) % (int(pos.x()), int(pos.y()))
+-                )
++            self.status(
++                str(self.tr("X: %d, Y: %d")) % (int(pos.x()), int(pos.y()))
++            )
+ 
+     def on_navigator_request(self, x_ratio, y_ratio):
+         """Handle navigation request from navigator widget."""
+@@ -6309,6 +6874,7 @@ class LabelingWidget(LabelDialog):
+         if hasattr(self, "navigator_dialog"):
+             self.navigator_dialog.set_zoom_value(round(value))
+         self.update_navigator_viewport()
++        self._remember_shared_view()
+ 
+     def pan_canvas(self, delta):
+         self._zoom_animation.stop()
+@@ -6323,6 +6889,181 @@ class LabelingWidget(LabelDialog):
+         self.pan_values[self.filename] = QtCore.QPointF(self.canvas.pan_offset)
+         self.canvas.update()
+         self.update_navigator_viewport()
++        self._remember_shared_view()
++
++    def _share_view_enabled(self):
++        """Return whether same-size images share one viewport."""
++        return bool(self._config.get("share_view_across_same_size", True))
++
++    def _current_image_size(self):
++        """Return the current image's exact ``(width, height)`` group key."""
++        canvas = self.canvas
++        if canvas.pixmap is None or canvas.pixmap.isNull():
++            return None
++        return SharedViewStateStore.size_key(
++            canvas.pixmap.width(),
++            canvas.pixmap.height(),
++        )
++
++    def _current_shared_view(self):
++        """Snapshot the viewport centre in image coordinates.
++
++        The centre is read from the scroll area viewport rather than the
++        canvas alone, so scrolling a large image is part of the snapshot.
++        """
++        canvas = self.canvas
++        if canvas.pixmap is None or canvas.pixmap.isNull():
++            return None
++        viewport = self._canvas_scroll_area.viewport()
++        if viewport is None or viewport.width() <= 0:
++            return None
++        transform = canvas._image_to_widget_transform()
++        inverse, ok = transform.inverted()
++        if not ok:
++            return None
++        viewport_centre = QtCore.QPointF(
++            viewport.width() / 2.0,
++            viewport.height() / 2.0,
++        )
++        canvas_point = viewport_centre - QtCore.QPointF(canvas.pos())
++        image_centre = inverse.map(canvas_point)
++        return SharedViewState(
++            zoom_mode=self.MANUAL_ZOOM,
++            zoom_value=max(0.01, canvas.scale * 100.0),
++            center_x=image_centre.x(),
++            center_y=image_centre.y(),
++        )
++
++    def _remember_shared_view(self):
++        """Store the current viewport for the current image-size group."""
++        if not self.filename:
++            return
++        if getattr(self, "_suppress_shared_view_capture", False):
++            return
++        if not self._share_view_enabled():
++            return
++        size = self._current_image_size()
++        if size is None:
++            return
++        state = self._current_shared_view()
++        if state is None:
++            return
++        self.shared_view_store.remember(size, state)
++
++    def _apply_or_seed_shared_view(self):
++        """Restore the latest group viewport, including on revisited images."""
++        if not self._share_view_enabled():
++            return
++        size = self._current_image_size()
++        if size is None:
++            return
++        state = self.shared_view_store.recall(size)
++        if state is None:
++            self._remember_shared_view()
++            return
++        self._apply_shared_view(state)
++
++    def _apply_shared_view(self, state):
++        """Apply one group viewport and centre it inside the scroll area.
++
++        ``offset_to_center`` is ``base + pan / scale``, so the pan that puts a
++        chosen image point at the canvas centre can be solved directly instead
++        of iterating on the widget geometry.
++
++        Args:
++            state: Viewport snapshot to apply.
++
++        Returns:
++            True when the viewport was applied.
++        """
++        canvas = self.canvas
++        if canvas.pixmap is None or canvas.pixmap.isNull():
++            return False
++        self._zoom_animation.stop()
++        self.actions.fit_width.setChecked(False)
++        self.actions.fit_window.setChecked(False)
++        self.zoom_mode = self.MANUAL_ZOOM
++        with QtCore.QSignalBlocker(self.zoom_widget):
++            self.zoom_widget.setValue(round(state.zoom_value))
++        canvas.scale = state.zoom_value / 100.0
++        canvas.adjustSize()
++        scale = canvas.scale
++        current = canvas.offset_to_center()
++        pan = canvas.pan_offset
++        base_x = current.x() - pan.x() / scale
++        base_y = current.y() - pan.y() / scale
++        target_x = (canvas.width() / 2.0) / scale - state.center_x
++        target_y = (canvas.height() / 2.0) / scale - state.center_y
++        canvas.pan_offset = QtCore.QPointF(
++            (target_x - base_x) * scale,
++            (target_y - base_y) * scale,
++        )
++        canvas.update()
++        self.zoom_values[self.filename] = (
++            self.zoom_mode,
++            state.zoom_value,
++        )
++        self.pan_values[self.filename] = QtCore.QPointF(canvas.pan_offset)
++        self._centre_scroll_on_canvas_centre()
++        if hasattr(self, "navigator_dialog"):
++            self.navigator_dialog.set_zoom_value(round(state.zoom_value))
++        self.update_navigator_viewport()
++        return True
++
++    def _centre_scroll_on_canvas_centre(self):
++        """Scroll so the canvas centre sits in the middle of the viewport."""
++        area = self._canvas_scroll_area
++        if area is None:
++            return
++        viewport = area.viewport()
++        if viewport is None or viewport.width() <= 0:
++            return
++        canvas = self.canvas
++        # The canvas keeps its position inside the scroll content, so
++        # ``pos + value`` is invariant while scrolling. Solving from it puts
++        # the canvas centre exactly at the viewport centre; ensureVisible()
++        # only guarantees a minimum margin and would drift.
++        horizontal = area.horizontalScrollBar()
++        vertical = area.verticalScrollBar()
++        horizontal.setValue(
++            int(
++                round(
++                    canvas.pos().x()
++                    + horizontal.value()
++                    + canvas.width() / 2.0
++                    - viewport.width() / 2.0
++                )
++            )
++        )
++        vertical.setValue(
++            int(
++                round(
++                    canvas.pos().y()
++                    + vertical.value()
++                    + canvas.height() / 2.0
++                    - viewport.height() / 2.0
++                )
++            )
++        )
++
++    def set_share_view_enabled(self, enabled):
++        """Turn same-size viewport sharing on or off for this session."""
++        enabled = bool(enabled)
++        self._config["share_view_across_same_size"] = enabled
++        if enabled:
++            self._remember_shared_view()
++        else:
++            self.shared_view_store.clear()
++        save_config(self._config)
++
++    def reset_shared_view(self, _checked=False):
++        """Forget the current size group and fall back to fit-window."""
++        size = self._current_image_size()
++        if size is not None:
++            self.shared_view_store.forget(size)
++        self.set_fit_window(True)
++        self._remember_shared_view()
++        self.status(self.tr("Reset the view shared by same-size images"))
+ 
+     def set_fit_window(self, value=True):
+         if value:
+@@ -6336,6 +7077,33 @@ class LabelingWidget(LabelDialog):
+         self.zoom_mode = self.FIT_WIDTH if value else self.MANUAL_ZOOM
+         self.adjust_scale()
+ 
++    def _load_rectangle_size_rules(self):
++        """Return persisted rectangle-size rules, ignoring invalid data."""
++        try:
++            return load_rectangle_size_rules(self._config)
++        except RectangleSizeConfigError as error:
++            logger.warning("Ignoring invalid rectangle size rules: %s", error)
++            return ()
++
++    def open_rectangle_size_rule_dialog(self, _checked=False):
++        """Edit per-label minimum rectangle sizes and persist the result."""
++        dialog = RectangleSizeRuleDialog(
++            self.canvas.rectangle_size_rules,
++            self,
++        )
++        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
++            return False
++        rules = dialog.accepted_rules
++        if rules is None:
++            return False
++        self.canvas.set_rectangle_size_rules(rules)
++        self._config["rectangle_size_rules"] = serialize_rectangle_size_rules(
++            rules
++        )
++        save_config(self._config)
++        self.status(self.tr("Rectangle size rules updated"))
++        return True
++
+     def set_canvas_params(self, key, value):
+         self._config[key] = value
+         assert hasattr(self.canvas, key), f"Canvas has no attribute {key}"
+@@ -6451,7 +7219,7 @@ class LabelingWidget(LabelDialog):
+         if filename is not None:
+             try:
+                 current_index = self.fn_to_index[str(filename)]
+-            except ValueError:
++            except (ValueError, KeyError):
+                 return []
+             filenames.append(filename)
+         for _ in range(num_files):
+@@ -6475,6 +7243,12 @@ class LabelingWidget(LabelDialog):
+     def load_file(self, filename=None):  # noqa: C901
+         """Load the specified file, or the last opened file if None."""
+ 
++        if filename and str(filename) != str(self.filename):
++            self._cancel_pending_review()
++        if filename and self._view_timer.isActive() and self._view_first_pending:
++            self._view_first_pending = False
++            self._view_preserve = str(filename)
++
+         # NOTE(jack): Does we need to save the config here?
+         # save_config(self._config)
+ 
+@@ -6495,6 +7269,7 @@ class LabelingWidget(LabelDialog):
+             self.file_list_widget.update()
+             return False
+ 
++        self._remember_shared_view()
+         self.reset_state()
+         self.canvas.setEnabled(False)
+ 
+@@ -6516,9 +7291,18 @@ class LabelingWidget(LabelDialog):
+             label_file_without_path = osp.basename(label_file)
+             label_file = self.output_dir + "/" + label_file_without_path
+ 
+-        if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(
+-            label_file
+-        ):
++        try:
++            os.stat(label_file)
++            label_exists = True
++        except FileNotFoundError:
++            label_exists = False
++        except OSError as e:
++            self.error_message(
++                self.tr("Error opening file"),
++                self.tr("Error reading annotation: %s") % str(e),
++            )
++            return False
++        if label_exists and LabelFile.is_label_file(label_file):
+             try:
+                 self.label_file = LabelFile(
+                     label_file,
+@@ -6636,21 +7420,29 @@ class LabelingWidget(LabelDialog):
+         saved_pan = QtCore.QPointF(
+             self.pan_values.get(self.filename, QtCore.QPointF())
+         )
+-        # set zoom values
+-        is_initial_load = not self.zoom_values
+-        if self.filename in self.zoom_values:
+-            self.zoom_mode = self.zoom_values[self.filename][0]
+-            self.set_zoom(self.zoom_values[self.filename][1])
+-        elif is_initial_load or not self._config["keep_prev_scale"]:
+-            self.adjust_scale(initial=True)
+-        # set scroll values
+-        for orientation in self.scroll_values:
+-            if self.filename in self.scroll_values[orientation]:
+-                self.set_scroll(
+-                    orientation, self.scroll_values[orientation][self.filename]
+-                )
+-        self.canvas.pan_offset = saved_pan
+-        self.pan_values[self.filename] = QtCore.QPointF(saved_pan)
++        # Native per-file restoration must not seed the shared view: until the
++        # last line of this block the pan still belongs to the previous image.
++        self._suppress_shared_view_capture = True
++        try:
++            # set zoom values
++            is_initial_load = not self.zoom_values
++            if self.filename in self.zoom_values:
++                self.zoom_mode = self.zoom_values[self.filename][0]
++                self.set_zoom(self.zoom_values[self.filename][1])
++            elif is_initial_load or not self._config["keep_prev_scale"]:
++                self.adjust_scale(initial=True)
++            # set scroll values
++            for orientation in self.scroll_values:
++                if self.filename in self.scroll_values[orientation]:
++                    self.set_scroll(
++                        orientation,
++                        self.scroll_values[orientation][self.filename],
++                    )
++            self.canvas.pan_offset = saved_pan
++            self.pan_values[self.filename] = QtCore.QPointF(saved_pan)
++        finally:
++            self._suppress_shared_view_capture = False
++        self._apply_or_seed_shared_view()
+ 
+         # set brightness contrast values
+         brightness, contrast = self.brightness_contrast_values.get(
+@@ -6721,8 +7513,11 @@ class LabelingWidget(LabelDialog):
+             self._sidebar_width_ratio = self.right_sidebar.width() / available
+ 
+     def _update_ui_density(self):
++        # Use the stable top-level size to avoid layout feedback.
++        window = self.window()
+         scale = min(
+-            1.5, max(1.0, min(self.width() / 1920, self.height() / 1000))
++            1.5,
++            max(1.0, min(window.width() / 1920, window.height() / 1000)),
+         )
+         scale = round(scale * 8) / 8
+         if scale != self._ui_scale:
+@@ -6800,6 +7595,7 @@ class LabelingWidget(LabelDialog):
+         self.zoom_values[self.filename] = (self.zoom_mode, value)
+         if hasattr(self, "navigator_dialog"):
+             self.navigator_dialog.set_zoom_value(value)
++        self._remember_shared_view()
+ 
+     def scale_fit_window(self):
+         """Figure out the size of the pixmap to fit the main widget."""
+@@ -6826,6 +7622,18 @@ class LabelingWidget(LabelDialog):
+         if not self.may_continue():
+             event.ignore()
+             return
++        exif_thread = self.async_exif_scanner.thread
++        exif_running = exif_thread is not None and exif_thread.isRunning()
++        if self._metadata_controller.is_running() or self._view_controller.is_running() or exif_running:
++            self._metadata_controller.cancel()
++            self._view_controller.cancel()
++            self._exif_generation += 1
++            self._exif_pending = False
++            self.async_exif_scanner.stop_scan()
++            event.ignore()
++            self.status(self.tr("Waiting for annotation reads to finish"), 3000)
++            QtCore.QTimer.singleShot(100, self.window().close)
++            return
+         if self.pointcloud_window is not None:
+             if not self.pointcloud_window.can_close():
+                 event.ignore()
+@@ -6907,40 +7715,71 @@ class LabelingWidget(LabelDialog):
+         self.import_image_folder(dirpath)
+ 
+     def open_prev_unchecked_image(self):
+-        if (
+-            not self.may_continue()
+-            or len(self.image_list) <= 0
+-            or self.filename is None
+-        ):
+-            return
+-
+-        current_index = self.fn_to_index[str(self.filename)]
+-        for i in range(current_index - 1, -1, -1):
+-            if not self._file_item_annotation_checked(
+-                self.file_list_widget.item(i)
+-            ):
+-                filename = self.image_list[i]
+-                if filename:
+-                    self.load_file(filename)
+-                break
++        self._start_review_navigation(-1)
+ 
+     def open_next_unchecked_image(self, _value=False):
+-        if (
+-            not self.may_continue()
+-            or len(self.image_list) <= 0
+-            or self.filename is None
+-        ):
++        self._start_review_navigation(1)
++
++    def _start_review_navigation(self, direction):
++        if self._pending_review_navigation is not None:
+             return
++        if not self.filename or not self.may_continue():
++            return
++        index = self.fn_to_index.get(str(self.filename))
++        if index is None and not self._view_timer.isActive():
++            return
++        self._pending_review_navigation = (
++            direction, self.filename, self._metadata_generation,
++            None if index is None else index + direction,
++        )
++        self._continue_review_navigation()
+ 
+-        current_index = self.fn_to_index[str(self.filename)]
+-        for i in range(current_index + 1, len(self.image_list)):
+-            if not self._file_item_annotation_checked(
+-                self.file_list_widget.item(i)
+-            ):
+-                filename = self.image_list[i]
+-                if filename:
+-                    self.load_file(filename)
+-                break
++    def _continue_review_navigation(self):
++        pending = self._pending_review_navigation
++        if pending is None:
++            return
++        direction, anchor, generation, index = pending
++        if self.filename != anchor or generation != self._metadata_generation:
++            self._pending_review_navigation = None
++            return
++        if index is None:
++            anchor_index = self.fn_to_index.get(str(anchor))
++            if anchor_index is None:
++                if not self._view_timer.isActive():
++                    self._pending_review_navigation = None
++                return
++            index = anchor_index + direction
++            self._pending_review_navigation = (direction, anchor, generation, index)
++        while 0 <= index < self.file_list_widget.count():
++            item = self.file_list_widget.item(index)
++            state = self._metadata_state(item)
++            if state == "unknown":
++                self._metadata_controller.prioritize(item.text())
++                self.status(self.tr("Checking annotation for review navigation"), 3000)
++                return
++            if state == "error":
++                if self._last_review_error == item.text():
++                    path = item.text()
++                    item.setData(Qt.ItemDataRole.UserRole + 2, "unknown")
++                    self._metadata_controller.retry(path, self.output_dir, self._metadata_revisions.get(path, 0))
++                    self._metadata_total += 1
++                    self._last_review_error = None
++                    self._metadata_timer.start()
++                    self.status(self.tr("Retrying annotation: %s") % path, 5000)
++                    return
++                self._last_review_error = item.text()
++                self._pending_review_navigation = None
++                self.status(self.tr("Cannot read annotation: %s. Repeat navigation to retry.") % item.text(), 10000)
++                return
++            if not self._file_item_annotation_checked(item):
++                self._pending_review_navigation = None
++                self.load_file(item.text())
++                return
++            index += direction
++            self._pending_review_navigation = (direction, anchor, generation, index)
++        if direction > 0 and self._view_timer.isActive():
++            return
++        self._pending_review_navigation = None
+ 
+     def open_prev_image(self, _value=False):
+         if not self.may_continue():
+@@ -6949,7 +7788,9 @@ class LabelingWidget(LabelDialog):
+             return
+         if self.filename is None:
+             return
+-        current_index = self.fn_to_index[str(self.filename)]
++        current_index = self.fn_to_index.get(str(self.filename))
++        if current_index is None:
++            return
+         if current_index - 1 >= 0:
+             filename = self.file_list_widget.item(current_index - 1).text()
+             if filename:
+@@ -6965,7 +7806,9 @@ class LabelingWidget(LabelDialog):
+         if self.filename is None:
+             filename = self.file_list_widget.item(0).text()
+         else:
+-            current_index = self.fn_to_index[str(self.filename)]
++            current_index = self.fn_to_index.get(str(self.filename))
++            if current_index is None:
++                return
+             if current_index + 1 < count:
+                 filename = self.file_list_widget.item(current_index + 1).text()
+             else:
+@@ -6994,6 +7837,19 @@ class LabelingWidget(LabelDialog):
+         if file_dialog.exec():
+             filename = file_dialog.selectedFiles()[0]
+             if filename:
++                self._view_controller.cancel()
++                self._view_timer.stop()
++                self._metadata_controller.cancel()
++                self._metadata_timer.stop()
++                self._metadata_generation = None
++                self._metadata_results.clear()
++                self._pending_review_navigation = None
++                self._full_image_paths = None
++                self._full_image_dir = None
++                self._dropped_image_paths = []
++                self._exif_generation += 1
++                self._exif_pending = False
++                self.async_exif_scanner.stop_scan()
+                 self.file_list_widget.clear()
+                 self.fn_to_index.clear()
+                 self.load_file(filename)
+@@ -7017,6 +7873,26 @@ class LabelingWidget(LabelDialog):
+         if not output_dir:
+             return
+ 
++        if not self.may_continue():
++            return
++
++        current_filename = self.filename
++        if self.file_search.text() or self._view_timer.isActive() or not current_filename:
++            self._metadata_controller.cancel()
++            self._metadata_generation = None
++            self._metadata_timer.stop()
++            self.output_dir = output_dir
++            if current_filename:
++                keep_prev = self._config["keep_prev"]
++                self._config["keep_prev"] = False
++                try:
++                    self.load_file(current_filename)
++                finally:
++                    self._config["keep_prev"] = keep_prev
++            if self.last_open_dir:
++                self._start_view(self.last_open_dir, self.file_search.text(), False, False)
++            return
++
+         self.output_dir = output_dir
+ 
+         self.statusBar().showMessage(
+@@ -7025,15 +7901,30 @@ class LabelingWidget(LabelDialog):
+         )
+         self.statusBar().show()
+ 
+-        current_filename = self.filename
+-        self.import_image_folder(self.last_open_dir, load=False)
+-
+-        if current_filename in self.image_list:
+-            # retain currently selected file
+-            self.file_list_widget.setCurrentRow(
+-                self.fn_to_index[str(current_filename)]
+-            )
+-            self.file_list_widget.repaint()
++        self._pending_review_navigation = None
++        self._last_review_error = None
++        paths = [path for path in self.image_list if path != current_filename]
++        self._metadata_revisions = {}
++        self._metadata_results.clear()
++        self._metadata_errors = 0
++        self._metadata_error_paths.clear()
++        self._metadata_search_errors = 0
++        self._metadata_processed = 0
++        self._metadata_total = len(paths)
++        self._metadata_generation = self._metadata_controller.request(paths, output_dir, {})
++        self.file_list_widget.viewport().update()
++        # A directory switch must never copy shapes from the old directory.
++        keep_prev = self._config["keep_prev"]
++        self._config["keep_prev"] = False
++        try:
++            self.load_file(current_filename)
++        finally:
++            self._config["keep_prev"] = keep_prev
++        item = self._current_file_item()
++        if item is not None:
++            item.setCheckState(Qt.CheckState.Checked if self.label_file else Qt.CheckState.Unchecked)
++        self.status(self.tr("Checking annotations in background"))
++        self._metadata_timer.start()
+ 
+     def save_file(self, _value=False):
+         assert not self.image.isNull(), "cannot save empty image"
+@@ -7195,9 +8086,12 @@ class LabelingWidget(LabelDialog):
+             os.remove(label_file)
+             logger.info(f"Label file is removed: {label_file}")
+ 
+-            item = self.file_list_widget.currentItem()
+-            item.setCheckState(Qt.CheckState.Unchecked)
+-            self._set_file_item_checked(item, False)
++            item = self._current_file_item()
++            if item is not None:
++                item.setCheckState(Qt.CheckState.Unchecked)
++                self._set_file_item_checked(item, False)
++            if self.filename:
++                self._metadata_revisions[self.filename] = self._metadata_revisions.get(self.filename, 0) + 1
+ 
+             filename = self.filename
+             self.reset_state()
+@@ -7258,7 +8152,7 @@ class LabelingWidget(LabelDialog):
+             if self.filename is None:
+                 filename = self.image_list[0]
+             else:
+-                current_index = self.fn_to_index[str(self.filename)]
++                current_index = self.fn_to_index.get(str(self.filename), -1)
+                 if current_index + 1 < len(self.image_list):
+                     filename = self.image_list[current_index + 1]
+                 else:
+@@ -7271,6 +8165,8 @@ class LabelingWidget(LabelDialog):
+ 
+             self.filename = filename
+             if self.filename:
++                self._view_first_pending = False
++                self._view_preserve = filename
+                 self.load_file(self.filename)
+ 
+     # Message Dialogs. #
+@@ -7329,6 +8225,7 @@ class LabelingWidget(LabelDialog):
+                 Qt.CheckState.Checked if value else Qt.CheckState.Unchecked
+             )
+             self.label_list[index].shape().visible = True if value else False
++        self._manually_hidden_shapes.clear()
+         self._config["show_shapes"] = value
+         self._update_select_toggle_button_tooltip()
+         if (
+@@ -7421,93 +8318,186 @@ class LabelingWidget(LabelDialog):
+         return lst
+ 
+     def import_dropped_image_files(self, image_files):
+-        extensions = utils.get_supported_image_extensions()
+-
+-        self.filename = None
++        extensions = tuple(utils.get_supported_image_extensions())
++        self._cancel_pending_review()
++        if self._full_image_paths is None and not self._view_timer.isActive():
++            self._full_image_paths = self.image_list
++            if self.filename and self.filename not in self._full_image_paths:
++                self._full_image_paths.append(self.filename)
++            self._full_image_dir = self.last_open_dir or ""
++        known = set(self.image_list)
++        if self._full_image_paths is not None:
++            known.update(self._full_image_paths)
++        known.update(self._dropped_image_paths)
+         valid_files = []
+-        for file in image_files:
+-            if file in self.image_list or not file.lower().endswith(
+-                tuple(extensions)
+-            ):
++        for path in image_files:
++            if path in known or not path.lower().endswith(extensions):
+                 continue
+-            valid_files.append(file)
+-            label_file = osp.splitext(file)[0] + ".json"
+-            if self.output_dir:
+-                label_file_without_path = osp.basename(label_file)
+-                label_file = self.output_dir + "/" + label_file_without_path
+-            item = self._create_file_list_item(file, label_file)
+-            self.file_list_widget.addItem(item)
+-            self.fn_to_index[file] = self.file_list_widget.count() - 1
++            known.add(path)
++            valid_files.append(path)
++        if not valid_files:
++            return
+ 
+-        if len(self.image_list) > 1:
+-            self.actions.open_next_image.setEnabled(True)
+-            self.actions.open_prev_image.setEnabled(True)
+-            self.actions.open_next_unchecked_image.setEnabled(True)
+-            self.actions.open_prev_unchecked_image.setEnabled(True)
++        self._dropped_image_paths.extend(valid_files)
++        if self._full_image_paths is not None:
++            self._full_image_paths.extend(valid_files)
++        elif not self.last_open_dir:
++            self._full_image_paths = self.image_list + valid_files
++            self._full_image_dir = ""
+ 
+-        self.toggle_actions(True)
+-        self.open_next_image()
++        # A fresh request applies exactly the same name/index/attribute rules
++        # to both scanned and dropped paths, even while a prior view drains.
++        directory = self.last_open_dir or self._full_image_dir or ""
++        self._start_view(directory, self.file_search.text(), False, False)
+ 
+-        if valid_files and self._config.get("exif_scan_enabled", True):
++        if self._config.get("exif_scan_enabled", True):
+             self.async_exif_scanner.start_scan(valid_files)
+ 
+     def import_image_folder(self, dirpath, pattern=None, load=True):
+-        if not self.may_continue() or not dirpath:
++        if not dirpath or not self.may_continue():
+             return
+-
+         if self.compare_view_manager.is_active():
+             self.close_compare_view(confirm=False)
+-
++        self.shared_view_store.clear()
+         self.last_open_dir = dirpath
+-        self.filename = None
+-        self.update_browse_actions()
+-        self.file_list_widget.clear()
+-        image_files = []
+-
+-        search_pattern = parse_search_pattern(pattern) if pattern else None
+-
+-        for file_index, filename in enumerate(
+-            utils.scan_all_images(dirpath), start=1
+-        ):
+-            if search_pattern:
+-                if search_pattern.mode == "index":
+-                    if search_pattern.index != file_index:
+-                        continue
++        self.async_exif_scanner.stop_scan()
++        self._exif_generation += 1
++        self._exif_pending = self._config.get("exif_scan_enabled", True)
++        self._full_image_paths = None
++        self._full_image_dir = None
++        self._dropped_image_paths = []
++        self._start_view(dirpath, pattern, load, True)
++
++    def _start_view(self, dirpath, pattern, load, new_directory):
++        self._metadata_controller.cancel()
++        self._metadata_generation = self._metadata_controller.generation
++        self._metadata_results.clear()
++        self._metadata_timer.stop()
++        self._pending_review_navigation = None
++        self._last_review_error = None
++        self._view_buffer.clear()
++        self._view_pending_dropped = []
++        self._view_finished = False
++        self._view_error_message = None
++        self._view_first_load = bool(load or (not new_directory and self.filename is None))
++        self._view_first_pending = new_directory or self.filename is None
++        self._view_preserve = None if new_directory else self.filename
++        if new_directory:
++            if self.filename is not None:
++                self.reset_state()
++                self.set_clean()
++                self.toggle_actions(False)
++                self.canvas.setEnabled(False)
++            self.filename = None
++            self.update_browse_actions()
++        with QtCore.QSignalBlocker(self.file_list_widget):
++            self.file_list_widget.clear()
++        self.fn_to_index.clear()
++        paths = self._full_image_paths if self._full_image_dir == dirpath else None
++        self._view_controller.request(
++            directory=dirpath,
++            extensions=utils.get_supported_image_extensions(),
++            paths=paths,
++            extra_paths=self._dropped_image_paths if paths is None else (),
++            output_dir=self.output_dir,
++            pattern=pattern,
++        )
++        self.status(self.tr("Scanning images and filtering"), 3000)
++        self._view_timer.start()
++
++    def _poll_view(self):
++        if not self._view_buffer:
++            for _, kind, value in self._view_controller.poll():
++                if kind == "paths":
++                    scanned = set(value)
++                    self._full_image_paths = value + [
++                        path for path in self._dropped_image_paths if path not in scanned
++                    ]
++                    self._full_image_dir = self.last_open_dir
++                elif kind == "matches":
++                    self._view_buffer.extend(value)
++                elif kind == "done":
++                    self._view_finished = True
++                    self._view_errors = value
++                elif kind == "error":
++                    self._view_finished = True
++                    self._view_errors = 1
++                    self._view_error_message = value
++                    self.status(self.tr("Image scan failed: %s") % value, 10000)
++        with QtCore.QSignalBlocker(self.file_list_widget):
++            for _ in range(min(100, len(self._view_buffer))):
++                path = self._view_buffer.popleft()
++                if path in self.fn_to_index:
++                    continue
++                item = QtWidgets.QListWidgetItem(path)
++                flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
++                if self._config.get("file_list_checkbox_editable", False):
++                    flags |= Qt.ItemFlag.ItemIsUserCheckable
++                item.setFlags(flags)
++                item.setCheckState(Qt.CheckState.PartiallyChecked)
++                self.file_list_widget.addItem(item)
++                self.fn_to_index[path] = self.file_list_widget.count() - 1
++                if path == self._view_preserve:
++                    self.file_list_widget.setCurrentItem(item)
++        if self._view_first_pending and self.file_list_widget.count():
++            self._view_first_pending = False
++            self.toggle_actions(True)
++            self.open_next_image(load=self._view_first_load)
++        if self._pending_review_navigation is not None:
++            self._continue_review_navigation()
++        if not self._view_finished or self._view_buffer:
++            self.status(
++                self.tr("Filtering images: %s matches so far") % self.file_list_widget.count(),
++                3000,
++            )
++        if self._view_finished and not self._view_buffer:
++            self._view_timer.stop()
++            if self._pending_review_navigation is not None:
++                self._continue_review_navigation()
++            paths = self.image_list
++            self.actions.open_next_image.setEnabled(bool(paths))
++            self.actions.open_prev_image.setEnabled(bool(paths))
++            self.actions.open_next_unchecked_image.setEnabled(bool(paths))
++            self.actions.open_prev_unchecked_image.setEnabled(bool(paths))
++            if not paths:
++                if self._view_error_message:
++                    self.status(self.tr("Image scan failed: %s") % self._view_error_message, 10000)
++                elif self._view_errors:
++                    self.status(self.tr("No matches; unreadable annotations: %s") % self._view_errors, 10000)
+                 else:
+-                    if not matches_filename(filename, search_pattern):
+-                        continue
+-
+-                    if search_pattern.mode == "attribute":
+-                        label_file = osp.splitext(filename)[0] + ".json"
+-                        if self.output_dir:
+-                            label_file_without_path = osp.basename(label_file)
+-                            label_file = (
+-                                self.output_dir + "/" + label_file_without_path
+-                            )
+-
+-                        if not matches_label_attribute(
+-                            filename, label_file, search_pattern
+-                        ):
+-                            continue
+-
+-            image_files.append(filename)
+-            label_file = osp.splitext(filename)[0] + ".json"
+-            if self.output_dir:
+-                label_file_without_path = osp.basename(label_file)
+-                label_file = self.output_dir + "/" + label_file_without_path
+-            item = self._create_file_list_item(filename, label_file)
+-            self.file_list_widget.addItem(item)
+-            self.fn_to_index[filename] = self.file_list_widget.count() - 1
+-
+-        self.actions.open_next_image.setEnabled(True)
+-        self.actions.open_prev_image.setEnabled(True)
+-        self.actions.open_next_unchecked_image.setEnabled(True)
+-        self.actions.open_prev_unchecked_image.setEnabled(True)
+-        self.toggle_actions(True)
+-        self.open_next_image(load=load)
+-
+-        if image_files and self._config.get("exif_scan_enabled", True):
+-            self.async_exif_scanner.start_scan(image_files)
++                    self.status(self.tr("No matching images"), 5000)
++                return
++            self._metadata_revisions = {}
++            self._metadata_results.clear()
++            self._metadata_errors = self._view_errors
++            self._metadata_error_paths.clear()
++            self._metadata_search_errors = self._view_errors
++            self._metadata_processed = 0
++            self._metadata_total = len(paths)
++            self._metadata_generation = self._metadata_controller.request(paths, self.output_dir, {})
++            if self._pending_review_navigation is not None:
++                direction, anchor, _, index = self._pending_review_navigation
++                self._pending_review_navigation = (direction, anchor, self._metadata_generation, index)
++            if self.filename in self.fn_to_index and self.image_path:
++                item = self._current_file_item()
++                self._update_current_file_checked_item()
++                item.setCheckState(Qt.CheckState.Checked if self.label_file else Qt.CheckState.Unchecked)
++            self.file_list_widget.viewport().update()
++            self._metadata_timer.start()
++            if self._exif_pending:
++                generation = self._exif_generation
++                QtCore.QTimer.singleShot(150, lambda: self._start_pending_exif(generation))
++
++    def _start_pending_exif(self, generation):
++        if generation != self._exif_generation or not self._exif_pending:
++            return
++        thread = self.async_exif_scanner.thread
++        if thread is not None:
++            QtCore.QTimer.singleShot(200, lambda: self._start_pending_exif(generation))
++            return
++        self._exif_pending = False
++        if self._full_image_paths:
++            self.async_exif_scanner.start_scan(self._full_image_paths)
+ 
+     def toggle_auto_labeling_widget(self):
+         """Toggle auto labeling widget visibility."""
+diff --git a/anylabeling/views/labeling/settings/runtime_applier.py b/anylabeling/views/labeling/settings/runtime_applier.py
+index 90bdcc8c..df7732da 100644
+--- a/anylabeling/views/labeling/settings/runtime_applier.py
++++ b/anylabeling/views/labeling/settings/runtime_applier.py
+@@ -351,6 +351,7 @@ class SettingsRuntimeApplier:
+             float(width),
+             str(crosshair["color"]),
+             float(crosshair["opacity"]),
++            bool(crosshair.get("show_when_drawing", True)),
+         )
+         self._widget.crosshair_settings = dict(crosshair)
+         self._widget.crosshair_settings["width"] = float(width)
+diff --git a/anylabeling/views/labeling/settings/schema.py b/anylabeling/views/labeling/settings/schema.py
+index cf44c1f6..bf2ed8e8 100644
+--- a/anylabeling/views/labeling/settings/schema.py
++++ b/anylabeling/views/labeling/settings/schema.py
+@@ -995,6 +995,21 @@ def _non_shortcut_fields() -> list[SettingField]:
+                 "Show crosshair guides on the canvas.",
+             ),
+         ),
++        SettingField(
++            "canvas.crosshair.show_when_drawing",
++            QT_TRANSLATE_NOOP(
++                SETTINGS_TRANSLATION_CONTEXT,
++                "Rectangle Drawing Crosshair",
++            ),
++            "bool",
++            "Canvas",
++            "Interaction",
++            "Crosshair",
++            description=QT_TRANSLATE_NOOP(
++                SETTINGS_TRANSLATION_CONTEXT,
++                "Show full-image guides while drawing two-point rectangles.",
++            ),
++        ),
+         SettingField(
+             "canvas.crosshair.width",
+             QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Crosshair Width"),
+diff --git a/anylabeling/views/labeling/shape.py b/anylabeling/views/labeling/shape.py
+index b68ea16a..5196128f 100644
+--- a/anylabeling/views/labeling/shape.py
++++ b/anylabeling/views/labeling/shape.py
+@@ -5,6 +5,7 @@ from PyQt6 import QtCore, QtGui
+ 
+ from . import utils
+ from ..labeling.logger import logger
++from .shape_identity import new_shape_id as _new_shape_id
+ 
+ # TODO(unknown):
+ # - [opt] Store paths instead of creating new ones at each paint.
+@@ -34,6 +35,7 @@ class Shape:
+     NEAR_VERTEX = 1
+ 
+     KEYS = [
++        "xanylabeling_shape_id",
+         "label",
+         "score",
+         "points",
+@@ -78,6 +80,7 @@ class Shape:
+         direction=0,
+         attributes=None,
+         kie_linking=None,
++        shape_id=None,
+     ):
+         if attributes is None:
+             attributes = {}
+@@ -96,6 +99,7 @@ class Shape:
+         self.shape_type = shape_type
+         self.flags = flags
+         self.other_data = {}
++        self.xanylabeling_shape_id = shape_id or self.new_shape_id()
+         self.attributes = attributes
+         self.cache_label = None
+         self.cache_description = None
+@@ -135,6 +139,7 @@ class Shape:
+         if self.shape_type == "cuboid" and len(self.points) >= 8:
+             self.sync_cuboid_depth_vector()
+         dictData = {
++            "xanylabeling_shape_id": self.xanylabeling_shape_id,
+             "label": self.label,
+             "score": self.score,
+             "points": [(p.x(), p.y()) for p in self.points],
+@@ -155,7 +160,21 @@ class Shape:
+         dictData.pop("locked", None)
+         return dictData
+ 
+-    def load_from_dict(self, data: dict, close=True):
++    @staticmethod
++    def new_shape_id():
++        """Return a new identity for a newly created annotation shape."""
++        return _new_shape_id()
++
++    def load_from_dict(self, data: dict, close=True, preserve_shape_id=True):
++        """Load serialized shape data and optionally preserve its identity.
++
++        Args:
++            data: X-AnyLabeling shape mapping.
++            close: Whether to close the shape after loading its points.
++            preserve_shape_id: Keep the serialized identity for file loads and
++                undo restores. Set to False for paste/import-as-new
++                operations.
++        """
+         self.label = data["label"]
+         self.score = data.get("score")
+         self.points = [QtCore.QPointF(p[0], p[1]) for p in data["points"]]
+@@ -175,6 +194,15 @@ class Shape:
+             raise ValueError("kie_linking must be a list of integer pairs")
+         self.kie_linking = kie_linking
+         self.locked = False
++        serialized_id = data.get("xanylabeling_shape_id")
++        if (
++            preserve_shape_id
++            and isinstance(serialized_id, str)
++            and serialized_id
++        ):
++            self.xanylabeling_shape_id = serialized_id
++        else:
++            self.xanylabeling_shape_id = self.new_shape_id()
+         if self.shape_type == "rotation":
+             self.direction = data.get("direction", 0)
+         self.other_data = {k: v for k, v in data.items() if k not in self.KEYS}
+@@ -836,7 +864,7 @@ class Shape:
+         self._highlight_index = None
+ 
+     def copy(self):
+-        """Copy shape"""
++        """Copy shape, keeping the persistent identity of the source."""
+         memo = {id(point): QtCore.QPointF(point) for point in self.points}
+         memo[id(self.points)] = [memo[id(point)] for point in self.points]
+         for value in self.__dict__.values():
+@@ -844,6 +872,12 @@ class Shape:
+                 memo[id(value)] = QtGui.QColor(value)
+         return copy.deepcopy(self, memo)
+ 
++    def copy_for_new_object(self):
++        """Copy shape as a new annotation object with a fresh identity."""
++        result = self.copy()
++        result.xanylabeling_shape_id = self.new_shape_id()
++        return result
++
+     def __len__(self):
+         return len(self.points)
+ 
+diff --git a/anylabeling/views/labeling/utils/async_exif.py b/anylabeling/views/labeling/utils/async_exif.py
+index a014ce50..0bde2ab0 100644
+--- a/anylabeling/views/labeling/utils/async_exif.py
++++ b/anylabeling/views/labeling/utils/async_exif.py
+@@ -50,10 +50,14 @@ class AsyncExifScanner(QObject):
+         super().__init__(parent)
+         self.worker = None
+         self.thread = None
++        self._pending_files = None
+ 
+     def start_scan(self, image_files: List[str]):
+-        if self.thread and self.thread.isRunning():
+-            self.stop_scan()
++        if self.thread is not None:
++            self._pending_files = list(image_files)
++            if self.worker is not None:
++                self.worker.stop()
++            return
+ 
+         self.thread = QtCore.QThread(self)
+         self.worker = ExifScannerWorker(image_files)
+@@ -61,38 +65,27 @@ class AsyncExifScanner(QObject):
+ 
+         self.thread.started.connect(self.worker.scan_files)
+         self.worker.exif_files_found.connect(self.exif_detected)
+-        self.worker.scan_finished.connect(self._cleanup_thread)
++        self.worker.scan_finished.connect(self.thread.quit)
++        self.worker.scan_finished.connect(self.worker.deleteLater)
++        self.thread.finished.connect(self._cleanup_thread)
+ 
+         self.thread.start()
+ 
+     def _cleanup_thread(self):
+-        if self.worker:
+-            try:
+-                self.worker.scan_finished.disconnect(self._cleanup_thread)
+-            except (RuntimeError, TypeError):
+-                pass
+-        if self.thread:
+-            try:
+-                if self.thread.isRunning():
+-                    self.thread.quit()
+-                    if not self.thread.wait(3000):
+-                        self.thread.terminate()
+-                        self.thread.wait()
+-                self.thread.deleteLater()
+-                self.thread = None
+-            except RuntimeError:
+-                self.thread = None
+-        if self.worker:
+-            try:
+-                self.worker.deleteLater()
+-            except RuntimeError:
+-                pass
+-            self.worker = None
++        thread = self.thread
++        self.thread = None
++        self.worker = None
++        if thread is not None:
++            thread.deleteLater()
++        pending = self._pending_files
++        self._pending_files = None
++        if pending is not None:
++            self.start_scan(pending)
+ 
+     def stop_scan(self):
++        self._pending_files = None
+         if self.worker:
+             self.worker.stop()
+-        self._cleanup_thread()
+ 
+ 
+ class ExifProcessingDialog:
+diff --git a/anylabeling/views/labeling/utils/file_search.py b/anylabeling/views/labeling/utils/file_search.py
+index 7038491d..7e760aff 100644
+--- a/anylabeling/views/labeling/utils/file_search.py
++++ b/anylabeling/views/labeling/utils/file_search.py
+@@ -237,6 +237,8 @@ def matches_label_attribute(
+     image_file: str,
+     label_file: str,
+     search_pattern: SearchPattern,
++    *,
++    strict: bool = False,
+ ) -> bool:
+     """
+     Check if label file contains shapes matching the attribute filter.
+@@ -258,11 +260,6 @@ def matches_label_attribute(
+     filter_type = search_pattern.attribute_filter["type"]
+     filter_value = search_pattern.attribute_filter["value"]
+ 
+-    if not osp.exists(label_file):
+-        if filter_type == "checked":
+-            return filter_value is False or filter_value == "unchecked"
+-        return False
+-
+     try:
+         with open(label_file, "r", encoding="utf-8") as f:
+             data = json.load(f)
+@@ -366,7 +363,13 @@ def matches_label_attribute(
+             return False
+ 
+         return False
+-    except (json.JSONDecodeError, IOError, KeyError):
++    except FileNotFoundError:
++        if filter_type == "checked":
++            return filter_value is False or filter_value == "unchecked"
++        return False
++    except (ValueError, OSError, KeyError, TypeError, AttributeError):
++        if strict:
++            raise
+         return False
+ 
+ 
+diff --git a/anylabeling/views/labeling/widgets/canvas.py b/anylabeling/views/labeling/widgets/canvas.py
+index 3c6a5a3c..354d3122 100644
+--- a/anylabeling/views/labeling/widgets/canvas.py
++++ b/anylabeling/views/labeling/widgets/canvas.py
+@@ -14,7 +14,28 @@ from anylabeling.views.labeling.utils.colormap import label_colormap
+ from anylabeling.views.labeling.utils.theme import get_theme
+ 
+ from .. import utils
++from .point_fit import PointFitMixin
++from .rectangle_crosshair import RectangleCrosshairMixin
++from .rectangle_edge import RectangleEdgeMixin
++from .rectangle_size_overlay import (
++    RectangleSizeOverlayRenderer,
++    RectangleSizeOverlayRequest,
++    merge_overlay_requests,
++    overlay_request_from_issue,
++)
++from ..logger import logger
++from ..rectangle_size import (
++    RectangleCandidate,
++    RectangleSizeEvaluator,
++    RectangleSizeIssue,
++    RectangleSizeRule,
++)
+ from ..shape import Shape
++from ..shape_identity import (
++    MISSING_SHAPE_ID,
++    describe_shape_identity_diagnostics,
++    normalize_shape_identities,
++)
+ 
+ CURSOR_DEFAULT = QtCore.Qt.CursorShape.ArrowCursor
+ CURSOR_POINT = QtCore.Qt.CursorShape.PointingHandCursor
+@@ -52,7 +73,10 @@ LABEL_COLORMAP = label_colormap()
+ 
+ 
+ class Canvas(
+-    QtWidgets.QWidget
++    RectangleCrosshairMixin,
++    PointFitMixin,
++    RectangleEdgeMixin,
++    QtWidgets.QWidget,
+ ):  # pylint: disable=too-many-public-methods, too-many-instance-attributes
+     """Canvas widget to handle label drawing"""
+ 
+@@ -64,6 +88,7 @@ class Canvas(
+     # when the cursor moves over an object
+     mode_changed = QtCore.pyqtSignal()
+     new_shape = QtCore.pyqtSignal()
++    image_changed = QtCore.pyqtSignal()
+     show_shape = QtCore.pyqtSignal(int, int, QtCore.QPointF)
+     selection_changed = QtCore.pyqtSignal(list)
+     shape_moved = QtCore.pyqtSignal()
+@@ -138,6 +163,18 @@ class Canvas(
+         self.current = None
+         self.selected_shapes = []  # save the selected shapes here
+         self.selected_shapes_copy = []
++        self._point_fit_pressed = False
++        self._point_fit_corner = None
++        self._point_fit_box = None
++        self._point_fit_inward = False
++        self._point_fit_target = None
++        self._point_fit_start = None
++        self._point_fit_pending_box = None
++        self._point_fit_cursor = None
++        self._point_fit_anchor = None
++        self._rectangle_edge_enabled = False
++        self._rectangle_edge_hover = None
++        self._rectangle_edge_drag = None
+         # self.line represents:
+         #   - create_mode == 'polygon': edge from last point to current
+         #   - create_mode == 'rectangle': diagonal line of the rectangle
+@@ -211,6 +248,34 @@ class Canvas(
+         self.show_masks = True
+         self.show_texts = True
+         self.show_labels = True
++        self.show_labels_only_selected = False
++        # Live rectangle W/H readout and label-specific minimum-size rules.
++        self.show_rectangle_pixels = False
++        self._show_rectangle_size_violations = False
++        self._rectangle_size_rules: tuple = ()
++        self._rectangle_size_evaluator = RectangleSizeEvaluator(())
++        self._rectangle_size_issues: tuple = ()
++        self._rectangle_size_issue_shapes: dict = {}
++        self._rectangle_size_overlay_renderer = (
++            RectangleSizeOverlayRenderer()
++        )
++        self._rectangle_size_scan_interval_ms = 32
++        self._rectangle_size_scan_timer = QtCore.QTimer(self)
++        self._rectangle_size_scan_timer.setSingleShot(True)
++        self._rectangle_size_scan_timer.setInterval(
++            self._rectangle_size_scan_interval_ms
++        )
++        self._rectangle_size_scan_timer.timeout.connect(
++            self._rescan_rectangle_size_issues
++        )
++        self.shape_moved.connect(self.invalidate_rectangle_size_issues)
++        self.selection_changed.connect(
++            lambda _shapes: self.invalidate_rectangle_size_issues()
++        )
++        self.new_shape.connect(self.invalidate_rectangle_size_issues)
++        self.shapes_deleted.connect(
++            lambda _shapes: self.invalidate_rectangle_size_issues()
++        )
+         self.show_scores = True
+         self.show_degrees = False
+         self.show_attributes = True
+@@ -221,6 +286,11 @@ class Canvas(
+         self.cross_line_width = 2.0
+         self.cross_line_color = "#00FF00"
+         self.cross_line_opacity = 0.5
++        # Two-point rectangle creation guide (fork-specific).
++        self.rectangle_creation_crosshair_show = True
++        self._crosshair_cursor_active = False
++        # Four-extreme creation controller, attached by the label widget.
++        self.rectangle_creation = None
+ 
+         # Set attributes color options.
+         self.attr_background_color = self.attributes_config.get(
+@@ -393,6 +463,7 @@ class Canvas(
+ 
+     def cancel_drawing(self):
+         """Discard the unfinished shape and its drawing preview."""
++        self._clear_crosshair_cursor()
+         if self.current is None:
+             return
+         self.current = None
+@@ -621,6 +692,9 @@ class Canvas(
+ 
+     def leaveEvent(self, _):
+         """Mouse leave event"""
++        self._clear_crosshair_cursor()
++        if self._rectangle_edge_drag is None:
++            self._rectangle_edge_cancel()
+         self._clear_space_pan_state()
+         self.store_moving_shape()
+         self.un_highlight()
+@@ -630,6 +704,9 @@ class Canvas(
+ 
+     def focusOutEvent(self, _):
+         """Window out of focus event"""
++        self._clear_crosshair_cursor()
++        self._rectangle_edge_cancel()
++        self._clear_point_fit()
+         self._clear_space_pan_state()
+         self._right_pan_start = None
+         self._right_pan_prev_point = None
+@@ -640,6 +717,320 @@ class Canvas(
+         """Check if a shape is visible"""
+         return self.visible.get(shape, True)
+ 
++    def label_text_visible(self, shape):
++        """Return whether this shape may paint its label text.
++
++        ``show_labels_only_selected`` keeps the canvas readable in dense
++        scenes; hovering an unselected shape still previews its label.
++        """
++        if not self.show_labels_only_selected:
++            return True
++        return bool(shape.selected) or shape is self.h_shape
++
++    # --- Live rectangle size readout and minimum-size rules -----------
++
++    @property
++    def show_rectangle_size_violations(self):
++        """Return whether minimum-size rule warnings are painted."""
++        return self._show_rectangle_size_violations
++
++    @show_rectangle_size_violations.setter
++    def show_rectangle_size_violations(self, enabled):
++        """Toggle rule warnings and keep the issue cache consistent."""
++        enabled = bool(enabled)
++        if enabled == self._show_rectangle_size_violations:
++            return
++        self._show_rectangle_size_violations = enabled
++        if enabled:
++            self.invalidate_rectangle_size_issues()
++        else:
++            self._rectangle_size_scan_timer.stop()
++            self.clear_rectangle_size_issues()
++
++    @property
++    def rectangle_size_rules(self):
++        """Return the active immutable rectangle-size rule snapshot."""
++        return self._rectangle_size_rules
++
++    def set_rectangle_size_rules(self, rules):
++        """Replace rectangle-size rules and refresh cached issues."""
++        new_rules = tuple(rules)
++        new_evaluator = RectangleSizeEvaluator(new_rules)
++        if new_rules == self._rectangle_size_rules:
++            return
++        self._rectangle_size_rules = new_rules
++        self._rectangle_size_evaluator = new_evaluator
++        self._rectangle_size_issues = ()
++        self._rectangle_size_issue_shapes = {}
++        self.invalidate_rectangle_size_issues()
++
++    @property
++    def rectangle_size_issues(self):
++        """Return cached issues in canvas shape order."""
++        return self._rectangle_size_issues
++
++    def clear_rectangle_size_issues(self):
++        """Drop cached issues and repaint without them."""
++        if not self._rectangle_size_issues:
++            return
++        self._rectangle_size_issues = ()
++        self._rectangle_size_issue_shapes = {}
++        self.update()
++
++    def invalidate_rectangle_size_issues(self):
++        """Schedule one coalesced issue rescan for the current snapshot."""
++        if not self.show_rectangle_size_violations:
++            self._rectangle_size_scan_timer.stop()
++            self.clear_rectangle_size_issues()
++            return
++        self._rectangle_size_scan_timer.start()
++
++    def _rescan_rectangle_size_issues(self):
++        """Recompute cached issues and repaint only on a visible change."""
++        if not self.show_rectangle_size_violations:
++            self.clear_rectangle_size_issues()
++            return
++        issues, issue_shapes = self._evaluate_rectangle_size_issues()
++        changed = issues != self._rectangle_size_issues
++        self._rectangle_size_issues = issues
++        self._rectangle_size_issue_shapes = issue_shapes
++        if changed:
++            self.update()
++
++    def _evaluate_rectangle_size_issues(self):
++        """Return issues plus their live-shape lookup for one snapshot."""
++        if not self._rectangle_size_rules:
++            return ((), {})
++        candidates = []
++        shape_by_candidate = {}
++        for index, shape in enumerate(self.shapes):
++            candidate = self._rectangle_size_candidate(shape, index)
++            if candidate is None:
++                continue
++            candidates.append(candidate)
++            shape_by_candidate[candidate.candidate_id] = shape
++        issues = self._rectangle_size_evaluator.evaluate(candidates)
++        return (issues, shape_by_candidate)
++
++    def _rectangle_size_candidate(self, shape, index):
++        """Build one evaluator snapshot, or ``None`` when not measurable."""
++        if shape.shape_type != "rectangle":
++            return None
++        if not isinstance(shape.label, str) or not shape.label:
++            return None
++        if not self._size_overlay_shape_drawn(shape):
++            return None
++        try:
++            bbox = self._point_fit_shape_box(shape)
++        except (IndexError, ValueError):
++            return None
++        return RectangleCandidate(
++            candidate_id=id(shape),
++            shape_index=index,
++            label=shape.label,
++            shape_type="rectangle",
++            bbox=bbox,
++            interactive=True,
++        )
++
++    def _size_overlay_shape_drawn(self, shape):
++        """Return whether a shape is currently painted and reachable."""
++        if shape not in self.shapes:
++            return False
++        if not shape.visible or not self.is_visible(shape):
++            return False
++        return bool(shape.selected or not self._hide_backround)
++
++    @staticmethod
++    def _extent_from_two_points(first, second):
++        """Return normalized image-space bounds for a two-point rectangle."""
++        x0, y0 = first.x(), first.y()
++        x1, y1 = second.x(), second.y()
++        return (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
++
++    def _size_overlay_target(self):
++        """Return ``(shape, bbox)`` for the rectangle the readout describes.
++
++        Priority mirrors what the user is manipulating right now: an
++        in-progress creation, an active edge drag, the hovered rectangle, then
++        the single selected rectangle. ``shape`` is ``None`` while creating.
++        """
++        if self.drawing() and self.create_mode == "rectangle":
++            if (
++                self.current
++                and len(self.current) >= 1
++                and len(self.line.points) >= 2
++            ):
++                return (
++                    None,
++                    self._extent_from_two_points(
++                        self.current[0], self.line.points[1]
++                    ),
++                )
++            return None
++
++        drag = self._rectangle_edge_drag
++        if drag is not None and drag.shape is not None:
++            shape = drag.shape
++            if self._size_overlay_shape_drawn(shape):
++                return (shape, self._point_fit_shape_box(shape))
++
++        hover = self.h_shape
++        if hover is not None and self._size_overlay_shape_drawn(hover):
++            return (hover, self._point_fit_shape_box(hover))
++
++        if len(self.selected_shapes) == 1:
++            shape = self.selected_shapes[0]
++            if self._size_overlay_shape_drawn(shape):
++                return (shape, self._point_fit_shape_box(shape))
++        return None
++
++    def _image_to_widget_transform(self):
++        """Return the image-space to widget-space transform used by paint."""
++        transform = QtGui.QTransform()
++        transform.scale(self.scale, self.scale)
++        offset = self.offset_to_center()
++        transform.translate(offset.x(), offset.y())
++        return transform
++
++    def _size_overlay_viewport(self):
++        """Return the visible image-space bounds used by overlay layout."""
++        transform = self._image_to_widget_transform()
++        inverse, ok = transform.inverted()
++        if not ok:
++            return (0.0, 0.0, float(self.width()), float(self.height()))
++        top_left = inverse.map(QtCore.QPointF(0.0, 0.0))
++        bottom_right = inverse.map(
++            QtCore.QPointF(float(self.width()), float(self.height()))
++        )
++        return (
++            top_left.x(),
++            top_left.y(),
++            bottom_right.x(),
++            bottom_right.y(),
++        )
++
++    def _label_display_text(self, shape):
++        """Return the label line painted for one shape, or an empty string."""
++        fields = []
++        if self.show_labels and self.label_text_visible(shape):
++            label = shape.label or ""
++            if shape.group_id is not None:
++                label = f"{label} ({shape.group_id})".strip()
++            if label:
++                fields.append(label)
++            if shape.score is not None and self.show_scores:
++                fields.append(f"{float(shape.score):.2f}")
++        if self.show_texts and shape.description:
++            fields.append(shape.description)
++        return " · ".join(fields)
++
++    def _size_overlay_label_rect(self, shape):
++        """Return the painted label rectangle in image space, if any.
++
++        The readout is anchored to the same label box the user sees, so it
++        never covers the class name at any zoom level.
++        """
++        if shape is None or not shape.visible:
++            return None
++        text = self._label_display_text(shape)
++        if not text:
++            return None
++        metrics = QtGui.QFontMetrics(
++            QtGui.QFont("Arial", self.label_font_size)
++        )
++        text_rect = metrics.tightBoundingRect(text)
++        rect_width = float(text_rect.width() + 8)
++        rect_height = float(metrics.height() + 4)
++        try:
++            bbox = shape.bounding_rect()
++        except IndexError:
++            return None
++        transform = self._image_to_widget_transform()
++        inverse, ok = transform.inverted()
++        if not ok:
++            return None
++        anchor = transform.map(bbox.topLeft())
++        top_left = inverse.map(
++            QtCore.QPointF(anchor.x(), anchor.y() - rect_height)
++        )
++        bottom_right = inverse.map(
++            QtCore.QPointF(anchor.x() + rect_width, anchor.y())
++        )
++        return (
++            top_left.x(),
++            top_left.y(),
++            bottom_right.x() - top_left.x(),
++            bottom_right.y() - top_left.y(),
++        )
++
++    def _normal_size_overlay_request(self):
++        """Build the live W/H request for the current edit target."""
++        if not self.show_rectangle_pixels:
++            return None
++        target = self._size_overlay_target()
++        if target is None:
++            return None
++        shape, bbox = target
++        width = bbox[2] - bbox[0]
++        height = bbox[3] - bbox[1]
++        if width < 1e-6 and height < 1e-6:
++            return None
++        return RectangleSizeOverlayRequest(
++            candidate_id=(
++                id(shape) if shape is not None else "rectangle-creation"
++            ),
++            lines=(self.tr("W %.1f px  H %.1f px") % (width, height),),
++            bbox=bbox,
++            label_rect=self._size_overlay_label_rect(shape),
++            warning=False,
++        )
++
++    def _violation_overlay_requests(self):
++        """Build warning requests for currently drawn rule violations."""
++        if not self.show_rectangle_size_violations:
++            return ()
++        self._schedule_rectangle_size_rescan()
++        requests = []
++        for issue in self._rectangle_size_issues:
++            shape = self._rectangle_size_issue_shapes.get(issue.candidate_id)
++            if shape is None or not self._size_overlay_shape_drawn(shape):
++                continue
++            requests.append(
++                overlay_request_from_issue(
++                    issue,
++                    label_rect=self._size_overlay_label_rect(shape),
++                )
++            )
++        return tuple(requests)
++
++    def _schedule_rectangle_size_rescan(self):
++        """Keep cached issues fresh while an edit gesture is in progress."""
++        if self._rectangle_size_scan_timer.isActive():
++            return
++        if self._rectangle_edge_drag is None and not self.drawing():
++            return
++        self._rectangle_size_scan_timer.start()
++
++    def _paint_rectangle_size(self, painter):
++        """Paint live size readouts and rule warnings above everything else."""
++        if not (
++            self.show_rectangle_pixels
++            or self.show_rectangle_size_violations
++        ):
++            return
++        requests = merge_overlay_requests(
++            self._normal_size_overlay_request(),
++            self._violation_overlay_requests(),
++        )
++        if not requests:
++            return
++        self._rectangle_size_overlay_renderer.render(
++            painter,
++            requests,
++            self._size_overlay_viewport(),
++        )
++
+     def _shape_hit_candidates(self, point):
+         """Return shapes under a point in interaction priority order."""
+         candidates = []
+@@ -647,6 +1038,10 @@ class Canvas(
+         for stack_index, shape in enumerate(self.shapes):
+             if not self.is_visible(shape):
+                 continue
++            # Focus/background hiding stops painting unselected shapes, so
++            # they must not stay hittable as invisible targets.
++            if self._hide_backround and not shape.selected:
++                continue
+ 
+             rect = shape.bounding_rect()
+             area = max(0.0, rect.width()) * max(0.0, rect.height())
+@@ -1624,6 +2019,8 @@ class Canvas(
+ 
+     def set_editing(self, value=True):
+         """Set editing mode. Editing is set to False, user is drawing"""
++        self._rectangle_edge_cancel()
++        self._clear_point_fit()
+         self.mode = self.EDIT if value else self.CREATE
+         if value:
+             self.cancel_drawing()
+@@ -2080,6 +2477,8 @@ class Canvas(
+         except AttributeError:
+             return
+ 
++        self._update_crosshair_cursor(pos)
++
+         if self._space_panning:
+             if ev.buttons() & self._pan_button:
+                 self._update_space_pan(ev.globalPosition())
+@@ -2098,6 +2497,22 @@ class Canvas(
+             ev.accept()
+             return
+ 
++        if self._rectangle_edge_drag_move(pos, ev):
++            ev.accept()
++            return
++        # A rejected point-fit press belongs to native selection/dragging.
++        # Only hover or an already captured fit may update the fit preview.
++        if (
++            self._point_fit_pressed or not ev.buttons()
++        ) and self._point_fit_move(pos, ev.modifiers()):
++            if self._rectangle_edge_hover is not None:
++                self._rectangle_edge_cancel()
++            ev.accept()
++            return
++        if not ev.buttons() and self._rectangle_edge_hover_move(pos):
++            ev.accept()
++            return
++
+         if self.is_brush_mode and self.editing():
+             self._brush_mouse_move(ev, pos)
+             return
+@@ -2126,7 +2541,12 @@ class Canvas(
+ 
+         prev_hover_shape = self.h_shape
+         self.prev_move_point = pos
+-        self.repaint()
++        # CUSTOM-003: schedule instead of painting synchronously.  Branches
++        # below that change geometry request their own repaint, so the event
++        # loop paints the newest state once instead of painting the stale
++        # state first.  Hover-only paths rely on this request to clear the
++        # previous highlight.
++        self.update()
+ 
+         # Handle auto decode mode
+         if (
+@@ -2264,7 +2684,7 @@ class Canvas(
+                 self.is_move_editing = False
+                 try:
+                     self.bounded_move_vertex(pos)
+-                    self.repaint()
++                    self.update()
+                     self.moving_shape = True
+                 except IndexError:
+                     return
+@@ -2295,7 +2715,7 @@ class Canvas(
+                     self.h_shape, self.h_cuboid_face, offset
+                 )
+                 self.prev_point = pos
+-                self.repaint()
++                self.update()
+                 self.moving_shape = True
+                 p1 = self.h_shape[0]
+                 p2 = self.h_shape[2]
+@@ -2311,7 +2731,7 @@ class Canvas(
+                     return
+                 self.override_cursor(CURSOR_MOVE)
+                 self.bounded_move_shapes(self.selected_shapes, pos)
+-                self.repaint()
++                self.update()
+                 self.moving_shape = True
+                 if self.selected_shapes[-1].shape_type == "rectangle":
+                     p1 = self.selected_shapes[-1][0]
+@@ -2346,7 +2766,7 @@ class Canvas(
+                 self.h_cuboid_face = None
+                 try:
+                     self.bounded_move_vertex(pos)
+-                    self.repaint()
++                    self.update()
+                     self.moving_shape = True
+                 except IndexError:
+                     return
+@@ -2376,7 +2796,7 @@ class Canvas(
+                     self.h_shape, self.h_cuboid_face, offset
+                 )
+                 self.prev_point = pos
+-                self.repaint()
++                self.update()
+                 self.moving_shape = True
+                 p1 = self.h_shape[0]
+                 p2 = self.h_shape[2]
+@@ -2738,6 +3158,13 @@ class Canvas(
+             ):
+                 ev.accept()
+                 return
++            if self._point_fit_press(pos, ev.modifiers()):
++                self._rectangle_edge_cancel()
++                ev.accept()
++                return
++            if self._rectangle_edge_press(pos, ev):
++                ev.accept()
++                return
+             if self.is_magic_wand_mode and self.drawing():
+                 if self._start_magic_wand(pos, ev.position()):
+                     ev.accept()
+@@ -2961,7 +3388,11 @@ class Canvas(
+     # QT Overload
+     def mouseReleaseEvent(self, ev):
+         """Mouse release event"""
+-        if self.is_loading:
++        if (
++            self.is_loading
++            or self._point_fit_handle_release_event(ev)
++            or self._rectangle_edge_release_event(ev)
++        ):
+             return
+         right_click = False
+         if (
+@@ -3036,11 +3467,14 @@ class Canvas(
+ 
+         self.store_moving_shape()
+ 
+-    def end_move(self, copy):
++    def end_move(self, copy: bool) -> bool:
+         """End of move"""
+         assert self.selected_shapes and self.selected_shapes_copy
+         assert len(self.selected_shapes_copy) == len(self.selected_shapes)
+         if copy:
++            self.selected_shapes_copy = self._normalize_incoming_shape_ids(
++                self.selected_shapes_copy, replace=False
++            )
+             for i, shape in enumerate(self.selected_shapes_copy):
+                 self.shapes.append(shape)
+                 self.selected_shapes[i].selected = False
+@@ -3062,9 +3496,10 @@ class Canvas(
+             self.set_hiding(True)
+             self.update()
+ 
+-    def set_hiding(self, enable=True):
++    def set_hiding(self, enable: bool = True) -> None:
+         """Set background hiding"""
+         self._hide_backround = self.hide_backround if enable else False
++        self.invalidate_rectangle_size_issues()
+ 
+     def can_close_shape(self):
+         """Check if a shape can be closed (number of points > 2)"""
+@@ -3980,9 +4415,10 @@ class Canvas(
+     def duplicate_selected_shapes(self):
+         """Duplicate selected shapes"""
+         if self.selected_shapes:
+-            self.selected_shapes_copy = [
+-                s.copy() for s in self.selected_shapes
+-            ]
++            self.selected_shapes_copy = self._normalize_incoming_shape_ids(
++                [s.copy_for_new_object() for s in self.selected_shapes],
++                replace=False,
++            )
+             for shape in self.selected_shapes_copy:
+                 shape.locked = False
+             self.bounded_shift_shapes(self.selected_shapes_copy)
+@@ -4004,7 +4440,10 @@ class Canvas(
+             self.bounded_move_shapes(shapes, point + offset)
+ 
+     def prepare_pasted_shapes(self, shapes, copied_group_id=None):
+-        pasted_shapes = [shape.copy() for shape in shapes]
++        pasted_shapes = self._normalize_incoming_shape_ids(
++            [shape.copy_for_new_object() for shape in shapes],
++            replace=False,
++        )
+         if not pasted_shapes:
+             return pasted_shapes
+         for shape in pasted_shapes:
+@@ -4420,6 +4859,11 @@ class Canvas(
+         self._paint_brush_overlays(p)
+         self._paint_magic_wand_overlay(p)
+ 
++        self._draw_rectangle_crosshair(p)
++
++        if self.rectangle_creation is not None:
++            self.rectangle_creation.paint_draft(p)
++
+         if self.current:
+             self.current.paint(p)
+             self.line.paint(p)
+@@ -4493,18 +4937,7 @@ class Canvas(
+                     "AUTOLABEL_REMOVE",
+                 ]:
+                     continue
+-                fields = []
+-                if self.show_labels:
+-                    label = shape.label or ""
+-                    if shape.group_id is not None:
+-                        label = f"{label} ({shape.group_id})".strip()
+-                    if label:
+-                        fields.append(label)
+-                    if shape.score is not None and self.show_scores:
+-                        fields.append(f"{float(shape.score):.2f}")
+-                if self.show_texts and shape.description:
+-                    fields.append(shape.description)
+-                label_text = " · ".join(fields)
++                label_text = self._label_display_text(shape)
+                 if not label_text:
+                     continue
+                 fm = QtGui.QFontMetrics(p.font())
+@@ -4621,7 +5054,7 @@ class Canvas(
+             p.restore()
+ 
+         # Draw mouse coordinates
+-        if self.cross_line_show:
++        if self._native_crosshair_enabled():
+             pen = self._cross_line_pen()
+             rect = self._cross_line_rect()
+             p.setPen(pen)
+@@ -4853,6 +5286,9 @@ class Canvas(
+ 
+         # Brush-size preview circle follows the cursor in brush mode.
+         self._paint_brush_cursor(p)
++        self._paint_point_fit(p)
++        self._paint_rectangle_edge(p)
++        self._paint_rectangle_size(p)
+ 
+         p.end()
+ 
+@@ -4977,6 +5413,7 @@ class Canvas(
+         self.shapes.append(self.current)
+         self.store_shapes()
+         self.current = None
++        self._clear_crosshair_cursor()
+         self.set_hiding(False)
+         self.new_shape.emit()
+         self.update()
+@@ -5366,6 +5803,10 @@ class Canvas(
+         """Key press event"""
+         modifiers = ev.modifiers()
+         key = ev.key()
++        if key == Qt.Key.Key_Escape and self._rectangle_edge_drag is not None:
++            self._rectangle_edge_cancel()
++            ev.accept()
++            return
+         if key == QtCore.Qt.Key.Key_Space and not ev.isAutoRepeat():
+             self._space_pressed = True
+             self._clear_space_pan_hover_state()
+@@ -5441,6 +5882,8 @@ class Canvas(
+         """Key release event"""
+         modifiers = ev.modifiers()
+         key = ev.key()
++        if key == QtCore.Qt.Key.Key_Shift and not ev.isAutoRepeat():
++            self._clear_point_fit(keep_press=self._point_fit_pressed)
+         if key == QtCore.Qt.Key.Key_Space and not ev.isAutoRepeat():
+             self._space_pressed = False
+             self._space_panning = False
+@@ -5532,8 +5975,13 @@ class Canvas(
+             self.drawing_polygon.emit(False)
+         self.update()
+ 
+-    def load_pixmap(self, pixmap, clear_shapes=True):
++    def load_pixmap(
++        self, pixmap: QtGui.QPixmap, clear_shapes: bool = True
++    ) -> None:
+         """Load pixmap"""
++        self._clear_crosshair_cursor()
++        self._rectangle_edge_cancel()
++        self._clear_point_fit()
+         self.cancel_brush_mode()
+         self._clear_magic_wand_preview()
+         self._magic_wand_source = None
+@@ -5541,10 +5989,49 @@ class Canvas(
+         if clear_shapes:
+             self.shapes = []
+             self.visible.clear()
++            self.image_changed.emit()
++        self.invalidate_rectangle_size_issues()
+         self.update()
+ 
++    def _normalize_incoming_shape_ids(self, shapes, replace):
++        """Claim unique persistent identities for Shapes entering the canvas.
++
++        Existing shapes keep their identity; incoming shapes with a missing,
++        invalid, or already claimed identity are repaired. ``replace=True``
++        means the incoming shapes are the whole new collection, so only they
++        are reserved against each other.
++        """
++        incoming = list(shapes)
++        reserved_ids = (
++            ()
++            if replace
++            else (
++                getattr(shape, "xanylabeling_shape_id", MISSING_SHAPE_ID)
++                for shape in self.shapes
++            )
++        )
++        identity_result = normalize_shape_identities(
++            (
++                getattr(shape, "xanylabeling_shape_id", MISSING_SHAPE_ID)
++                for shape in incoming
++            ),
++            reserved_ids=reserved_ids,
++        )
++        for shape, shape_id in zip(incoming, identity_result.identities):
++            shape.xanylabeling_shape_id = shape_id
++        if identity_result.diagnostics:
++            logger.warning(
++                "Repaired %d incoming Canvas Shape identities: %s",
++                identity_result.repaired_count,
++                describe_shape_identity_diagnostics(
++                    identity_result.diagnostics
++                ),
++            )
++        return incoming
++
+     def load_shapes(self, shapes, replace=True):
+         """Load shapes"""
++        shapes = self._normalize_incoming_shape_ids(shapes, replace)
+         self.cancel_brush_mode()
+         self._clear_magic_wand_preview()
+         if replace:
+@@ -5560,11 +6047,13 @@ class Canvas(
+         self.h_cuboid_face = None
+         self._selected_group_id = None
+         self._hovered_group_id = None
++        self.invalidate_rectangle_size_issues()
+         self.update()
+ 
+-    def set_shape_visible(self, shape, value):
++    def set_shape_visible(self, shape: Shape, value: bool) -> None:
+         """Set visibility for a shape"""
+         self.visible[shape] = value
++        self.invalidate_rectangle_size_issues()
+         self.update()
+ 
+     def current_cursor(self):
+@@ -5591,8 +6080,10 @@ class Canvas(
+         """Restore override cursor"""
+         QtWidgets.QApplication.restoreOverrideCursor()
+ 
+-    def reset_state(self):
++    def reset_state(self) -> None:
+         """Clear shapes and pixmap"""
++        self._rectangle_edge_cancel()
++        self._clear_point_fit()
+         self._clear_space_pan_state()
+         self.pan_offset = QtCore.QPointF()
+         self._right_pan_start = None
+@@ -5605,16 +6096,28 @@ class Canvas(
+         self.compare_pixmap = None
+         self._selected_group_id = None
+         self._hovered_group_id = None
++        self.image_changed.emit()
+         self.update()
+ 
+-    def set_cross_line(self, show, width, color, opacity):
++    def set_cross_line(
++        self, show, width, color, opacity, show_when_drawing=True
++    ):
+         """Set cross line options"""
+         self.cross_line_show = show
+         self.cross_line_width = width
+         self.cross_line_color = color
+         self.cross_line_opacity = opacity
++        self.set_rectangle_creation_crosshair(show_when_drawing)
+         self.update()
+ 
++    def set_rectangle_creation_crosshair(self, show):
++        """Toggle the two-point rectangle creation guide"""
++        show = bool(show)
++        was_visible = self._rectangle_creation_crosshair_enabled()
++        self.rectangle_creation_crosshair_show = show
++        if was_visible and not self._rectangle_creation_crosshair_enabled():
++            self.update()
++
+     def _cross_line_pen(self) -> QtGui.QPen:
+         pen = QtGui.QPen(QtGui.QColor(self.cross_line_color))
+         pen.setWidthF(float(self.cross_line_width))
+diff --git a/anylabeling/views/labeling/widgets/label_dialog.py b/anylabeling/views/labeling/widgets/label_dialog.py
+index 64153dbd..ddea8996 100644
+--- a/anylabeling/views/labeling/widgets/label_dialog.py
++++ b/anylabeling/views/labeling/widgets/label_dialog.py
+@@ -1376,6 +1376,10 @@ class LabelDialog(QtWidgets.QDialog):
+ 
+         super(LabelDialog, self).__init__(parent)
+         self.setObjectName("LabelDialog")
++        # True while pop_up fills the widgets, so programmatic changes are
++        # not mistaken for user edits.
++        self._loading_fields = False
++        self._touched_fields = set()
+         t = get_theme()
+         self.setStyleSheet(f"""
+             QDialog#LabelDialog QLineEdit,
+@@ -1605,6 +1609,24 @@ class LabelDialog(QtWidgets.QDialog):
+         layout.addItem(self.flags_layout)
+         self.edit.textChanged.connect(self.update_flags)
+         self.setLayout(layout)
++
++        # Track which fields the user really changed so a batch edit can
++        # patch only those fields instead of overwriting every column.
++        self.edit.textChanged.connect(
++            lambda *_: self._mark_touched("label")
++        )
++        self.edit_group_id.textChanged.connect(
++            lambda *_: self._mark_touched("group_id")
++        )
++        self.edit_description.textChanged.connect(
++            lambda: self._mark_touched("description")
++        )
++        self.edit_difficult.stateChanged.connect(
++            lambda *_: self._mark_touched("difficult")
++        )
++        self.review_group.buttonClicked.connect(
++            lambda *_: self._mark_touched("review_status")
++        )
+         # completion
+         completer = QtWidgets.QCompleter()
+         if completion == "startswith":
+@@ -1649,6 +1671,7 @@ class LabelDialog(QtWidgets.QDialog):
+                 self.linking_list.setHidden(
+                     False
+                 )  # Show the list when an item is added
++                self._mark_touched("kie_linking")
+             else:
+                 raise ValueError
+         except Exception as e:
+@@ -1668,6 +1691,7 @@ class LabelDialog(QtWidgets.QDialog):
+                 if selected_items:
+                     for item in selected_items:
+                         self.linking_list.takeItem(self.linking_list.row(item))
++                    self._mark_touched("kie_linking")
+         else:
+             super(LabelDialog, self).keyPressEvent(event)
+ 
+@@ -1796,6 +1820,7 @@ class LabelDialog(QtWidgets.QDialog):
+         for key in flags:
+             item = QtWidgets.QCheckBox(key, self)
+             item.setChecked(flags[key])
++            item.toggled.connect(lambda *_: self._mark_touched("flags"))
+             self.flags_layout.addWidget(item)
+             item.show()
+ 
+@@ -1832,6 +1857,15 @@ class LabelDialog(QtWidgets.QDialog):
+             kie_linking.append(item.data(Qt.ItemDataRole.UserRole))
+         return kie_linking
+ 
++    def touched_fields(self):
++        """Return the field names the user changed during the last pop_up."""
++        return frozenset(self._touched_fields)
++
++    def _mark_touched(self, field):
++        """Record one user edit unless the dialog is still being filled."""
++        if not self._loading_fields:
++            self._touched_fields.add(field)
++
+     def pop_up(
+         self,
+         text=None,
+@@ -1844,6 +1878,8 @@ class LabelDialog(QtWidgets.QDialog):
+         kie_linking=None,
+         review_status="pending",
+     ):
++        self._loading_fields = True
++        self._touched_fields.clear()
+         self.review_buttons.get(
+             review_status, self.review_buttons["pending"]
+         ).setChecked(True)
+@@ -1891,6 +1927,7 @@ class LabelDialog(QtWidgets.QDialog):
+             row = self.label_list.row(items[0])
+             self.edit.completer().setCurrentRow(row)
+         self.edit.setFocus(QtCore.Qt.FocusReason.PopupFocusReason)
++        self._loading_fields = False
+ 
+         if move:
+             if move_mode == "auto":

@@ -12,6 +12,13 @@ from ..rect_edge_click import (
     proposed_inward_point_fit_box,
     proposed_point_fit_box,
 )
+from ..rectangle_preview import (
+    FIT_CANDIDATE_COLOR,
+    FIT_CANDIDATE_WIDTH,
+    PointFitPreview,
+    build_remaining_outline,
+    rectangle_box_from_points,
+)
 from ..shape import Shape
 
 
@@ -260,36 +267,63 @@ class PointFitMixin:
         event.accept()
         return True
 
+    def _build_point_fit_preview(self) -> PointFitPreview | None:
+        """Snapshot the fit target, candidate, and shared-edge outline."""
+        if self._point_fit_cursor is None:
+            return None
+        target = self._point_fit_target
+        box = None
+        if (
+            target is not None
+            and self._point_fit_selected_rectangle() is target
+        ):
+            box = rectangle_box_from_points(target.points)
+        candidate = self._point_fit_pending_box if box is not None else None
+        outline_path = None
+        if candidate is not None and candidate != box:
+            outline_path = build_remaining_outline(
+                box, candidate, scale=self.scale
+            )
+        return PointFitPreview(
+            target=target if box is not None else None,
+            box=box,
+            candidate_box=candidate,
+            outline_path=outline_path,
+        )
+
     def _paint_point_fit(self, painter: QtGui.QPainter) -> None:
         """Draw the pending rectangle, its fixed corner, and the point."""
-        if self._point_fit_cursor is None:
+        preview = self._point_fit_preview
+        if preview is None:
             return
         painter.save()
         color = (
-            QtGui.QColor("#00d9e8")
-            if self._point_fit_pending_box
+            QtGui.QColor(FIT_CANDIDATE_COLOR)
+            if preview.valid
             else QtGui.QColor("#ff5c5c")
         )
         pen = QtGui.QPen(color)
         pen.setCosmetic(True)
-        pen.setWidth(2)
+        pen.setWidthF(FIT_CANDIDATE_WIDTH)
         pen.setStyle(Qt.PenStyle.DashLine)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        if self._point_fit_pending_box:
-            left, top, right, bottom = self._point_fit_pending_box
-            painter.drawRect(
+        if preview.candidate_differs:
+            left, top, right, bottom = preview.candidate_box
+            candidate_path = QtGui.QPainterPath()
+            candidate_path.addRect(
                 QtCore.QRectF(left, top, right - left, bottom - top)
             )
-            if self._point_fit_anchor is not None:
-                anchor_x, anchor_y = self._point_fit_anchor
-                painter.setBrush(color)
-                painter.drawEllipse(
-                    QtCore.QPointF(anchor_x, anchor_y),
-                    3 / self.scale,
-                    3 / self.scale,
-                )
-                painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPath(candidate_path)
+        if preview.valid and self._point_fit_anchor is not None:
+            anchor_x, anchor_y = self._point_fit_anchor
+            painter.setBrush(color)
+            painter.drawEllipse(
+                QtCore.QPointF(anchor_x, anchor_y),
+                3 / self.scale,
+                3 / self.scale,
+            )
+            painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(
             self._point_fit_cursor, 4 / self.scale, 4 / self.scale
         )

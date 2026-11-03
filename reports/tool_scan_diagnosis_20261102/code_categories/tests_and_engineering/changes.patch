@@ -1,0 +1,263 @@
+diff --git a/scripts/compile_languages.py b/scripts/compile_languages.py
+index 7b6028ab..5caee87c 100644
+--- a/scripts/compile_languages.py
++++ b/scripts/compile_languages.py
+@@ -24,6 +24,7 @@ def compile_resources(output: str, qrc: str) -> None:
+         with open(path, "r", encoding="utf-8") as f:
+             content = f.read()
+         content = content.replace("from PySide6", "from PyQt6")
++        content = content.replace("from PySide2", "from PyQt6")
+         with open(path, "w", encoding="utf-8") as f:
+             f.write(content)
+ 
+diff --git a/tests/test_canvas/test_navigation.py b/tests/test_canvas/test_navigation.py
+index 7fbd18c7..994bb810 100644
+--- a/tests/test_canvas/test_navigation.py
++++ b/tests/test_canvas/test_navigation.py
+@@ -11,6 +11,7 @@ from PyQt6 import QtCore, QtGui, QtTest, QtWidgets
+ from anylabeling.resources import resources
+ from anylabeling.views.labeling.label_widget import LabelingWidget
+ from anylabeling.views.labeling.shape import Shape
++from anylabeling.views.labeling.shared_view_state import SharedViewStateStore
+ from anylabeling.views.labeling.widgets.canvas import Canvas
+ from anylabeling.views.labeling.widgets.navigator_widget import NavigatorDialog
+ from anylabeling.views.labeling.widgets.zoom_widget import ZoomWidget
+@@ -24,6 +25,15 @@ class NavigationView(QtWidgets.QWidget):
+     _apply_zoom = LabelingWidget._apply_zoom
+     pan_canvas = LabelingWidget.pan_canvas
+     on_navigator_request = LabelingWidget.on_navigator_request
++    _share_view_enabled = LabelingWidget._share_view_enabled
++    _current_image_size = LabelingWidget._current_image_size
++    _current_shared_view = LabelingWidget._current_shared_view
++    _remember_shared_view = LabelingWidget._remember_shared_view
++    _apply_or_seed_shared_view = LabelingWidget._apply_or_seed_shared_view
++    _apply_shared_view = LabelingWidget._apply_shared_view
++    _centre_scroll_on_canvas_centre = (
++        LabelingWidget._centre_scroll_on_canvas_centre
++    )
+ 
+     def __init__(self):
+         super().__init__()
+@@ -50,6 +60,8 @@ class NavigationView(QtWidgets.QWidget):
+         self.zoom_mode = self.MANUAL_ZOOM
+         self.zoom_values = {}
+         self.pan_values = {}
++        self._config = {"share_view_across_same_size": True}
++        self.shared_view_store = SharedViewStateStore()
+         self.update_navigator_viewport = Mock()
+         self.canvas.menus = (Mock(), Mock())
+         self.show()
+@@ -324,6 +336,7 @@ def test_image_switch_restores_fractional_zoom_and_pan_and_fit_resets(
+     window.show()
+     app.processEvents()
+     widget = window.labeling_widget.view
++    widget._config["share_view_across_same_size"] = False
+     try:
+         paths = [str(tmp_path / f"image_{index}.png") for index in range(2)]
+         image = QtGui.QImage(800, 600, QtGui.QImage.Format.Format_RGB32)
+@@ -359,6 +372,70 @@ def test_image_switch_restores_fractional_zoom_and_pan_and_fit_resets(
+         app.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+ 
+ 
++def test_shared_view_tracks_revisits_and_reset(tmp_path, monkeypatch, navigation_app):
++    from anylabeling import config as app_config
++    from anylabeling.views.labeling.settings.schema import load_template_config
++    from anylabeling.views.mainwindow import MainWindow
++
++    monkeypatch.setattr(app_config, "_work_directory", str(tmp_path))
++    config_file = tmp_path / "config.yaml"
++    config_file.write_text("{}", encoding="utf-8")
++    monkeypatch.setattr(app_config, "current_config_file", str(config_file))
++    settings_class = QtCore.QSettings
++    monkeypatch.setattr(
++        QtCore, "QSettings", lambda *args: settings_class(
++            str(tmp_path / "settings.ini"), settings_class.Format.IniFormat
++        )
++    )
++    window = MainWindow(navigation_app, config=copy.deepcopy(load_template_config()))
++    window.resize(1400, 900)
++    window.show()
++    navigation_app.processEvents()
++    widget = window.labeling_widget.view
++    try:
++        paths = [str(tmp_path / f"shared_{i}.png") for i in range(3)]
++        for path, size in zip(paths, [(800, 600), (800, 600), (400, 300)]):
++            image = QtGui.QImage(*size, QtGui.QImage.Format.Format_RGB32)
++            image.fill(QtGui.QColor("white"))
++            assert image.save(path)
++        assert widget.load_file(paths[0])
++        navigation_app.processEvents()
++        widget.set_zoom(210)
++        widget.pan_canvas(QtCore.QPointF(100, -70))
++        before = widget._current_shared_view()
++        assert widget.load_file(paths[1])
++        navigation_app.processEvents()
++        after = widget._current_shared_view()
++        assert after.zoom_value == pytest.approx(before.zoom_value)
++        assert after.center_x == pytest.approx(before.center_x, abs=2)
++        assert after.center_y == pytest.approx(before.center_y, abs=2)
++        widget.set_zoom(155)
++        widget.pan_canvas(QtCore.QPointF(-30, 50))
++        before = widget._current_shared_view()
++        assert widget.load_file(paths[0])
++        navigation_app.processEvents()
++        after = widget._current_shared_view()
++        assert after.zoom_value == pytest.approx(before.zoom_value)
++        assert after.center_x == pytest.approx(before.center_x, abs=2)
++        assert after.center_y == pytest.approx(before.center_y, abs=2)
++        assert widget.load_file(paths[2])
++        navigation_app.processEvents()
++        assert widget._current_shared_view().zoom_value != pytest.approx(155)
++        assert widget.load_file(paths[0])
++        navigation_app.processEvents()
++        widget.reset_shared_view()
++        reset = widget._current_shared_view()
++        assert widget.load_file(paths[1])
++        navigation_app.processEvents()
++        assert widget._current_shared_view().zoom_value == pytest.approx(reset.zoom_value)
++    finally:
++        widget.dirty = False
++        window.close()
++        navigation_app.removeEventFilter(widget)
++        window.deleteLater()
++        navigation_app.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
++
++
+ def test_zoom_runs_through_intermediate_frames_in_event_loop(view):
+     frames = QtTest.QSignalSpy(view._zoom_animation.valueChanged)
+     wheel(view)
+diff --git a/tests/test_labeling/test_label_locks.py b/tests/test_labeling/test_label_locks.py
+index 0df31bd4..dc375255 100644
+--- a/tests/test_labeling/test_label_locks.py
++++ b/tests/test_labeling/test_label_locks.py
+@@ -36,10 +36,26 @@ class TestLabelLocks(unittest.TestCase):
+         self.shapes = [Shape(label=label) for label in ("cat", "cat", "dog")]
+         self.widget = SimpleNamespace(
+             unique_label_list=self.labels,
+-            canvas=SimpleNamespace(shapes=self.shapes),
++            canvas=SimpleNamespace(
++                shapes=self.shapes,
++                invalidate_rectangle_size_issues=Mock(),
++            ),
+             _update_shapes_lock=Mock(),
+             refresh_panel_controls=Mock(),
+             _session_shape_locks={},
++            label_filter_combobox=SimpleNamespace(
++                text_box=SimpleNamespace(currentText=lambda: "")
++            ),
++            gid_filter_combobox=SimpleNamespace(
++                gid_box=SimpleNamespace(currentText=lambda: "-1")
++            ),
++            _manually_hidden_shapes=set(),
++            _invert_shape_filter=False,
++            _invert_filter_actions=[],
++        )
++        self.widget._sync_invert_filter_actions = Mock()
++        self.widget._apply_shape_filter_visibility = partial(
++            LabelingWidget._apply_shape_filter_visibility, self.widget
+         )
+         self.widget.toggle_unique_label_items_lock = partial(
+             LabelingWidget.toggle_unique_label_items_lock, self.widget
+diff --git a/tests/test_labeling/test_label_widget_attributes.py b/tests/test_labeling/test_label_widget_attributes.py
+index 4fadc2db..f82f5993 100644
+--- a/tests/test_labeling/test_label_widget_attributes.py
++++ b/tests/test_labeling/test_label_widget_attributes.py
+@@ -203,11 +203,18 @@ class TestLabelWidgetAttributes(unittest.TestCase):
+             return text
+ 
+         widget = SimpleNamespace(
+-            _batch_edit_warning_shown=True,
++            canvas=SimpleNamespace(
++                shapes=[unchanged_shape, changed_shape],
++                shapes_backups=[],
++                store_shapes=Mock(),
++                is_shape_restorable=False,
++                invalidate_rectangle_size_issues=Mock(),
++            ),
+             label_dialog=SimpleNamespace(
+                 pop_up=Mock(
+                     return_value=("car", {}, None, "new", False, [])
+                 ),
++                touched_fields=Mock(return_value={"label"}),
+                 add_label_history=Mock(),
+                 get_review_status=Mock(return_value="pending"),
+             ),
+@@ -221,9 +228,22 @@ class TestLabelWidgetAttributes(unittest.TestCase):
+             unique_label_list=SimpleNamespace(
+                 find_items_by_label=Mock(return_value=[object()])
+             ),
++            actions=SimpleNamespace(undo=Mock()),
++            _config={"validate_label": None},
++            tr=lambda text: text,
+             set_dirty=Mock(),
+             _refresh_shape_filters=Mock(),
+         )
++        widget._resolve_label_attributes = (
++            lambda shape, label: LabelingWidget._resolve_label_attributes(
++                widget, shape, label
++            )
++        )
++        widget._apply_field_patch = (
++            lambda target, values, touched: LabelingWidget._apply_field_patch(
++                widget, target, values, touched
++            )
++        )
+ 
+         LabelingWidget.batch_edit_labels(
+             widget, [unchanged_shape, changed_shape]
+diff --git a/tests/test_labeling/test_label_widget_groups.py b/tests/test_labeling/test_label_widget_groups.py
+index 9054598a..fbe2df14 100644
+--- a/tests/test_labeling/test_label_widget_groups.py
++++ b/tests/test_labeling/test_label_widget_groups.py
+@@ -60,7 +60,7 @@ class TestLabelWidgetGroups(unittest.TestCase):
+         copied_shapes = [object(), object()]
+         pasted_shapes = [object(), object()]
+         for shape, copied_shape in zip(shapes, copied_shapes):
+-            shape.copy.return_value = copied_shape
++            shape.copy_for_new_object.return_value = copied_shape
+         canvas = SimpleNamespace(
+             _active_group_shapes=Mock(return_value=shapes),
+             _selected_group_id=3,
+diff --git a/tests/test_settings/test_runtime_applier.py b/tests/test_settings/test_runtime_applier.py
+index f5e79a01..9caa655a 100644
+--- a/tests/test_settings/test_runtime_applier.py
++++ b/tests/test_settings/test_runtime_applier.py
+@@ -119,7 +119,7 @@ class TestSettingsRuntimeApplier(unittest.TestCase):
+ 
+             applier.apply_change("canvas.crosshair.width", 0.5)
+             canvas.set_cross_line.assert_called_once_with(
+-                True, 0.5, "#00FF00", 0.5
++                True, 0.5, "#00FF00", 0.5, True
+             )
+             self.assertEqual(widget.crosshair_settings["width"], 0.5)
+         finally:
+diff --git a/tests/test_settings/test_schema.py b/tests/test_settings/test_schema.py
+index c2c0bdf1..2a9a1a86 100644
+--- a/tests/test_settings/test_schema.py
++++ b/tests/test_settings/test_schema.py
+@@ -24,14 +24,14 @@ except Exception:
+ class TestSettingsSchema(unittest.TestCase):
+ 
+     def test_field_count(self):
+-        self.assertEqual(len(SETTING_FIELDS), 137)
++        self.assertEqual(len(SETTING_FIELDS), 138)
+ 
+     def test_shortcut_and_non_shortcut_count(self):
+         shortcut_fields = [
+             field for field in SETTING_FIELDS if field.primary == "Shortcuts"
+         ]
+         self.assertEqual(len(shortcut_fields), 82)
+-        self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 55)
++        self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 56)
+ 
+     def test_defaults_cover_all_keys(self):
+         defaults = defaults_map()
+@@ -113,7 +113,7 @@ class TestSettingsSchema(unittest.TestCase):
+         )
+         for key in SETTINGS_SHORTCUT_KEYS_CORE:
+             self.assertIn(key, [field.key for field in shortcut_fields])
+-        self.assertEqual(len(canvas_fields), 27)
++        self.assertEqual(len(canvas_fields), 28)
+         canvas_keys = {field.key for field in canvas_fields}
+         self.assertIn("canvas.label_font_size", canvas_keys)
+         self.assertIn("canvas.crosshair.show", canvas_keys)

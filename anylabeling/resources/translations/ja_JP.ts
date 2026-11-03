@@ -7564,6 +7564,7 @@ The main application remains available.</source>
   </context>
   <context>
     <name>SettingsDialog</name>
+    <message><source>Correction Cost Statistics</source><translation>修正コスト統計</translation></message>
     <message>
       <location filename="../../views/labeling/settings/dialog.py" line="393" />
       <location filename="../../views/labeling/settings/dialog.py" line="106" />
@@ -10596,5 +10597,125 @@ Response preview:
       <source>Rule row {0}: {1}</source>
       <translation>規則 {0} 行目: {1}</translation>
     </message>
+  </context>
+  <context>
+    <name>CorrectionCost</name>
+    <message><source>Correction Cost Statistics</source><translation>修正コスト統計</translation></message>
+    <message><source>Open an image first.</source><translation>先に画像を開いてください。</translation></message>
+    <message><source>Save the current version before marking it complete.</source><translation>現在の版を保存してから完了にしてください。</translation></message>
+    <message><source>Correction cost records are incomplete.</source><translation>修正統計の記録が不完全です。</translation></message>
+    <message><source>Scope</source><translation>対象範囲</translation></message>
+    <message><source>Start recording</source><translation>記録開始</translation></message>
+    <message><source>First image</source><translation>最初の画像</translation></message>
+    <message><source>Last image</source><translation>最後の画像</translation></message>
+    <message><source>All</source><translation>すべて</translation></message>
+    <message><source>Current image</source><translation>現在の画像</translation></message>
+    <message><source>{count} images</source><translation>{count} 枚</translation></message>
+    <message><source>{count} image(s): {first} … {last}</source><translation>{count} 枚：{first} … {last}</translation></message>
+    <message><source>Cancel</source><translation>キャンセル</translation></message>
+    <message><source>Close</source><translation>閉じる</translation></message>
+    <message><source>Show details</source><translation>詳細を表示</translation></message>
+    <message><source>Hide details</source><translation>詳細を隠す</translation></message>
+    <message><source>Pause timer</source><translation>計時を一時停止</translation></message>
+    <message><source>Resume timer</source><translation>計時を再開</translation></message>
+    <message><source>Stop recording</source><translation>記録を停止</translation></message>
+    <message><source>Finish round</source><translation>このラウンドを完了</translation></message>
+    <message><source>Continue correction</source><translation>修正を続ける</translation></message>
+    <message><source>Start review</source><translation>レビューを開始</translation></message>
+    <message><source>Report</source><translation>集計を表示</translation></message>
+    <message><source>Keep as review time</source><translation>確認時間に含める</translation></message>
+    <message><source>Exclude idle time</source><translation>離席時間を除外</translation></message>
+    <message><source>Image</source><translation>画像</translation></message>
+    <message><source>Round</source><translation>ラウンド</translation></message>
+    <message><source>Starting boxes</source><translation>開始時の枠数</translation></message>
+    <message><source>Saved result</source><translation>保存済み結果</translation></message>
+    <message><source>Current draft</source><translation>現在の下書き</translation></message>
+    <message><source>Quality assessment</source><translation>品質評価</translation></message>
+    <message><source>Processing status</source><translation>処理状況</translation></message>
+    <message><source>In-app processing</source><translation>アプリ内作業時間</translation></message>
+    <message><source>{seconds} s</source><translation>{seconds} 秒</translation></message>
+    <message><source>Timer</source><translation>タイマー</translation></message>
+    <message><source>Operations / touches / unique objects</source><translation>操作 / 延べ対象 / 個別対象</translation></message>
+    <message><source>Record integrity</source><translation>記録の完全性</translation></message>
+    <message><source>No recorded gaps</source><translation>既知の欠損なし</translation></message>
+    <message><source>Added {added} · Deleted {deleted} · Geometry {geometry_changed} · Class {class_changed}</source><translation>追加 {added} · 削除 {deleted} · 枠変更 {geometry_changed} · 分類変更 {class_changed}</translation></message>
+    <message><source>In progress</source><translation>処理中</translation></message>
+    <message><source>Completed</source><translation>ラウンド完了</translation></message>
+    <message><source>Not assessed</source><translation>未評価</translation></message>
+    <message><source>Existing annotations, unknown source</source><translation>既存注釈・出所不明</translation></message>
+    <message><source>Replacement prediction</source><translation>置換予測</translation></message>
+    <message><source>Appended prediction</source><translation>追加予測</translation></message>
+    <message><source>Correction</source><translation>修正</translation></message>
+    <message><source>Processing</source><translation>作業中</translation></message>
+    <message><source>Inactive</source><translation>非アクティブ</translation></message>
+    <message><source>Waiting</source><translation>待機中</translation></message>
+    <message><source>Loading</source><translation>読み込み中</translation></message>
+    <message><source>Paused</source><translation>一時停止</translation></message>
+    <message><source>Stopped</source><translation>停止中</translation></message>
+    <message><source>Pending idle: {seconds} s (included until confirmed)</source><translation>離席候補 {seconds} 秒（確認まで計上）</translation></message>
+    <message><source>Correction Cost Report</source><translation>修正コスト集計</translation></message>
+    <message><source>Refresh snapshot</source><translation>スナップショット更新</translation></message>
+    <message><source>Snapshot {stamp}</source><translation>スナップショット {stamp}</translation></message>
+    <message><source>Image rounds</source><translation>画像とラウンド</translation></message>
+    <message><source>Class changes</source><translation>クラス変更</translation></message>
+    <message><source>By density and model</source><translation>対象数・モデル別</translation></message>
+    <message><source>Current results only</source><translation>現行結果のみ</translation></message>
+    <message><source>Search image, class or model</source><translation>画像・クラス・モデルを検索</translation></message>
+    <message><source>Stage</source><translation>工程</translation></message>
+    <message><source>Model version</source><translation>モデルの版</translation></message>
+    <message><source>Rounds</source><translation>ラウンド数</translation></message>
+    <message><source>Distinct images</source><translation>画像数</translation></message>
+    <message><source>{images} completed image(s) · {eligible}/{rounds} comparable rounds</source><translation>完了 {images} 枚 · 比較可能 {eligible}/{rounds} ラウンド</translation></message>
+    <message><source>Excluded reasons</source><translation>除外理由</translation></message>
+    <message><source>Comparable saved rounds only. Density uses final rectangles. Sequential runs on the same image are dependent.</source><translation>比較可能な保存済み完了ラウンドが対象。最終の枠数で分類します。同一画像の連続実行は独立ではありません。</translation></message>
+    <message><source>Previous page</source><translation>前へ</translation></message>
+    <message><source>Next page</source><translation>次のページ</translation></message>
+    <message><source>Page {page}/{pages} · {count} rows</source><translation>{page}/{pages} ページ · {count} 行</translation></message>
+    <message><source>Finish selected rounds…</source><translation>選択ラウンドを完了…</translation></message>
+    <message><source>Mark only the following {count} saved round(s) complete?</source><translation>以下の保存済み {count} ラウンドを完了にしますか？</translation></message>
+    <message><source>Revalidate revisions before applying. Changed or ineligible rows will be skipped.</source><translation>適用前に保存版を照合し、変更・対象外の行は除外します。</translation></message>
+    <message><source>Select current saved rows on the Images tab.</source><translation>画像タブで現行の保存済み行を選択してください。</translation></message>
+    <message><source>No recorded image</source><translation>記録された画像なし</translation></message>
+    <message><source>Export CSV…</source><translation>CSV を出力…</translation></message>
+    <message><source>Metric dictionary</source><translation>指標辞書</translation></message>
+    <message><source>Loading report…</source><translation>集計を読み込み中…</translation></message>
+    <message><source>Writing CSV…</source><translation>CSV を出力中…</translation></message>
+    <message><source>Exported {file}</source><translation>出力済み {file}</translation></message>
+    <message><source>Operation failed</source><translation>操作失敗</translation></message>
+    <message><source>Yes</source><translation>はい</translation></message>
+    <message><source>No</source><translation>いいえ</translation></message>
+    <message><source>Current</source><translation>現行</translation></message>
+    <message><source>Initial boxes</source><translation>初期枠</translation></message>
+    <message><source>AI boxes</source><translation>予測枠</translation></message>
+    <message><source>Saved boxes</source><translation>保存枠</translation></message>
+    <message><source>Added</source><translation>追加</translation></message>
+    <message><source>Deleted</source><translation>削除</translation></message>
+    <message><source>Geometry edits</source><translation>枠変更</translation></message>
+    <message><source>Class edits</source><translation>クラス変更</translation></message>
+    <message><source>Operations</source><translation>操作数</translation></message>
+    <message><source>Processing (s)</source><translation>作業時間（秒）</translation></message>
+    <message><source>Median seconds/round</source><translation>秒/ラウンドの中央値</translation></message>
+    <message><source>Seconds / 100 boxes</source><translation>100 枠あたり秒</translation></message>
+    <message><source>Limitations</source><translation>制約と欠損</translation></message>
+    <message><source>Model</source><translation>モデル</translation></message>
+    <message><source>Class vocabulary version</source><translation>クラス体系の版</translation></message>
+    <message><source>Metric</source><translation>指標</translation></message>
+    <message><source>Initial class</source><translation>初期クラス</translation></message>
+    <message><source>Final class</source><translation>最終クラス</translation></message>
+    <message><source>Objects</source><translation>対象数</translation></message>
+    <message><source>Denominator</source><translation>分母</translation></message>
+    <message><source>Baseline source</source><translation>開始時の出所</translation></message>
+    <message><source>Changed original boxes</source><translation>変更元枠数</translation></message>
+    <message><source>Changed / initial</source><translation>元枠変更率</translation></message>
+    <message><source>Final boxes per image</source><translation>画像あたり最終枠数</translation></message>
+    <message><source>Initial</source><translation>初期</translation></message>
+    <message><source>Final</source><translation>最終</translation></message>
+    <message><source>Geometry</source><translation>位置・形状</translation></message>
+    <message><source>Unsaved</source><translation>未保存</translation></message>
+    <message><source>Partial rectangle scope</source><translation>矩形範囲の一部</translation></message>
+    <message><source>Unknown source</source><translation>出所不明</translation></message>
+    <message><source>Interrupted timing</source><translation>計時中断</translation></message>
+    <message><source>Historical</source><translation>履歴</translation></message>
+    <message><source>Idle prompt after (s)</source><translation>離席確認まで（秒）</translation></message>
   </context>
 </TS>

@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 )
 
 from anylabeling.views.labeling import utils
+from anylabeling.services.inspection.storage import atomic_write_json
 from anylabeling.views.labeling.logger import logger
 from anylabeling.views.labeling.shape import Shape
 from anylabeling.views.labeling.widgets.popup import Popup
@@ -1214,6 +1215,21 @@ class LabelModifyDialog(QtWidgets.QDialog):
                 start_index = self.start_index
             if end_index == -1:
                 end_index = self.end_index
+            metrics = getattr(self.parent, "correction_metrics", None)
+            if metrics is not None:
+                labels = self.parent.label_info
+                renames = {
+                    old: info["value"] for old, info in labels.items()
+                    if info["value"] and old != info["value"] and not info["delete"]
+                }
+                destinations = {}
+                for old, info in labels.items():
+                    if not info["delete"]:
+                        destinations.setdefault(renames.get(old, old), []).append(old)
+                ambiguous = {
+                    old for sources in destinations.values() if len(sources) > 1
+                    for old in sources
+                }
             for i, image_file in enumerate(self.image_file_list):
                 if i < start_index - 1 or i > end_index - 1:
                     continue
@@ -1228,6 +1244,8 @@ class LabelModifyDialog(QtWidgets.QDialog):
                 with open(label_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 src_shapes, dst_shapes = data["shapes"], []
+                before = {shape["label"] for shape in src_shapes} if metrics is not None else set()
+                changed = False
                 for shape in src_shapes:
                     label = shape["label"]
                     if self.parent.label_info[label][
@@ -1235,13 +1253,23 @@ class LabelModifyDialog(QtWidgets.QDialog):
                     ] and not self.parent.unique_label_list.lock_states.get(
                         label, False
                     ):
+                        changed = True
                         continue
                     if self.parent.label_info[label]["value"]:
                         shape["label"] = self.parent.label_info[label]["value"]
+                        changed |= shape["label"] != label
                     dst_shapes.append(shape)
                 data["shapes"] = dst_shapes
-                with open(label_file, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2, ensure_ascii=False)
+                if changed:
+                    atomic_write_json(label_file, data)
+                    if metrics is not None:
+                        try:
+                            metrics.taxonomy_saved(
+                                image_file, label_file, dst_shapes, renames,
+                                not bool(ambiguous & before),
+                            )
+                        except Exception:
+                            logger.exception("Could not record saved label changes")
             return True
         except Exception as e:
             logger.error(f"Error occurred while updating labels: {e}")

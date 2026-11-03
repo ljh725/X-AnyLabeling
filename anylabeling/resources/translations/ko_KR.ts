@@ -7566,6 +7566,7 @@ The main application remains available.</source>
   </context>
   <context>
     <name>SettingsDialog</name>
+    <message><source>Correction Cost Statistics</source><translation>수정 비용 통계</translation></message>
     <message>
       <location filename="../../views/labeling/settings/dialog.py" line="393" />
       <location filename="../../views/labeling/settings/dialog.py" line="106" />
@@ -10598,5 +10599,125 @@ Response preview:
       <source>Rule row {0}: {1}</source>
       <translation>규칙 {0}행: {1}</translation>
     </message>
+  </context>
+  <context>
+    <name>CorrectionCost</name>
+    <message><source>Correction Cost Statistics</source><translation>수정 비용 통계</translation></message>
+    <message><source>Open an image first.</source><translation>먼저 이미지를 여세요.</translation></message>
+    <message><source>Save the current version before marking it complete.</source><translation>현재 버전을 저장한 뒤 완료하세요.</translation></message>
+    <message><source>Correction cost records are incomplete.</source><translation>수정 통계 기록이 불완전합니다.</translation></message>
+    <message><source>Scope</source><translation>통계 범위</translation></message>
+    <message><source>Start recording</source><translation>기록 시작</translation></message>
+    <message><source>First image</source><translation>시작 이미지</translation></message>
+    <message><source>Last image</source><translation>마지막 이미지</translation></message>
+    <message><source>All</source><translation>전체</translation></message>
+    <message><source>Current image</source><translation>현재 이미지</translation></message>
+    <message><source>{count} images</source><translation>이미지 {count}개</translation></message>
+    <message><source>{count} image(s): {first} … {last}</source><translation>이미지 {count}개: {first} … {last}</translation></message>
+    <message><source>Cancel</source><translation>취소</translation></message>
+    <message><source>Close</source><translation>닫기</translation></message>
+    <message><source>Show details</source><translation>상세 보기</translation></message>
+    <message><source>Hide details</source><translation>상세 접기</translation></message>
+    <message><source>Pause timer</source><translation>시간 측정 일시 중지</translation></message>
+    <message><source>Resume timer</source><translation>시간 측정 재개</translation></message>
+    <message><source>Stop recording</source><translation>기록 중지</translation></message>
+    <message><source>Finish round</source><translation>현재 회차 완료</translation></message>
+    <message><source>Continue correction</source><translation>수정 계속</translation></message>
+    <message><source>Start review</source><translation>검토 시작</translation></message>
+    <message><source>Report</source><translation>보고서</translation></message>
+    <message><source>Keep as review time</source><translation>검토 시간 유지</translation></message>
+    <message><source>Exclude idle time</source><translation>유휴 시간 제외</translation></message>
+    <message><source>Image</source><translation>이미지</translation></message>
+    <message><source>Round</source><translation>회차</translation></message>
+    <message><source>Starting boxes</source><translation>시작 상자 수</translation></message>
+    <message><source>Saved result</source><translation>저장 결과</translation></message>
+    <message><source>Current draft</source><translation>현재 초안</translation></message>
+    <message><source>Quality assessment</source><translation>품질 평가</translation></message>
+    <message><source>Processing status</source><translation>처리 상태</translation></message>
+    <message><source>In-app processing</source><translation>앱 내 처리 시간</translation></message>
+    <message><source>{seconds} s</source><translation>{seconds}초</translation></message>
+    <message><source>Timer</source><translation>타이머</translation></message>
+    <message><source>Operations / touches / unique objects</source><translation>작업 / 터치 / 고유 객체</translation></message>
+    <message><source>Record integrity</source><translation>기록 완전성</translation></message>
+    <message><source>No recorded gaps</source><translation>알려진 누락 없음</translation></message>
+    <message><source>Added {added} · Deleted {deleted} · Geometry {geometry_changed} · Class {class_changed}</source><translation>추가 {added} · 삭제 {deleted} · 상자 수정 {geometry_changed} · 분류 수정 {class_changed}</translation></message>
+    <message><source>In progress</source><translation>진행 중</translation></message>
+    <message><source>Completed</source><translation>회차 완료</translation></message>
+    <message><source>Not assessed</source><translation>미평가</translation></message>
+    <message><source>Existing annotations, unknown source</source><translation>기존 주석, 출처 알 수 없음</translation></message>
+    <message><source>Replacement prediction</source><translation>대체 예측</translation></message>
+    <message><source>Appended prediction</source><translation>추가 예측</translation></message>
+    <message><source>Correction</source><translation>수정</translation></message>
+    <message><source>Processing</source><translation>처리 중</translation></message>
+    <message><source>Inactive</source><translation>비활성</translation></message>
+    <message><source>Waiting</source><translation>대기 중</translation></message>
+    <message><source>Loading</source><translation>준비 중</translation></message>
+    <message><source>Paused</source><translation>일시 중지</translation></message>
+    <message><source>Stopped</source><translation>중지됨</translation></message>
+    <message><source>Pending idle: {seconds} s (included until confirmed)</source><translation>미확인 유휴 {seconds}초 (확인 전까지 포함)</translation></message>
+    <message><source>Correction Cost Report</source><translation>수정 비용 보고서</translation></message>
+    <message><source>Refresh snapshot</source><translation>스냅샷 새로 고침</translation></message>
+    <message><source>Snapshot {stamp}</source><translation>스냅샷 {stamp}</translation></message>
+    <message><source>Image rounds</source><translation>이미지 및 회차</translation></message>
+    <message><source>Class changes</source><translation>클래스 변경</translation></message>
+    <message><source>By density and model</source><translation>개체 수 및 모델별</translation></message>
+    <message><source>Current results only</source><translation>현재 결과만</translation></message>
+    <message><source>Search image, class or model</source><translation>이미지, 클래스 또는 모델 검색</translation></message>
+    <message><source>Stage</source><translation>단계</translation></message>
+    <message><source>Model version</source><translation>모델 버전</translation></message>
+    <message><source>Rounds</source><translation>회차 수</translation></message>
+    <message><source>Distinct images</source><translation>고유 이미지 수</translation></message>
+    <message><source>{images} completed image(s) · {eligible}/{rounds} comparable rounds</source><translation>완료 이미지 {images}개 · 비교 가능 {eligible}/{rounds}회</translation></message>
+    <message><source>Excluded reasons</source><translation>제외 사유</translation></message>
+    <message><source>Comparable saved rounds only. Density uses final rectangles. Sequential runs on the same image are dependent.</source><translation>완료되어 비교 가능한 저장 회차만 최종 상자 수로 분류합니다. 같은 이미지의 순차 실행은 독립적이지 않습니다.</translation></message>
+    <message><source>Previous page</source><translation>이전 페이지</translation></message>
+    <message><source>Next page</source><translation>다음 페이지</translation></message>
+    <message><source>Page {page}/{pages} · {count} rows</source><translation>{page}/{pages}페이지 · {count}행</translation></message>
+    <message><source>Finish selected rounds…</source><translation>선택 회차 완료…</translation></message>
+    <message><source>Mark only the following {count} saved round(s) complete?</source><translation>다음 저장된 회차 {count}개를 완료로 표시할까요?</translation></message>
+    <message><source>Revalidate revisions before applying. Changed or ineligible rows will be skipped.</source><translation>적용 전에 저장 버전을 다시 확인하고 변경된 행은 건너뜁니다.</translation></message>
+    <message><source>Select current saved rows on the Images tab.</source><translation>이미지 탭에서 현재 저장된 행을 선택하세요.</translation></message>
+    <message><source>No recorded image</source><translation>기록된 이미지 없음</translation></message>
+    <message><source>Export CSV…</source><translation>CSV 내보내기…</translation></message>
+    <message><source>Metric dictionary</source><translation>지표 사전</translation></message>
+    <message><source>Loading report…</source><translation>보고서 불러오는 중…</translation></message>
+    <message><source>Writing CSV…</source><translation>CSV 기록 중…</translation></message>
+    <message><source>Exported {file}</source><translation>내보냄 {file}</translation></message>
+    <message><source>Operation failed</source><translation>작업 실패</translation></message>
+    <message><source>Yes</source><translation>예</translation></message>
+    <message><source>No</source><translation>아니요</translation></message>
+    <message><source>Current</source><translation>현재</translation></message>
+    <message><source>Initial boxes</source><translation>초기 상자</translation></message>
+    <message><source>AI boxes</source><translation>예측 상자</translation></message>
+    <message><source>Saved boxes</source><translation>저장 상자</translation></message>
+    <message><source>Added</source><translation>추가</translation></message>
+    <message><source>Deleted</source><translation>삭제</translation></message>
+    <message><source>Geometry edits</source><translation>상자 수정</translation></message>
+    <message><source>Class edits</source><translation>클래스 수정</translation></message>
+    <message><source>Operations</source><translation>작업 수</translation></message>
+    <message><source>Processing (s)</source><translation>처리 시간(초)</translation></message>
+    <message><source>Median seconds/round</source><translation>회차 중앙값(초)</translation></message>
+    <message><source>Seconds / 100 boxes</source><translation>상자 100개당 초</translation></message>
+    <message><source>Limitations</source><translation>범위 및 누락</translation></message>
+    <message><source>Model</source><translation>모델</translation></message>
+    <message><source>Class vocabulary version</source><translation>클래스 버전</translation></message>
+    <message><source>Metric</source><translation>지표</translation></message>
+    <message><source>Initial class</source><translation>초기 클래스</translation></message>
+    <message><source>Final class</source><translation>최종 클래스</translation></message>
+    <message><source>Objects</source><translation>객체 수</translation></message>
+    <message><source>Denominator</source><translation>분모</translation></message>
+    <message><source>Baseline source</source><translation>기준 출처</translation></message>
+    <message><source>Changed original boxes</source><translation>변경된 원본 상자</translation></message>
+    <message><source>Changed / initial</source><translation>원본 수정률</translation></message>
+    <message><source>Final boxes per image</source><translation>이미지당 최종 상자</translation></message>
+    <message><source>Initial</source><translation>초기</translation></message>
+    <message><source>Final</source><translation>최종</translation></message>
+    <message><source>Geometry</source><translation>형상</translation></message>
+    <message><source>Unsaved</source><translation>미저장</translation></message>
+    <message><source>Partial rectangle scope</source><translation>상자 범위 일부</translation></message>
+    <message><source>Unknown source</source><translation>출처 알 수 없음</translation></message>
+    <message><source>Interrupted timing</source><translation>시간 측정 중단</translation></message>
+    <message><source>Historical</source><translation>과거</translation></message>
+    <message><source>Idle prompt after (s)</source><translation>유휴 알림 기준(초)</translation></message>
   </context>
 </TS>

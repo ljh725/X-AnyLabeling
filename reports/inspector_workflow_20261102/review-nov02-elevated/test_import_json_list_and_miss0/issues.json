@@ -1,0 +1,1 @@
+[{"file_path": "a.jpg", "shape_id": "id1", "rule_id": "dup", "severity": "error", "message": "x"}, {"rule_id": "dup", "message": "no path"}]

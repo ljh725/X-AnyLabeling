@@ -1,0 +1,110 @@
+{
+  "schema_version": "inspection-manifest.v1",
+  "run_id": "20261102T074555Z-generic-e49e4add",
+  "saved_at": "2026-11-02T07:45:55+00:00",
+  "manifest": {
+    "dataset_root": "D:\\X-AnyLabeling-4.2.1\\reports\\inspector_workflow_20261102\\review-nov02-elevated\\test_dataset_run_delete_and_re0",
+    "output_root": "",
+    "files": [
+      {
+        "relative_path": "image.png",
+        "image_path": "D:\\X-AnyLabeling-4.2.1\\reports\\inspector_workflow_20261102\\review-nov02-elevated\\test_dataset_run_delete_and_re0\\image.png",
+        "annotation_path": "D:\\X-AnyLabeling-4.2.1\\reports\\inspector_workflow_20261102\\review-nov02-elevated\\test_dataset_run_delete_and_re0\\image.json",
+        "image_width": 64,
+        "image_height": 64,
+        "annotation_digest": "842ba6a9730d7fe571ac3c1480d96d5f87a60a69e3e524e8e5f5ae1ada67b877",
+        "image_digest": "b3af53deaa90609c568efeacb13cb1389dd81c2f9d057c7a6c4c2f3ee27bbe34",
+        "shapes": [
+          {
+            "shape_id": "id1",
+            "index": 0,
+            "label": "person",
+            "shape_type": "rectangle",
+            "points": [
+              [
+                4.0,
+                4.0
+              ],
+              [
+                30.0,
+                30.0
+              ]
+            ],
+            "group_id": null,
+            "flags": {},
+            "attributes": {},
+            "difficult": false,
+            "identity_valid": true,
+            "identity_reason": ""
+          },
+          {
+            "shape_id": "id2",
+            "index": 1,
+            "label": "person",
+            "shape_type": "rectangle",
+            "points": [
+              [
+                4.0,
+                4.0
+              ],
+              [
+                30.0,
+                30.0
+              ]
+            ],
+            "group_id": null,
+            "flags": {},
+            "attributes": {},
+            "difficult": false,
+            "identity_valid": true,
+            "identity_reason": ""
+          }
+        ],
+        "annotation_state": "present",
+        "error": "",
+        "unsaved": false,
+        "read_at": "2026-11-02T07:45:55+00:00"
+      },
+      {
+        "relative_path": "second.png",
+        "image_path": "D:\\X-AnyLabeling-4.2.1\\reports\\inspector_workflow_20261102\\review-nov02-elevated\\test_dataset_run_delete_and_re0\\second.png",
+        "annotation_path": "D:\\X-AnyLabeling-4.2.1\\reports\\inspector_workflow_20261102\\review-nov02-elevated\\test_dataset_run_delete_and_re0\\second.json",
+        "image_width": 64,
+        "image_height": 64,
+        "annotation_digest": "4414370b7867bfda4e2e064a182b566ca70031b64ee6430c3937313b4f86cd4f",
+        "image_digest": "d0d83b7aa32eee9adbfba54d22dbb91ff0bf52797b9fc31806df2d7a148f6a95",
+        "shapes": [
+          {
+            "shape_id": "other",
+            "index": 0,
+            "label": "person",
+            "shape_type": "rectangle",
+            "points": [
+              [
+                8.0,
+                8.0
+              ],
+              [
+                24.0,
+                24.0
+              ]
+            ],
+            "group_id": null,
+            "flags": {},
+            "attributes": {},
+            "difficult": false,
+            "identity_valid": true,
+            "identity_reason": ""
+          }
+        ],
+        "annotation_state": "present",
+        "error": "",
+        "unsaved": false,
+        "read_at": "2026-11-02T07:45:55+00:00"
+      }
+    ],
+    "errors": [],
+    "generated_at": "2026-11-02T07:45:55+00:00",
+    "complete": true
+  }
+}

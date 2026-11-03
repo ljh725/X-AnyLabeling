@@ -1,0 +1,68 @@
+[
+  {
+    "commit": "966e1456fcc2fbd8c1295024df301af149123cc4",
+    "canvas_sha256": "e1114941f0c369ed75d8fc7f2914c9327fec7ee8c1d1d67e51bd9d2c3fb27c58",
+    "paint_calls": [
+      {
+        "line": 3453,
+        "source": "self.line.paint(p)"
+      },
+      {
+        "line": 3660,
+        "source": "self._draw_crosshair(p)"
+      }
+    ],
+    "snippets": [
+      {
+        "name": "_draw_crosshair",
+        "line": 5022,
+        "end": 5051,
+        "source": "    def _draw_crosshair(self, painter: QtGui.QPainter) -> None:\n        \"\"\"Draw cursor-aligned guides without leaking painter state.\"\"\"\n        if (\n            not self.cross_line_show\n            or not self._crosshair_cursor_active\n            or self.pixmap is None\n            or self.pixmap.isNull()\n        ):\n            return\n\n        scale = max(float(self.scale), 1e-12)\n        pen = QtGui.QPen(\n            QtGui.QColor(self.cross_line_color),\n            max(1, int(round(self.cross_line_width / scale))),\n            Qt.PenStyle.DashLine,\n        )\n        painter.save()\n        try:\n            painter.setPen(pen)\n            painter.setOpacity(self.cross_line_opacity)\n            painter.drawLine(\n                QtCore.QPointF(self.prev_move_point.x(), 0),\n                QtCore.QPointF(self.prev_move_point.x(), self.pixmap.height()),\n            )\n            painter.drawLine(\n                QtCore.QPointF(0, self.prev_move_point.y()),\n                QtCore.QPointF(self.pixmap.width(), self.prev_move_point.y()),\n            )\n        finally:\n            painter.restore()\n"
+      }
+    ]
+  },
+  {
+    "commit": "a0cc74a01b87638c6988b0f6ccd5bc183aab181f",
+    "canvas_sha256": "fe2b641abd5b256e6fc844cf9eaedbceae25920d7ed51f9530e419e5dd416887",
+    "paint_calls": [
+      {
+        "line": 4000,
+        "source": "self.line.paint(p)"
+      },
+      {
+        "line": 4226,
+        "source": "self._draw_crosshair(p)"
+      }
+    ],
+    "snippets": [
+      {
+        "name": "_draw_crosshair",
+        "line": 6317,
+        "end": 6346,
+        "source": "    def _draw_crosshair(self, painter: QtGui.QPainter) -> None:\n        \"\"\"Draw cursor-aligned guides without leaking painter state.\"\"\"\n        if (\n            not self.cross_line_show\n            or not self._crosshair_cursor_active\n            or self.pixmap is None\n            or self.pixmap.isNull()\n        ):\n            return\n\n        scale = max(float(self.scale), 1e-12)\n        pen = QtGui.QPen(\n            QtGui.QColor(self.cross_line_color),\n            max(1, int(round(self.cross_line_width / scale))),\n            Qt.PenStyle.DashLine,\n        )\n        painter.save()\n        try:\n            painter.setPen(pen)\n            painter.setOpacity(self.cross_line_opacity)\n            painter.drawLine(\n                QtCore.QPointF(self.prev_move_point.x(), 0),\n                QtCore.QPointF(self.prev_move_point.x(), self.pixmap.height()),\n            )\n            painter.drawLine(\n                QtCore.QPointF(0, self.prev_move_point.y()),\n                QtCore.QPointF(self.pixmap.width(), self.prev_move_point.y()),\n            )\n        finally:\n            painter.restore()\n"
+      }
+    ]
+  },
+  {
+    "commit": "9e569a7c83c8c0450f71523abe7d6cd33294818f",
+    "canvas_sha256": "617c42d2f860538514b40b25afe72e2f09ae158ba3f0e11ef68edb4114d62894",
+    "paint_calls": [
+      {
+        "line": 4019,
+        "source": "self._draw_crosshair(p)"
+      },
+      {
+        "line": 4023,
+        "source": "self.line.paint(p)"
+      }
+    ],
+    "snippets": [
+      {
+        "name": "_draw_crosshair",
+        "line": 6347,
+        "end": 6363,
+        "source": "    def _draw_crosshair(self, painter: QtGui.QPainter) -> None:\n        \"\"\"Draw two-point rectangle creation guides across the full image.\"\"\"\n        if not self._rectangle_creation_crosshair_enabled():\n            return\n\n        bounds = QtCore.QRectF(\n            0.0,\n            0.0,\n            float(self.pixmap.width()),\n            float(self.pixmap.height()),\n        )\n        self._rectangle_guide_renderer.render(\n            painter,\n            self.prev_move_point,\n            bounds,\n            image_scale=self.scale,\n        )\n"
+      }
+    ]
+  }
+]

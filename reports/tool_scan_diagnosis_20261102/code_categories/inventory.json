@@ -1,0 +1,759 @@
+{
+  "date": "2026-11-02",
+  "upstream_baseline": "6d250499d2dd81f78723b9217c7a9abf0443ca25",
+  "head": "9a37c5474c390e93243e33a88e8232a19c833280",
+  "scope": [
+    "anylabeling",
+    "tests",
+    "scripts",
+    "tools",
+    "packaging",
+    "pyproject.toml",
+    "MANIFEST.in"
+  ],
+  "note": "Current disk snapshot, includes existing uncommitted Inspector work. Classification is by file origin, not feature origin. No runtime source moved or changed.",
+  "counts": {
+    "extension_code": 33,
+    "generated_and_translations": 9,
+    "source_modifications": 10,
+    "tests_and_engineering": 40
+  },
+  "files": [
+    {
+      "path": "anylabeling/configs/xanylabeling_config.yaml",
+      "category": "source_modifications",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 5749,
+      "sha256": "a07cc0fafccec7cf60cd4eff94a71022d62b599dffafd3652ff6dc795dc2bc19"
+    },
+    {
+      "path": "anylabeling/resources/resources.py",
+      "category": "generated_and_translations",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 5751700,
+      "sha256": "93489ea936817491571e91bfcd088d2f21864db0f34493e8a08f10aa7ea9c006"
+    },
+    {
+      "path": "anylabeling/resources/translations/en_US.qm",
+      "category": "generated_and_translations",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 236616,
+      "sha256": "09f2deece8109b62d5c098902c1048fb558d6acf123f3ef73fbb4bfde29e40ed"
+    },
+    {
+      "path": "anylabeling/resources/translations/en_US.ts",
+      "category": "generated_and_translations",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 471417,
+      "sha256": "95b6bec6975e41275ce9efa7d6469b03401f7f9e6933663f55235b73a097c819"
+    },
+    {
+      "path": "anylabeling/resources/translations/ja_JP.qm",
+      "category": "generated_and_translations",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 195492,
+      "sha256": "c8a1080911ae5e94a2144599af81120935de8d7f26603da0977d2e4f9e01102c"
+    },
+    {
+      "path": "anylabeling/resources/translations/ja_JP.ts",
+      "category": "generated_and_translations",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 500119,
+      "sha256": "e0884be2e2aa1cfd91e007c0e7c8772251a100c4e9d4cb6448ef784425e23023"
+    },
+    {
+      "path": "anylabeling/resources/translations/ko_KR.qm",
+      "category": "generated_and_translations",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 195568,
+      "sha256": "e34fbe46a257e5b17429f5319fb6e4924f2adaa3cd3c17b04300a9202804b02b"
+    },
+    {
+      "path": "anylabeling/resources/translations/ko_KR.ts",
+      "category": "generated_and_translations",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 489251,
+      "sha256": "26c01fd05f4e9e41b6aade8dae97f51227736a6276ef18d4483a039dc0a6409a"
+    },
+    {
+      "path": "anylabeling/resources/translations/zh_CN.qm",
+      "category": "generated_and_translations",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 174866,
+      "sha256": "a9d5e6979480f25f28a8d53562f86ed9f1447310394d0538f55098985ae4714a"
+    },
+    {
+      "path": "anylabeling/resources/translations/zh_CN.ts",
+      "category": "generated_and_translations",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 469519,
+      "sha256": "ce9cbd0ec9da626f68c1de0596ab9897d4c2a3e9d67da11cbe13c35cdd8c5349"
+    },
+    {
+      "path": "anylabeling/services/inspection/__init__.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 1724,
+      "sha256": "f315da95fec882839b4345d51c5af47f9af5a2e90c31599ec028c393e1bed1c2"
+    },
+    {
+      "path": "anylabeling/services/inspection/candidates.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 14830,
+      "sha256": "7a83b097db73606eed84407486f72a06938f63435f7812fea8cf922c696ff69e"
+    },
+    {
+      "path": "anylabeling/services/inspection/duplicate.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 18610,
+      "sha256": "8c303ac638dfba614a57e52f1f2bdd0c6a2d0cfdbafab1d8c24683037900d4b3"
+    },
+    {
+      "path": "anylabeling/services/inspection/handoff.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 5445,
+      "sha256": "aa1083a6952b48b0ae04e50222688808500a405bd0d737defeb2794ba12ee0c3"
+    },
+    {
+      "path": "anylabeling/services/inspection/importers.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 13360,
+      "sha256": "f59449f536f50a0864682af80698254dfe32e0d5aea6c5832b837fd2cbb0952d"
+    },
+    {
+      "path": "anylabeling/services/inspection/manifest.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 14890,
+      "sha256": "d4b1fb99dec11bc447bb3b21774617c9380d33d020a2b5b186b0d8c249d5a0aa"
+    },
+    {
+      "path": "anylabeling/services/inspection/models.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 37112,
+      "sha256": "fd1df4c28f19feda4ceceb132b4ad48e6025db6b829eee1ca536401ed5cc1d53"
+    },
+    {
+      "path": "anylabeling/services/inspection/profiles.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 13463,
+      "sha256": "f2a19df6b226e3877a591f38387e4663d5aab0c715a1857802f9bbdde391fa94"
+    },
+    {
+      "path": "anylabeling/services/inspection/rules.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 35495,
+      "sha256": "217ee8586aae705464feb3ba451652a591f812cb03cd18251bba8cfb2412af78"
+    },
+    {
+      "path": "anylabeling/services/inspection/runner.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 17401,
+      "sha256": "5a04af4ac1b0c854fe6e2fc417161aedea4e60ede79b5cfe1cbc41f54daf47aa"
+    },
+    {
+      "path": "anylabeling/services/inspection/storage.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 16396,
+      "sha256": "8915bda0f1f7237608e993df694d43962e85dfefe36006de22edf2272b5d55e7"
+    },
+    {
+      "path": "anylabeling/services/inspection/verification.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 10353,
+      "sha256": "8f4626b6067674370267487daf8b936faac6e1f12a8d0c3e6d2b050d598c277f"
+    },
+    {
+      "path": "anylabeling/views/labeling/editing_commands.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 3747,
+      "sha256": "d6be78244f90ee416fdb65fcb4361770f086d2f418beb6ef79c5d420cadc7885"
+    },
+    {
+      "path": "anylabeling/views/labeling/inspector/__init__.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 196,
+      "sha256": "d08632aa7ca6ba9aba767040621b49a4397eb21b9a35420e72e2a12974fce699"
+    },
+    {
+      "path": "anylabeling/views/labeling/inspector/controller.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 5662,
+      "sha256": "b60bd92851d414e7e73cae78d2d55e0ffd805940d64d0ad5d01c94b92c3921ac"
+    },
+    {
+      "path": "anylabeling/views/labeling/inspector/dialog.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 75450,
+      "sha256": "65a95d44f9341412786e1957b7b81a865f2cd84c84b710f333006f9d42ed61d5"
+    },
+    {
+      "path": "anylabeling/views/labeling/label_file.py",
+      "category": "source_modifications",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 9630,
+      "sha256": "8e55c579ff8b89073707ebf2ac785313944ae7e4b9db24ca627cbc41858f51c0"
+    },
+    {
+      "path": "anylabeling/views/labeling/label_widget.py",
+      "category": "source_modifications",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 345698,
+      "sha256": "1893fd08a6a819531e94765c1d192c1d9a24ce01302ba0630bb057c273967137"
+    },
+    {
+      "path": "anylabeling/views/labeling/rect_edge_click.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 3347,
+      "sha256": "85922755e1bd291c6f650c0ddfc001e2768905aa33a2abfff2b3ccbbe4de72cc"
+    },
+    {
+      "path": "anylabeling/views/labeling/rectangle_size/__init__.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 1126,
+      "sha256": "b236dec4a541251b4f4bd9805b04e26b6d9509e3e90c2ef4a9a504484f185c3a"
+    },
+    {
+      "path": "anylabeling/views/labeling/rectangle_size/config_codec.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 9122,
+      "sha256": "7994cc03fcf88de732d9766b61f54f282cba6d3a665eb6db055d3a20d3d08cd4"
+    },
+    {
+      "path": "anylabeling/views/labeling/rectangle_size/evaluator.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 7335,
+      "sha256": "d1a7af9629bfff06858fef331e9abfa3ec7da28dd841dec884bfa2cfc23b4ad7"
+    },
+    {
+      "path": "anylabeling/views/labeling/rectangle_size/layout.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 14748,
+      "sha256": "b2e22d8c78f0c4e16c9440aaca31bb2f3bc7008c609374e360df2716f01908a2"
+    },
+    {
+      "path": "anylabeling/views/labeling/rectangle_size/models.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 3119,
+      "sha256": "83d881bd22e9a8c33daa3a2a5aed1a4ec4e924a03ea54bf94dcc54f00b0f03ab"
+    },
+    {
+      "path": "anylabeling/views/labeling/settings/runtime_applier.py",
+      "category": "source_modifications",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 27457,
+      "sha256": "5cf800a5b69ffabb719a28f1461e460dd0bdd7fc498ac0b90ebf2196da66a6ac"
+    },
+    {
+      "path": "anylabeling/views/labeling/settings/schema.py",
+      "category": "source_modifications",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 54076,
+      "sha256": "b111e64dd175de22648624c20046077ac97fad888326ff5a0ac8545684beb996"
+    },
+    {
+      "path": "anylabeling/views/labeling/shape.py",
+      "category": "source_modifications",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 32831,
+      "sha256": "c44b36f42b2a22fb401000c716775beeaba6d9700e168fa95fbbbfef61b42694"
+    },
+    {
+      "path": "anylabeling/views/labeling/shape_filter.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 1534,
+      "sha256": "7442b00a4f68efda24e9a7f4ba03d1e6e3a2edaa066ceba542b74f19779c7e72"
+    },
+    {
+      "path": "anylabeling/views/labeling/shape_identity.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 5568,
+      "sha256": "ae1efb212ee006d4ad485d19784d52770be921dcc38b3a443ab1b867f0366b1c"
+    },
+    {
+      "path": "anylabeling/views/labeling/shared_view_state.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 6157,
+      "sha256": "27934fbe6d8630fbe65c23ac86094ed12827d8f42e59ce061e57e08734ec1242"
+    },
+    {
+      "path": "anylabeling/views/labeling/utils/async_exif.py",
+      "category": "source_modifications",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 5815,
+      "sha256": "04d77ec4a4af6324419261a2c33a747c875e881d025e6c20f42e76fef09b05ab"
+    },
+    {
+      "path": "anylabeling/views/labeling/utils/file_search.py",
+      "category": "source_modifications",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 14227,
+      "sha256": "98b60369185b40c02554738168ac7a41798b6d0132241bfb71d47aed801ed908"
+    },
+    {
+      "path": "anylabeling/views/labeling/utils/staged_annotation_loading.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 12067,
+      "sha256": "f0a2b121a698bec8c969a89b6c584422d66a1d86ad4116a59d77a16e5d85aae1"
+    },
+    {
+      "path": "anylabeling/views/labeling/widgets/canvas.py",
+      "category": "source_modifications",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 239881,
+      "sha256": "6c004a6c4360692072d1793847e3950fc72d8dd7419635b6ec595a8e2b222997"
+    },
+    {
+      "path": "anylabeling/views/labeling/widgets/label_dialog.py",
+      "category": "source_modifications",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 73088,
+      "sha256": "627c9a847fa4ae9df658dae67964c170bc08df3f099d890b704610924b132bb1"
+    },
+    {
+      "path": "anylabeling/views/labeling/widgets/point_fit.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 10733,
+      "sha256": "c94e1d52474e22016b761bb4f90e11905d7fa97aeee1eeef4f989ec85f1af8db"
+    },
+    {
+      "path": "anylabeling/views/labeling/widgets/rectangle_creation.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 11434,
+      "sha256": "e11435d3990620d310db05c64925106f53fcd33c928d3810001cd7eee0063f74"
+    },
+    {
+      "path": "anylabeling/views/labeling/widgets/rectangle_crosshair.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 4027,
+      "sha256": "7dca55ce43d9de9ef8231c33fb6d52150d9199d78a0720cd0a1092b16638612b"
+    },
+    {
+      "path": "anylabeling/views/labeling/widgets/rectangle_edge.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 11380,
+      "sha256": "40ec342358c4970a438c03ca9a1bd2484d8aaf9fc93f37cc0c53c86cae44bce3"
+    },
+    {
+      "path": "anylabeling/views/labeling/widgets/rectangle_extreme.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 3071,
+      "sha256": "3ee31004c50edb82338bb81c6eb28f54316dc82e15d05fc1f9026142989fad6a"
+    },
+    {
+      "path": "anylabeling/views/labeling/widgets/rectangle_size_overlay.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 11046,
+      "sha256": "d7057d1107cd327e9b10cd0262de3fec24bf73010fe3ff06cfbecdf7a9995ae2"
+    },
+    {
+      "path": "anylabeling/views/labeling/widgets/rectangle_size_rule_dialog.py",
+      "category": "extension_code",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 16399,
+      "sha256": "3b09d430819c9d1e14467fcadd52c035551f9295290520592e958a161d108ce5"
+    },
+    {
+      "path": "scripts/compile_languages.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 2860,
+      "sha256": "6c5cf63cf4523081fe39048e8b386360727ac1aa6da691ee2993204896fba67e"
+    },
+    {
+      "path": "tests/test_canvas/test_drag_refresh.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 10926,
+      "sha256": "c48dc04d0d4f876e9471d6427856cfbc35f61ddb68792772fb069c8c1c0eb083"
+    },
+    {
+      "path": "tests/test_canvas/test_label_visibility_mode.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 3278,
+      "sha256": "dc54c04e5f860ed88d465dff34acea334eb49abd2c5c53186b56c606860d9dd1"
+    },
+    {
+      "path": "tests/test_canvas/test_navigation.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 28168,
+      "sha256": "0237a84d0151c25a75725c2a5f533c9b09f42a7d37f12bcbd4de765feddfe3e8"
+    },
+    {
+      "path": "tests/test_canvas/test_rectangle_creation_crosshair.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 6312,
+      "sha256": "3bfdcb26a0db73e680c8549d29ec0647b81de0507c2a7889e48f7e6e5c06a8e5"
+    },
+    {
+      "path": "tests/test_canvas/test_rectangle_edge_migration.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 18498,
+      "sha256": "4c3bb05749f9eeb974d1fca4ae67ae7b97cbebcd1b55d007d3d43c663f75461c"
+    },
+    {
+      "path": "tests/test_canvas/test_rectangle_extreme_creation.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 7816,
+      "sha256": "c7628f664c798189c99456e636dad1249a31f14daa7412f1fd03cc3394b55865"
+    },
+    {
+      "path": "tests/test_canvas/test_rectangle_size.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 15714,
+      "sha256": "9848b0c3d4d3ef4eff3d44c7062b1520019edfbaa99e69a06055142179aa5f15"
+    },
+    {
+      "path": "tests/test_canvas/test_selection_priority.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 3516,
+      "sha256": "77d88b7e7b005990e407253d77b6b8494610e23a7034e4f277446655b962f838"
+    },
+    {
+      "path": "tests/test_canvas/test_shape_identity.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 11075,
+      "sha256": "ffb1ab24a2c5c2c6b4cc4a1eab509b21ec59f390959f740b905344540a9cd7ed"
+    },
+    {
+      "path": "tests/test_canvas/test_shift_point_fit_geometry.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 5891,
+      "sha256": "853365e78b51c05b5ca546ee9de43cd43f10aef9ce2864ed9629bb6850dd7834"
+    },
+    {
+      "path": "tests/test_canvas/test_shift_point_fit_interaction.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 16972,
+      "sha256": "1cf08252a76c8ccb336717c424f6685177cf5b02fedde00dc798e974c409f308"
+    },
+    {
+      "path": "tests/test_inspection/test_candidates.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 4097,
+      "sha256": "52e266cb8dda55e85926b1a2747c7d10b19b9c6fb55dca61c39ea33265b2a865"
+    },
+    {
+      "path": "tests/test_inspection/test_duplicate_core.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 6533,
+      "sha256": "6e5f5079b094c4c9492884a4022684e9a7ca23caf265cf20ba3bef43e3a72475"
+    },
+    {
+      "path": "tests/test_inspection/test_handoff.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 2652,
+      "sha256": "5c8c9411d73f635143ef4f6ec6f4c47480ebd54ad7f3dc246d1a12232842fce5"
+    },
+    {
+      "path": "tests/test_inspection/test_importers.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 4666,
+      "sha256": "9c73958d4be9e4820007208b30ed34611914099128a744df0a4ae4a267ef7f7c"
+    },
+    {
+      "path": "tests/test_inspection/test_inspector_dialog.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 13630,
+      "sha256": "7908b32cffe2f76f4a236ce28b4de820d929778d822b3040a0516549cb24aea6"
+    },
+    {
+      "path": "tests/test_inspection/test_manifest.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 3878,
+      "sha256": "f03359a9b97ceb9b158641ed64f9c27dbe7e0694b55994cad7515233a80e5550"
+    },
+    {
+      "path": "tests/test_inspection/test_models.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 2445,
+      "sha256": "824dfeefa07fd1043406f28bc8b73d6d19a788c2b0226d9c1111c69892fc4933"
+    },
+    {
+      "path": "tests/test_inspection/test_profiles.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 2484,
+      "sha256": "64db5630f9b821e4275aed3a167a5275f6324fb7e1f95b94b6359b0f5319ddc9"
+    },
+    {
+      "path": "tests/test_inspection/test_rules.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 8206,
+      "sha256": "cb5f30b5b9a248e5160381c1782c0ca3ade51c45c44efcec7f8cdfd700ec6558"
+    },
+    {
+      "path": "tests/test_inspection/test_runner.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 7208,
+      "sha256": "503591f44664ea2d38940d7cdb475da43496c33cf69343c30ba6c7f6651fbc26"
+    },
+    {
+      "path": "tests/test_inspection/test_storage.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 3919,
+      "sha256": "e0615ccee94ff7971fc4e4f3486a076faf5cc0f5b58f289870baa2185b765e76"
+    },
+    {
+      "path": "tests/test_inspection/test_verification.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": true,
+      "bytes": 6522,
+      "sha256": "6e581bba6d5f4a17c7f85c11ba4c6b207138ba9712881bf2e893b93cb680d9ee"
+    },
+    {
+      "path": "tests/test_labeling/test_batch_edit_fields.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 15032,
+      "sha256": "cf411fe1ef0fc61688c20b8794391fcb2da93331903b8012db0d4bc590355934"
+    },
+    {
+      "path": "tests/test_labeling/test_candidate_review_regressions.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 9528,
+      "sha256": "4eae68988bbb144b4344e70fec9762648bd7a94351ae020b6d49f72207462aa2"
+    },
+    {
+      "path": "tests/test_labeling/test_digit_label_actions.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 8143,
+      "sha256": "2394903c9b27533ebcf3a76eb9c9296d2e1b639f2d482d561e88443861e7ec3c"
+    },
+    {
+      "path": "tests/test_labeling/test_drag_commit.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 7054,
+      "sha256": "ffbd01b898f9e7278d1b5313c622a35498b1b07c421a5daabe252c2b844b810d"
+    },
+    {
+      "path": "tests/test_labeling/test_edit_mode_shortcut.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 1979,
+      "sha256": "f2d69bbd8a1df49cdd33b0036e6a2755cc6d8cae7da42e831d3a13830ca4f18d"
+    },
+    {
+      "path": "tests/test_labeling/test_editing_command_scope.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 1614,
+      "sha256": "7b051bd5357050ab8247d0a26b840bc6154e0882c7b97edf2e3313eb9648b7b2"
+    },
+    {
+      "path": "tests/test_labeling/test_label_locks.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 12518,
+      "sha256": "6fe21ab47e88018827fb49bea66da6f1a0409876aaa7016e0a13c71f6d2629c7"
+    },
+    {
+      "path": "tests/test_labeling/test_label_widget_attributes.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 17274,
+      "sha256": "faf43692bf988cda18fd2d17e468876154584dbe31c6d992a49b8679c3782b79"
+    },
+    {
+      "path": "tests/test_labeling/test_label_widget_groups.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 2898,
+      "sha256": "255e8f72e3c19b59434b67a145a755db620c5e98a1bd320613e6ee43e0ac5095"
+    },
+    {
+      "path": "tests/test_labeling/test_shape_filter.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 7801,
+      "sha256": "ce7d7a2cf5c01eb19ed56831d4c70eb9fdf3ff818a65fa68f4dc2efbab95d12e"
+    },
+    {
+      "path": "tests/test_labeling/test_show_shape_status.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 4906,
+      "sha256": "55d30dfb1e2d4a2bec5b9c032875e26285ee57527a7dc76d4bd60145fd948c9d"
+    },
+    {
+      "path": "tests/test_settings/test_runtime_applier.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 6965,
+      "sha256": "d58e51e6cc9044e8092dc152bcecffa707db9714fbfa4c16e13a1f086320c4f1"
+    },
+    {
+      "path": "tests/test_settings/test_schema.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "M",
+      "untracked": false,
+      "bytes": 5242,
+      "sha256": "3dc1962cfb3d8f5516f9c3451eb050504d6d44a92c9979b8e8383b3f55c02731"
+    },
+    {
+      "path": "tests/test_staged_annotation_metadata.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 8095,
+      "sha256": "2f7c1cd93492700e85fe71909b7c3d109205901aaecad80475428f1d3c78c3f0"
+    },
+    {
+      "path": "tests/test_staged_output_window.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 27105,
+      "sha256": "629d92aac950e13a2f9328fb627277d15f2cd6bc7fc3cadd68a83c727bcba305"
+    },
+    {
+      "path": "tests/test_ui_density_extremes_repair.py",
+      "category": "tests_and_engineering",
+      "status_vs_upstream": "A",
+      "untracked": false,
+      "bytes": 3234,
+      "sha256": "388dad463d980f31b4d5645159943956bcd8af61bd19c827d60027f58c60ceed"
+    }
+  ]
+}

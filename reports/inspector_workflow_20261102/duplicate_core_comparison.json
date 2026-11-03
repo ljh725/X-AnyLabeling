@@ -1,0 +1,22 @@
+{
+  "source_commit": "b45af4adcbbfb13d4ae1fcffa04afe5678b463e0",
+  "rectangles": 160,
+  "pair_metrics_compared": 38160,
+  "max_abs_metric_difference": 0.0,
+  "classification_mismatches": 0,
+  "full_scan_pair_set_mismatches": 0,
+  "new_pair_counts": {
+    "low": {
+      "red": 0,
+      "yellow": 14
+    },
+    "medium": {
+      "red": 0,
+      "yellow": 7
+    },
+    "high": {
+      "red": 0,
+      "yellow": 2
+    }
+  }
+}

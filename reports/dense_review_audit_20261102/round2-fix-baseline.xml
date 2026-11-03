@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="2" time="2.798" timestamp="2026-11-02T20:08:40.491297+08:00" hostname="DESKTOP-RBDJ37M"><testcase classname="reports.dense_review_audit_20261102.test_round2_edges" name="test_undo_both_moves_restores_original_confirmation" time="0.002"><failure message="AssertionError: Undoing both edits must restore the confirmation that existed before those edits&#10;assert False&#10; +  where False = confirmed_both()&#10; +    where confirmed_both = ObjectReviewState(shape_id='a', display_index=1, label='A', shape_type='rectangle', bounds=(5.0, 5.0, 15.0, 15.0), cat...t=False, difficulty_dimensions=(), difficulty_reason='', skipped=False, added=False, supported=True, load_failed=False).confirmed_both&#10; +      where ObjectReviewState(shape_id='a', display_index=1, label='A', shape_type='rectangle', bounds=(5.0, 5.0, 15.0, 15.0), cat...t=False, difficulty_dimensions=(), difficulty_reason='', skipped=False, added=False, supported=True, load_failed=False) = object('a')&#10; +        where object = &lt;anylabeling.services.dense_review.session.DenseReviewSession object at 0x00000147E2507BC0&gt;.object">reports\dense_review_audit_20261102\test_round2_edges.py:19: in test_undo_both_moves_restores_original_confirmation
+    assert session.object("a").confirmed_both(), (
+E   AssertionError: Undoing both edits must restore the confirmation that existed before those edits
+E   assert False
+E    +  where False = confirmed_both()
+E    +    where confirmed_both = ObjectReviewState(shape_id='a', display_index=1, label='A', shape_type='rectangle', bounds=(5.0, 5.0, 15.0, 15.0), cat...t=False, difficulty_dimensions=(), difficulty_reason='', skipped=False, added=False, supported=True, load_failed=False).confirmed_both
+E    +      where ObjectReviewState(shape_id='a', display_index=1, label='A', shape_type='rectangle', bounds=(5.0, 5.0, 15.0, 15.0), cat...t=False, difficulty_dimensions=(), difficulty_reason='', skipped=False, added=False, supported=True, load_failed=False) = object('a')
+E    +        where object = &lt;anylabeling.services.dense_review.session.DenseReviewSession object at 0x00000147E2507BC0&gt;.object</failure></testcase><testcase classname="reports.dense_review_audit_20261102.test_round2_edges" name="test_progress_history_limit_does_not_expose_missing_snapshot" time="0.004"><failure message="IndexError: pop from an empty deque">reports\dense_review_audit_20261102\test_round2_edges.py:36: in test_progress_history_limit_does_not_expose_missing_snapshot
+    assert session.undo_progress()
+           ^^^^^^^^^^^^^^^^^^^^^^^
+anylabeling\services\dense_review\session.py:1040: in undo_progress
+    entry = self._progress_undo.pop()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   IndexError: pop from an empty deque</failure></testcase></testsuite></testsuites>

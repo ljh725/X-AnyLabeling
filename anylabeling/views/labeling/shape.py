@@ -457,8 +457,19 @@ class Shape:
         x2, y2 = pt2.x(), pt2.y()
         return QtCore.QRectF(x1, y1, x2 - x1, y2 - y1)
 
-    def paint(self, painter: QtGui.QPainter):  # noqa: max-complexity: 18
-        """Paint shape using QPainter"""
+    def paint(
+        self,
+        painter: QtGui.QPainter,
+        *,
+        outline_path: QtGui.QPainterPath | None = None,
+    ):  # noqa: max-complexity: 18
+        """Paint shape using QPainter.
+
+        ``outline_path`` overrides only the stroked outline for this call;
+        fills, vertices and selection handles keep using the full geometry.
+        ``None`` keeps the original outline, while an empty path strokes
+        nothing.
+        """
         if self.points:
             color = (
                 self.select_line_color
@@ -614,7 +625,9 @@ class Shape:
                 if self.is_closed():
                     line_path.lineTo(self.points[0])
 
-            painter.drawPath(line_path)
+            painter.drawPath(
+                line_path if outline_path is None else outline_path
+            )
             if self.fill:
                 color = (
                     self.select_fill_color

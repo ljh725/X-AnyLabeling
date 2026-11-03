@@ -1,0 +1,16 @@
+{
+  "verified_inventory_files": 92,
+  "verified_exported_copies": 66,
+  "patches_parsed": 3,
+  "provenance": {
+    "OverviewDialog": {
+      "path": "anylabeling/views/labeling/widgets/overview_dialog.py",
+      "class_ast_identical_to_upstream_baseline": true
+    },
+    "LabelModifyDialog": {
+      "path": "anylabeling/views/labeling/widgets/label_dialog.py",
+      "class_ast_identical_to_upstream_baseline": true
+    }
+  },
+  "note": "Artifact checks only; this task does not change runtime behavior or claim performance fixed."
+}

@@ -1,0 +1,44 @@
+{
+  "schema_version": "inspection-report.v1",
+  "updated_at": "2026-11-02T08:28:47+00:00",
+  "reports": [
+    {
+      "run_id": "20261102T082846Z-generic-56aa46e5",
+      "state": "completed",
+      "scope": "current_image",
+      "started_at": "2026-11-02T08:28:46+00:00",
+      "finished_at": "2026-11-02T08:28:46+00:00",
+      "issue_count": 1,
+      "summary": {
+        "requested_files": 1,
+        "completed_files": 1,
+        "failed_files": 0,
+        "excluded_files": 0,
+        "not_run_files": 0,
+        "issue_count": 1,
+        "object_count": 2,
+        "truncated": false
+      },
+      "profile_id": "generic"
+    },
+    {
+      "run_id": "20261102T082846Z-generic-1c4e0b63",
+      "state": "completed",
+      "scope": "dataset",
+      "started_at": "2026-11-02T08:28:46+00:00",
+      "finished_at": "2026-11-02T08:28:46+00:00",
+      "issue_count": 1,
+      "summary": {
+        "requested_files": 2,
+        "completed_files": 2,
+        "failed_files": 0,
+        "excluded_files": 0,
+        "not_run_files": 0,
+        "issue_count": 1,
+        "object_count": 2,
+        "truncated": false
+      },
+      "profile_id": "generic"
+    }
+  ]
+}

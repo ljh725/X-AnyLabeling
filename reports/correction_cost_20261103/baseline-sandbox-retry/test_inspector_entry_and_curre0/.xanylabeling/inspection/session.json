@@ -1,0 +1,15 @@
+{
+  "schema_version": "inspection-session.v1",
+  "report_id": "20261103T052416Z-generic-f44351ab",
+  "dataset_root": "D:\\X-AnyLabeling-4.2.1\\reports\\correction_cost_20261103\\baseline-sandbox-retry\\test_inspector_entry_and_curre0",
+  "output_root": "",
+  "filters": {
+    "queue": "all"
+  },
+  "cursor": {
+    "issue_id": "",
+    "family_key": ""
+  },
+  "updated_at": "2026-11-03T05:24:16+00:00",
+  "revision": 1
+}
