@@ -30,6 +30,9 @@ from .profiles import (
 )
 from .rules import RuleContext, RuleOutcome
 
+MANIFEST_RULE_ID = "__manifest__"
+EXCLUDED_RULE_ID = "__excluded__"
+
 
 def _cancel_checker(
     cancel_event: Optional[threading.Event],
@@ -150,10 +153,14 @@ class InspectionRunner:
         *,
         max_issues: int = 20000,
         allow_partial_profile: bool = False,
+        rule_timeout_s: Optional[float] = None,
     ) -> None:
         self.catalog = catalog or build_default_catalog()
         self.max_issues = int(max_issues)
+        if self.max_issues < 1:
+            raise ValueError("max_issues must be positive")
         self.allow_partial_profile = bool(allow_partial_profile)
+        self.rule_timeout_s = rule_timeout_s
 
     def run(
         self,
@@ -165,95 +172,119 @@ class InspectionRunner:
         should_cancel: Optional[Callable[[], bool]] = None,
         progress: Optional[Callable[[int, int, str], None]] = None,
         generation: int = 0,
+        scope_notes: Sequence[str] = (),
     ) -> RunReport:
         started = utc_now_iso()
         run_id = new_run_id(profile.profile_id)
         check_cancel = _cancel_checker(cancel_event, should_cancel)
         prepared, validation = prepare_profile(profile, self.catalog)
+        notes = [str(note) for note in scope_notes if str(note).strip()]
+        requested = len(manifest.files) + len(manifest.errors)
         if not validation.valid:
-            return RunReport(
-                run_id=run_id,
+            return self._early_report(
+                run_id,
+                scope,
+                manifest,
+                prepared,
+                started,
+                generation,
                 state=RunState.FAILED,
-                scope=scope,
-                dataset_root=manifest.dataset_root,
-                output_root=manifest.output_root,
-                manifest_fingerprint=manifest.fingerprint(),
-                profile_snapshot=effective_profile_snapshot(
-                    prepared, self.catalog
-                ),
-                coverage=(),
-                issues=(),
-                started_at=started,
-                finished_at=utc_now_iso(),
                 error="; ".join(validation.errors),
-                requested_files=len(manifest.files) + len(manifest.errors),
-                generation=generation,
-                source_kind=_source_kind(manifest),
+                requested=requested,
+                notes=notes,
             )
         if validation.missing_rule_ids and not self.allow_partial_profile:
-            return RunReport(
-                run_id=run_id,
+            return self._early_report(
+                run_id,
+                scope,
+                manifest,
+                prepared,
+                started,
+                generation,
                 state=RunState.FAILED,
-                scope=scope,
-                dataset_root=manifest.dataset_root,
-                output_root=manifest.output_root,
-                manifest_fingerprint=manifest.fingerprint(),
-                profile_snapshot=effective_profile_snapshot(
-                    prepared, self.catalog
-                ),
-                coverage=(),
-                issues=(),
-                started_at=started,
-                finished_at=utc_now_iso(),
                 error=(
                     "方案引用本机未登记规则: "
                     + ", ".join(validation.missing_rule_ids)
                 ),
-                requested_files=len(manifest.files) + len(manifest.errors),
-                generation=generation,
-                source_kind=_source_kind(manifest),
+                requested=requested,
+                notes=notes,
             )
+        scan_cancelled = not manifest.complete
         if not manifest.files:
-            return RunReport(
-                run_id=run_id,
-                state=RunState.FAILED,
-                scope=scope,
-                dataset_root=manifest.dataset_root,
-                output_root=manifest.output_root,
-                manifest_fingerprint=manifest.fingerprint(),
-                profile_snapshot=effective_profile_snapshot(
-                    prepared, self.catalog
+            state, error = self._empty_scope_state(manifest)
+            if scan_cancelled:
+                state = RunState.CANCELLED
+                error = "扫描在完成文件清单前被取消，未执行任何规则"
+                notes.append("扫描阶段被取消：未进入清单的文件范围未知")
+            coverage, raw_issues = self._non_file_coverage(manifest)
+            merged = _merge_issues(raw_issues)
+            return self._early_report(
+                run_id,
+                scope,
+                manifest,
+                prepared,
+                started,
+                generation,
+                state=state,
+                error=error,
+                requested=requested,
+                notes=notes,
+                coverage=coverage,
+                issues=merged,
+                completed_files=0,
+                failed_files=len(
+                    {
+                        entry.relative_path
+                        for entry in coverage
+                        if entry.state is CoverageState.FAILED
+                    }
                 ),
-                coverage=(),
-                issues=(),
-                started_at=started,
-                finished_at=utc_now_iso(),
-                error="所选范围没有可检查的图片文件",
-                requested_files=0,
-                generation=generation,
-                source_kind=_source_kind(manifest),
+                not_run_files=0,
+                excluded_files=len(manifest.excluded),
+                truncated=len(manifest.errors) > self.max_issues,
             )
+        if not manifest.complete:
+            notes.append("扫描阶段被取消：未进入清单的文件范围未知")
         coverage: list[CoverageEntry] = []
         raw_issues: list[InspectionIssue] = []
         covered: set[tuple[str, str]] = set()
         truncated = False
-        cancelled = False
+        global_limited = False
+        cancelled = not manifest.complete
         total = len(manifest.files)
         enabled_rules = prepared.enabled_rules
         for file_index, file in enumerate(manifest.files, 1):
             if check_cancel():
                 cancelled = True
                 break
+            if progress is not None:
+                progress(file_index - 1, total, file.relative_path)
             executions, file_cancelled = self._run_file(
                 file, enabled_rules, prepared, check_cancel
             )
+            file_issues = _merge_issues(
+                issue for execution in executions for issue in execution.issues
+            )
+            remaining = max(0, self.max_issues - len(raw_issues))
+            file_limited = len(file_issues) > remaining
+            raw_issues.extend(file_issues[:remaining])
+            if file_limited:
+                truncated = True
+                global_limited = True
             for execution in executions:
-                coverage.append(execution.entry)
+                entry = execution.entry
+                if file_limited and execution.issues:
+                    entry = replace(
+                        entry,
+                        truncated=True,
+                        reason=entry.reason
+                        + f"；问题数超过运行上限 {self.max_issues}",
+                    )
+                coverage.append(entry)
                 covered.add(
                     (execution.entry.relative_path, execution.entry.rule_id)
                 )
-                raw_issues.extend(execution.issues)
-                if execution.truncated:
+                if execution.truncated or execution.entry.truncated:
                     truncated = True
             if progress is not None:
                 progress(file_index, total, file.relative_path)
@@ -276,46 +307,37 @@ class InspectionRunner:
                         "运行已取消" if cancelled else "未执行",
                     )
                 )
-        manifest_error_paths = set()
-        for error in manifest.errors:
-            relative = str(error.get("relative_path", ""))
-            manifest_error_paths.add(relative)
-            coverage.append(
-                CoverageEntry(
-                    relative,
-                    "__manifest__",
-                    CoverageState.FAILED,
-                    str(error.get("error", "文件读取失败")),
-                )
-            )
-            raw_issues.append(
-                InspectionIssue(
-                    issue_id=f"manifest-{relative}",
-                    family_key=f"manifest|{relative}",
-                    title="文件读取失败",
-                    message=str(error.get("error", "")),
-                    severity=IssueSeverity.ERROR,
-                    location=IssueLocation(
-                        relative_path=relative,
-                        image_path=str(error.get("image_path", "")),
+        coverage.extend(self._manifest_error_coverage(manifest))
+        errors = self._manifest_error_issues(manifest)
+        remaining = max(0, self.max_issues - len(raw_issues))
+        raw_issues.extend(errors[:remaining])
+        if len(manifest.errors) > remaining:
+            truncated = True
+            global_limited = True
+        coverage.extend(self._excluded_coverage(manifest))
+        if manifest.excluded:
+            notes.append(
+                "显式排除 {} 个文件：{}".format(
+                    len(manifest.excluded),
+                    ", ".join(
+                        str(item.get("relative_path", ""))
+                        for item in manifest.excluded[:5]
                     ),
-                    evidence=(),
-                    suggested_action="检查文件权限或内容后重试该文件。",
                 )
             )
         merged_issues = _merge_issues(raw_issues)
-        if len(merged_issues) > self.max_issues:
-            merged_issues = merged_issues[: self.max_issues]
-            truncated = True
+        if global_limited:
+            notes.append(f"问题数超过上限 {self.max_issues}，结果已截断")
         completed_files = _count_completed_files(manifest, coverage)
-        requested_paths = {
-            file.relative_path for file in manifest.files
-        } | manifest_error_paths
+        requested_paths = {file.relative_path for file in manifest.files} | {
+            str(error.get("relative_path", "")) for error in manifest.errors
+        }
         failed_paths = {
             entry.relative_path
             for entry in coverage
             if entry.state is CoverageState.FAILED
-        } | manifest_error_paths
+            and entry.rule_id != EXCLUDED_RULE_ID
+        }
         failed_files = len(failed_paths)
         not_run_files = _count_state_files(
             manifest,
@@ -330,6 +352,8 @@ class InspectionRunner:
             not_run_files=not_run_files,
             truncated=truncated,
             missing_rules=bool(validation.missing_rule_ids),
+            requested=len(requested_paths),
+            excluded=len(manifest.excluded),
         )
         return RunReport(
             run_id=run_id,
@@ -348,6 +372,7 @@ class InspectionRunner:
             requested_files=len(requested_paths),
             completed_files=completed_files,
             failed_files=failed_files,
+            excluded_files=len(manifest.excluded),
             not_run_files=not_run_files,
             truncated=truncated,
             error=(
@@ -357,6 +382,123 @@ class InspectionRunner:
             ),
             generation=generation,
             source_kind=_source_kind(manifest),
+            scope_notes=tuple(notes),
+        )
+
+    def _empty_scope_state(self, manifest: Manifest) -> tuple[RunState, str]:
+        if manifest.errors:
+            return (
+                RunState.FAILED,
+                "所选范围的文件全部读取失败，未执行任何规则",
+            )
+        if manifest.excluded:
+            return (
+                RunState.FAILED,
+                "所选范围的文件全部被显式排除，未执行任何规则",
+            )
+        return RunState.FAILED, "所选范围没有可检查的图片文件"
+
+    def _non_file_coverage(
+        self, manifest: Manifest
+    ) -> tuple[list[CoverageEntry], list[InspectionIssue]]:
+        return (
+            self._manifest_error_coverage(manifest)
+            + self._excluded_coverage(manifest),
+            self._manifest_error_issues(manifest),
+        )
+
+    def _manifest_error_coverage(
+        self, manifest: Manifest
+    ) -> list[CoverageEntry]:
+        return [
+            CoverageEntry(
+                str(error.get("relative_path", "")),
+                MANIFEST_RULE_ID,
+                CoverageState.FAILED,
+                str(error.get("error", "文件读取失败")),
+            )
+            for error in manifest.errors
+        ]
+
+    def _manifest_error_issues(
+        self, manifest: Manifest
+    ) -> list[InspectionIssue]:
+        issues: list[InspectionIssue] = []
+        for error in manifest.errors[: self.max_issues]:
+            relative = str(error.get("relative_path", ""))
+            issues.append(
+                InspectionIssue(
+                    issue_id=f"manifest-{relative}",
+                    family_key=f"manifest|{relative}",
+                    title="文件读取失败",
+                    message=str(error.get("error", "")),
+                    severity=IssueSeverity.ERROR,
+                    location=IssueLocation(
+                        relative_path=relative,
+                        image_path=str(error.get("image_path", "")),
+                    ),
+                    evidence=(),
+                    suggested_action="检查文件权限或内容后重试该文件。",
+                )
+            )
+        return issues
+
+    def _excluded_coverage(self, manifest: Manifest) -> list[CoverageEntry]:
+        return [
+            CoverageEntry(
+                str(item.get("relative_path", "")),
+                EXCLUDED_RULE_ID,
+                CoverageState.SKIPPED,
+                str(item.get("reason", "显式排除")),
+            )
+            for item in manifest.excluded
+        ]
+
+    def _early_report(
+        self,
+        run_id: str,
+        scope: RunScope,
+        manifest: Manifest,
+        prepared: InspectionProfile,
+        started: str,
+        generation: int,
+        *,
+        state: RunState,
+        error: str,
+        requested: int,
+        notes: Sequence[str] = (),
+        coverage: Sequence[CoverageEntry] = (),
+        issues: Sequence[InspectionIssue] = (),
+        completed_files: int = 0,
+        failed_files: int = 0,
+        not_run_files: int = 0,
+        excluded_files: int = 0,
+        truncated: bool = False,
+    ) -> RunReport:
+        return RunReport(
+            run_id=run_id,
+            state=state,
+            scope=scope,
+            dataset_root=manifest.dataset_root,
+            output_root=manifest.output_root,
+            manifest_fingerprint=manifest.fingerprint(),
+            profile_snapshot=effective_profile_snapshot(
+                prepared, self.catalog
+            ),
+            coverage=tuple(coverage),
+            issues=tuple(issues),
+            started_at=started,
+            finished_at=utc_now_iso(),
+            requested_files=int(requested),
+            completed_files=int(completed_files),
+            failed_files=int(failed_files),
+            excluded_files=int(excluded_files),
+            not_run_files=int(not_run_files),
+            truncated=bool(truncated),
+            error=error,
+            generation=generation,
+            source_kind=_source_kind(manifest),
+            scope_notes=tuple(notes),
         )
 
     def _run_file(
@@ -445,6 +587,22 @@ class InspectionRunner:
                 )
             )
         elapsed = (time.perf_counter() - started_rule) * 1000.0
+        if (
+            self.rule_timeout_s is not None
+            and elapsed > float(self.rule_timeout_s) * 1000.0
+        ):
+            return _RuleExecution(
+                CoverageEntry(
+                    file.relative_path,
+                    rule.rule_id,
+                    CoverageState.FAILED,
+                    "规则执行超时（{:.0f}ms > {:.0f}ms），结果未采用".format(
+                        elapsed, float(self.rule_timeout_s) * 1000.0
+                    ),
+                    truncated=True,
+                ),
+                truncated=True,
+            )
         entry = CoverageEntry(
             file.relative_path,
             rule.rule_id,
@@ -452,6 +610,7 @@ class InspectionRunner:
             outcome.reason,
             issue_count=len(outcome.issues),
             duration_ms=elapsed,
+            truncated=bool(outcome.truncated),
         )
         return _RuleExecution(
             entry=entry,
@@ -474,10 +633,14 @@ def _terminal_state(
     not_run_files: int,
     truncated: bool,
     missing_rules: bool,
+    requested: int = 0,
+    excluded: int = 0,
 ) -> RunState:
     if cancelled:
         return RunState.CANCELLED
     if failed_files or not_run_files or truncated or missing_rules:
+        return RunState.PARTIAL
+    if requested and excluded >= requested:
         return RunState.PARTIAL
     return RunState.COMPLETED
 

@@ -99,11 +99,16 @@ def test_action_switch_updates_canvas_and_config():
     from types import SimpleNamespace
     from unittest.mock import Mock
 
+    config = {}
     host = SimpleNamespace(
-        _config={},
+        _config=config,
         canvas=SimpleNamespace(
             show_labels_only_selected=False, update=Mock()
         ),
+        update_user_preference=lambda key, value, **kwargs: config.__setitem__(
+            key, value
+        )
+        or True,
     )
 
     LabelingWidget.set_canvas_params(

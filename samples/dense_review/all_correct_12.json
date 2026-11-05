@@ -1,0 +1,371 @@
+{
+  "version": "4.2.1",
+  "flags": {},
+  "checked": false,
+  "shapes": [
+    {
+      "xanylabeling_shape_id": "ok12-001",
+      "label": "A",
+      "score": null,
+      "points": [
+        [
+          60,
+          40
+        ],
+        [
+          280,
+          40
+        ],
+        [
+          280,
+          230
+        ],
+        [
+          60,
+          230
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "ok12-002",
+      "label": "B",
+      "score": null,
+      "points": [
+        [
+          360,
+          40
+        ],
+        [
+          580,
+          40
+        ],
+        [
+          580,
+          230
+        ],
+        [
+          360,
+          230
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "ok12-003",
+      "label": "A",
+      "score": null,
+      "points": [
+        [
+          660,
+          40
+        ],
+        [
+          880,
+          40
+        ],
+        [
+          880,
+          230
+        ],
+        [
+          660,
+          230
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "ok12-004",
+      "label": "B",
+      "score": null,
+      "points": [
+        [
+          960,
+          40
+        ],
+        [
+          1180,
+          40
+        ],
+        [
+          1180,
+          230
+        ],
+        [
+          960,
+          230
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "ok12-005",
+      "label": "A",
+      "score": null,
+      "points": [
+        [
+          60,
+          270
+        ],
+        [
+          280,
+          270
+        ],
+        [
+          280,
+          460
+        ],
+        [
+          60,
+          460
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "ok12-006",
+      "label": "B",
+      "score": null,
+      "points": [
+        [
+          360,
+          270
+        ],
+        [
+          580,
+          270
+        ],
+        [
+          580,
+          460
+        ],
+        [
+          360,
+          460
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "ok12-007",
+      "label": "A",
+      "score": null,
+      "points": [
+        [
+          660,
+          270
+        ],
+        [
+          880,
+          270
+        ],
+        [
+          880,
+          460
+        ],
+        [
+          660,
+          460
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "ok12-008",
+      "label": "B",
+      "score": null,
+      "points": [
+        [
+          960,
+          270
+        ],
+        [
+          1180,
+          270
+        ],
+        [
+          1180,
+          460
+        ],
+        [
+          960,
+          460
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "ok12-009",
+      "label": "A",
+      "score": null,
+      "points": [
+        [
+          60,
+          500
+        ],
+        [
+          280,
+          500
+        ],
+        [
+          280,
+          690
+        ],
+        [
+          60,
+          690
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "ok12-010",
+      "label": "B",
+      "score": null,
+      "points": [
+        [
+          360,
+          500
+        ],
+        [
+          580,
+          500
+        ],
+        [
+          580,
+          690
+        ],
+        [
+          360,
+          690
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "ok12-011",
+      "label": "A",
+      "score": null,
+      "points": [
+        [
+          660,
+          500
+        ],
+        [
+          880,
+          500
+        ],
+        [
+          880,
+          690
+        ],
+        [
+          660,
+          690
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "ok12-012",
+      "label": "B",
+      "score": null,
+      "points": [
+        [
+          960,
+          500
+        ],
+        [
+          1180,
+          500
+        ],
+        [
+          1180,
+          690
+        ],
+        [
+          960,
+          690
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "all_correct_12.png",
+  "imageData": null,
+  "imageHeight": 720,
+  "imageWidth": 1280
+}

@@ -99,13 +99,16 @@ class BrightnessContrastProcessor:
 
 
 class CanvasAdjustmentWidget(QtWidgets.QWidget):
-    """Three-slider panel for label opacity, image brightness and contrast."""
+    """Panel for label opacity, image brightness/contrast and review status."""
 
     # Emitted when the opacity slider changes. Value is in range 0-100.
     opacity_changed = QtCore.pyqtSignal(int)
     # Emitted when brightness or contrast changes. Values are in range 0-150
     # (factor = value / 50).
     brightness_contrast_changed = QtCore.pyqtSignal(int, int)
+    # Emitted when the user picks an image review state: False (unchecked),
+    # True (checked) or "failed".
+    status_changed = QtCore.pyqtSignal(object)
     geometry_changed = QtCore.pyqtSignal()
 
     SLIDER_WIDTH = 120
@@ -129,10 +132,26 @@ class CanvasAdjustmentWidget(QtWidgets.QWidget):
         " background: transparent; }"
     )
     _RESET_CSS = (
-        "QPushButton { background: rgba(120, 120, 120, 60);"
-        " border-radius: 3px; font-size: 11px; color: #333; padding: 0; }"
-        "QPushButton:hover { background: rgba(120, 120, 120, 110); }"
-        "QPushButton:pressed { background: rgba(120, 120, 120, 150); }"
+        "QToolButton { background: rgba(120, 120, 120, 60);"
+        " border: none; border-radius: 3px; font-size: 11px; color: #333;"
+        " padding: 0; }"
+        "QToolButton:hover { background: rgba(120, 120, 120, 110); }"
+        "QToolButton:pressed { background: rgba(120, 120, 120, 150); }"
+    )
+    _PIN_CSS = (
+        "QToolButton { background: transparent; border: none;"
+        " border-radius: 3px; padding: 1px; }"
+        "QToolButton:hover { background: rgba(120, 120, 120, 80); }"
+        "QToolButton:checked { background: rgba(0, 113, 227, 60); }"
+    )
+    _STATUS_CSS = (
+        "QToolButton { background: rgba(120, 120, 120, 40);"
+        " border: 1px solid transparent; border-radius: 3px;"
+        " font-size: 11px; color: #333; padding: 1px 4px; }"
+        "QToolButton:hover { background: rgba(120, 120, 120, 90); }"
+        "QToolButton:checked { background: rgba(0, 113, 227, 60);"
+        " border-color: rgba(0, 113, 227, 120); }"
+        "QToolButton:disabled { color: rgba(70, 70, 70, 110); }"
     )
 
     def __init__(self, parent=None):
@@ -177,19 +196,29 @@ class CanvasAdjustmentWidget(QtWidgets.QWidget):
         content_layout.setSpacing(5)
         self.content_widget.setLayout(content_layout)
 
-        self.opacity_slider, self.opacity_value_label = self._build_row(
+        self._build_status_row(content_layout)
+
+        (
+            self.opacity_slider,
+            self.opacity_value_label,
+            self.opacity_pin,
+        ) = self._build_row(
             content_layout,
             self.tr("Opacity"),
             self.OPACITY_MIN,
             self.OPACITY_MAX,
             self.OPACITY_DEFAULT,
             self.tr(
-                "Adjust the transparency of annotation shapes and masks. "
-                "Label text remains fully visible."
+                "Scale the transparency of annotation fills. Borders, "
+                "vertices and label text remain fully visible."
             ),
             display="percent",
         )
-        self.brightness_slider, self.brightness_value_label = self._build_row(
+        (
+            self.brightness_slider,
+            self.brightness_value_label,
+            self.brightness_pin,
+        ) = self._build_row(
             content_layout,
             self.tr("Brightness"),
             self.BC_MIN,
@@ -198,7 +227,11 @@ class CanvasAdjustmentWidget(QtWidgets.QWidget):
             self.tr("Adjust the brightness of the underlying image."),
             display="factor",
         )
-        self.contrast_slider, self.contrast_value_label = self._build_row(
+        (
+            self.contrast_slider,
+            self.contrast_value_label,
+            self.contrast_pin,
+        ) = self._build_row(
             content_layout,
             self.tr("Contrast"),
             self.BC_MIN,
@@ -221,6 +254,87 @@ class CanvasAdjustmentWidget(QtWidgets.QWidget):
         self.opacity_slider.valueChanged.connect(self._on_opacity_changed)
         self.brightness_slider.valueChanged.connect(self._on_bc_changed)
         self.contrast_slider.valueChanged.connect(self._on_bc_changed)
+        self.opacity_pin.setChecked(True)
+        self.set_status_enabled(False)
+
+    def _build_status_row(self, layout):
+        """Create the mutually exclusive image review status buttons."""
+        row = QtWidgets.QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(4)
+
+        self.status_label = QtWidgets.QLabel(self.tr("Review"))
+        self.status_label.setFixedWidth(64)
+        self.status_label.setStyleSheet(self._LABEL_CSS)
+        self.status_label.setToolTip(
+            self.tr("Set the review status of the current image.")
+        )
+        row.addWidget(self.status_label)
+
+        self.status_group = QtWidgets.QButtonGroup(self)
+        self.status_group.setExclusive(True)
+        self.status_buttons = {}
+        for value, text in (
+            (False, self.tr("Unchecked")),
+            (True, self.tr("Checked")),
+            ("failed", self.tr("Failed")),
+        ):
+            button = QtWidgets.QToolButton()
+            button.setText(text)
+            button.setCheckable(True)
+            button.setMouseTracking(True)
+            button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            button.setStyleSheet(self._STATUS_CSS)
+            button.setToolTip(
+                self.tr("Set the review status of the current image.")
+            )
+            button.clicked.connect(
+                lambda _checked=False, value=value: self._on_status_clicked(
+                    value
+                )
+            )
+            self.status_group.addButton(button)
+            self.status_buttons[value] = button
+            row.addWidget(button, 1)
+        self._status = False
+        layout.addLayout(row)
+
+    @staticmethod
+    def _normalize_status(value):
+        """Return the canonical review value: False, True or 'failed'."""
+        if value == "failed":
+            return "failed"
+        return value is True
+
+    def _set_status_buttons(self, value):
+        button = self.status_buttons[value]
+        for candidate in self.status_buttons.values():
+            candidate.setChecked(candidate is button)
+
+    def _on_status_clicked(self, value):
+        """Emit the review state only when the user changes it."""
+        normalized = self._normalize_status(value)
+        self._set_status_buttons(normalized)
+        if normalized == self._status:
+            return
+        self._status = normalized
+        self.status_changed.emit(normalized)
+
+    def set_status(self, value):
+        """Reflect the current image review state without emitting."""
+        normalized = self._normalize_status(value)
+        self._status = normalized
+        self._set_status_buttons(normalized)
+
+    def status(self):
+        """Return the review state currently shown by the panel."""
+        return self._status
+
+    def set_status_enabled(self, enabled):
+        """Enable or disable the review controls (e.g. without an image)."""
+        for button in self.status_buttons.values():
+            button.setEnabled(bool(enabled))
+        self.status_label.setEnabled(bool(enabled))
 
     def _build_stylesheet(self):
         """Translucent white card with theme-blue sliders."""
@@ -291,7 +405,8 @@ class CanvasAdjustmentWidget(QtWidgets.QWidget):
         value_label.setToolTip(tooltip)
         self._set_value_text(value_label, default)
 
-        reset_btn = QtWidgets.QPushButton("↺")
+        reset_btn = QtWidgets.QToolButton()
+        reset_btn.setText("↺")
         reset_btn.setFixedSize(22, 20)
         reset_btn.setStyleSheet(self._RESET_CSS)
         reset_btn.setToolTip(self.tr("Reset to default"))
@@ -300,12 +415,25 @@ class CanvasAdjustmentWidget(QtWidgets.QWidget):
             lambda _=False, s=slider: s.setValue(default)
         )
 
+        pin_btn = QtWidgets.QToolButton()
+        pin_btn.setCheckable(True)
+        pin_btn.setFixedSize(22, 20)
+        pin_btn.setStyleSheet(self._PIN_CSS)
+        pin_btn.setIcon(new_icon("map-pin", "svg"))
+        pin_btn.setIconSize(QtCore.QSize(12, 12))
+        pin_btn.setToolTip(self.tr("Keep this value when switching images"))
+        pin_btn.setAccessibleName(
+            self.tr("Keep this value when switching images")
+        )
+        pin_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
         row.addWidget(name_label)
         row.addWidget(slider)
         row.addWidget(value_label)
         row.addWidget(reset_btn)
+        row.addWidget(pin_btn)
         layout.addLayout(row)
-        return slider, value_label
+        return slider, value_label, pin_btn
 
     @staticmethod
     def _set_value_text(label, value):

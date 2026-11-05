@@ -784,13 +784,25 @@ class AutoLabelingWidget(QWidget):
                     if dialog.exec() == QDialog.DialogCode.Accepted:
                         new_url = dialog.get_server_url()
                         new_api_key = dialog.get_api_key()
+                        saved = True
                         if new_url:
-                            self.model_manager.update_model_config(
+                            saved = self.model_manager.update_model_config(
                                 config_path, "server_url", new_url
-                            )
-                        self.model_manager.update_model_config(
+                            ) and saved
+                        saved = self.model_manager.update_model_config(
                             config_path, "api_key", new_api_key
-                        )
+                        ) and saved
+                        if not saved:
+                            logger.warning(
+                                "Remote server settings were updated in "
+                                "memory but could not be saved."
+                            )
+                            self.model_manager.new_model_status.emit(
+                                self.tr(
+                                    "Remote server settings could not be "
+                                    "saved; they apply to this session only."
+                                )
+                            )
                         if not hasattr(self.parent, "_config"):
                             self.parent._config = {}
                         if "remote_server_settings" not in self.parent._config:

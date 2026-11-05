@@ -1,7 +1,7 @@
 # 矩形与十字线、拟合预览共边显示调整方案
 
-- 日期：2026-11-02（Asia/Shanghai）。
-- 状态：已实施，自动化验证通过；真实屏幕验收未完成（2026-11-02 晚间更新，实施结果见文末第六节）。
+- 日期：2026-11-02（Asia/Shanghai）；2026-11-04 追加 P2 修复（第七节）。
+- 状态：已实施，自动化验证通过；真实屏幕验收未完成（2026-11-02 晚间更新，实施结果见文末第六节；2026-11-04 P2 修复见第七节）。
 - 分类：CUSTOM-101 单点拟合、CUSTOM-103 创建十字线的显示修复及配套；不增加新的标注操作。
 - 范围：4.2.1 两点矩形创建，以及用户已确认的 Shift / Shift+Alt 单点拟合预览。
 - 来源：[beta.4 历史代码与当前定位](../../reports/crosshair_overlap_20261102/README.md)。旧版先画矩形再画十字线可复用，但完整解决共边需要增加局部轮廓避让。
@@ -134,3 +134,19 @@ Canvas 的 `show_masks` 分支在普通 Shape 之前还会绘制一次矩形轮�
 - `flake8`（语法与未使用导入）：通过；`openspec validate fix-rectangle-preview-overlap --strict`：通过。
 
 未完成：6.1 真实屏幕深浅背景的人工可见窗口验收；未重跑 `pytest tests` 全量；未做性能重测；未提交 Git。详细证据见 [verification.md](../../openspec/changes/fix-rectangle-preview-overlap/verification.md)。
+
+## 七、2026-11-04 P2 修复：原几何变化后的候选失效
+
+复核发现：Shift / Shift+Alt 悬停预览期间，原框被方向键等编辑入口改变后，Canvas 仍用旧几何计算出的候选绘制，并继续按旧候选避让原框，导致实际已无效的橙色候选残留。修复保持显示规则不变，只补充候选与来源的一致性：
+
+| 文件 | 修改 |
+| --- | --- |
+| `anylabeling/views/labeling/widgets/point_fit.py::_update_point_fit` | 记录本次候选的目标身份、原几何、未裁剪指针和生效的 Shift/Shift+Alt 模式，作为 Canvas 内临时状态 |
+| `anylabeling/views/labeling/widgets/point_fit.py::_build_point_fit_preview` | 生成每帧快照前比较来源：悬停期间几何变化时按当前几何与已记录指针重算，普通/mask 轮廓与常驻十字线共用结果；已捕获手势几何变化时取消并消费释放，不重新选角、不提交旧候选 |
+| `anylabeling/views/labeling/widgets/point_fit.py::_point_fit_move` | 捕获期间鼠标移动发现几何变化时同样取消并消费，避免旧按下快照再次生成候选 |
+| `anylabeling/views/labeling/widgets/canvas.py::Canvas.__init__` | 新增三个仅存在于 Canvas 的临时字段，由 `_clear_point_fit()` 统一清理 |
+| `tests/test_canvas/test_rectangle_preview_overlap.py` | 新增 8 项真实 Canvas 事件与像素回归（共 43 项） |
+
+行为约定：重算无效时恢复完整原框并保留红色无效定位反馈；重算仍有效时只按新候选与当前原框的共边避让，并保持 Shift+Alt 向内语义；捕获期间几何改变后取消拟合，释放被消费，键盘微调自身的 dirty/撤销不受影响；预览刷新不新增撤销、序列化或配置写入。
+
+验证（2026-11-04）：定向 `82 passed` 与 `53 passed, 72 subtests passed`；`tests/test_canvas` 排除一个受并行设置持久化改动阻塞的窗口用例后 `599 passed / 5 failed / 2 errors`，失败与错误均为既有 `test_groups` 基线、Windows 临时目录 ACL 或并行 `label_widget.py` 改动，与本项无关；`flake8` 通过；`black --diff` 对 `point_fit.py`、`rectangle_preview.py`、`rectangle_crosshair.py` 无变更；`openspec validate fix-rectangle-preview-overlap --strict` 通过。真实屏幕验收（6.1）仍未完成。

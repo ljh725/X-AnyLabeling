@@ -11,10 +11,11 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtTest import QTest
 
 from anylabeling import config as app_config
+from anylabeling import user_config
+from anylabeling.config import normalize_user_config
 from anylabeling.resources import resources  # noqa: F401
 from anylabeling.services.dense_review.config import save_config
 from anylabeling.services.dense_review.session import DenseReviewSession
-from anylabeling.views.labeling.label_file import LabelFileError
 from anylabeling.views.labeling.settings.schema import load_template_config
 from anylabeling.views.mainwindow import MainWindow
 from PIL import Image
@@ -30,16 +31,23 @@ def window(tmp_path, monkeypatch):
     config_file = tmp_path / "config.yaml"
     config_file.write_text("{}", encoding="utf-8")
     monkeypatch.setattr(app_config, "current_config_file", str(config_file))
-    settings_class = QtCore.QSettings
-    monkeypatch.setattr(
-        QtCore,
-        "QSettings",
-        lambda *args: settings_class(
-            str(tmp_path / "settings.ini"), settings_class.Format.IniFormat
-        ),
-    )
     config = copy.deepcopy(load_template_config())
     config.update(auto_save=False)
+    # The shared fixture rejects configuration writes outside .tmp; use a
+    # dedicated target there instead of the system temp_path.
+    session_target = os.path.abspath(
+        os.path.join(
+            ".tmp", f"dense-review-config-{os.getpid()}-{id(tmp_path)}.yaml"
+        )
+    )
+    user_config.begin_session(
+        target_path=session_target,
+        origin="file",
+        template=copy.deepcopy(config),
+        effective=copy.deepcopy(config),
+        ensure_created=True,
+        normalizer=normalize_user_config,
+    )
     window = MainWindow(app, config=config)
     window.resize(1600, 1000)
     window.show()
@@ -172,6 +180,105 @@ def test_batch_confirmation_is_one_undo_without_touching_labels(
         for shape in widget.canvas.shapes
     ]
     assert after == before
+
+
+def test_batch_confirmation_redo_restores_progress(window, tmp_path):
+    app = QtWidgets.QApplication.instance()
+    widget = window.labeling_widget.view
+    image_path = _prepare_image(tmp_path)
+    assert widget.load_file(image_path)
+    widget.open_dense_review()
+    widget.dense_review_workspace._complete_batch()
+    app.processEvents()
+    session = widget.dense_review_session
+    confirmed = copy.deepcopy(session.to_payload())
+    assert widget.actions.undo.isEnabled() is True
+    assert widget.actions.redo.isEnabled() is False
+
+    widget.undo_shape_edit()
+    app.processEvents()
+    assert not session.object("id1").confirmed_both()
+    assert widget.actions.redo.isEnabled() is True
+
+    widget.redo_shape_edit()
+    app.processEvents()
+    assert session.object("id1").confirmed_both()
+    assert session.to_payload() == confirmed
+    assert widget.actions.redo.isEnabled() is False
+
+
+def test_canvas_edit_redo_restores_bounds_and_review_state(window, tmp_path):
+    app = QtWidgets.QApplication.instance()
+    widget = window.labeling_widget.view
+    image_path = _prepare_image(tmp_path)
+    assert widget.load_file(image_path)
+    widget.open_dense_review()
+    widget.dense_review_workspace._complete_batch()
+    app.processEvents()
+    session = widget.dense_review_session
+    shape = next(
+        item
+        for item in widget.canvas.shapes
+        if item.xanylabeling_shape_id == "id1"
+    )
+    initial_left = shape.bounding_rect().left()
+    shape.move_by(QtCore.QPointF(10, 0))
+    widget.canvas.store_shapes()
+    widget.canvas.shape_moved.emit()
+    app.processEvents()
+    assert session.object("id1").confirmed("geometry") is False
+
+    widget.undo_shape_edit()
+    app.processEvents()
+    restored = next(
+        item
+        for item in widget.canvas.shapes
+        if item.xanylabeling_shape_id == "id1"
+    )
+    assert restored.bounding_rect().left() == initial_left
+    assert session.object("id1").confirmed_both()
+    assert widget.actions.redo.isEnabled() is True
+
+    widget.redo_shape_edit()
+    app.processEvents()
+    redone = next(
+        item
+        for item in widget.canvas.shapes
+        if item.xanylabeling_shape_id == "id1"
+    )
+    assert redone.bounding_rect().left() == initial_left + 10
+    # A real geometry change retracts both dimensions again.
+    assert session.object("id1").confirmed("geometry") is False
+    assert session.object("id1").confirmed("category") is False
+    assert widget.actions.redo.isEnabled() is False
+
+
+def test_new_edit_clears_redo(window, tmp_path):
+    app = QtWidgets.QApplication.instance()
+    widget = window.labeling_widget.view
+    image_path = _prepare_image(tmp_path)
+    assert widget.load_file(image_path)
+    widget.open_dense_review()
+    widget.dense_review_workspace._complete_batch()
+    app.processEvents()
+    shape = next(
+        item
+        for item in widget.canvas.shapes
+        if item.xanylabeling_shape_id == "id1"
+    )
+    shape.move_by(QtCore.QPointF(10, 0))
+    widget.canvas.store_shapes()
+    widget.canvas.shape_moved.emit()
+    app.processEvents()
+    widget.undo_shape_edit()
+    app.processEvents()
+    assert widget.actions.redo.isEnabled() is True
+
+    shape.move_by(QtCore.QPointF(20, 0))
+    widget.canvas.store_shapes()
+    widget.canvas.shape_moved.emit()
+    app.processEvents()
+    assert widget.actions.redo.isEnabled() is False
 
 
 def test_relabel_move_and_undo_invalidate_progress(window, tmp_path):
@@ -706,8 +813,8 @@ def test_save_failure_keeps_memory_progress(window, tmp_path):
     before = (tmp_path / "image.json").read_text(encoding="utf-8")
     with (
         patch(
-            "anylabeling.views.labeling.label_file.LabelFile.save",
-            side_effect=LabelFileError("injected"),
+            "anylabeling.views.labeling.label_file.os.replace",
+            side_effect=PermissionError("injected atomic replacement failure"),
         ),
         patch.object(widget, "error_message"),
     ):

@@ -52,6 +52,20 @@ def _settings_translation_markers() -> None:
     QCoreApplication.translate("SettingsDialog", "File")
     QCoreApplication.translate("SettingsDialog", "View")
     QCoreApplication.translate("SettingsDialog", "Dense Review")
+    QCoreApplication.translate("SettingsDialog", "Open Dense Review Workspace")
+    QCoreApplication.translate(
+        "SettingsDialog", "Dense Review: Complete Batch and Next"
+    )
+    QCoreApplication.translate(
+        "SettingsDialog", "Dense Review: Complete Object and Next"
+    )
+    QCoreApplication.translate("SettingsDialog", "Dense Review: Skip Object")
+    QCoreApplication.translate(
+        "SettingsDialog", "Dense Review: Mark Difficult"
+    )
+    QCoreApplication.translate(
+        "SettingsDialog", "Dense Review: Toggle Full Image View"
+    )
     QCoreApplication.translate("SettingsDialog", "Display Label Popup")
     QCoreApplication.translate("SettingsDialog", "Auto Highlight Shape")
     QCoreApplication.translate(
@@ -185,7 +199,8 @@ def _settings_translation_markers() -> None:
     )
     QCoreApplication.translate(
         "SettingsDialog",
-        "Use Ctrl+Wheel to adjust rectangle geometry while editing. Disabled by default.",
+        "Use Alt+Wheel to adjust rectangle geometry while editing; "
+        "Ctrl+Wheel always zooms. Disabled by default.",
     )
     QCoreApplication.translate(
         "SettingsDialog",
@@ -331,6 +346,7 @@ def _settings_translation_markers() -> None:
     QCoreApplication.translate("SettingsDialog", "Loop Select Labels")
     QCoreApplication.translate("SettingsDialog", "Hide Selected Polygons")
     QCoreApplication.translate("SettingsDialog", "Paste Polygon")
+    QCoreApplication.translate("SettingsDialog", "Redo")
     QCoreApplication.translate("SettingsDialog", "Remove Selected Point")
     QCoreApplication.translate("SettingsDialog", "Show Hidden Polygons")
     QCoreApplication.translate("SettingsDialog", "Undo")
@@ -530,6 +546,12 @@ def _shortcut_label(short_key: str) -> str:
         "open_dense_review": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT,
             "Open Dense Review Workspace",
+        ),
+        "inspector_run": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Inspector: Run Inspection"
+        ),
+        "inspector_locate": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Inspector: Locate Selected Issue"
         ),
         "open_correction_metrics": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Correction Cost Statistics"
@@ -969,6 +991,22 @@ def _non_shortcut_fields() -> list[SettingField]:
             ),
         ),
         SettingField(
+            "canvas.wheel_navigation_mode",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT, "Wheel Navigation Mode"
+            ),
+            "enum",
+            "Canvas",
+            "Interaction",
+            "Basic Interaction",
+            options=("direct", "traditional"),
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Use 'direct' to zoom with the bare wheel or 'traditional' "
+                "to scroll the view. Ctrl+Wheel always zooms.",
+            ),
+        ),
+        SettingField(
             "canvas.wheel_rectangle_editing.enable",
             QT_TRANSLATE_NOOP(
                 SETTINGS_TRANSLATION_CONTEXT,
@@ -980,7 +1018,8 @@ def _non_shortcut_fields() -> list[SettingField]:
             "Basic",
             description=QT_TRANSLATE_NOOP(
                 SETTINGS_TRANSLATION_CONTEXT,
-                "Use Ctrl+Wheel to adjust rectangle geometry while editing. Disabled by default.",
+                "Use Alt+Wheel to adjust rectangle geometry while editing; "
+                "Ctrl+Wheel always zooms. Disabled by default.",
             ),
         ),
         SettingField(
@@ -1476,6 +1515,7 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "remove_selected_point",
             "show_hidden_polygons",
             "undo",
+            "redo",
             "undo_last_point",
             "union_selected_shapes",
         ),

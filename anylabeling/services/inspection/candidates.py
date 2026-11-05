@@ -7,7 +7,7 @@ import json
 import math
 import os
 import os.path as osp
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
 from .models import (
@@ -172,14 +172,19 @@ def load_candidates(
         if region[2] <= region[0] or region[3] <= region[1]:
             errors.append({"index": index, "error": "候选区域面积必须大于零"})
             continue
-        width = int(raw.get("image_width", 0) or 0)
-        height = int(raw.get("image_height", 0) or 0)
+        try:
+            width = int(raw.get("image_width", 0) or 0)
+            height = int(raw.get("image_height", 0) or 0)
+        except (ValueError, TypeError):
+            errors.append({"index": index, "error": "候选图片尺寸必须为整数"})
+            continue
         if width > 0 and (region[0] < 0 or region[2] > width):
             errors.append({"index": index, "error": "候选区域超出图片宽度"})
             continue
         if height > 0 and (region[1] < 0 or region[3] > height):
             errors.append({"index": index, "error": "候选区域超出图片高度"})
             continue
+        file = None
         if manifest is not None and not is_ambiguous:
             file = next(
                 (
@@ -204,6 +209,44 @@ def load_candidates(
                     }
                 )
                 continue
+            candidate_orientation = str(
+                raw.get("orientation", "") or ""
+            ).strip()
+            if (
+                file
+                and file.image_orientation
+                and candidate_orientation
+                and str(file.image_orientation) != candidate_orientation
+            ):
+                errors.append(
+                    {
+                        "index": index,
+                        "error": "候选图片方向与当前清单不一致",
+                    }
+                )
+                continue
+            if file and file.annotation_state == "error":
+                errors.append(
+                    {
+                        "index": index,
+                        "error": "候选图片缺少可核验的标注文件",
+                    }
+                )
+                continue
+        digest = str(raw.get("image_digest", "") or "")
+        digest_kind = str(raw.get("image_digest_kind", "content") or "content")
+        if file is not None:
+            from .manifest import file_digest
+
+            if digest and digest != file_digest(
+                file.image_path, content=(digest_kind != "stat")
+            ):
+                errors.append(
+                    {"index": index, "error": "候选图片内容与当前图片不一致"}
+                )
+                continue
+            digest = file_digest(file.image_path, content=True)
+            digest_kind = "content" if digest else ""
         source_version = str(
             raw.get("source_version", raw.get("version", "unversioned"))
         )
@@ -229,7 +272,9 @@ def load_candidates(
                 source=str(raw.get("source", source)),
                 source_version=source_version,
                 relative_path=relative,
-                image_path=str(raw.get("image_path", "")),
+                image_path=(
+                    file.image_path if file else str(raw.get("image_path", ""))
+                ),
                 label=label,
                 region=region,
                 image_width=width,
@@ -239,6 +284,8 @@ def load_candidates(
                 status=CandidateStatus.PENDING,
                 reason=reason,
                 schema_version=CANDIDATE_SCHEMA_VERSION,
+                image_digest=digest,
+                image_digest_kind=digest_kind,
             )
         )
     return CandidateImportResult(
@@ -271,23 +318,44 @@ def candidate_shape_payload(candidate: Candidate) -> dict[str, Any]:
 class CandidateStore:
     """Revision-safe sidecar for candidate status and acceptance intents."""
 
-    def __init__(self, root: str) -> None:
+    def __init__(self, root: str, dataset_key: str = "") -> None:
         self.root = root
+        self.dataset_key = str(dataset_key)
         self.path = os.path.join(root, "candidate_state.json")
         self.lock_path = os.path.join(root, "candidate_state.lock")
 
     def load(self) -> tuple[int, dict[str, Candidate]]:
         if not os.path.isfile(self.path):
             return 0, {}
-        payload = read_json(self.path)
+        try:
+            payload = read_json(self.path)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise StorageError(f"候选状态文件损坏: {error}") from error
         if not isinstance(payload, Mapping):
             raise StorageError("candidate store root must be an object")
         if str(payload.get("schema_version", "")) != CANDIDATE_SCHEMA_VERSION:
             raise StorageError("unsupported candidate store schema")
         candidates = {}
         for key, item in (payload.get("candidates", {}) or {}).items():
-            if isinstance(item, Mapping):
-                candidates[str(key)] = Candidate.from_dict(item)
+            if not isinstance(item, Mapping):
+                continue
+            try:
+                candidate = Candidate.from_dict(item)
+            except (TypeError, ValueError, AttributeError) as error:
+                raise StorageError(
+                    f"候选状态记录无效 {key}: {error}"
+                ) from error
+            if candidate.schema_version != CANDIDATE_SCHEMA_VERSION:
+                raise StorageError(
+                    f"候选状态版本不可恢复: {candidate.schema_version}"
+                )
+            if (
+                candidate.dataset_key
+                and self.dataset_key
+                and candidate.dataset_key != self.dataset_key
+            ):
+                continue
+            candidates[str(key)] = candidate
         return int(payload.get("revision", 0) or 0), candidates
 
     def save(
@@ -309,12 +377,17 @@ class CandidateStore:
                     "revision": next_revision,
                     "updated_at": utc_now_iso(),
                     "candidates": {
-                        key: value.to_dict()
+                        key: self._stamp(value).to_dict()
                         for key, value in sorted(candidates.items())
                     },
                 },
             )
             return next_revision
+
+    def _stamp(self, candidate: Candidate) -> Candidate:
+        if not self.dataset_key or candidate.dataset_key == self.dataset_key:
+            return candidate
+        return replace(candidate, dataset_key=self.dataset_key)
 
     def mark(
         self,
@@ -324,27 +397,16 @@ class CandidateStore:
         accepted_shape_id: str = "",
     ) -> Candidate:
         revision, candidates = self.load()
-        updated = Candidate(
-            candidate_id=candidate.candidate_id,
-            source=candidate.source,
-            source_version=candidate.source_version,
-            relative_path=candidate.relative_path,
-            image_path=candidate.image_path,
-            label=candidate.label,
-            region=candidate.region,
-            image_width=candidate.image_width,
-            image_height=candidate.image_height,
-            orientation=candidate.orientation,
-            score=candidate.score,
+        updated = replace(
+            candidate,
             status=status,
-            reason=candidate.reason,
             accepted_shape_id=accepted_shape_id,
             accepted_at=(
                 utc_now_iso()
                 if status is CandidateStatus.ACCEPTED
                 else candidate.accepted_at
             ),
-            schema_version=candidate.schema_version,
+            dataset_key=self.dataset_key or candidate.dataset_key,
         )
         candidates[candidate.candidate_id] = updated
         self.save(candidates, revision)
@@ -366,12 +428,27 @@ class AcceptIntentStore:
     def load(self) -> dict[str, Mapping[str, Any]]:
         if not os.path.isfile(self.path):
             return {}
-        payload = read_json(self.path)
+        try:
+            payload = read_json(self.path)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise StorageError(f"候选接受意图无法读取: {error}") from error
         if not isinstance(payload, Mapping):
             raise StorageError("accept intent root must be an object")
+        entries = payload.get("intents", {})
+        if not isinstance(entries, Mapping):
+            raise StorageError("accept intents must be an object")
+        for key, value in entries.items():
+            if (
+                not isinstance(value, Mapping)
+                or not value.get("preallocated_shape_id")
+                or not value.get("relative_path")
+                or value.get("status")
+                not in ("pending", "applied", "confirmed", "abandoned")
+            ):
+                raise StorageError(f"候选接受意图记录无效: {key}")
         return {
             str(key): dict(value)
-            for key, value in (payload.get("intents", {}) or {}).items()
+            for key, value in entries.items()
             if isinstance(value, Mapping)
         }
 
@@ -381,10 +458,22 @@ class AcceptIntentStore:
         relative_path: str,
         preallocated_shape_id: str,
     ) -> Mapping[str, Any]:
+        with _exclusive_lock(self.lock_path):
+            return self._create(
+                candidate_id, relative_path, preallocated_shape_id
+            )
+
+    def _create(
+        self, candidate_id: str, relative_path: str, preallocated_shape_id: str
+    ) -> Mapping[str, Any]:
         intents = self.load()
         existing = intents.get(candidate_id)
-        if existing and existing.get("status") in ("pending", "confirmed"):
-            if existing.get("status") == "confirmed":
+        if existing and existing.get("status") in (
+            "pending",
+            "applied",
+            "confirmed",
+        ):
+            if existing.get("status") in ("applied", "confirmed"):
                 raise AlreadyAccepted("candidate already has a formal shape")
             return existing
         intent = {
@@ -398,27 +487,29 @@ class AcceptIntentStore:
         self._write(intents)
         return intent
 
+    def applied(self, candidate_id: str) -> Mapping[str, Any]:
+        """The object exists in the document but has not been saved yet."""
+        return self._transition(candidate_id, "applied")
+
     def confirm(self, candidate_id: str) -> Mapping[str, Any]:
-        intents = self.load()
-        intent = dict(intents.get(candidate_id, {}))
-        if not intent:
-            raise StorageError("accept intent not found")
-        intent["status"] = "confirmed"
-        intent["updated_at"] = utc_now_iso()
-        intents[candidate_id] = intent
-        self._write(intents)
-        return intent
+        return self._transition(candidate_id, "confirmed")
 
     def abandon(self, candidate_id: str) -> Mapping[str, Any]:
-        intents = self.load()
-        intent = dict(intents.get(candidate_id, {}))
-        if not intent:
-            return {}
-        intent["status"] = "abandoned"
-        intent["updated_at"] = utc_now_iso()
-        intents[candidate_id] = intent
-        self._write(intents)
-        return intent
+        return self._transition(candidate_id, "abandoned")
+
+    def _transition(self, candidate_id: str, status: str) -> Mapping[str, Any]:
+        with _exclusive_lock(self.lock_path):
+            intents = self.load()
+            intent = dict(intents.get(candidate_id, {}))
+            if not intent:
+                if status == "abandoned":
+                    return {}
+                raise StorageError("accept intent not found")
+            intent["status"] = status
+            intent["updated_at"] = utc_now_iso()
+            intents[candidate_id] = intent
+            self._write(intents)
+            return intent
 
     def _write(self, intents: Mapping[str, Mapping[str, Any]]) -> None:
         atomic_write_json(

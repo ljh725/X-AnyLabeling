@@ -1,0 +1,341 @@
+{
+  "version": "4.2.1",
+  "flags": {},
+  "checked": false,
+  "shapes": [
+    {
+      "xanylabeling_shape_id": "mix-001",
+      "label": "A",
+      "score": null,
+      "points": [
+        [
+          50,
+          40
+        ],
+        [
+          270,
+          40
+        ],
+        [
+          270,
+          230
+        ],
+        [
+          50,
+          230
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "mix-002",
+      "label": "B",
+      "score": null,
+      "points": [
+        [
+          350,
+          40
+        ],
+        [
+          570,
+          40
+        ],
+        [
+          570,
+          230
+        ],
+        [
+          350,
+          230
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "mix-003",
+      "label": "A",
+      "score": null,
+      "points": [
+        [
+          650,
+          40
+        ],
+        [
+          870,
+          40
+        ],
+        [
+          870,
+          230
+        ],
+        [
+          650,
+          230
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "mix-004",
+      "label": "B",
+      "score": null,
+      "points": [
+        [
+          950,
+          40
+        ],
+        [
+          1170,
+          40
+        ],
+        [
+          1170,
+          230
+        ],
+        [
+          950,
+          230
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "mix-005",
+      "label": "A",
+      "score": null,
+      "points": [
+        [
+          50,
+          270
+        ],
+        [
+          270,
+          270
+        ],
+        [
+          270,
+          460
+        ],
+        [
+          50,
+          460
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "mix-006",
+      "label": "B",
+      "score": null,
+      "points": [
+        [
+          350,
+          270
+        ],
+        [
+          570,
+          270
+        ],
+        [
+          570,
+          460
+        ],
+        [
+          350,
+          460
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "mix-007",
+      "label": "C",
+      "score": null,
+      "points": [
+        [
+          650,
+          270
+        ],
+        [
+          870,
+          270
+        ],
+        [
+          870,
+          460
+        ],
+        [
+          650,
+          460
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "mix-008",
+      "label": "C",
+      "score": null,
+      "points": [
+        [
+          950,
+          270
+        ],
+        [
+          1170,
+          270
+        ],
+        [
+          1170,
+          460
+        ],
+        [
+          950,
+          460
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "mix-009",
+      "label": "C",
+      "score": null,
+      "points": [
+        [
+          50,
+          500
+        ],
+        [
+          270,
+          500
+        ],
+        [
+          270,
+          690
+        ],
+        [
+          50,
+          690
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "mix-010",
+      "label": "A",
+      "score": null,
+      "points": [
+        [
+          370,
+          660
+        ],
+        [
+          460,
+          520
+        ],
+        [
+          550,
+          660
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "polygon",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "mix-011",
+      "label": "D",
+      "score": null,
+      "points": [
+        [
+          760,
+          520
+        ],
+        [
+          830,
+          570
+        ],
+        [
+          805,
+          660
+        ],
+        [
+          715,
+          660
+        ],
+        [
+          690,
+          570
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "polygon",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "mixed_shapes.png",
+  "imageData": null,
+  "imageHeight": 720,
+  "imageWidth": 1280
+}

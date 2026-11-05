@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from typing import Any, Iterable, Optional
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from anylabeling.services.dense_review.models import (
     NEW_PENDING_BATCH_ID,
+    OTHER_BATCH_ID,
     REVIEW_DIMENSIONS,
     CoverageSettings,
 )
@@ -111,6 +113,220 @@ class _BatchDelegate(QtWidgets.QStyledItemDelegate):
             "类别 {}/{} · 框 {}/{}".format(category, total, geometry, total),
         )
         painter.restore()
+
+
+class _CardModel(QtCore.QAbstractListModel):
+    """Virtualized card rows.
+
+    ``QListView`` asks this model only for the rows it paints, so a 300
+    object batch never materializes 300 widgets or 300 QIcons.  The bounded
+    icon cache and the explicit ``retain_icons`` call keep graphical
+    resources proportional to the visible (plus prefetch) cards; text-only
+    state refreshes emit ``dataChanged`` and never re-crop source pixels.
+    """
+
+    ICON_LIMIT = 48
+    ROLE_SHAPE_ID = QtCore.Qt.ItemDataRole.UserRole
+    ROLE_TITLE = QtCore.Qt.ItemDataRole.UserRole + 1
+    ROLE_STATUS = QtCore.Qt.ItemDataRole.UserRole + 2
+    ROLE_MARKERS = QtCore.Qt.ItemDataRole.UserRole + 3
+    ROLE_STATE = QtCore.Qt.ItemDataRole.UserRole + 4
+
+    TEXT_ROLES = (
+        QtCore.Qt.ItemDataRole.DisplayRole,
+        QtCore.Qt.ItemDataRole.ToolTipRole,
+        QtCore.Qt.ItemDataRole.AccessibleTextRole,
+        ROLE_TITLE,
+        ROLE_STATUS,
+        ROLE_MARKERS,
+        ROLE_STATE,
+    )
+
+    def __init__(self, host: Any, parent=None) -> None:
+        super().__init__(parent)
+        self._host = host
+        self._ids: list[str] = []
+        self._rows: dict[str, int] = {}
+        self._states: dict[str, Any] = {}
+        self._icons: OrderedDict[str, QtGui.QIcon] = OrderedDict()
+        self._failed: set[str] = set()
+        self._placeholder = QtGui.QIcon(self._placeholder_pixmap())
+
+    @staticmethod
+    def _placeholder_pixmap() -> QtGui.QPixmap:
+        pixmap = QtGui.QPixmap(180, 120)
+        pixmap.fill(QtGui.QColor("#EEF1F4"))
+        return pixmap
+
+    # -- rows ----------------------------------------------------------
+
+    def rowCount(self, parent=QtCore.QModelIndex()) -> int:  # noqa: N802
+        if parent.isValid():
+            return 0
+        return len(self._ids)
+
+    def shape_ids(self) -> tuple[str, ...]:
+        return tuple(self._ids)
+
+    def row_for(self, shape_id: str) -> int:
+        return self._rows.get(shape_id, -1)
+
+    def state_at(self, row: int):
+        if 0 <= row < len(self._ids):
+            return self._states.get(self._ids[row])
+        return None
+
+    def set_rows(self, states: Iterable[Any], failed: Iterable[str]) -> None:
+        rows = list(states)
+        self.beginResetModel()
+        self._ids = [item.shape_id for item in rows]
+        self._rows = {shape_id: row for row, shape_id in enumerate(self._ids)}
+        self._states = {item.shape_id: item for item in rows}
+        self._failed = set(failed)
+        self._icons.clear()
+        self.endResetModel()
+
+    def update_states(
+        self, states: Iterable[Any], failed: Iterable[str]
+    ) -> None:
+        rows = list(states)
+        if [item.shape_id for item in rows] != self._ids:
+            self.set_rows(rows, failed)
+            return
+        self._states = {item.shape_id: item for item in rows}
+        changed_failure = set(failed) != self._failed
+        self._failed = set(failed)
+        roles = list(self.TEXT_ROLES)
+        if changed_failure:
+            roles.append(QtCore.Qt.ItemDataRole.DecorationRole)
+        if self._ids:
+            self.dataChanged.emit(
+                self.index(0, 0), self.index(len(self._ids) - 1, 0), roles
+            )
+
+    # -- icons ---------------------------------------------------------
+
+    def set_icon(self, shape_id: str, icon: QtGui.QIcon) -> None:
+        self._icons[shape_id] = icon
+        self._icons.move_to_end(shape_id)
+        while len(self._icons) > self.ICON_LIMIT:
+            self._icons.popitem(last=False)
+        row = self.row_for(shape_id)
+        if row >= 0:
+            index = self.index(row, 0)
+            self.dataChanged.emit(
+                index,
+                index,
+                [QtCore.Qt.ItemDataRole.DecorationRole],
+            )
+
+    def icon_for(self, shape_id: str) -> Optional[QtGui.QIcon]:
+        icon = self._icons.get(shape_id)
+        if icon is not None:
+            self._icons.move_to_end(shape_id)
+        return icon
+
+    def retain_icons(self, keep: Iterable[str]) -> None:
+        keep = set(keep)
+        for shape_id in [key for key in self._icons if key not in keep]:
+            del self._icons[shape_id]
+
+    def clear_icon(self, shape_id: str) -> None:
+        if self._icons.pop(shape_id, None) is None:
+            return
+        row = self.row_for(shape_id)
+        if row >= 0:
+            index = self.index(row, 0)
+            self.dataChanged.emit(
+                index,
+                index,
+                [QtCore.Qt.ItemDataRole.DecorationRole],
+            )
+
+    def icon_count(self) -> int:
+        return len(self._icons)
+
+    def set_failed(self, shape_id: str, reason: str) -> None:
+        self._failed.add(shape_id)
+        self._notify_text(shape_id)
+
+    def clear_failed(self, shape_id: str) -> None:
+        if shape_id in self._failed:
+            self._failed.discard(shape_id)
+            self._notify_text(shape_id)
+
+    def _notify_text(self, shape_id: str) -> None:
+        row = self.row_for(shape_id)
+        if row >= 0:
+            index = self.index(row, 0)
+            self.dataChanged.emit(index, index, list(self.TEXT_ROLES))
+
+    # -- data ----------------------------------------------------------
+
+    def _markers(self, item) -> tuple[str, str]:
+        tr = self._host.tr
+        markers = []
+        if item.confirmed("category"):
+            markers.append(tr("类别✓"))
+        if item.confirmed("geometry"):
+            markers.append(tr("框✓"))
+        return " · ".join(markers) or tr("待审"), ""
+
+    def _state(self, item) -> str:
+        if item.confirmed("category") and item.confirmed("geometry"):
+            return "done"
+        if item.difficult:
+            return "difficult"
+        if item.skipped:
+            return "skipped"
+        return "pending"
+
+    def _text(self, item) -> str:
+        tr = self._host.tr
+        suffix, _ = self._markers(item)
+        failed = tr("图块加载失败") if item.shape_id in self._failed else ""
+        lines = [
+            f"#{item.display_index} {item.label}",
+            f"{self._host.tr(item.status_text())} · {suffix}",
+        ]
+        if failed:
+            lines.append(failed)
+        return "\n".join(lines)
+
+    def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < len(self._ids)):
+            return None
+        shape_id = self._ids[index.row()]
+        if role == self.ROLE_SHAPE_ID:
+            return shape_id
+        item = self._states.get(shape_id)
+        if item is None:
+            return None
+        if role in (
+            QtCore.Qt.ItemDataRole.DisplayRole,
+            QtCore.Qt.ItemDataRole.AccessibleTextRole,
+        ):
+            return self._text(item)
+        if role == QtCore.Qt.ItemDataRole.ToolTipRole:
+            tr = self._host.tr
+            text = tr("对象 {shape_id}\n{status}").format(
+                shape_id=shape_id, status=self._host.tr(item.status_text())
+            )
+            if shape_id in self._failed:
+                text += "\n" + tr("图块加载失败")
+            return text
+        if role == QtCore.Qt.ItemDataRole.DecorationRole:
+            icon = self.icon_for(shape_id)
+            return icon if icon is not None else self._placeholder
+        if role == self.ROLE_TITLE:
+            return f"#{item.display_index} {item.label}"
+        if role == self.ROLE_STATUS:
+            return self._host.tr(item.status_text())
+        if role == self.ROLE_MARKERS:
+            return self._markers(item)[0]
+        if role == self.ROLE_STATE:
+            return self._state(item)
+        return None
 
 
 class _CardDelegate(QtWidgets.QStyledItemDelegate):
@@ -509,6 +725,124 @@ class _CoverageGrid(QtWidgets.QWidget):
         super().mousePressEvent(event)
 
 
+class _CompareDialog(QtWidgets.QDialog):
+    """Side-by-side comparison that follows asynchronous card results.
+
+    The old implementation read the thumbnail cache once when it opened,
+    so a cold or evicted cache left a permanent "preparing" label.  This
+    dialog requests the current content, updates when the provider delivers
+    it, shows failures, offers a retry, and ignores results after closing.
+    """
+
+    def __init__(
+        self,
+        workspace,
+        shape_ids: Iterable[str],
+        parent: Optional[QtWidgets.QWidget] = None,
+    ) -> None:
+        super().__init__(parent or workspace)
+        self.workspace = workspace
+        self.shape_ids = [str(shape_id) for shape_id in shape_ids]
+        self._closed = False
+        self._image_labels: dict[str, QtWidgets.QLabel] = {}
+        self._status_labels: dict[str, QtWidgets.QLabel] = {}
+        self.setWindowTitle(self.tr("并排比较"))
+        self.setWindowModality(QtCore.Qt.WindowModality.NonModal)
+        self.resize(780, 430)
+        layout = QtWidgets.QHBoxLayout(self)
+        session = workspace.session
+        for shape_id in self.shape_ids:
+            item = session.object(shape_id) if session is not None else None
+            panel = QtWidgets.QWidget()
+            panel_layout = QtWidgets.QVBoxLayout(panel)
+            title = QtWidgets.QLabel(
+                (
+                    f"#{item.display_index} {item.label} · "
+                    f"{workspace.tr(item.status_text())}"
+                    if item is not None
+                    else shape_id
+                )
+            )
+            title.setWordWrap(True)
+            image = QtWidgets.QLabel()
+            image.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            image.setMinimumSize(320, 240)
+            image.setText(self.tr("图块准备中…"))
+            status = QtWidgets.QLabel()
+            status.setWordWrap(True)
+            status.setObjectName("fieldLabel")
+            retry = QtWidgets.QPushButton(self.tr("重试"))
+            retry.clicked.connect(
+                lambda _checked=False, sid=shape_id: workspace.retry_compare(
+                    sid, self
+                )
+            )
+            retry_row = QtWidgets.QHBoxLayout()
+            retry_row.addStretch(1)
+            retry_row.addWidget(retry)
+            panel_layout.addWidget(title)
+            panel_layout.addWidget(image, 1)
+            panel_layout.addWidget(status)
+            panel_layout.addLayout(retry_row)
+            layout.addWidget(panel, 1)
+            self._image_labels[shape_id] = image
+            self._status_labels[shape_id] = status
+        footer = QtWidgets.QVBoxLayout()
+        note = QtWidgets.QLabel(self.tr("比较不会复制标注或改变对象身份。"))
+        note.setWordWrap(True)
+        close_button = QtWidgets.QPushButton(self.tr("关闭"))
+        close_button.clicked.connect(self.close)
+        footer.addWidget(note)
+        footer.addStretch(1)
+        footer.addWidget(close_button)
+        layout.addLayout(footer)
+
+    def set_pending(self, shape_id: str) -> None:
+        label = self._image_labels.get(shape_id)
+        if label is None:
+            return
+        label.clear()
+        label.setText(self.tr("图块准备中…"))
+        status = self._status_labels.get(shape_id)
+        if status is not None:
+            status.setText("")
+
+    def set_image(self, shape_id: str, image) -> None:
+        label = self._image_labels.get(shape_id)
+        if label is None or self._closed:
+            return
+        pixmap = QtGui.QPixmap.fromImage(image)
+        if pixmap.isNull():
+            self.set_failed(shape_id, self.tr("图块加载失败"))
+            return
+        target = label.size()
+        if target.width() > 0 and target.height() > 0:
+            pixmap = pixmap.scaled(
+                target,
+                QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                QtCore.Qt.TransformationMode.SmoothTransformation,
+            )
+        label.setPixmap(pixmap)
+        status = self._status_labels.get(shape_id)
+        if status is not None:
+            status.setText(self.tr("图块已就绪"))
+
+    def set_failed(self, shape_id: str, reason: str) -> None:
+        label = self._image_labels.get(shape_id)
+        if label is None or self._closed:
+            return
+        label.clear()
+        label.setText(self.tr("图块加载失败"))
+        status = self._status_labels.get(shape_id)
+        if status is not None:
+            status.setText(reason)
+
+    def closeEvent(self, event) -> None:  # noqa: N802
+        self._closed = True
+        self.workspace._on_compare_closed(self)
+        super().closeEvent(event)
+
+
 class DenseReviewWorkspace(QtWidgets.QDialog):
     """Batch, card and spatial-review controls over the existing canvas."""
 
@@ -520,13 +854,21 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         super().__init__(parent or host)
         self.host = host
         self.thumbnails = ThumbnailProvider(self)
+        self.thumbnails.set_defer_predicate(self._defer_background_cards)
+        self.thumbnails.capacity_available.connect(
+            self._schedule_visible_thumbnails
+        )
         self._updating = False
         self._generation = 0
         self._cards_signature = None
-        self._shape_items: dict[str, QtWidgets.QListWidgetItem] = {}
+        self._card_model = _CardModel(self, self)
         self._region_items: dict[str, QtWidgets.QListWidgetItem] = {}
         self._failed_ids: set[str] = set()
         self._card_request_keys: dict[str, tuple] = {}
+        self._compare_request_keys: dict[str, tuple] = {}
+        self._compare_dialogs: list[_CompareDialog] = []
+        self._batches_visible = True
+        self._cards_visible = True
         self._last_thumb_generation = -1
         self._display_mode = "focus"
         self._full_image = False
@@ -617,12 +959,49 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         outer.setContentsMargins(0, 8, 0, 0)
         outer.setSpacing(8)
 
+        aux_bar = QtWidgets.QHBoxLayout()
+        aux_bar.setSpacing(8)
+        self.batches_toggle_button = QtWidgets.QPushButton(
+            self.tr("隐藏类别批次栏")
+        )
+        self.batches_toggle_button.setCheckable(True)
+        self.batches_toggle_button.setChecked(True)
+        self.batches_toggle_button.setProperty("variant", "quiet")
+        self.batches_toggle_button.setAccessibleName(
+            self.tr("类别批次栏显示开关")
+        )
+        self.batches_toggle_button.setToolTip(
+            self.tr(
+                "小窗口时可单独收起类别批次栏；主画布、待处理数量和批次操作保留。"
+            )
+        )
+        self.cards_toggle_button = QtWidgets.QPushButton(
+            self.tr("隐藏对象卡片栏")
+        )
+        self.cards_toggle_button.setCheckable(True)
+        self.cards_toggle_button.setChecked(True)
+        self.cards_toggle_button.setProperty("variant", "quiet")
+        self.cards_toggle_button.setAccessibleName(
+            self.tr("对象卡片栏显示开关")
+        )
+        self.cards_toggle_button.setToolTip(
+            self.tr(
+                "小窗口时可单独收起对象卡片栏；主画布、待处理数量和批次操作保留。"
+            )
+        )
+        aux_bar.addWidget(self.batches_toggle_button)
+        aux_bar.addWidget(self.cards_toggle_button)
+        aux_bar.addStretch(1)
+        outer.addLayout(aux_bar)
+
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
-        splitter.setChildrenCollapsible(False)
+        splitter.setChildrenCollapsible(True)
+        self.object_splitter = splitter
 
         left = QtWidgets.QWidget()
         left.setMinimumWidth(232)
         left.setMaximumWidth(300)
+        self.batches_panel = left
         left_layout = QtWidgets.QVBoxLayout(left)
         left_layout.setContentsMargins(0, 0, 8, 0)
         left_layout.setSpacing(6)
@@ -664,6 +1043,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         splitter.addWidget(left)
 
         right = QtWidgets.QWidget()
+        self.cards_panel = right
         right_layout = QtWidgets.QVBoxLayout(right)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(6)
@@ -693,7 +1073,8 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         context_row.addStretch(1)
         right_layout.addLayout(context_row)
 
-        self.card_list = QtWidgets.QListWidget()
+        self.card_list = QtWidgets.QListView()
+        self.card_list.setModel(self._card_model)
         self.card_list.setViewMode(QtWidgets.QListView.ViewMode.IconMode)
         self.card_list.setResizeMode(QtWidgets.QListView.ResizeMode.Adjust)
         self.card_list.setMovement(QtWidgets.QListView.Movement.Static)
@@ -707,6 +1088,13 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.card_list.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
         )
+        self.card_list.setEditTriggers(
+            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
+        )
+        self.card_list.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.card_list.setAccessibleName(self.tr("对象卡片列表"))
         self.card_list.setVerticalScrollMode(
             QtWidgets.QAbstractItemView.ScrollMode.ScrollPerPixel
         )
@@ -734,6 +1122,13 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.more_button.setObjectName("moreButton")
         self.more_button.setProperty("variant", "quiet")
         self.more_button.setFixedWidth(76)
+        self.compact_batch_combo = QtWidgets.QComboBox()
+        self.compact_batch_combo.setMinimumWidth(150)
+        self.compact_batch_combo.setAccessibleName(self.tr("批次快捷切换"))
+        self.compact_batch_combo.setToolTip(
+            self.tr("收起类别批次栏后仍可直接切换批次。")
+        )
+        self.compact_batch_combo.setVisible(False)
 
         self.complete_batch_button = QtWidgets.QPushButton(
             self.tr("完成本批并进入下一批")
@@ -779,6 +1174,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         bar.addWidget(self.display_combo)
         bar.addWidget(self.full_image_button)
         bar.addWidget(self.more_button)
+        bar.addWidget(self.compact_batch_combo)
         bar.addStretch(1)
         bar.addWidget(self.skip_button)
         bar.addWidget(self.difficult_button)
@@ -878,10 +1274,17 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.refresh_button.clicked.connect(self._refresh_from_host)
         self.close_button.clicked.connect(self.close)
         self.batch_list.currentItemChanged.connect(self._on_batch_selected)
+        self.batches_toggle_button.clicked.connect(self._on_batches_toggle)
+        self.cards_toggle_button.clicked.connect(self._on_cards_toggle)
+        self.compact_batch_combo.activated.connect(
+            self._on_compact_batch_activated
+        )
         self.dimension_combo.currentIndexChanged.connect(
             self._on_dimensions_changed
         )
-        self.card_list.itemSelectionChanged.connect(self._on_card_selected)
+        self.card_list.selectionModel().selectionChanged.connect(
+            self._on_card_selection_changed
+        )
         self.card_list.verticalScrollBar().valueChanged.connect(
             self._schedule_visible_thumbnails
         )
@@ -937,13 +1340,23 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         return REVIEW_DIMENSIONS
 
     def _current_batch_id(self) -> str:
+        """Return the session batch, never a stale list selection.
+
+        ``refresh_all`` rebuilds the list from the session.  Reading the
+        current list row here used to let the previous batch override a
+        programmatic navigation (OpenSpec DR-01), so the session is the
+        single source of truth; the list is only a fallback while the
+        session has no batch yet.
+        """
+        session = self.session
+        if session is not None and session.state.current_batch:
+            return session.state.current_batch
         item = self.batch_list.currentItem()
         if item is not None:
             batch_id = item.data(QtCore.Qt.ItemDataRole.UserRole)
             if batch_id:
                 return str(batch_id)
-        session = self.session
-        return session.state.current_batch if session else ""
+        return ""
 
     def _current_shape_id(self) -> str:
         session = self.session
@@ -968,14 +1381,81 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
 
     def _visible_candidate_count(self, candidate_ids: Iterable[str]) -> int:
         rect = self.card_list.viewport().rect()
-        visible = set()
+        visible = 0
         for shape_id in candidate_ids:
-            item = self._shape_items.get(shape_id)
-            if item is None:
+            row = self._card_model.row_for(shape_id)
+            if row < 0:
                 continue
-            if self.card_list.visualItemRect(item).intersects(rect):
-                visible.add(shape_id)
-        return len(visible)
+            index = self._card_model.index(row, 0)
+            if self.card_list.visualRect(index).intersects(rect):
+                visible += 1
+        return visible
+
+    def _visible_shape_ids(self, prefetch_rows: int = 1) -> list[str]:
+        """Return visible card ids plus a bounded prefetch window.
+
+        The view is virtualized, so this never scans every member.  It reads
+        the top and bottom laid-out indexes and expands by at most one screen
+        row.  When the view is hidden (collapsed cards), only the current
+        object is considered.
+        """
+        count = self._card_model.rowCount()
+        if count == 0 or not self.card_list.isVisible():
+            return []
+        viewport = self.card_list.viewport().rect()
+        if viewport.width() <= 1 or viewport.height() <= 1:
+            return []
+        rows: list[int] = []
+        for x in (2, viewport.width() // 2, viewport.width() - 2):
+            for y in (2, viewport.height() // 2, viewport.height() - 2):
+                index = self.card_list.indexAt(QtCore.QPoint(x, y))
+                if index.isValid():
+                    rows.append(index.row())
+        if not rows:
+            return []
+        grid = self.card_list.gridSize()
+        columns = max(1, viewport.width() // max(1, grid.width()))
+        expand = max(0, int(prefetch_rows)) * columns
+        first_row = max(0, min(rows) - expand)
+        last_row = min(count - 1, max(rows) + expand)
+        ids = self._card_model.shape_ids()
+        return [ids[row] for row in range(first_row, last_row + 1)]
+
+    def _selected_shape_ids(self) -> list[str]:
+        selection = self.card_list.selectionModel()
+        if selection is None:
+            return []
+        indexes = sorted(
+            (
+                index
+                for index in selection.selectedIndexes()
+                if index.isValid()
+            ),
+            key=lambda index: index.row(),
+        )
+        return [
+            shape_id
+            for shape_id in (
+                self._card_model.data(index, _CardModel.ROLE_SHAPE_ID)
+                for index in indexes
+            )
+            if shape_id
+        ]
+
+    def _select_shape_id(self, shape_id: str) -> None:
+        row = self._card_model.row_for(shape_id)
+        selection = self.card_list.selectionModel()
+        if row < 0 or selection is None:
+            return
+        index = self._card_model.index(row, 0)
+        selection.setCurrentIndex(
+            index,
+            QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect,
+        )
+        self.card_list.scrollTo(
+            index,
+            QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible,
+        )
 
     def _status(self, text: str) -> None:
         self.status_label.setText(text)
@@ -1007,6 +1487,8 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self._generation += 1
         self.thumbnails.start_generation(self._generation)
         self._failed_ids.clear()
+        self._compare_request_keys.clear()
+        self._close_compare_dialogs()
         self.refresh_all(force_cards=True)
         self._focus_current()
 
@@ -1015,6 +1497,8 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.thumbnails.start_generation(self._generation)
         self._failed_ids.clear()
         self._card_request_keys.clear()
+        self._compare_request_keys.clear()
+        self._close_compare_dialogs()
         self.refresh_all(force_cards=True)
 
     def _edit_config(self) -> None:
@@ -1063,6 +1547,8 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         finally:
             self._updating = False
         QtCore.QTimer.singleShot(0, self._request_visible_thumbnails)
+        if self.tabs.currentIndex() == 1:
+            self._show_current_region()
         if not initial:
             self._update_action_labels()
 
@@ -1102,7 +1588,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
     def _update_summary(self) -> None:
         session = self.session
         counts = session.counts()
-        completion = session.completion_status()
+        completion = session.completion_status(self.tr)
         pending_total = counts["total"] - counts["confirmed_both"]
         total = counts["total"] or 1
         self.progress_bar.setValue(
@@ -1140,7 +1626,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         unsaved = bool(getattr(self.host, "dirty", False) or session.dirty)
         self.completion_label.setText(
             self.tr("{status} · {coverage}{unsaved}").format(
-                status=completion.label,
+                status=self.tr(completion.label),
                 coverage=coverage_text,
                 unsaved=(self.tr(" · 复核进度待保存") if unsaved else ""),
             )
@@ -1172,14 +1658,14 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
                 ).format(
                     index=current.display_index,
                     label=current.label,
-                    status=current.status_text(),
+                    status=self.tr(current.status_text()),
                     category=category,
                     geometry=geometry,
                 )
             )
             self.rule_label.setText(
                 self.tr("本类规则：{rules}").format(
-                    rules=session.rule_summary(current.label)
+                    rules=session.rule_summary(current.label, self.tr)
                 )
             )
         else:
@@ -1231,11 +1717,19 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         session = self.session
         if session is None:
             return
-        current = self._current_batch_id() or session.state.current_batch
+        current = session.state.current_batch
         self.batch_list.blockSignals(True)
         self.batch_list.clear()
         entries = [
-            (batch.batch_id, batch.name, list(batch.member_ids))
+            (
+                batch.batch_id,
+                (
+                    self.tr(batch.name)
+                    if batch.batch_id == OTHER_BATCH_ID
+                    else batch.name
+                ),
+                list(batch.member_ids),
+            )
             for batch in session.state.batches
         ]
         if session.state.new_pending:
@@ -1246,7 +1740,8 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
                     list(session.state.new_pending),
                 )
             )
-        selected_row = 0
+        selected_row = -1
+        names: list[str] = []
         for row, (batch_id, name, members) in enumerate(entries):
             counts = self._batch_counts(session, members)
             item = QtWidgets.QListWidgetItem(name)
@@ -1260,9 +1755,48 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             )
             if batch_id == current:
                 selected_row = row
+            names.append(name)
             self.batch_list.addItem(item)
-        self.batch_list.setCurrentRow(selected_row)
+        if selected_row < 0 and entries:
+            # The session cursor is authoritative; if it no longer exists
+            # (for example after an explicit queue rebuild) adopt the first
+            # entry instead of highlighting one batch and showing another.
+            session.set_current(entries[0][0])
+            selected_row = 0
+            current = entries[0][0]
+        if entries:
+            self.batch_list.setCurrentRow(selected_row)
         self.batch_list.blockSignals(False)
+        self._sync_compact_batches(current)
+
+    def _sync_compact_batches(self, current: str) -> None:
+        combo = getattr(self, "compact_batch_combo", None)
+        if combo is None:
+            return
+        combo.blockSignals(True)
+        combo.clear()
+        for row in range(self.batch_list.count()):
+            item = self.batch_list.item(row)
+            batch_id = item.data(QtCore.Qt.ItemDataRole.UserRole)
+            combo.addItem(item.text(), batch_id)
+            if batch_id == current:
+                combo.setCurrentIndex(row)
+        combo.blockSignals(False)
+
+    def _on_compact_batch_activated(self, index: int) -> None:
+        if self._updating or index < 0 or self.session is None:
+            return
+        batch_id = self.compact_batch_combo.itemData(index)
+        if not batch_id:
+            return
+        for row in range(self.batch_list.count()):
+            item = self.batch_list.item(row)
+            if item.data(QtCore.Qt.ItemDataRole.UserRole) == batch_id:
+                if row == self.batch_list.currentRow():
+                    self._activate_batch(str(batch_id))
+                else:
+                    self.batch_list.setCurrentRow(row)
+                return
 
     @staticmethod
     def _batch_counts(session, members) -> dict[str, int]:
@@ -1285,69 +1819,23 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         members = session.state.member_ids(batch_id)
         signature = (batch_id, tuple(members))
         current_shape = self._current_shape_id()
+        states = [
+            session.object(shape_id)
+            for shape_id in members
+            if session.object(shape_id) is not None
+        ]
         if force or signature != self._cards_signature:
-            selected = current_shape
-            self.card_list.blockSignals(True)
-            self.card_list.clear()
-            self._shape_items = {}
-            for shape_id in members:
-                item = session.object(shape_id)
-                if item is None:
-                    continue
-                card = QtWidgets.QListWidgetItem(self._card_text(item))
-                card.setData(QtCore.Qt.ItemDataRole.UserRole, shape_id)
-                self._apply_card_roles(card, item)
-                card.setIcon(self._placeholder_icon())
-                card.setToolTip(
-                    self.tr("对象 {shape_id}\n{status}").format(
-                        shape_id=shape_id, status=item.status_text()
-                    )
-                )
-                self.card_list.addItem(card)
-                self._shape_items[shape_id] = card
+            self._card_model.set_rows(states, self._failed_ids)
             self._cards_signature = signature
-            self.card_list.blockSignals(False)
-            if selected in self._shape_items:
-                self._shape_items[selected].setSelected(True)
-                self.card_list.scrollToItem(self._shape_items[selected])
+            if current_shape:
+                self._select_shape_id(current_shape)
+            keep = set(self._visible_shape_ids())
+            if current_shape:
+                keep.add(current_shape)
+            self._card_model.retain_icons(keep)
         else:
-            for shape_id, card in self._shape_items.items():
-                item = session.object(shape_id)
-                if item is not None:
-                    card.setText(self._card_text(item))
-                    self._apply_card_roles(card, item)
-                    card.setToolTip(
-                        self.tr("对象 {shape_id}\n{status}").format(
-                            shape_id=shape_id,
-                            status=item.status_text(),
-                        )
-                    )
+            self._card_model.update_states(states, self._failed_ids)
         self._update_action_labels()
-
-    def _card_text(self, item) -> str:
-        markers = []
-        if item.confirmed("category"):
-            markers.append(self.tr("类别✓"))
-        if item.confirmed("geometry"):
-            markers.append(self.tr("框✓"))
-        suffix = " · ".join(markers) or self.tr("待审")
-        failed = (
-            "\n" + self.tr("图块加载失败")
-            if item.shape_id in self._failed_ids
-            else ""
-        )
-        return "#{index} {label}\n{status} · {suffix}{failed}".format(
-            index=item.display_index,
-            label=item.label,
-            status=item.status_text(),
-            suffix=suffix,
-            failed=failed,
-        )
-
-    def _placeholder_icon(self) -> QtGui.QIcon:
-        pixmap = QtGui.QPixmap(180, 120)
-        pixmap.fill(QtGui.QColor("#EEF1F4"))
-        return QtGui.QIcon(pixmap)
 
     def _update_action_labels(self) -> None:
         session = self.session
@@ -1396,22 +1884,30 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
     def _schedule_visible_thumbnails(self, *_args) -> None:
         QtCore.QTimer.singleShot(0, self._request_visible_thumbnails)
 
-    def _request_visible_thumbnails(self) -> None:
-        if self.session is None or not self.card_list.isVisible():
-            return
+    def _thumbnail_source(self):
         image_path, image_bytes = self.host.dense_review_image_source()
         source_version = self.host.dense_review_image_info()[0]
         margin = self.context_spin.value() / 100.0
-        target = (360, 240)
+        return image_path, image_bytes, source_version, margin, (360, 240)
+
+    def _request_visible_thumbnails(self) -> None:
+        if self.session is None:
+            return
+        if not self.card_list.isVisible():
+            self._ensure_compare_requests()
+            return
+        image_path, image_bytes, source_version, margin, target = (
+            self._thumbnail_source()
+        )
         generation = self.thumbnails.generation
-        rect = self.card_list.viewport().rect()
         current = self._current_shape_id()
-        for shape_id, card in self._shape_items.items():
+        requested = self._visible_shape_ids(prefetch_rows=1)
+        if current and current not in requested:
+            requested.append(current)
+        self._card_model.retain_icons(requested)
+        for shape_id in requested:
             item = self.session.object(shape_id)
             if item is None:
-                continue
-            visible = self.card_list.visualItemRect(card).intersects(rect)
-            if not visible and shape_id != current:
                 continue
             key = self.thumbnails.request_key(
                 shape_id,
@@ -1425,8 +1921,8 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
                 self.thumbnails.invalidate_shape(shape_id)
                 self._failed_ids.discard(shape_id)
                 self._card_request_keys[shape_id] = key
-                card.setIcon(self._placeholder_icon())
-                card.setText(self._card_text(item))
+                self._card_model.clear_icon(shape_id)
+                self._card_model.clear_failed(shape_id)
             cached = self.thumbnails.cached_image(
                 shape_id,
                 item.bounds,
@@ -1435,7 +1931,9 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
                 source_version,
             )
             if cached is not None:
-                card.setIcon(QtGui.QIcon(QtGui.QPixmap.fromImage(cached)))
+                self._card_model.set_icon(
+                    shape_id, QtGui.QIcon(QtGui.QPixmap.fromImage(cached))
+                )
                 continue
             if shape_id in self._failed_ids:
                 continue
@@ -1448,37 +1946,145 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
                 image_bytes,
                 source_version,
             )
+        self._ensure_compare_requests()
 
     def _on_thumbnail_ready(self, shape_id: str, image) -> None:
-        card = self._shape_items.get(shape_id)
-        if card is None:
-            return
         self._failed_ids.discard(shape_id)
-        card.setIcon(QtGui.QIcon(QtGui.QPixmap.fromImage(image)))
-        item = self.session.object(shape_id) if self.session else None
-        if item is not None:
-            card.setText(self._card_text(item))
+        self._card_model.clear_failed(shape_id)
+        self._card_model.set_icon(
+            shape_id, QtGui.QIcon(QtGui.QPixmap.fromImage(image))
+        )
+        self._update_compare_dialogs(shape_id, image=image)
+        self._schedule_action_labels()
+
+    def _defer_background_cards(self) -> bool:
+        """Report whether the canvas is being manipulated right now."""
+        canvas = getattr(self.host, "canvas", None)
+        if canvas is None:
+            return False
+        return bool(
+            getattr(canvas, "is_pointer_down", False)
+            or getattr(canvas, "moving_shape", False)
+        )
+
+    def _schedule_action_labels(self) -> None:
+        """Coalesce card-driven label updates into one per event-loop turn.
+
+        A thumbnail batch can deliver dozens of ready signals in one timer
+        tick; recomputing the candidate scope for each of them blocked drag
+        frames measurably (OpenSpec 10.1/10.2).
+        """
+        if getattr(self, "_labels_update_pending", False):
+            return
+        self._labels_update_pending = True
+        QtCore.QTimer.singleShot(0, self._flush_action_labels)
+
+    def _flush_action_labels(self) -> None:
+        self._labels_update_pending = False
         self._update_action_labels()
 
     def _on_thumbnail_failed(self, shape_id: str, reason: str) -> None:
         self._failed_ids.add(shape_id)
-        card = self._shape_items.get(shape_id)
-        if card is not None:
-            card.setIcon(self._placeholder_icon())
-            card.setToolTip(
-                self.tr("对象 {shape_id} 图块加载失败：{reason}").format(
-                    shape_id=shape_id, reason=reason
-                )
-            )
-            item = self.session.object(shape_id) if self.session else None
-            if item is not None:
-                card.setText(self._card_text(item))
-        self._update_action_labels()
+        self._card_model.set_failed(shape_id, reason)
+        self._update_compare_dialogs(shape_id, reason=reason)
+        self._schedule_action_labels()
+
+    # -- side-by-side comparison ---------------------------------------
+
+    def _compare_key(self, shape_id: str, item):
+        _, _, source_version, margin, target = self._thumbnail_source()
+        return self.thumbnails.request_key(
+            shape_id,
+            self.thumbnails.generation,
+            item.bounds,
+            margin,
+            target,
+            source_version,
+        )
+
+    def _ensure_compare_requests(self) -> None:
+        for dialog in list(self._compare_dialogs):
+            for shape_id in dialog.shape_ids:
+                self._ensure_compare_thumbnail(shape_id, dialog)
+
+    def _ensure_compare_thumbnail(self, shape_id: str, dialog=None) -> None:
+        session = self.session
+        if session is None:
+            return
+        item = session.object(shape_id)
+        if item is None:
+            if dialog is not None:
+                dialog.set_failed(shape_id, self.tr("对象不存在"))
+            return
+        key = self._compare_key(shape_id, item)
+        previous = self._compare_request_keys.get(shape_id)
+        if previous is not None and previous != key:
+            self._failed_ids.discard(shape_id)
+            self._card_model.clear_failed(shape_id)
+            self.thumbnails.invalidate_shape(shape_id)
+        if self._failed_ids and shape_id in self._failed_ids:
+            if dialog is not None:
+                dialog.set_failed(shape_id, self.tr("图块加载失败"))
+            return
+        cached = self.thumbnails.cached_image(
+            shape_id,
+            item.bounds,
+            self.context_spin.value() / 100.0,
+            (360, 240),
+            self.host.dense_review_image_info()[0],
+        )
+        if cached is not None:
+            self._compare_request_keys[shape_id] = key
+            if dialog is not None:
+                dialog.set_image(shape_id, cached)
+            return
+        if (
+            self._compare_request_keys.get(shape_id) == key
+            and shape_id in self.thumbnails._pending
+        ):
+            return
+        if dialog is not None:
+            dialog.set_pending(shape_id)
+        self._compare_request_keys[shape_id] = key
+        image_path, image_bytes, _, margin, target = self._thumbnail_source()
+        image = self.thumbnails.request(
+            shape_id,
+            item.bounds,
+            margin,
+            target,
+            image_path,
+            image_bytes,
+            self.host.dense_review_image_info()[0],
+        )
+        if image is not None and dialog is not None:
+            dialog.set_image(shape_id, image)
+
+    def _update_compare_dialogs(
+        self, shape_id: str, image=None, reason: str = ""
+    ) -> None:
+        for dialog in list(self._compare_dialogs):
+            if shape_id not in dialog.shape_ids:
+                continue
+            if reason:
+                dialog.set_failed(shape_id, reason)
+            elif image is not None:
+                dialog.set_image(shape_id, image)
+
+    def _on_compare_closed(self, dialog) -> None:
+        if dialog in self._compare_dialogs:
+            self._compare_dialogs.remove(dialog)
+
+    def _close_compare_dialogs(self) -> None:
+        for dialog in list(self._compare_dialogs):
+            self._compare_dialogs.remove(dialog)
+            dialog.close()
 
     def _on_context_changed(self) -> None:
         self._generation += 1
         self.thumbnails.start_generation(self._generation)
         self._failed_ids.clear()
+        self._compare_request_keys.clear()
+        self._close_compare_dialogs()
         self._refresh_cards(force=True)
         self._request_visible_thumbnails()
         self._focus_current()
@@ -1489,11 +2095,19 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         if self._updating or current is None or self.session is None:
             return
         batch_id = current.data(QtCore.Qt.ItemDataRole.UserRole)
-        self.session.set_current(str(batch_id))
+        if not batch_id:
+            return
+        self._activate_batch(str(batch_id))
+
+    def _activate_batch(self, batch_id: str) -> None:
+        session = self.session
+        if session is None:
+            return
+        if session.state.current_batch != batch_id:
+            session.set_current(batch_id)
         self._cards_signature = None
-        self._refresh_cards(force=True)
+        self.refresh_all(force_cards=True)
         self._focus_current()
-        self._update_summary()
 
     def _on_dimensions_changed(self, *_args) -> None:
         if self._updating or self.session is None:
@@ -1502,16 +2116,16 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self._update_action_labels()
         self._refresh_batches()
 
+    def _on_card_selection_changed(self, _selected, _deselected) -> None:
+        self._on_card_selected()
+
     def _on_card_selected(self) -> None:
         if self._updating or self.session is None:
             return
-        selected = self.card_list.selectedItems()
+        selected = self._selected_shape_ids()
         if not selected:
             return
-        shape_id = selected[0].data(QtCore.Qt.ItemDataRole.UserRole)
-        if not shape_id:
-            return
-        self.session.set_current(self._current_batch_id(), str(shape_id))
+        self.session.set_current(self._current_batch_id(), selected[0])
         self._update_summary()
         self._update_action_labels()
         self._focus_current()
@@ -1580,16 +2194,8 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         if not shape_id:
             return
         if session.confirm_object(shape_id, self._dimensions()):
+            self._advance_object(shape_id)
             self.host.dense_review_after_progress_change()
-            next_id = session.next_pending_object(
-                self._current_batch_id(),
-                self._dimensions(),
-                after=shape_id,
-            )
-            if next_id:
-                self._navigate_to(self._current_batch_id(), next_id)
-            else:
-                self.refresh_all(force_cards=True)
             self._status(self.tr("当前对象已完成并前进。"))
         else:
             self._status(self.tr("当前对象没有新的可确认内容。"))
@@ -1602,17 +2208,34 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         if not shape_id:
             return
         session.mark_skipped(shape_id)
+        self._advance_object(shape_id)
         self.host.dense_review_after_progress_change()
+        self._status(self.tr("当前对象已暂跳，仍保持待审。"))
+
+    def _advance_object(self, shape_id: str) -> None:
+        """Advance within a batch, then across batches without confirming.
+
+        Move the cursor before autosave so the saved progress and the
+        visible next object refer to the same transaction.
+        """
+        session = self.session
+        batch_id = self._current_batch_id()
         next_id = session.next_pending_object(
-            self._current_batch_id(),
-            self._dimensions(),
-            after=shape_id,
+            batch_id, self._dimensions(), after=shape_id
         )
+        if not next_id:
+            next_batch = session.next_pending_batch(
+                self._dimensions(), after=batch_id
+            )
+            if next_batch is not None:
+                batch_id = next_batch
+                next_id = session.next_pending_object(
+                    batch_id, self._dimensions()
+                )
         if next_id:
-            self._navigate_to(self._current_batch_id(), next_id)
+            self._navigate_to(batch_id, next_id)
         else:
             self.refresh_all(force_cards=True)
-        self._status(self.tr("当前对象已暂跳，仍保持待审。"))
 
     def _mark_current_difficult(self) -> None:
         session = self.session
@@ -1737,7 +2360,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
                 f"#{item.display_index}" if item else "?",
                 shape_id,
                 item.label if item else "",
-                item.status_text() if item else "缺失",
+                self.tr(item.status_text()) if item else self.tr("缺失"),
                 item.difficulty_reason if item else "",
             )
             for column, value in enumerate(values):
@@ -1757,48 +2380,30 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         session = self.session
         if session is None:
             return
-        items = self.card_list.selectedItems()
-        if len(items) != 2:
+        ids = self._selected_shape_ids()
+        if len(ids) != 2:
             self._status(self.tr("请用 Ctrl 选择两个对象后再比较。"))
             return
-        ids = [
-            str(item.data(QtCore.Qt.ItemDataRole.UserRole)) for item in items
-        ]
-        dialog = QtWidgets.QDialog(self)
-        dialog.setWindowTitle(self.tr("并排比较"))
-        dialog.resize(760, 420)
-        layout = QtWidgets.QHBoxLayout(dialog)
-        for shape_id in ids:
-            item = session.object(shape_id)
-            panel = QtWidgets.QWidget()
-            panel_layout = QtWidgets.QVBoxLayout(panel)
-            label = QtWidgets.QLabel(
-                f"#{item.display_index} {item.label} · "
-                f"{item.status_text()}"
-                if item
-                else shape_id
-            )
-            image_label = QtWidgets.QLabel()
-            image = self.thumbnails.cached_latest(shape_id)
-            if image is not None:
-                image_label.setPixmap(
-                    QtGui.QPixmap.fromImage(image).scaled(
-                        340,
-                        260,
-                        QtCore.Qt.AspectRatioMode.KeepAspectRatio,
-                        QtCore.Qt.TransformationMode.SmoothTransformation,
-                    )
-                )
-            else:
-                image_label.setText(self.tr("图块准备中…"))
-            panel_layout.addWidget(label)
-            panel_layout.addWidget(image_label, 1)
-            layout.addWidget(panel, 1)
-        close_button = QtWidgets.QPushButton(self.tr("关闭"))
-        close_button.clicked.connect(dialog.accept)
-        layout.addWidget(close_button)
-        dialog.exec()
+        self._open_compare(ids)
+
+    def _open_compare(self, shape_ids: Iterable[str]) -> _CompareDialog:
+        self._close_compare_dialogs()
+        dialog = _CompareDialog(self, shape_ids, self)
+        self._compare_dialogs.append(dialog)
+        for shape_id in dialog.shape_ids:
+            self._ensure_compare_thumbnail(shape_id, dialog)
+        dialog.show()
+        dialog.raise_()
         self._status(self.tr("比较不会复制标注或改变对象身份。"))
+        return dialog
+
+    def retry_compare(self, shape_id: str, dialog) -> None:
+        self._failed_ids.discard(shape_id)
+        self._card_model.clear_failed(shape_id)
+        self._compare_request_keys.pop(shape_id, None)
+        self.thumbnails.invalidate_shape(shape_id)
+        dialog.set_pending(shape_id)
+        self._ensure_compare_thumbnail(shape_id, dialog)
 
     # -- display and view ---------------------------------------------
 
@@ -2083,29 +2688,52 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
                 )
             )
 
-    def _apply_card_roles(self, card, item) -> None:
-        markers = []
-        if item.confirmed("category"):
-            markers.append(self.tr("类别✓"))
-        if item.confirmed("geometry"):
-            markers.append(self.tr("框✓"))
-        card.setData(
-            QtCore.Qt.ItemDataRole.UserRole + 1,
-            "#{index} {label}".format(
-                index=item.display_index, label=item.label
-            ),
+    # -- auxiliary panels ---------------------------------------------
+
+    def _on_batches_toggle(self, checked: bool) -> None:
+        self.set_batches_visible(bool(checked))
+
+    def _on_cards_toggle(self, checked: bool) -> None:
+        self.set_cards_visible(bool(checked))
+
+    def set_batches_visible(self, visible: bool) -> None:
+        self._batches_visible = bool(visible)
+        self.batches_panel.setVisible(self._batches_visible)
+        self.batches_toggle_button.setChecked(self._batches_visible)
+        self.batches_toggle_button.setText(
+            self.tr("隐藏类别批次栏")
+            if self._batches_visible
+            else self.tr("显示类别批次栏")
         )
-        card.setData(QtCore.Qt.ItemDataRole.UserRole + 2, item.status_text())
-        card.setData(QtCore.Qt.ItemDataRole.UserRole + 3, " · ".join(markers))
-        if item.confirmed("category") and item.confirmed("geometry"):
-            status = "done"
-        elif item.difficult:
-            status = "difficult"
-        elif item.skipped:
-            status = "skipped"
-        else:
-            status = "pending"
-        card.setData(QtCore.Qt.ItemDataRole.UserRole + 4, status)
+        self.compact_batch_combo.setVisible(not self._batches_visible)
+        if not self._batches_visible:
+            self._sync_compact_batches(self._current_batch_id())
+        if self._cards_visible:
+            self.card_list.setFocus()
+
+    def set_cards_visible(self, visible: bool) -> None:
+        self._cards_visible = bool(visible)
+        self.cards_panel.setVisible(self._cards_visible)
+        self.cards_toggle_button.setChecked(self._cards_visible)
+        self.cards_toggle_button.setText(
+            self.tr("隐藏对象卡片栏")
+            if self._cards_visible
+            else self.tr("显示对象卡片栏")
+        )
+        if self._cards_visible:
+            self._request_visible_thumbnails()
+            self.card_list.setFocus()
+
+    def card_resource_stats(self) -> dict[str, int]:
+        """Bounded graphical resources owned by the card view."""
+        return {
+            "rows": self._card_model.rowCount(),
+            "icons": self._card_model.icon_count(),
+            "provider_cache": len(self.thumbnails._cache),
+            "pending_requests": len(self.thumbnails._pending),
+            "queued_results": self.thumbnails._queue.qsize(),
+            "compare_dialogs": len(self._compare_dialogs),
+        }
 
     def _relayout_cards(self) -> None:
         viewport = self.card_list.viewport().width()
@@ -2141,15 +2769,20 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self._refresh_from_host()
         mode = self.display_combo.currentData() or "focus"
         self.host.dense_review_set_display_mode(mode)
-        self._focus_current()
+        if self.tabs.currentIndex() == 1:
+            self._show_current_region()
+        else:
+            self._focus_current()
 
     def closeEvent(self, event) -> None:
         for shortcut in self._shortcuts:
             shortcut.setEnabled(False)
+        self._close_compare_dialogs()
         self.host.dense_review_workspace_closed()
         super().closeEvent(event)
 
     def shutdown(self) -> None:
         for shortcut in self._shortcuts:
             shortcut.setEnabled(False)
+        self._close_compare_dialogs()
         self.thumbnails.shutdown()

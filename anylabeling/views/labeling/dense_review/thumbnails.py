@@ -5,13 +5,19 @@ from __future__ import annotations
 import io
 import os.path as osp
 import queue
+import threading
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
-from typing import Optional, Sequence
+from concurrent.futures import CancelledError, ThreadPoolExecutor
+from dataclasses import dataclass, field
+from typing import Callable, Optional, Sequence
 
 from PIL import Image
 from PyQt6 import QtCore, QtGui
+
+# Decode and publish at most this many finished crops per timer tick so card
+# repaints stay below one frame budget during a drag.
+_DRAIN_BATCH = 8
+_REQUEST_LIMIT = 32
 
 
 @dataclass(frozen=True)
@@ -26,6 +32,9 @@ class ThumbnailRequest:
     image_path: str
     image_bytes: Optional[bytes]
     source_version: str = ""
+    cancelled: threading.Event = field(
+        default_factory=threading.Event, compare=False, repr=False
+    )
 
 
 def crop_thumbnail(
@@ -64,6 +73,7 @@ class ThumbnailProvider(QtCore.QObject):
 
     ready = QtCore.pyqtSignal(str, object)
     failed = QtCore.pyqtSignal(str, str)
+    capacity_available = QtCore.pyqtSignal()
 
     def __init__(
         self,
@@ -84,6 +94,23 @@ class ThumbnailProvider(QtCore.QObject):
         self._failed: dict[str, str] = {}
         self._latest_requests: dict[str, tuple] = {}
         self._cache_limit = max(4, int(cache_limit))
+        self._defer_predicate: Optional[Callable[[], bool]] = None
+        self._lock = threading.Lock()
+        self._load = 0
+        self._futures: dict = {}
+        self._cancelled = threading.Event()
+        self._closed = False
+        self._saturated = False
+
+    def set_defer_predicate(
+        self, predicate: Optional[Callable[[], bool]]
+    ) -> None:
+        """Defer draining while ``predicate`` reports active interaction.
+
+        Thumbnail decode and card updates are background work; blocking a
+        drag frame with them is what OpenSpec 10.1/10.2 measures.
+        """
+        self._defer_predicate = predicate
 
     @property
     def generation(self) -> int:
@@ -95,7 +122,15 @@ class ThumbnailProvider(QtCore.QObject):
 
     def start_generation(self, generation: int) -> None:
         """Discard all results from a previous image/output directory."""
-        self._generation = max(self._generation + 1, int(generation))
+        self._cancelled.set()
+        with self._lock:
+            self._generation = max(self._generation + 1, int(generation))
+            futures = list(self._futures)
+        self._cancelled = threading.Event()
+        for future in futures:
+            cancel = getattr(future, "cancel", None)
+            if cancel is not None:
+                cancel()
         self._cache.clear()
         self._pending.clear()
         self._failed.clear()
@@ -103,6 +138,7 @@ class ThumbnailProvider(QtCore.QObject):
         while True:
             try:
                 self._queue.get_nowait()
+                self._release_capacity()
             except queue.Empty:
                 break
 
@@ -175,6 +211,8 @@ class ThumbnailProvider(QtCore.QObject):
         source_version: str = "",
     ) -> Optional[QtGui.QImage]:
         """Return a cached image or schedule one background request."""
+        if self._closed:
+            return None
         if len(bounds) != 4:
             self._failed[shape_id] = "对象边界无效"
             return None
@@ -196,6 +234,13 @@ class ThumbnailProvider(QtCore.QObject):
             return cached
         if shape_id in self._pending:
             return None
+        with self._lock:
+            if self._load >= _REQUEST_LIMIT:
+                self._saturated = True
+                if not self._timer.isActive():
+                    self._timer.start()
+                return None
+            self._load += 1
         self._pending.add(shape_id)
         request = ThumbnailRequest(
             shape_id=shape_id,
@@ -206,8 +251,16 @@ class ThumbnailProvider(QtCore.QObject):
             image_path=str(image_path or ""),
             image_bytes=image_bytes,
             source_version=str(source_version),
+            cancelled=self._cancelled,
         )
-        future = self._executor.submit(crop_thumbnail, request)
+        try:
+            future = self._executor.submit(self._crop_yielding, request)
+        except RuntimeError:
+            self._pending.discard(shape_id)
+            self._release_capacity()
+            return None
+        with self._lock:
+            self._futures[future] = request
         future.add_done_callback(
             lambda done, pending=request: self._completed(pending, done)
         )
@@ -215,28 +268,92 @@ class ThumbnailProvider(QtCore.QObject):
             self._timer.start()
         return None
 
+    def _crop_yielding(self, request: ThumbnailRequest):
+        """Crop one card, but never while the user is manipulating the canvas.
+
+        The worker thread holds the GIL for most of a crop, which adds a
+        measurable per-frame cost to a drag (OpenSpec 10.1/10.2). Yielding here
+        keeps direct manipulation at baseline latency; the card simply appears
+        after the gesture ends.
+        """
+        predicate = self._defer_predicate
+        while predicate is not None:
+            if request.cancelled.is_set():
+                raise CancelledError()
+            try:
+                if not predicate():
+                    break
+            except Exception:  # noqa: BLE001 - never spin on a dead host
+                break
+            request.cancelled.wait(0.01)
+        if request.cancelled.is_set():
+            raise CancelledError()
+        return crop_thumbnail(request)
+
     def _completed(self, request: ThumbnailRequest, future) -> None:
+        message = None
         try:
-            self._queue.put(("ready", request, future.result()[2]))
+            # Decode on the worker thread: PNG decode in the GUI thread was the
+            # dominant drag-frame cost measured by OpenSpec 10.1/10.2.
+            if request.cancelled.is_set() or self._closed:
+                return
+            image = QtGui.QImage()
+            if not image.loadFromData(future.result()[2], "PNG"):
+                raise ValueError("图块解码失败")
+            message = ("ready", request, image)
         except Exception as error:  # noqa: BLE001
-            self._queue.put(
-                (
-                    "failed",
-                    request,
-                    f"{type(error).__name__}: {error}",
-                )
-            )
+            message = ("failed", request, f"{type(error).__name__}: {error}")
+        finally:
+            # A slot covers the submitted task AND its queued result. This
+            # bounds the executor backlog and decoded QImages together, even
+            # while GUI publication is paused during a drag.
+            with self._lock:
+                self._futures.pop(future, None)
+                if (
+                    message is not None
+                    and not self._closed
+                    and not request.cancelled.is_set()
+                    and request.generation == self._generation
+                ):
+                    self._queue.put_nowait(message)
+                else:
+                    self._load = max(0, self._load - 1)
+
+    def _release_capacity(self) -> None:
+        with self._lock:
+            self._load = max(0, self._load - 1)
+
+    def resource_stats(self) -> dict[str, int]:
+        with self._lock:
+            return {
+                "inflight": len(self._futures),
+                "outstanding": self._load,
+                "limit": _REQUEST_LIMIT,
+            }
 
     def _drain(self) -> None:
+        # Never compete with direct manipulation: a drag frame that has to wait
+        # for PNG decode and card repaints is exactly what the benchmark flags.
+        if self._defer_predicate is not None and self._defer_predicate():
+            return
+        # Small time-slices keep card refreshes from blocking drag frames when
+        # a whole batch of thumbnails finishes at once (OpenSpec 10.1/10.2).
         handled = 0
-        while handled < 32:
+        while handled < _DRAIN_BATCH:
             try:
                 message = self._queue.get_nowait()
             except queue.Empty:
                 break
             handled += 1
+            self._release_capacity()
             self._handle_message(message)
-        if not self._pending and self._queue.empty():
+        with self._lock:
+            available = self._load < _REQUEST_LIMIT
+            empty = self._load == 0
+        if self._saturated and available:
+            self._saturated = False
+            self.capacity_available.emit()
+        if empty and self._queue.empty():
             self._timer.stop()
 
     def _handle_message(self, message) -> None:
@@ -255,12 +372,15 @@ class ThumbnailProvider(QtCore.QObject):
         ):
             return
         if kind == "ready":
-            image = QtGui.QImage()
-            if not image.loadFromData(payload, "PNG"):
-                self._pending.discard(request.shape_id)
-                self._failed[request.shape_id] = "图块解码失败"
-                self.failed.emit(request.shape_id, "图块解码失败")
-                return
+            image = payload
+            if not isinstance(image, QtGui.QImage):
+                # Tests and older callers may enqueue encoded PNG bytes.
+                image = QtGui.QImage()
+                if not image.loadFromData(payload, "PNG"):
+                    self._pending.discard(request.shape_id)
+                    self._failed[request.shape_id] = "图块解码失败"
+                    self.failed.emit(request.shape_id, "图块解码失败")
+                    return
             self._cache[key] = image
             self._cache.move_to_end(key)
             self._trim_cache()
@@ -277,5 +397,7 @@ class ThumbnailProvider(QtCore.QObject):
             self._cache.popitem(last=False)
 
     def shutdown(self) -> None:
+        self._closed = True
+        self.start_generation(self._generation + 1)
         self._timer.stop()
         self._executor.shutdown(wait=False, cancel_futures=True)

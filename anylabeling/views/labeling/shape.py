@@ -460,11 +460,14 @@ class Shape:
     def paint(
         self,
         painter: QtGui.QPainter,
+        fill_opacity: float = 1.0,
         *,
         outline_path: QtGui.QPainterPath | None = None,
     ):  # noqa: max-complexity: 18
         """Paint shape using QPainter.
 
+        ``fill_opacity`` multiplies the alpha of the shape fill only, so the
+        canvas opacity slider never dims outlines, vertices or labels.
         ``outline_path`` overrides only the stroked outline for this call;
         fills, vertices and selection handles keep using the full geometry.
         ``None`` keeps the original outline, while an empty path strokes
@@ -629,11 +632,21 @@ class Shape:
                 line_path if outline_path is None else outline_path
             )
             if self.fill:
-                color = (
+                color = QtGui.QColor(
                     self.select_fill_color
                     if self.selected
                     else self.fill_color
                 )
+                if fill_opacity != 1.0:
+                    color.setAlpha(
+                        max(
+                            0,
+                            min(
+                                255,
+                                round(color.alpha() * fill_opacity),
+                            ),
+                        )
+                    )
                 painter.fillPath(line_path, color)
             if self.selected:
                 vertex_color = QtGui.QColor(self.vertex_fill_color)

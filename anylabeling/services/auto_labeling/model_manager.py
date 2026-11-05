@@ -13,7 +13,7 @@ import anylabeling.configs as auto_labeling_configs
 from anylabeling.services.auto_labeling.worker import GenericWorker
 from anylabeling.services.auto_labeling.model import load_model_config
 from anylabeling.views.labeling.logger import logger
-from anylabeling.config import get_config, get_work_directory, save_config
+from anylabeling.config import get_config, get_work_directory
 from anylabeling.services.auto_labeling.types import (
     AutoLabelingResult,
     DownloadCancelledError,
@@ -506,6 +506,8 @@ class ModelManager(QObject):
         super().__init__()
         self.model_configs = []
         self.collect_prediction_provenance = False
+        #: True when the last custom-model save did not reach the disk.
+        self._last_custom_model_save_failed = False
 
         self.loaded_model_config = None
         self.loaded_model_config_lock = Lock()
@@ -530,7 +532,8 @@ class ModelManager(QObject):
             model_list = load_model_config(f)
 
         # Load list of custom models
-        custom_models = get_config().get("custom_models", [])
+        stored_models = copy.deepcopy(get_config().get("custom_models", []))
+        custom_models = stored_models
         for custom_model in custom_models:
             custom_model["is_custom_model"] = True
 
@@ -540,9 +543,8 @@ class ModelManager(QObject):
             for custom_model in custom_models
             if os.path.isfile(custom_model.get("config_file", ""))
         ]
-        config = get_config()
-        config["custom_models"] = custom_models
-        save_config(config)
+        if len(custom_models) != len(stored_models):
+            self.save_custom_models(custom_models)
 
         model_list += custom_models
 
@@ -602,7 +604,12 @@ class ModelManager(QObject):
         )
 
     def update_model_config(self, config_file, key, value):
-        """Update a specific key in a model's configuration."""
+        """Update a specific key in a model's configuration.
+
+        Returns whether the change was persisted.  A remote-server setting
+        that only lives in memory would silently be forgotten, so callers get
+        a visible result instead of a success they cannot trust.
+        """
         for config in self.model_configs:
             if config.get("config_file") == config_file:
                 config[key] = value
@@ -615,11 +622,27 @@ class ModelManager(QObject):
                 break
 
         if config_file and config_file.startswith(":/"):
-            user_config = get_config()
-            if "remote_server_settings" not in user_config:
-                user_config["remote_server_settings"] = {}
-            user_config["remote_server_settings"][key] = value
-            save_config(user_config)
+            return self.save_user_fields(
+                {("remote_server_settings", key): value}
+            )
+        return True
+
+    def save_custom_models(self, custom_models):
+        """Persist the custom model list without touching other fields."""
+        return self.save_user_fields(
+            {"custom_models": copy.deepcopy(custom_models)}
+        )
+
+    @staticmethod
+    def save_user_fields(values):
+        from anylabeling import user_config
+
+        try:
+            user_config.save_values(values)
+        except user_config.ConfigError as error:
+            logger.warning("Failed to save model settings: %s", error)
+            return False
+        return True
 
     def get_model_configs(self):
         """Return model infos"""
@@ -741,7 +764,7 @@ class ModelManager(QObject):
             return False
 
         # Add or replace custom model
-        custom_models = get_config().get("custom_models", [])
+        custom_models = copy.deepcopy(get_config().get("custom_models", []))
         matched_index = None
         for i, model in enumerate(custom_models):
             if os.path.normpath(model["config_file"]) == os.path.normpath(
@@ -761,9 +784,20 @@ class ModelManager(QObject):
             custom_models = [model_config] + custom_models
 
         # Save config
-        config = get_config()
-        config["custom_models"] = custom_models
-        save_config(config)
+        if not self.save_custom_models(custom_models):
+            # Keeping the list in memory while the file still holds the old
+            # one would silently diverge; the caller gets a visible failure
+            # and the user can retry once the storage problem is resolved.
+            self.new_model_status.emit(
+                self.tr(
+                    "Failed to save the custom model list. The model was "
+                    "loaded but will not be remembered after a restart; "
+                    "retry saving from Settings."
+                )
+            )
+            self._last_custom_model_save_failed = True
+        else:
+            self._last_custom_model_save_failed = False
 
         # Reload model configs
         self.load_model_configs()
@@ -839,10 +873,9 @@ class ModelManager(QObject):
         ):
             return False
 
-        config = get_config()
-        config["custom_models"] = [
+        remaining_models = [
             model
-            for model in config.get("custom_models", [])
+            for model in get_config().get("custom_models", [])
             if (
                 model.get("name", "")
                 if model.get("name", "").startswith("_custom_")
@@ -850,7 +883,14 @@ class ModelManager(QObject):
             )
             != model_name
         ]
-        save_config(config)
+        if not self.save_custom_models(remaining_models):
+            self.new_model_status.emit(
+                self.tr(
+                    "Failed to save the custom model list, so the model was "
+                    "not removed. Retry once the storage problem is fixed."
+                )
+            )
+            return False
 
         if (
             self.loaded_model_config is not None

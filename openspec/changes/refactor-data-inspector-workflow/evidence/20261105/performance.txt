@@ -1,0 +1,11 @@
+dense-scale {'machine': 'Intel64 Family 6 Model 165 Stepping 3, GenuineIntel', 'python': '3.12.12', 'rectangles': 120, 'pairs': 416, 'elapsed_s': 0.1299}
+.cancel-latency {'machine': 'Intel64 Family 6 Model 165 Stepping 3, GenuineIntel', 'python': '3.12.12', 'rectangles': 160, 'cancel_observed_s': 0.009, 'elapsed_s': 0.2165, 'state': 'cancelled'}
+..
+============================ slowest 30 durations =============================
+0.24s call     tests/test_inspection/test_performance.py::test_cancellation_is_observed_quickly_on_dense_input
+0.24s call     tests/test_inspection/test_performance.py::test_dense_candidates_complete_with_recorded_scale
+0.03s setup    tests/test_inspection/test_performance.py::test_dense_candidates_complete_with_recorded_scale
+0.01s call     tests/test_inspection/test_performance.py::test_max_pairs_limit_marks_partial_and_truncated
+
+(5 durations < 0.005s hidden.  Use -vv to show these durations.)
+3 passed in 2.70s

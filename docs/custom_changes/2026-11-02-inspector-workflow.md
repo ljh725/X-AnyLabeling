@@ -1,8 +1,8 @@
 # CUSTOM-109：Inspector 检查与复核工作流
 
-- 状态：实施中（自动化验证通过，人工试用与部分交付项未完成）
+- 状态：代码与自动化验证完成；人工试用/独立质量复核/间隔后可用性待验收（52/55）
 - 功能分类：新增本地能力（部分算法从 beta4 迁移）
-- 创建日期、最后更新日期：2026-11-02（Asia/Shanghai）
+- 创建日期：2026-11-02；最后更新日期：2026-11-05（Asia/Shanghai）
 - 原始版本与基线提交：X-AnyLabeling 4.2.1；基线提交 `9a37c5474c390e93243e33a88e8232a19c833280`（父提交 `1038d555c997e8c42ba589d648ca2e45abd52c26` 保存既有编译资源）
 - 实现提交 / PR：实施工作区尚未提交；基线备份见下
 - 工作区已有修改、前置依赖：实施前存在 `migrate-canvas-controls-from-v430` 未提交的 `resources.py` 与四语种 `.qm`，已单独保存在备份父提交；本功能依赖持久 Shape 身份、编辑命令、分阶段加载和配置/翻译设施
@@ -101,3 +101,4 @@
 | 2026-11-02 | 密集复核交接可用 | `handoff.py` 改为 `dense_review_available=True`、`dense-review.v1`；更新交接测试 | `tests/test_inspection` 80 passed；真实交接 UI 未人工验证 |
 | 2026-11-03 | UI 重构（P0） | 接入 `get_dialog_style()` + `get_workbench_qss()`；工具条两行化；外部候选并入右栏标签；问题表改 5 列自适应；五轴改徽标行；按钮主次变体；空状态与运行后自动选中 | `tests/test_inspection` 80 passed；截图见 `reports/ui_review_20261103/`；详见 [实施记录](../../reports/ui_review_20261103/UI-IMPLEMENTATION.md) |
 | 2026-11-03 | UI 打磨（P2，`feat/ui-polish-p2`） | 详情改六节结构并全部走主题色；`F5` 开始检查、表格内 `Enter` 定位；118 处界面文案包 `tr()`、标签字典改 `QT_TRANSLATE_NOOP`；主操作图标；en_US/zh_CN 翻译补全至 2500 条 | `tests/test_inspection` 83 passed；见 [验证](../../openspec/changes/polish-inspector-dense-review-ui/verification.md) 与 [P2 实施记录](../../reports/ui_review_20261103/UI-P2-IMPLEMENTATION.md) |
+| 2026-11-05 | 按任务清单补齐代码和验收证据 | 内容/方向摘要、差分编辑与有界候选、不可覆盖/分批/分页报告、另存恢复、候选调整与保存/撤销/重做、真实密集复核交接、可配置快捷键及四语编译资源；保留既有并行改动，未提交 Git | Inspector 192 passed；相关 116 passed、1 skipped；最后覆盖层补验 9 passed。任务 52/55，10.3–10.5 依用户确认保留人工待办；见 [最新验证](../../openspec/changes/refactor-data-inspector-workflow/verification.md) 与 [操作说明](../zh_cn/inspector.md) |

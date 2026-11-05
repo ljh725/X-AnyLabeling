@@ -17,7 +17,6 @@ from .ledger import (
     spatial_order,
 )
 from .models import (
-    DIMENSION_LABELS,
     NEW_PENDING_BATCH_ID,
     REVIEW_DIMENSIONS,
     SUPPORTED_SHAPE_TYPES,
@@ -59,6 +58,15 @@ class _HistoryEntry:
     after_hash: str = ""
 
 
+@dataclass
+class _RedoEntry:
+    """One undone transaction, ready to be re-applied by redo."""
+
+    kind: str
+    state: ReviewState
+    content_hash: str = ""
+
+
 class DenseReviewSession:
     """Own review progress for one image and output-directory pair."""
 
@@ -88,6 +96,18 @@ class DenseReviewSession:
         # Each transaction owns its snapshot, so eviction is atomic and equal
         # content at different points in history can retain different progress.
         self._history: deque[_HistoryEntry] = deque(maxlen=100)
+        # Undone transactions, newest last. ``_redo_order`` keeps progress and
+        # canvas transactions in one LIFO stream so redo mirrors undo exactly.
+        self._redo_progress: deque[_RedoEntry] = deque(maxlen=100)
+        self._redo_content: deque[_RedoEntry] = deque(maxlen=100)
+        self._redo_order: deque[str] = deque(maxlen=200)
+        self._redo_snapshot: Optional[
+            tuple[
+                tuple[_RedoEntry, ...],
+                tuple[_RedoEntry, ...],
+                tuple[str, ...],
+            ]
+        ] = None
         self._last_content_hash = ""
         self._last_action = ""
 
@@ -169,6 +189,7 @@ class DenseReviewSession:
         current_hash = content_hash(reviewable_shapes(shapes))
         self._last_content_hash = current_hash
         self._history.clear()
+        self._clear_redo()
         self._last_action = ""
 
     def _validate_cursor(self) -> None:
@@ -240,6 +261,7 @@ class DenseReviewSession:
                         after_hash=current_hash,
                     )
                 )
+                self._clear_redo()
                 if changed:
                     self._last_action = "content"
                     if mark_dirty:
@@ -877,63 +899,85 @@ class DenseReviewSession:
 
     # -- completion and counts ----------------------------------------
 
-    def completion_status(self) -> CompletionStatus:
+    def completion_status(self, translate=str) -> CompletionStatus:
         reasons: list[str] = []
         supported = True
         object_complete = True
         for item in self.state.objects.values():
+            values = {"index": item.display_index, "label": item.label}
             if not item.supported:
                 supported = False
                 object_complete = False
                 reasons.append(
-                    f"对象 #{item.display_index}（{item.label}）为 "
-                    "首版不支持的非矩形形状"
+                    translate(
+                        "对象 #{index}（{label}）为首版不支持的非矩形形状"
+                    ).format(**values)
                 )
                 continue
             if item.load_failed:
                 object_complete = False
                 reasons.append(
-                    f"对象 #{item.display_index}（{item.label}）无法呈现"
+                    translate("对象 #{index}（{label}）无法呈现").format(
+                        **values
+                    )
                 )
                 continue
             if item.difficult:
                 object_complete = False
                 reasons.append(
-                    f"对象 #{item.display_index}（{item.label}）仍为疑难"
+                    translate("对象 #{index}（{label}）仍为疑难").format(
+                        **values
+                    )
                 )
             if item.skipped:
                 object_complete = False
                 reasons.append(
-                    f"对象 #{item.display_index}（{item.label}）仍为暂跳"
+                    translate("对象 #{index}（{label}）仍为暂跳").format(
+                        **values
+                    )
                 )
             if not item.confirmed("category"):
                 object_complete = False
                 reasons.append(
-                    f"对象 #{item.display_index}（{item.label}）类别待审"
+                    translate("对象 #{index}（{label}）类别待审").format(
+                        **values
+                    )
                 )
             if not item.confirmed("geometry"):
                 object_complete = False
                 reasons.append(
-                    f"对象 #{item.display_index}（{item.label}）框待审"
+                    translate("对象 #{index}（{label}）框待审").format(
+                        **values
+                    )
                 )
         if self.state.new_pending:
             object_complete = False
             reasons.append(
-                f"新增待处理还有 {len(self.state.new_pending)} 个对象"
+                translate("新增待处理还有 {count} 个对象").format(
+                    count=len(self.state.new_pending)
+                )
             )
         coverage_complete = False
         plan = self.state.coverage
         if plan is None:
-            reasons.append("空间查漏尚未开始")
+            reasons.append(translate("空间查漏尚未开始"))
         else:
             counts = coverage_service.coverage_counts(plan)
             coverage_complete = (
                 counts["total"] > 0 and counts["completed"] == counts["total"]
             )
             if counts["difficult"]:
-                reasons.append(f"还有 {counts['difficult']} 个查漏区域为疑难")
+                reasons.append(
+                    translate("还有 {count} 个查漏区域为疑难").format(
+                        count=counts["difficult"]
+                    )
+                )
             if counts["pending"]:
-                reasons.append(f"还有 {counts['pending']} 个查漏区域未完成")
+                reasons.append(
+                    translate("还有 {count} 个查漏区域未完成").format(
+                        count=counts["pending"]
+                    )
+                )
         complete = supported and object_complete and coverage_complete
         deduplicated = tuple(dict.fromkeys(reasons))
         return CompletionStatus(
@@ -989,14 +1033,18 @@ class DenseReviewSession:
             "pending": len(items) - confirmed,
         }
 
-    def rule_summary(self, label: str) -> str:
+    def rule_summary(self, label: str, translate=str) -> str:
         rule = self.config.rules.box_rule(label)
         note = self.config.rules.note(label)
         parts = [
-            f"{DIMENSION_LABELS['category']}：{note or '未填写类别规则说明'}",
-            f"框：{self._box_rule_label(rule)}",
+            translate("类别：{note}").format(
+                note=note or translate("未填写类别规则说明")
+            ),
+            translate("框：{rule}").format(
+                rule=translate(self._box_rule_label(rule))
+            ),
         ]
-        return "；".join(parts)
+        return translate("；").join(parts)
 
     @staticmethod
     def _box_rule_label(rule: str) -> str:
@@ -1026,6 +1074,14 @@ class DenseReviewSession:
         if not self.can_undo_progress():
             return False
         entry = self._history.pop()
+        self._redo_progress.append(
+            _RedoEntry(
+                kind="progress",
+                state=copy.deepcopy(self.state),
+                content_hash=self._last_content_hash,
+            )
+        )
+        self._redo_order.append("progress")
         self.state = entry.state
         self.dirty = True
         return True
@@ -1033,24 +1089,49 @@ class DenseReviewSession:
     def undo_after_canvas(self, shapes: Iterable[Any]) -> bool:
         """Restore the snapshot owned by the canvas transaction being undone."""
         current_hash = content_hash(reviewable_shapes(shapes))
+        # The canvas owns its own snapshot stack, so every canvas undo is one
+        # entry in the shared redo order even when it carries no review change.
+        self._redo_order.append("canvas")
         if current_hash == self._last_content_hash:
             # A canvas-only style change must not consume a content transaction.
             return False
+        before_state = copy.deepcopy(self.state)
+        before_hash = self._last_content_hash
+        redo_entry = _RedoEntry(
+            kind="content",
+            state=before_state,
+            content_hash=before_hash,
+        )
         popped = False
         while self._history and self._history[-1].kind == "content":
             entry = self._history.pop()
             popped = True
             if entry.before_hash == current_hash:
+                self._redo_content.append(redo_entry)
                 self.state = entry.state
                 self._last_content_hash = current_hash
                 self.dirty = True
                 self._last_action = ""
                 return True
+        self._redo_content.append(redo_entry)
         self.sync_shapes(shapes, record_history=False, mark_dirty=True)
         self._last_action = ""
         return popped
 
+    def _clear_redo(self) -> None:
+        """Drop the redo stream when a new transaction supersedes it."""
+        self._redo_progress.clear()
+        self._redo_content.clear()
+        self._redo_order.clear()
+
     def _push_progress_undo(self) -> None:
+        # Keep the redo stream so a rejected/no-op action can restore it.
+        self._redo_snapshot = (
+            tuple(self._redo_progress),
+            tuple(self._redo_content),
+            tuple(self._redo_order),
+        )
+        self._clear_redo()
         self._history.append(
             _HistoryEntry(
                 kind="progress",
@@ -1062,6 +1143,74 @@ class DenseReviewSession:
     def _discard_last_progress_undo(self) -> None:
         if self._history and self._history[-1].kind == "progress":
             self._history.pop()
+            snapshot = getattr(self, "_redo_snapshot", None)
+            if snapshot is not None:
+                progress, content, order = snapshot
+                self._redo_progress.extend(progress)
+                self._redo_content.extend(content)
+                self._redo_order.extend(order)
+        self._redo_snapshot = None
+
+    # -- redo ----------------------------------------------------------
+
+    def next_redo_kind(self) -> str:
+        """Return ``progress`` or ``canvas`` for the next redo target."""
+        while self._redo_order:
+            kind = self._redo_order[-1]
+            if kind == "progress" and self._redo_progress:
+                return "progress"
+            if kind == "canvas":
+                return "canvas"
+            self._redo_order.pop()
+        return "canvas"
+
+    def can_redo_progress(self) -> bool:
+        return self.next_redo_kind() == "progress"
+
+    def has_redo(self) -> bool:
+        """Report whether any session-level transaction can be re-applied."""
+        return bool(self._redo_order)
+
+    def drop_stale_canvas_redo(self) -> None:
+        """Discard a canvas marker whose canvas snapshot no longer exists."""
+        if self._redo_order and self._redo_order[-1] == "canvas":
+            self._redo_order.pop()
+
+    def redo_progress(self) -> bool:
+        if not self.can_redo_progress():
+            return False
+        entry = self._redo_progress.pop()
+        self._redo_order.pop()
+        self._history.append(
+            _HistoryEntry(
+                kind="progress",
+                state=copy.deepcopy(self.state),
+                content_hash=self._last_content_hash,
+            )
+        )
+        self.state = entry.state
+        self.dirty = True
+        self._last_action = "progress"
+        return True
+
+    def redo_after_canvas(self, shapes: Iterable[Any]) -> bool:
+        """Re-apply the review snapshot owned by the canvas redo."""
+        if self._redo_order and self._redo_order[-1] == "canvas":
+            self._redo_order.pop()
+        current_hash = content_hash(reviewable_shapes(shapes))
+        if (
+            self._redo_content
+            and self._redo_content[-1].content_hash == current_hash
+        ):
+            entry = self._redo_content.pop()
+            self.state = entry.state
+            self._last_content_hash = current_hash
+            self.dirty = True
+            self._last_action = ""
+            return True
+        self.sync_shapes(shapes, record_history=False, mark_dirty=True)
+        self._last_action = ""
+        return False
 
     def _normalize_dimensions(
         self, dimensions: Iterable[str]

@@ -489,3 +489,118 @@ def test_conflicting_config_cannot_start():
     config = make_config(batches=(("A/B", ("A", "B")), ("A/C", ("A", "C"))))
     with pytest.raises(ReviewConfigError):
         build_session([make_shape("a", "A")], config=config)
+
+
+def test_redo_progress_restores_confirmation_and_cursor():
+    shapes = [
+        make_shape("a", "A", (5, 5, 15, 15)),
+        make_shape("b", "B", (25, 5, 35, 15)),
+    ]
+    session = build_session(shapes)
+    assert session.confirm_object("a", ("category", "geometry"))
+    confirmed = copy.deepcopy(session.to_payload())
+    confirmed_cursor = session.state.current_object
+    assert session.next_undo_kind() == "progress"
+    assert session.undo_progress()
+    assert not session.object("a").confirmed_both()
+    assert session.next_redo_kind() == "progress"
+    assert session.redo_progress()
+    assert session.to_payload() == confirmed
+    assert session.state.current_object == confirmed_cursor
+    assert not session.can_redo_progress()
+
+
+def test_redo_after_canvas_restores_review_state():
+    shape = make_shape("a", "A", (5, 5, 15, 15))
+    session = build_session([shape])
+    assert session.confirm_object("a", ("category", "geometry"))
+    confirmed = copy.deepcopy(session.to_payload())
+    shape.move_by(10, 0)
+    session.sync_shapes([shape])
+    moved = copy.deepcopy(session.to_payload())
+    assert not session.object("a").confirmed("geometry")
+
+    shape.move_by(-10, 0)
+    assert session.undo_after_canvas([shape])
+    assert session.to_payload() == confirmed
+    assert session.next_redo_kind() == "canvas"
+
+    shape.move_by(10, 0)
+    assert session.redo_after_canvas([shape])
+    assert session.to_payload() == moved
+    assert not session.object("a").confirmed("geometry")
+
+
+def test_new_progress_action_clears_redo():
+    shapes = [make_shape("a", "A", (5, 5, 15, 15))]
+    session = build_session(shapes)
+    assert session.confirm_object("a", ("category", "geometry"))
+    assert session.undo_progress()
+    assert session.has_redo()
+    assert session.mark_difficult("a")
+    assert not session.has_redo()
+    assert not session.can_redo_progress()
+
+
+def test_noop_confirm_keeps_redo_stream():
+    shapes = [
+        make_shape("a", "A", (5, 5, 15, 15)),
+        make_shape("b", "B", (25, 5, 35, 15)),
+    ]
+    session = build_session(shapes)
+    assert session.confirm_object("b", ("category", "geometry"))
+    assert session.confirm_object("a", ("category", "geometry"))
+    assert session.undo_progress()
+    assert session.has_redo()
+    # Confirming an object that is already confirmed changes nothing and must
+    # not throw away the transaction the user just undid.
+    assert not session.confirm_object("b", ("category", "geometry"))
+    assert session.has_redo()
+    assert session.next_redo_kind() == "progress"
+    assert session.redo_progress()
+    assert session.object("a").confirmed_both()
+
+
+def test_mixed_undo_then_redo_restores_every_transaction():
+    shape = make_shape("a", "A", (5, 5, 15, 15))
+    session = build_session([shape])
+    kinds = []
+    undo_points = []
+    redo_points = []
+    undo_bounds = []
+    redo_bounds = []
+    for index in range(4):
+        kinds.append("progress")
+        undo_points.append(copy.deepcopy(session.to_payload()))
+        if index % 2 == 0:
+            assert session.mark_difficult("a", reason=str(index))
+        else:
+            assert session.clear_difficult("a")
+        redo_points.append(copy.deepcopy(session.to_payload()))
+
+        kinds.append("canvas")
+        undo_points.append(copy.deepcopy(session.to_payload()))
+        undo_bounds.append(shape.bounds)
+        shape.move_by(10 if index % 2 == 0 else -10, 0)
+        redo_bounds.append(shape.bounds)
+        session.sync_shapes([shape])
+        redo_points.append(copy.deepcopy(session.to_payload()))
+
+    for index in reversed(range(len(kinds))):
+        assert session.next_undo_kind() == kinds[index]
+        if kinds[index] == "progress":
+            assert session.undo_progress()
+        else:
+            shape.set_bounds(undo_bounds[index // 2])
+            assert session.undo_after_canvas([shape])
+        assert session.to_payload() == undo_points[index]
+
+    for index in range(len(kinds)):
+        assert session.next_redo_kind() == kinds[index]
+        if kinds[index] == "progress":
+            assert session.redo_progress()
+        else:
+            shape.set_bounds(redo_bounds[index // 2])
+            assert session.redo_after_canvas([shape])
+        assert session.to_payload() == redo_points[index]
+    assert not session.has_redo()

@@ -6,10 +6,11 @@ import csv
 import json
 import os
 import os.path as osp
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Mapping, Optional, Sequence
 
 from .models import (
+    REPORT_SCHEMA_VERSION,
     ActionState,
     Decision,
     IssueEvidence,
@@ -53,13 +54,22 @@ class ImportResult:
     errors: tuple[Mapping[str, Any], ...] = ()
     ambiguous: tuple[Mapping[str, Any], ...] = ()
     source: str = ""
+    format: str = "legacy-rows"
+    warnings: tuple[str, ...] = ()
+    context: Mapping[str, Any] = field(default_factory=dict)
+
+    @property
+    def lossy(self) -> bool:
+        return self.format != "native-report"
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "source": self.source,
+            "format": self.format,
             "imported": len(self.issues),
             "errors": [dict(item) for item in self.errors],
             "ambiguous": [dict(item) for item in self.ambiguous],
+            "warnings": list(self.warnings),
         }
 
 
@@ -308,15 +318,60 @@ def import_legacy_report(
     manifest: Optional[Manifest] = None,
     source: str = "",
 ) -> ImportResult:
-    """Import beta4-style TSV/CSV or JSON reports without replacing a queue."""
+    """Import a legacy TSV/CSV row file or a native full JSON report.
+
+    Native ``inspection-report.v1`` payloads are restored field by field
+    (all sources, implementation versions, thresholds, location, human and
+    machine state, run context) instead of being flattened into one legacy
+    row.  Simplified row formats remain explicitly lossy.
+    """
     source = source or osp.splitext(osp.basename(path))[0]
     extension = osp.splitext(path)[1].lower()
     errors: list[Mapping[str, Any]] = []
     ambiguous: list[Mapping[str, Any]] = []
+    warnings: list[str] = []
+    native_context: Mapping[str, Any] = {}
     if extension == ".json":
         payload = read_json(path)
+        native = _native_report_payload(payload)
+        if native is not None:
+            issues, native_errors, native_ambiguous, native_context = (
+                _import_native_report(native, manifest=manifest, source=source)
+            )
+            return ImportResult(
+                issues=issues,
+                errors=tuple(native_errors),
+                ambiguous=tuple(native_ambiguous),
+                source=source,
+                format="native-report",
+                warnings=(
+                    "已按原生完整报告导入：保留全部来源证据、实现版本、"
+                    "定位与人工/机器状态。",
+                ),
+                context=native_context,
+            )
+        if isinstance(payload, Mapping) and payload.get("schema_version"):
+            schema = str(payload.get("schema_version"))
+            if str(schema).startswith("inspection-report.") and (
+                schema != REPORT_SCHEMA_VERSION
+            ):
+                return ImportResult(
+                    (),
+                    (
+                        {
+                            "error": "无法核验的报告格式版本: "
+                            + schema
+                            + f"（当前支持 {REPORT_SCHEMA_VERSION}）"
+                        },
+                    ),
+                    source=source,
+                    warnings=("未知版本报告未降级为简化行导入。",),
+                )
         if isinstance(payload, Mapping):
             raw_rows = payload.get("issues", [])
+            if isinstance(payload.get("report"), Mapping):
+                warnings.append("报告被包装在 report 字段中，已按简化行导入。")
+                raw_rows = payload["report"].get("issues", [])
         elif isinstance(payload, list):
             raw_rows = payload
         else:
@@ -325,9 +380,14 @@ def import_legacy_report(
                 ({"error": "JSON 报告必须是对象或数组"},),
                 source=source,
             )
+        if isinstance(payload, Mapping) and payload.get("run_id"):
+            warnings.append(
+                "简化行导入不含完整运行上下文；请核对规则与实现版本。"
+            )
     else:
         raw_rows, parse_errors = _rows_from_tsv(path)
         errors.extend(parse_errors)
+        warnings.append("TSV/CSV 为简化格式，可能丢失多来源证据与运行上下文。")
     issues: list[InspectionIssue] = []
     for index, row in enumerate(raw_rows or []):
         if not isinstance(row, Mapping):
@@ -348,7 +408,97 @@ def import_legacy_report(
         errors=tuple(errors),
         ambiguous=tuple(ambiguous),
         source=source,
+        warnings=tuple(warnings),
+        context=native_context,
     )
+
+
+def _native_report_payload(
+    payload: Any,
+) -> Optional[Mapping[str, Any]]:
+    """Return the payload when it is a native full inspection report."""
+    if not isinstance(payload, Mapping):
+        return None
+    schema = str(payload.get("schema_version", ""))
+    if schema != REPORT_SCHEMA_VERSION:
+        return None
+    issues = payload.get("issues")
+    if issues is not None and not isinstance(issues, (list, tuple)):
+        return None
+    if not payload.get("run_id") and issues is None:
+        return None
+    return payload
+
+
+def _import_native_report(
+    payload: Mapping[str, Any],
+    *,
+    manifest: Optional[Manifest],
+    source: str,
+) -> tuple[
+    tuple[InspectionIssue, ...],
+    list[Mapping[str, Any]],
+    list[Mapping[str, Any]],
+    Mapping[str, Any],
+]:
+    issues: list[InspectionIssue] = []
+    errors: list[Mapping[str, Any]] = []
+    ambiguous: list[Mapping[str, Any]] = []
+    for index, raw in enumerate(payload.get("issues", []) or []):
+        if not isinstance(raw, Mapping):
+            errors.append({"index": index, "error": "问题记录不是对象"})
+            continue
+        try:
+            issue = InspectionIssue.from_dict(raw)
+        except (TypeError, ValueError) as error:
+            errors.append(
+                {"index": index, "error": f"问题记录字段无效: {error}"}
+            )
+            continue
+        location = issue.location
+        raw_path = location.relative_path or location.image_path
+        if raw_path:
+            relative, is_ambiguous, reason = _resolve_relative(
+                raw_path, manifest
+            )
+            location = replace(
+                location,
+                relative_path=relative,
+                ambiguous=location.ambiguous or is_ambiguous,
+            )
+            if is_ambiguous:
+                ambiguous.append(
+                    {
+                        "raw_path": raw_path,
+                        "relative_path": relative,
+                        "reason": reason,
+                        "issue_id": issue.issue_id,
+                    }
+                )
+        issues.append(replace(issue, location=location))
+    profile_snapshot = payload.get("profile", {})
+    if not isinstance(profile_snapshot, Mapping):
+        profile_snapshot = {}
+    frozen_profile = profile_snapshot.get("profile", {})
+    if not isinstance(frozen_profile, Mapping):
+        frozen_profile = {}
+    context = {
+        "source": source,
+        "run_id": str(payload.get("run_id", "")),
+        "state": str(payload.get("state", "")),
+        "scope": str(payload.get("scope", "")),
+        "dataset_root": str(payload.get("dataset_root", "")),
+        "output_root": str(payload.get("output_root", "")),
+        "profile_id": str(frozen_profile.get("profile_id", "")),
+        "profile_digest": str(profile_snapshot.get("snapshot_digest", "")),
+        "started_at": str(payload.get("started_at", "")),
+        "finished_at": str(payload.get("finished_at", "")),
+        "report_schema": str(payload.get("schema_version", "")),
+        "requested_files": int(payload.get("requested_files", 0) or 0),
+        "failed_files": int(payload.get("failed_files", 0) or 0),
+        "truncated": bool(payload.get("truncated", False)),
+    }
+    return tuple(issues), errors, ambiguous, context
 
 
 def export_report(

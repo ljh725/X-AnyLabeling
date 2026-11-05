@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -115,6 +116,45 @@ def new_run_id(profile_id: str) -> str:
     return f"{stamp}-{profile_id}-{suffix}"
 
 
+def normalize_path(path: str) -> str:
+    """Return a comparable absolute path identity (case-insensitive)."""
+    if not str(path or "").strip():
+        return ""
+    return os.path.normcase(os.path.abspath(str(path)))
+
+
+def dataset_identity(dataset_root: str) -> str:
+    """Return the stable storage identity of a dataset root."""
+    normalized = normalize_path(dataset_root)
+    if not normalized:
+        return "unbound"
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
+
+
+def output_identity(output_root: str) -> str:
+    """Return the annotation output identity.
+
+    Empty means "annotations live beside the images", which is distinct
+    from any explicit output directory and must survive a round trip
+    through an explicit-but-equal path.
+    """
+    return normalize_path(output_root)
+
+
+def config_rule_versions(
+    profile_snapshot: Mapping[str, Any],
+) -> dict[str, str]:
+    """Extract enabled rule id -> implementation version from a snapshot."""
+    versions: dict[str, str] = {}
+    for rule in profile_snapshot.get("rules", []) or []:
+        if not isinstance(rule, Mapping) or not rule.get("enabled", True):
+            continue
+        rule_id = str(rule.get("rule_id", ""))
+        if rule_id:
+            versions[rule_id] = str(rule.get("implementation_version", ""))
+    return versions
+
+
 def canonical_relation_key(first: str, second: str) -> str:
     """Return an unordered, serialization-safe relation key."""
     left, right = sorted((str(first), str(second)))
@@ -189,6 +229,7 @@ class RuleMeta:
     parameters: tuple[str, ...] = ()
     examples: Mapping[str, str] = field(default_factory=dict)
     enabled_by_default: bool = True
+    depends_on: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -201,6 +242,7 @@ class RuleMeta:
             "parameters": list(self.parameters),
             "examples": dict(self.examples),
             "enabled_by_default": bool(self.enabled_by_default),
+            "depends_on": list(self.depends_on),
         }
 
 
@@ -315,14 +357,20 @@ class ShapeSnapshot:
     difficult: bool = False
     identity_valid: bool = True
     identity_reason: str = ""
+    input_errors: tuple[str, ...] = ()
 
     @property
     def bbox(self) -> Optional[tuple[float, float, float, float]]:
-        if not self.points:
-            return None
-        xs = [point[0] for point in self.points]
-        ys = [point[1] for point in self.points]
-        return (min(xs), min(ys), max(xs), max(ys))
+        if self.points:
+            xs = [point[0] for point in self.points]
+            ys = [point[1] for point in self.points]
+            return (min(xs), min(ys), max(xs), max(ys))
+        return None
+
+    @property
+    def input_valid(self) -> bool:
+        """Return whether the raw input was parsed without any diagnostics."""
+        return not self.input_errors
 
     @property
     def area(self) -> float:
@@ -344,6 +392,7 @@ class ShapeSnapshot:
             "difficult": bool(self.difficult),
             "identity_valid": bool(self.identity_valid),
             "identity_reason": self.identity_reason,
+            "input_errors": list(self.input_errors),
         }
 
     @classmethod
@@ -371,6 +420,9 @@ class ShapeSnapshot:
             difficult=bool(data.get("difficult", False)),
             identity_valid=bool(data.get("identity_valid", True)),
             identity_reason=str(data.get("identity_reason", "")),
+            input_errors=tuple(
+                str(item) for item in data.get("input_errors", []) or []
+            ),
         )
 
 
@@ -386,6 +438,9 @@ class FileSnapshot:
     annotation_digest: str = ""
     shape_digest: str = ""
     image_digest: str = ""
+    image_digest_kind: str = ""
+    annotation_normalized_digest: str = ""
+    image_orientation: str = ""
     shapes: tuple[ShapeSnapshot, ...] = ()
     annotation_state: str = "present"
     error: str = ""
@@ -406,6 +461,9 @@ class FileSnapshot:
             "annotation_digest": self.annotation_digest,
             "shape_digest": self.shape_digest,
             "image_digest": self.image_digest,
+            "image_digest_kind": self.image_digest_kind,
+            "annotation_normalized_digest": self.annotation_normalized_digest,
+            "image_orientation": self.image_orientation,
             "shapes": [shape.to_dict() for shape in self.shapes],
             "annotation_state": self.annotation_state,
             "error": self.error,
@@ -424,6 +482,11 @@ class FileSnapshot:
             annotation_digest=str(data.get("annotation_digest", "")),
             shape_digest=str(data.get("shape_digest", "")),
             image_digest=str(data.get("image_digest", "")),
+            image_digest_kind=str(data.get("image_digest_kind", "")),
+            annotation_normalized_digest=str(
+                data.get("annotation_normalized_digest", "")
+            ),
+            image_orientation=str(data.get("image_orientation", "")),
             shapes=tuple(
                 ShapeSnapshot.from_dict(item)
                 for item in data.get("shapes", []) or []
@@ -443,6 +506,7 @@ class Manifest:
     output_root: str
     files: tuple[FileSnapshot, ...]
     errors: tuple[Mapping[str, Any], ...] = ()
+    excluded: tuple[Mapping[str, Any], ...] = ()
     generated_at: str = field(default_factory=utc_now_iso)
     complete: bool = True
 
@@ -472,6 +536,7 @@ class Manifest:
             "output_root": self.output_root,
             "files": [file.to_dict() for file in self.files],
             "errors": [dict(error) for error in self.errors],
+            "excluded": [dict(item) for item in self.excluded],
             "generated_at": self.generated_at,
             "complete": bool(self.complete),
         }
@@ -486,6 +551,9 @@ class Manifest:
                 for item in data.get("files", []) or []
             ),
             errors=tuple(dict(item) for item in data.get("errors", []) or []),
+            excluded=tuple(
+                dict(item) for item in data.get("excluded", []) or []
+            ),
             generated_at=str(data.get("generated_at", utc_now_iso())),
             complete=bool(data.get("complete", True)),
         )
@@ -560,6 +628,8 @@ class IssueEvidence:
     relation: str = ""
     filtered_reason: str = ""
     source: str = "local"
+    verification: VerificationState = VerificationState.CURRENT
+    verification_reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -579,6 +649,8 @@ class IssueEvidence:
             "relation": self.relation,
             "filtered_reason": self.filtered_reason,
             "source": self.source,
+            "verification": self.verification.value,
+            "verification_reason": self.verification_reason,
         }
 
     @classmethod
@@ -588,6 +660,11 @@ class IssueEvidence:
             severity = IssueSeverity(severity_raw)
         except ValueError:
             severity = IssueSeverity.WARNING
+        verification_raw = str(data.get("verification", "current"))
+        try:
+            verification = VerificationState(verification_raw)
+        except ValueError:
+            verification = VerificationState.CURRENT
         return cls(
             rule_id=str(data.get("rule_id", "")),
             implementation_version=str(data.get("implementation_version", "")),
@@ -600,6 +677,8 @@ class IssueEvidence:
             relation=str(data.get("relation", "")),
             filtered_reason=str(data.get("filtered_reason", "")),
             source=str(data.get("source", "local")),
+            verification=verification,
+            verification_reason=str(data.get("verification_reason", "")),
         )
 
 
@@ -706,6 +785,7 @@ class CoverageEntry:
     reason: str = ""
     issue_count: int = 0
     duration_ms: float = 0.0
+    truncated: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -715,6 +795,7 @@ class CoverageEntry:
             "reason": self.reason,
             "issue_count": int(self.issue_count),
             "duration_ms": round(float(self.duration_ms), 3),
+            "truncated": bool(self.truncated),
         }
 
     @classmethod
@@ -730,6 +811,7 @@ class CoverageEntry:
             reason=str(data.get("reason", "")),
             issue_count=int(data.get("issue_count", 0) or 0),
             duration_ms=float(data.get("duration_ms", 0.0) or 0.0),
+            truncated=bool(data.get("truncated", False)),
         )
 
 
@@ -758,11 +840,25 @@ class RunReport:
     error: str = ""
     generation: int = 0
     source_kind: str = "disk"
+    scope_notes: tuple[str, ...] = ()
+
+    @property
+    def config_digest(self) -> str:
+        """Return the frozen effective-configuration digest of this run."""
+        return str(self.profile_snapshot.get("snapshot_digest", "") or "")
 
     def summary(self) -> dict[str, Any]:
-        object_ids = set()
+        # Object identity must include the file: the same object id may
+        # legitimately exist in two different images.
+        objects: set[tuple[str, str]] = set()
+        issue_files: set[str] = set()
+        verification_counts: dict[str, int] = {}
         for issue in self.issues:
-            object_ids.update(issue.location.object_ids)
+            issue_files.add(issue.location.relative_path)
+            for object_id in issue.location.object_ids:
+                objects.add((issue.location.relative_path, object_id))
+            key = issue.verification.value
+            verification_counts[key] = verification_counts.get(key, 0) + 1
         return {
             "requested_files": self.requested_files,
             "completed_files": self.completed_files,
@@ -770,7 +866,9 @@ class RunReport:
             "excluded_files": self.excluded_files,
             "not_run_files": self.not_run_files,
             "issue_count": len(self.issues),
-            "object_count": len(object_ids),
+            "object_count": len(objects),
+            "image_count": len(issue_files),
+            "verification_counts": dict(sorted(verification_counts.items())),
             "truncated": bool(self.truncated),
         }
 
@@ -798,6 +896,7 @@ class RunReport:
             "error": self.error,
             "generation": int(self.generation),
             "source_kind": self.source_kind,
+            "scope_notes": list(self.scope_notes),
         }
 
     @classmethod
@@ -840,6 +939,9 @@ class RunReport:
             error=str(data.get("error", "")),
             generation=int(data.get("generation", 0) or 0),
             source_kind=str(data.get("source_kind", "disk")),
+            scope_notes=tuple(
+                str(item) for item in data.get("scope_notes", []) or []
+            ),
         )
 
 
@@ -856,6 +958,11 @@ class FeedbackRecord:
     evidence_digest: str = ""
     updated_at: str = field(default_factory=utc_now_iso)
     history: tuple[Mapping[str, Any], ...] = ()
+    dataset_key: str = ""
+    dataset_root: str = ""
+    output_root: str = ""
+    profile_fingerprint: str = ""
+    rule_versions: Mapping[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -868,6 +975,11 @@ class FeedbackRecord:
             "evidence_digest": self.evidence_digest,
             "updated_at": self.updated_at,
             "history": [dict(item) for item in self.history],
+            "dataset_key": self.dataset_key,
+            "dataset_root": self.dataset_root,
+            "output_root": self.output_root,
+            "profile_fingerprint": self.profile_fingerprint,
+            "rule_versions": dict(self.rule_versions),
         }
 
     @classmethod
@@ -898,6 +1010,14 @@ class FeedbackRecord:
             history=tuple(
                 dict(item) for item in data.get("history", []) or []
             ),
+            dataset_key=str(data.get("dataset_key", "")),
+            dataset_root=str(data.get("dataset_root", "")),
+            output_root=str(data.get("output_root", "")),
+            profile_fingerprint=str(data.get("profile_fingerprint", "")),
+            rule_versions={
+                str(key): str(value)
+                for key, value in (data.get("rule_versions", {}) or {}).items()
+            },
         )
 
 
@@ -913,6 +1033,7 @@ class ReviewSession:
     updated_at: str = field(default_factory=utc_now_iso)
     revision: int = 0
     schema_version: str = SESSION_SCHEMA_VERSION
+    dataset_key: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -924,6 +1045,7 @@ class ReviewSession:
             "cursor": dict(self.cursor),
             "updated_at": self.updated_at,
             "revision": int(self.revision),
+            "dataset_key": self.dataset_key,
         }
 
     @classmethod
@@ -939,6 +1061,7 @@ class ReviewSession:
             schema_version=str(
                 data.get("schema_version", SESSION_SCHEMA_VERSION)
             ),
+            dataset_key=str(data.get("dataset_key", "")),
         )
 
 
@@ -962,6 +1085,9 @@ class Candidate:
     accepted_shape_id: str = ""
     accepted_at: str = ""
     schema_version: str = CANDIDATE_SCHEMA_VERSION
+    dataset_key: str = ""
+    image_digest: str = ""
+    image_digest_kind: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -981,6 +1107,9 @@ class Candidate:
             "reason": self.reason,
             "accepted_shape_id": self.accepted_shape_id,
             "accepted_at": self.accepted_at,
+            "dataset_key": self.dataset_key,
+            "image_digest": self.image_digest,
+            "image_digest_kind": self.image_digest_kind,
         }
 
     @classmethod
@@ -1012,6 +1141,9 @@ class Candidate:
             schema_version=str(
                 data.get("schema_version", CANDIDATE_SCHEMA_VERSION)
             ),
+            dataset_key=str(data.get("dataset_key", "")),
+            image_digest=str(data.get("image_digest", "")),
+            image_digest_kind=str(data.get("image_digest_kind", "")),
         )
 
 

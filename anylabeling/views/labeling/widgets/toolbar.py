@@ -189,3 +189,33 @@ class ToolBar(QtWidgets.QFrame):
     def add_action(self, action):
         """Add an action (button) to the toolbar"""
         return self.addAction(action)
+
+
+class ToolBarScrollArea(QtWidgets.QScrollArea):
+    """Horizontal scroller for a toolbar that never leaks wheel input.
+
+    Wrapping the toolbar in a scroll area keeps the trailing actions
+    reachable in narrow windows.  A plain :class:`QScrollArea` forwards
+    vertical wheel events to the canvas, where they zoom or edit geometry,
+    so wheel input is consumed here and translated into horizontal scrolling
+    instead of reaching the canvas or an editing tool.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+
+    def wheelEvent(self, event):
+        """Scroll the toolbar horizontally and consume the event."""
+        bar = self.horizontalScrollBar()
+        delta = event.angleDelta()
+        if delta.isNull():
+            delta = event.pixelDelta()
+        # Both Qt wheel axes use a positive delta towards the minimum.
+        # Keep the vertical-to-horizontal mapping, without reversing native
+        # horizontal wheel/trackpad gestures a second time.
+        step = delta.y() or delta.x()
+        if step:
+            target = bar.value() - step
+            bar.setValue(max(bar.minimum(), min(bar.maximum(), target)))
+        event.accept()

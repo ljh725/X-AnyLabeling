@@ -15,7 +15,12 @@ from anylabeling.views.labeling.utils.style import (
 )
 from anylabeling.views.labeling.utils.theme import get_mode, get_theme
 
-from .controller import SettingsController, SettingsValidationError
+from .controller import (
+    SettingsController,
+    SettingsValidationError,
+    conflict_keys_of,
+    is_conflict_error as _is_conflict_error,
+)
 from .editors import (
     ColorRgbaEditor,
     HexColorPickerEditor,
@@ -75,6 +80,12 @@ class SettingsDialog(QtWidgets.QDialog):
         self._controller = controller
         self._bindings: dict[str, EditorBinding] = {}
         self._field_rows: dict[str, QtWidgets.QWidget] = {}
+        self._pending_scroll_field: str | None = None
+        # Parent the deferred scroll to this dialog. An unscoped singleShot
+        # lambda can otherwise outlive the dialog and access deleted widgets.
+        self._field_scroll_timer = QtCore.QTimer(self)
+        self._field_scroll_timer.setSingleShot(True)
+        self._field_scroll_timer.timeout.connect(self._scroll_to_pending_field)
         self._nav_item_widgets: dict[
             str, tuple[QtWidgets.QLabel, QtWidgets.QLabel]
         ] = {}
@@ -99,6 +110,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self._section_gap = 8
         self._status_level = "info"
         self._did_show_once = False
+        self._last_save_failed = False
         self._combo_animation_effect: Any | None = None
         self._combo_animation_prev_enabled: bool | None = None
 
@@ -674,6 +686,8 @@ class SettingsDialog(QtWidgets.QDialog):
         self.shortcuts_save_button.clicked.connect(self._on_save_clicked)
         self._controller.save_succeeded.connect(self._on_save_succeeded)
         self._controller.save_failed.connect(self._on_save_failed)
+        self._controller.save_error.connect(self._on_save_error)
+        self._controller.apply_failed.connect(self._on_apply_failed)
 
     def _on_nav_changed(self, row: int) -> None:
         if row < 0 or row >= len(self._nav_items):
@@ -1468,7 +1482,14 @@ class SettingsDialog(QtWidgets.QDialog):
             self._render_primary(field.primary)
         else:
             self.nav_list.setCurrentRow(row)
-        QtCore.QTimer.singleShot(0, lambda: self._scroll_to_field(key))
+        self._pending_scroll_field = key
+        self._field_scroll_timer.start(0)
+
+    def _scroll_to_pending_field(self) -> None:
+        key = self._pending_scroll_field
+        self._pending_scroll_field = None
+        if key is not None:
+            self._scroll_to_field(key)
 
     def _scroll_to_field(self, key: str) -> None:
         row = self._field_rows.get(key)
@@ -1993,16 +2014,195 @@ class SettingsDialog(QtWidgets.QDialog):
         self._refresh_shortcut_rows()
 
     def _on_save_succeeded(self) -> None:
+        self._last_save_failed = False
         self._dirty_primaries.clear()
         self.shortcuts_save_button.setEnabled(False)
         self._set_status(self.tr("Settings saved"), "success")
         self._show_restart_required_notice(self._controller.last_saved_keys)
 
     def _on_save_failed(self, message: str) -> None:
+        self._last_save_failed = True
         self._set_status(
             self.tr("Save failed: {message}").format(message=message),
             "error",
         )
+
+    def _on_apply_failed(self, message: str, keys) -> None:
+        """The file is saved; only the live session could not apply it."""
+
+        self._last_save_failed = True
+        self._set_status(
+            self.tr("Saved, but not applied: {message}").format(
+                message=message
+            ),
+            "error",
+        )
+
+    def _on_save_error(self, error: Exception) -> None:
+        from anylabeling import user_config
+
+        if isinstance(error, user_config.ConfigInvalid):
+            self._offer_backup_restore(error)
+        elif _is_conflict_error(error):
+            self._offer_reload_after_conflict(error)
+
+    def _message_box_buttons(self, box: QtWidgets.QMessageBox) -> None:
+        box.setStyleSheet(self._message_box_style())
+
+    def _offer_backup_restore(self, error: Exception) -> None:
+        from anylabeling import user_config
+
+        session = user_config.current_session()
+        if session is None or not session.has_backup():
+            return
+        box = QtWidgets.QMessageBox(self)
+        box.setIcon(QtWidgets.QMessageBox.Icon.Warning)
+        box.setWindowTitle(self.tr("Damaged Configuration"))
+        box.setText(
+            self.tr(
+                "The configuration file cannot be read safely, so it was "
+                "left untouched. Restore the last valid backup ({path})? "
+                "The damaged content is kept next to the file."
+            ).format(path=session.backup_path)
+        )
+        restore_button = box.addButton(
+            self.tr("Restore Last Valid Backup"),
+            QtWidgets.QMessageBox.ButtonRole.AcceptRole,
+        )
+        box.addButton(
+            self.tr("Keep Damaged File"),
+            QtWidgets.QMessageBox.ButtonRole.RejectRole,
+        )
+        self._message_box_buttons(box)
+        box.exec()
+        if box.clickedButton() is not restore_button:
+            return
+        try:
+            user_config.restore_backup()
+        except user_config.ConfigError as exc:
+            self._set_status(str(exc), "error")
+            return
+        # The draft is not silently discarded: the restored document becomes
+        # the new baseline and the user's edits stay available for review.
+        self._controller.clear_save_error()
+        self._controller.rebase_draft()
+        self._dirty_primaries.clear()
+        self.shortcuts_save_button.setEnabled(
+            bool(self._controller.has_modified_fields())
+        )
+        if self._active_primary:
+            self._render_primary(self._active_primary)
+        self._last_save_failed = bool(
+            self._controller.has_modified_fields()
+            or self._controller.has_pending_apply()
+        )
+        self._set_status(
+            self.tr("Restored the last valid configuration backup"),
+            "success",
+        )
+
+    def _offer_reload_after_conflict(self, error: Exception) -> None:
+        fields = conflict_keys_of(error)
+        box = QtWidgets.QMessageBox(self)
+        box.setIcon(QtWidgets.QMessageBox.Icon.Warning)
+        box.setWindowTitle(self.tr("Settings Conflict"))
+        box.setText(
+            self.tr(
+                "Other settings in this window or another instance changed "
+                "these fields while this draft was open, so the draft was "
+                "not saved."
+            )
+            + "\n\n"
+            + (", ".join(fields) if fields else str(error))
+        )
+        reload_button = box.addButton(
+            self.tr("Reload Latest Values"),
+            QtWidgets.QMessageBox.ButtonRole.AcceptRole,
+        )
+        box.addButton(
+            self.tr("Keep Draft"),
+            QtWidgets.QMessageBox.ButtonRole.RejectRole,
+        )
+        self._message_box_buttons(box)
+        box.exec()
+        if box.clickedButton() is not reload_button:
+            return
+        try:
+            self.reload_committed_values()
+        except Exception as exc:  # noqa: BLE001 - report, keep the draft
+            self._set_status(str(exc), "error")
+            return
+        self._last_save_failed = False
+        self._find_and_apply_pending_apply_retry()
+        if not self._controller.has_pending_apply():
+            self._set_status(self.tr("Reloaded the latest settings"), "info")
+
+    def _find_and_apply_pending_apply_retry(self) -> None:
+        """Re-apply committed values that failed to reach the run time."""
+
+        if not self._controller.has_pending_apply():
+            return
+        if not self._controller.retry_apply():
+            self._set_status(
+                self.tr(
+                    "Reloaded the saved values; the running session still "
+                    "could not apply every field."
+                ),
+                "error",
+            )
+
+    def reload_committed_values(self) -> None:
+        """Re-read the target and show the latest committed configuration.
+
+        Reloading only the in-memory values would leave a cross-process
+        conflict unfixable: the stale value would be submitted again and fail
+        again.  The draft is discarded - this is the explicit "give up my
+        edits in these fields" action offered on the conflict dialog.
+        """
+
+        changed = self._controller.reload_session()
+        self._dirty_primaries.clear()
+        self.shortcuts_save_button.setEnabled(False)
+        if self._active_primary:
+            self._render_primary(self._active_primary)
+        return changed
+
+    def _confirm_close_with_failed_save(self) -> bool:
+        box = QtWidgets.QMessageBox(self)
+        box.setIcon(QtWidgets.QMessageBox.Icon.Warning)
+        box.setWindowTitle(self.tr("Save Failed"))
+        box.setText(
+            self.tr(
+                "The last save did not complete. Retry before closing the "
+                "settings window?"
+            )
+        )
+        retry_button = box.addButton(
+            self.tr("Retry Save"),
+            QtWidgets.QMessageBox.ButtonRole.AcceptRole,
+        )
+        discard_button = box.addButton(
+            self.tr("Discard Changes"),
+            QtWidgets.QMessageBox.ButtonRole.DestructiveRole,
+        )
+        box.addButton(
+            self.tr("Cancel"),
+            QtWidgets.QMessageBox.ButtonRole.RejectRole,
+        )
+        box.setDefaultButton(retry_button)
+        self._message_box_buttons(box)
+        box.exec()
+        clicked = box.clickedButton()
+        if clicked is retry_button:
+            if self._controller.has_modified_fields():
+                self._controller.save_now()
+                if self._controller.last_error is not None:
+                    return False
+            if not self._controller.retry_apply():
+                return False
+            self._dirty_primaries.clear()
+            return True
+        return clicked is discard_button
 
     def _show_restart_required_notice(self, changed_keys: list[str]) -> None:
         if "qt_image_allocation_limit" not in changed_keys:
@@ -2030,9 +2230,19 @@ class SettingsDialog(QtWidgets.QDialog):
         self.status_label.setText(text)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        if (
+            self._controller.last_error is not None
+            and self._controller.has_modified_fields()
+        ) or self._controller.has_pending_apply():
+            if not self._confirm_close_with_failed_save():
+                event.ignore()
+                return
+        self._field_scroll_timer.stop()
+        self._pending_scroll_field = None
         self._controller.close_session()
         self._dirty_primaries.clear()
         self.shortcuts_save_button.setEnabled(False)
+        self._last_save_failed = False
         if self._active_primary:
             self._show_primary_status(self._active_primary)
         self._did_show_once = False

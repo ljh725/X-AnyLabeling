@@ -1,0 +1,89 @@
+{
+  "baseline": "implementation-start working tree; not HEAD",
+  "files": [
+    {
+      "path": "anylabeling/user_config.py",
+      "baseline": "implementation-start file copy",
+      "before_text_sha256": "c5f523035ec4e937b009921809b35616f123c299a292296e0caaa0f535cc2a91",
+      "after_text_sha256": "82a2ecfdb6ab8e50eb3c2345133b794c6a7f4e42a6809e47f314177189216b08"
+    },
+    {
+      "path": "anylabeling/views/labeling/settings/controller.py",
+      "baseline": "implementation-start file copy",
+      "before_text_sha256": "9f8b2fed072fcf5b11a5689ccf874adb56eba5bf54f4da584c06d67e44eca3e8",
+      "after_text_sha256": "23cf0ebb0c72af088b5e60c13afadfe78ad118d763aba14a382e5d0d9150bcdb"
+    },
+    {
+      "path": "anylabeling/views/labeling/settings/dialog.py",
+      "baseline": "implementation-start file copy",
+      "before_text_sha256": "f2d5e10eb62b1830d7f19758e3e13a8347b33dbe05a0be7853719e67c5a98bbd",
+      "after_text_sha256": "0bb38ff1e06ce8e64b3d823bafde9d7a139423bf871304741b04e72946b507f4"
+    },
+    {
+      "path": "anylabeling/views/labeling/settings/runtime_applier.py",
+      "baseline": "implementation-start file copy",
+      "before_text_sha256": "9030077f28d4abe4392a9790f2361ccb9dc15caca99a06969b9f581210e2e7e1",
+      "after_text_sha256": "5abd3a3dc1a9941f1ba742afdd538943ea98e703a4e1a933028a35714ed22006"
+    },
+    {
+      "path": "anylabeling/views/labeling/label_widget.py",
+      "baseline": "implementation-start file copy",
+      "before_text_sha256": "dbfdd912f42a0684b4fe30d9a3d8cbc41715fe2977ab65ac8ee159acb436012c",
+      "after_text_sha256": "6523e22e9cc48d6c207c5c5a0e2124b6fcee695ca53c53218fa37818e7d4e8c6"
+    },
+    {
+      "path": "tests/conftest.py",
+      "baseline": "implementation-start file copy",
+      "before_text_sha256": "e2d20ac572246ea23fd7ca9409a5e66c4950def070063804548c328264b6a0de",
+      "after_text_sha256": "337f53dbb9a6c704b33d8bc547c87b72d25c0499fa5de23fc440a958e6e4d0a6"
+    },
+    {
+      "path": "tests/test_config/test_isolation.py",
+      "baseline": "implementation-start file copy",
+      "before_text_sha256": "0cc3bcbc3b186ddd20f319be1cb434bd30ec61444a62ab2b5eea8de641475e74",
+      "after_text_sha256": "c3b0b5efc264ec2c936966c708e77e699a453ef2e90ced79ac5a5c47b61d05e0"
+    },
+    {
+      "path": "openspec/changes/fix-user-settings-persistence/tasks.md",
+      "baseline": "implementation-start file copy",
+      "before_text_sha256": "eac0889b6f07cbf7638a8a678f4b32ffd82d5aa15a011359fe497ee01ee6bea4",
+      "after_text_sha256": "b174a9ba99d4b47746f760117044d80c6e18652acb11ea109112862cf7dc0f01"
+    },
+    {
+      "path": "openspec/changes/fix-user-settings-persistence/verification.md",
+      "baseline": "implementation-start file copy",
+      "before_text_sha256": "2f4cad05b70e0a5effa0b471c9b3ab53d333218f2f91169500d2e0b1d49cb68b",
+      "after_text_sha256": "f9db1fc34b4dd4beee1633d140c8555889493e5fa31036dbe352f05639d1b559"
+    },
+    {
+      "path": "openspec/changes/fix-user-settings-persistence/review-20261105.md",
+      "baseline": "implementation-start file copy",
+      "before_text_sha256": "25ce127db4a7d79bf895c6a865bb506e1d9922d5db087938cc473e395603ac19",
+      "after_text_sha256": "e83dcf2e768821ecf7707d1ef147e2e95816332cbbca3bece9b19058ca324a27"
+    },
+    {
+      "path": "anylabeling/config.py",
+      "baseline": "original trailing blank line",
+      "before_text_sha256": "af9b67314fbbf748e9e77d5b6fe0f17b8a1ed4f5093e6f325099d9a619c749f9",
+      "after_text_sha256": "6eb1b75db90baeadb2e3107f2ea539da12105cd098b2d9c10cb1d68156c62092"
+    },
+    {
+      "path": "tests/test_settings/test_schema.py",
+      "baseline": "original schema count expectations",
+      "before_text_sha256": "28e3db68e938983ceaeb7eddbfd8ae918d67c4aa540cbd267f4cea9c183ec28e",
+      "after_text_sha256": "79f7bb0f63f439a908f71c196dcc1285f1349a9b8dd39af2960c6a225f1afc28"
+    },
+    {
+      "path": "tests/test_settings/test_persistence_review_regressions.py",
+      "baseline": "new regression file",
+      "before_text_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_text_sha256": "ae2514133b7302974480bf6f63d26793eb76d5f644507fa6fa7debef5197621c"
+    },
+    {
+      "path": "tests/test_settings/test_persistence_window_integration.py",
+      "baseline": "new regression file",
+      "before_text_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_text_sha256": "2c2a29e0ee59e38d0a572991bfc677994aae72ad932dcfad713e4118c3df2e1f"
+    }
+  ]
+}

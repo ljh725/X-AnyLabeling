@@ -310,7 +310,7 @@ class ReviewConfig:
             coverage=self.coverage.normalized(),
         )
 
-    def validate(self) -> tuple[ConfigIssue, ...]:
+    def validate(self, translate=str) -> tuple[ConfigIssue, ...]:
         """Return blocking configuration problems in a stable order."""
         normalized = self.normalized()
         issues: list[ConfigIssue] = []
@@ -321,7 +321,9 @@ class ReviewConfig:
                 issues.append(
                     ConfigIssue(
                         "empty_batch",
-                        f"批次“{name}”没有配置类别",
+                        translate("批次“{name}”没有配置类别").format(
+                            name=name
+                        ),
                     )
                 )
             for label in batch.labels:
@@ -333,7 +335,9 @@ class ReviewConfig:
             issues.append(
                 ConfigIssue(
                     "duplicate_label",
-                    f"类别“{label}”同时出现在批次：{'、'.join(names)}",
+                    translate("类别“{label}”同时出现在批次：{names}").format(
+                        label=label, names=", ".join(names)
+                    ),
                     (label,),
                 )
             )

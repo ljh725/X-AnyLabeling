@@ -101,6 +101,7 @@ class DetectionResult:
     cancelled: bool = False
     complete: bool = True
     invalid_shape_ids: tuple[str, ...] = ()
+    truncated: bool = False
 
     @property
     def red_count(self) -> int:
@@ -386,15 +387,11 @@ class SpatialRectangleIndex:
                 yield x_value, y_value
 
     def candidate_pairs(self) -> Iterator[tuple[str, str]]:
-        seen: set[tuple[str, str]] = set()
-        for members in self.cells.values():
-            ordered = sorted(members)
-            for index, first in enumerate(ordered):
-                for second in ordered[index + 1 :]:
-                    pair = first, second
-                    if pair not in seen:
-                        seen.add(pair)
-                        yield pair
+        # Per-object neighbours avoid retaining an O(N²) global 'seen' set.
+        for first in sorted(self.rectangles):
+            for second in sorted(self.candidates_for(self.rectangles[first])):
+                if first < second:
+                    yield first, second
 
     def candidates_for(self, item: RectangleSnapshot) -> set[str]:
         result: set[str] = set()
@@ -408,6 +405,8 @@ def full_scan(
     rectangles: Sequence[RectangleSnapshot],
     thresholds: DuplicateThresholds,
     should_cancel: Optional[Callable[[], bool]] = None,
+    *,
+    max_pairs: Optional[int] = None,
 ) -> DetectionResult:
     """Evaluate every spatially plausible pair and preserve cancellation."""
     thresholds = thresholds.validate()
@@ -424,6 +423,12 @@ def full_scan(
             )
         pair = evaluate_pair(by_id[first_id], by_id[second_id], thresholds)
         if pair is not None:
+            if max_pairs is not None and len(pairs) >= max_pairs:
+                return DetectionResult(
+                    pairs=tuple(sorted(pairs, key=lambda item: item.key)),
+                    complete=False,
+                    truncated=True,
+                )
             pairs.append(pair)
     return DetectionResult(
         pairs=tuple(sorted(pairs, key=lambda item: item.key)),
@@ -435,8 +440,12 @@ def full_scan(
 class IncrementalDuplicateDetector:
     """Maintain pair adjacency and recompute only changed rectangles."""
 
-    def __init__(self, thresholds: DuplicateThresholds) -> None:
+    def __init__(
+        self, thresholds: DuplicateThresholds, max_pairs: Optional[int] = None
+    ) -> None:
         self.thresholds = thresholds.validate()
+        self.max_pairs = max_pairs
+        self.truncated = False
         self.rectangles: dict[str, RectangleSnapshot] = {}
         self.pairs: dict[tuple[str, str], DuplicatePair] = {}
         self.adjacency: dict[str, set[tuple[str, str]]] = defaultdict(set)
@@ -448,6 +457,7 @@ class IncrementalDuplicateDetector:
     ) -> None:
         self.rectangles = {item.shape_id: item for item in rectangles}
         self.pairs = {pair.key: pair for pair in result.pairs}
+        self.truncated = result.truncated
         self._rebuild_adjacency()
 
     def _rebuild_adjacency(self) -> None:
@@ -475,6 +485,12 @@ class IncrementalDuplicateDetector:
             pair = evaluate_pair(item, other, self.thresholds)
             if pair is None:
                 continue
+            if (
+                self.max_pairs is not None
+                and len(self.pairs) >= self.max_pairs
+            ):
+                self.truncated = True
+                break
             key = pair.key
             self.pairs[key] = pair
             self.adjacency[key[0]].add(key)

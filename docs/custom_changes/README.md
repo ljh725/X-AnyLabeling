@@ -21,17 +21,18 @@
 | CUSTOM-001 | 统计总览、标签管理器后台扫描与进度反馈 | 方案，未实施；11-02 已完成真实共享盘诊断 | [修改方案](2026-10-29-dataset-scan-progress.md) · [实测与代码分类](../../reports/tool_scan_diagnosis_20261102/REPORT.md) |
 | CUSTOM-002 | 分阶段标注加载、搜索与审核一致性 | 已有实现，历史验证见报告 | [实现归档](2026-10-30-staged-loading.md) |
 | CUSTOM-003 | 大数据集拖动响应优化 | 已实施，历史回归与用户体验确认见修复记录 | [修复记录](2026-10-30-canvas-dragging.md) |
-| CUSTOM-109 | Inspector 检查与复核工作流 | 已保存，含 P2 UI；11-03 目录测试 83 通过，真实验收待做 | [实施记录](2026-11-02-inspector-workflow.md) · [开发基线](../version-management/2026-11-03-development-baseline.md) |
+| CUSTOM-109 | Inspector 检查与复核工作流 | 11-05 代码/自动化 52/55；人工验收 3 项待做 | [实施记录](2026-11-02-inspector-workflow.md) · [操作说明](../zh_cn/inspector.md) · [验证](../../openspec/changes/refactor-data-inspector-workflow/verification.md) |
 | CUSTOM-110 | 密集标注复核工作流 | 已保存，含 P2 UI；11-03 目录测试 87 通过，人工/性能/导出验收待做 | [实施记录](2026-11-02-dense-annotation-review-workflow.md) · [验证](../../openspec/changes/add-dense-annotation-review-workflow/verification.md) · [开发基线](../version-management/2026-11-03-development-baseline.md) |
 | CUSTOM-111 | 修正成本统计 | 部分实现已保存，工作区尚待接入；当前入口显示开发状态 | [状态记录](2026-11-03-correction-cost-statistics.md) · [任务](../../openspec/changes/add-annotation-correction-cost-statistics/tasks.md) |
-| CUSTOM-101/103-显示 | 矩形创建与单点拟合预览的共边显示修复 | 已实施，自动化验证通过；真实屏幕验收未完成 | [方案与实施记录](2026-11-02-rectangle-preview-overlap-plan.md) · [验证](../../openspec/changes/fix-rectangle-preview-overlap/verification.md) |
+| CUSTOM-112～116 | v4.3.0 五项画布能力恢复（工具栏、滚轮导航、三态审核、仅填充透明度、显示参数保持） | 已实现待验证；专项 51 通过，性能/人工/配置联测待做 | [恢复记录](2026-11-04-canvas-controls-restore.md) · [验证](../../openspec/changes/restore-v430-canvas-controls/verification.md) |
+| CUSTOM-101/103-显示 | 矩形创建与单点拟合预览的共边显示修复 | 已实施；11-04 修复候选失效 P2，定向回归通过；真实屏幕验收未完成 | [方案与实施记录](2026-11-02-rectangle-preview-overlap-plan.md) · [验证](../../openspec/changes/fix-rectangle-preview-overlap/verification.md) |
 | CUSTOM-010～014、101～108 | 4.2.1上的既有增强/迁移功能 | 已含于历史混合快照，非本轮新增实施 | [完整分类台账](CATALOG-20261030.md) |
 
 ## 已有相关材料
 
 [密集标注复核工作流实施记录](2026-11-02-dense-annotation-review-workflow.md)：CUSTOM-110，默认关闭的批次/卡片/空间查漏工作区，顶层 `xanylabeling_dense_review` 进度，类别与框独立确认，新增/删除/撤销和保存恢复。自动化验证通过；人工试用、性能门槛、翻译和训练导出往返未完成。证据见 [OpenSpec 验证](../../openspec/changes/add-dense-annotation-review-workflow/verification.md) 与 [实施报告](../../reports/dense_review_workflow_20261102/REPORT.md)。
 
-[矩形与十字线、拟合预览共边显示调整方案](2026-11-02-rectangle-preview-overlap-plan.md)：CUSTOM-101/103 的后续显示修复，明确创建草稿共线边避让、Shift/Shift+Alt 候选橙色虚线、原框共边局部避让及恢复验证。2026-11-02 已实施并通过自动化验证，见 [验证记录](../../openspec/changes/fix-rectangle-preview-overlap/verification.md)；真实屏幕深浅背景人工验收仍未完成。
+[矩形与十字线、拟合预览共边显示调整方案](2026-11-02-rectangle-preview-overlap-plan.md)：CUSTOM-101/103 的后续显示修复，明确创建草稿共线边避让、Shift/Shift+Alt 候选橙色虚线、原框共边局部避让及恢复验证。2026-11-02 已实施并通过自动化验证；2026-11-04 修复原框几何变化后旧候选未失效的 P2，并补充真实 Canvas 事件与像素回归，见 [验证记录](../../openspec/changes/fix-rectangle-preview-overlap/verification.md)；真实屏幕深浅背景人工验收仍未完成。
 
 [2026-11-02 十字线定位、代码分类与工具卡顿诊断](../../reports/tool_scan_diagnosis_20261102/REPORT.md)：区分原始/个人 beta.4 和当前 4.2.1 的十字线颜色来源；按上游已有文件修改、新增扩展模块、测试工程、生成翻译导出当前代码快照；对 14003 张真实共享盘图片对应标注完成只读分段测量。该次未改运行源码，未实施 CUSTOM-001。
 

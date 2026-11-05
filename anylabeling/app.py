@@ -80,6 +80,36 @@ def build_startup_banner(colorize):
     )
 
 
+def load_translator(language):
+    """Load the translation for language from disk or embedded resources.
+
+    A source checkout may hold freshly compiled .qm files next to the
+    .ts sources; those take precedence so translation updates are visible
+    without regenerating resources.py. Packaged builds without the
+    translation directory fall back to the embedded resource as before.
+    """
+    from anylabeling.views.labeling.logger import logger
+
+    translator = QtCore.QTranslator()
+    translation_file = (
+        Path(__file__).resolve().parent
+        / "resources"
+        / "translations"
+        / f"{language}.qm"
+    )
+    if translation_file.is_file():
+        if translator.load(str(translation_file)):
+            logger.info(
+                f"🌐 Loaded translation for {language}: {translation_file}"
+            )
+            return translator
+    if translator.load(":/languages/translations/" + language + ".qm"):
+        logger.info(f"🌐 Loaded embedded translation: {language}")
+        return translator
+    logger.debug(f"🌐 No translation found for language: {language}")
+    return None
+
+
 def main():
     multiprocessing.freeze_support()
 
@@ -379,10 +409,8 @@ def main():
             output_dir = output
 
     language = config.get("language", QtCore.QLocale.system().name())
-    translator = QtCore.QTranslator()
-    loaded_language = translator.load(
-        ":/languages/translations/" + language + ".qm"
-    )
+    translator = load_translator(language)
+    loaded_language = translator is not None
     QtCore.QCoreApplication.setAttribute(
         QtCore.Qt.ApplicationAttribute.AA_ShareOpenGLContexts
     )

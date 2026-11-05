@@ -70,12 +70,18 @@ class ColoredComboBox(QtWidgets.QComboBox):
 class DigitShortcutDialog(QtWidgets.QDialog):
     """Dialog for managing digit shortcuts"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, commit_handler=None):
         """
         Initialize the digit shortcut dialog.
 
         Args:
             parent: The parent widget.
+            commit_handler: Optional ``callable(proposed, baseline)`` that
+                persists the edited mapping.  It returns ``True`` (or
+                ``(True, "")``) on success and ``False``/``(False, reason)``
+                on failure.  When it fails the dialog stays open with the
+                user's input, so a failed save can be retried instead of
+                being lost after a premature "saved" message.
         """
         super(DigitShortcutDialog, self).__init__(parent)
 
@@ -85,7 +91,11 @@ class DigitShortcutDialog(QtWidgets.QDialog):
             hasattr(self.parent, "drawing_digit_shortcuts")
             and self.parent.drawing_digit_shortcuts is not None
         ):
-            self.digit_shortcuts = self.parent.drawing_digit_shortcuts.copy()
+            self.digit_shortcuts = dict(self.parent.drawing_digit_shortcuts)
+        # The editing baseline is fixed when the dialog opens, so the commit
+        # can tell "this digit is unchanged" from "another entry changed it".
+        self._baseline_shortcuts = dict(self.digit_shortcuts)
+        self._commit_handler = commit_handler
 
         self.available_modes = Shape.get_supported_shape()
 
@@ -275,7 +285,7 @@ class DigitShortcutDialog(QtWidgets.QDialog):
                 label_edit.setEnabled(False)
 
     def save_settings(self):
-        """Save settings to parent and close dialog"""
+        """Persist the edited mapping and close after a successful save."""
         result = {}
         has_error = False
 
@@ -312,8 +322,24 @@ class DigitShortcutDialog(QtWidgets.QDialog):
             )
             return
 
-        # Update parent's digit shortcuts
-        if hasattr(self.parent, "drawing_digit_shortcuts"):
+        if self._commit_handler is not None:
+            ok, message = self._run_commit_handler(result)
+            if not ok:
+                # Keep the dialog (and the user's edits) open for a retry.
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    self.tr("Save Failed"),
+                    message
+                    or self.tr(
+                        "The digit shortcuts could not be saved. The "
+                        "previous mapping is still active; retry or cancel."
+                    ),
+                    QtWidgets.QMessageBox.StandardButton.Ok,
+                )
+                return
+            self.digit_shortcuts = dict(result)
+            self._baseline_shortcuts = dict(result)
+        elif hasattr(self.parent, "drawing_digit_shortcuts"):
             self.parent.drawing_digit_shortcuts = result
 
         self.accept()
@@ -325,6 +351,21 @@ class DigitShortcutDialog(QtWidgets.QDialog):
             icon=new_icon_path("copy-green", "svg"),
         )
         popup.show_popup(self.parent)
+
+    def _run_commit_handler(self, result):
+        """Normalize the commit handler's answer to ``(ok, text)``."""
+
+        try:
+            answer = self._commit_handler(
+                dict(result), dict(self._baseline_shortcuts)
+            )
+        except Exception as exc:  # noqa: BLE001 - report, never crash
+            logger.warning("Failed to save digit shortcuts: %s", exc)
+            return False, str(exc)
+        if isinstance(answer, tuple):
+            ok, message = (list(answer) + [""])[:2]
+            return bool(ok), message or ""
+        return bool(answer), ""
 
     def move_to_center(self):
         """Move dialog to center of the screen"""

@@ -1,0 +1,101 @@
+FFFFFFFFFFFFFF                                                           [100%]
+================================== FAILURES ===================================
+____________ test_preview_cancel_preserves_host_dirty[False-False] ____________
+tests\test_canvas\test_rectangle_preview_overlap.py:944: in test_preview_cancel_preserves_host_dirty
+    assert dirty_host.dirty is initial_dirty
+E   AssertionError: assert True is False
+E    +  where True = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138137185...id='1413813718720'>, set_dirty=<Mock id='1413819113952'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E339B50>).dirty
+____________ test_preview_cancel_preserves_host_dirty[False-True] _____________
+tests\test_canvas\test_rectangle_preview_overlap.py:945: in test_preview_cancel_preserves_host_dirty
+    assert dirty_host.set_dirty.call_count == 0
+E   AssertionError: assert 2 == 0
+E    +  where 2 = <Mock id='1413819187616'>.call_count
+E    +    where <Mock id='1413819187616'> = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138191977...id='1413819187856'>, set_dirty=<Mock id='1413819187616'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E6818D0>).set_dirty
+____________ test_preview_cancel_preserves_host_dirty[True-False] _____________
+tests\test_canvas\test_rectangle_preview_overlap.py:944: in test_preview_cancel_preserves_host_dirty
+    assert dirty_host.dirty is initial_dirty
+E   AssertionError: assert True is False
+E    +  where True = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138191916...id='1413819191888'>, set_dirty=<Mock id='1413819192272'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E8714D0>).dirty
+_____________ test_preview_cancel_preserves_host_dirty[True-True] _____________
+tests\test_canvas\test_rectangle_preview_overlap.py:945: in test_preview_cancel_preserves_host_dirty
+    assert dirty_host.set_dirty.call_count == 0
+E   AssertionError: assert 2 == 0
+E    +  where 2 = <Mock id='1413819196832'>.call_count
+E    +    where <Mock id='1413819196832'> = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138191962...id='1413819196448'>, set_dirty=<Mock id='1413819196832'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E7D25D0>).set_dirty
+________ test_nudge_preview_preserves_host_dirty[16777234-False-False] ________
+tests\test_canvas\test_rectangle_preview_overlap.py:963: in test_nudge_preview_preserves_host_dirty
+    assert dirty_host.dirty is False
+E   AssertionError: assert True is False
+E    +  where True = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138191968...id='1413819201056'>, set_dirty=<Mock id='1413819201440'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E6829D0>).dirty
+________ test_nudge_preview_preserves_host_dirty[16777234-False-True] _________
+tests\test_canvas\test_rectangle_preview_overlap.py:963: in test_nudge_preview_preserves_host_dirty
+    assert dirty_host.dirty is False
+E   AssertionError: assert True is False
+E    +  where True = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138231551...id='1413823155616'>, set_dirty=<Mock id='1413823155808'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E872B50>).dirty
+________ test_nudge_preview_preserves_host_dirty[16777234-True-False] _________
+tests\test_canvas\test_rectangle_preview_overlap.py:963: in test_nudge_preview_preserves_host_dirty
+    assert dirty_host.dirty is False
+E   AssertionError: assert True is False
+E    +  where True = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138231595...id='1413823159936'>, set_dirty=<Mock id='1413823160128'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E7D3C50>).dirty
+_________ test_nudge_preview_preserves_host_dirty[16777234-True-True] _________
+tests\test_canvas\test_rectangle_preview_overlap.py:963: in test_nudge_preview_preserves_host_dirty
+    assert dirty_host.dirty is False
+E   AssertionError: assert True is False
+E    +  where True = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138231638...id='1413823164256'>, set_dirty=<Mock id='1413823164448'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E7BAF50>).dirty
+________ test_nudge_preview_preserves_host_dirty[16777236-False-False] ________
+tests\test_canvas\test_rectangle_preview_overlap.py:963: in test_nudge_preview_preserves_host_dirty
+    assert dirty_host.dirty is False
+E   AssertionError: assert True is False
+E    +  where True = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138231598...id='1413823160992'>, set_dirty=<Mock id='1413823161520'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E7B8050>).dirty
+________ test_nudge_preview_preserves_host_dirty[16777236-False-True] _________
+tests\test_canvas\test_rectangle_preview_overlap.py:963: in test_nudge_preview_preserves_host_dirty
+    assert dirty_host.dirty is False
+E   AssertionError: assert True is False
+E    +  where True = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138231578...id='1413823157968'>, set_dirty=<Mock id='1413823158160'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E6817D0>).dirty
+________ test_nudge_preview_preserves_host_dirty[16777236-True-False] _________
+tests\test_canvas\test_rectangle_preview_overlap.py:963: in test_nudge_preview_preserves_host_dirty
+    assert dirty_host.dirty is False
+E   AssertionError: assert True is False
+E    +  where True = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138191955...id='1413819199568'>, set_dirty=<Mock id='1413819200144'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E8735D0>).dirty
+_________ test_nudge_preview_preserves_host_dirty[16777236-True-True] _________
+tests\test_canvas\test_rectangle_preview_overlap.py:963: in test_nudge_preview_preserves_host_dirty
+    assert dirty_host.dirty is False
+E   AssertionError: assert True is False
+E    +  where True = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138191936...id='1413819194048'>, set_dirty=<Mock id='1413819195008'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E7760D0>).dirty
+________________ test_fit_commit_marks_host_dirty_once[False] _________________
+tests\test_canvas\test_rectangle_preview_overlap.py:993: in test_fit_commit_marks_host_dirty_once
+    assert dirty_host.dirty is False
+E   AssertionError: assert True is False
+E    +  where True = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138191896...id='1413823167184'>, set_dirty=<Mock id='1413823165696'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E7D3B50>).dirty
+_________________ test_fit_commit_marks_host_dirty_once[True] _________________
+tests\test_canvas\test_rectangle_preview_overlap.py:993: in test_fit_commit_marks_host_dirty_once
+    assert dirty_host.dirty is False
+E   AssertionError: assert True is False
+E    +  where True = namespace(dirty=True, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='14138228257...id='1413822825968'>, set_dirty=<Mock id='1413822826208'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x000001492E777ED0>).dirty
+============================== warnings summary ===============================
+C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\config\__init__.py:1309
+  C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\config\__init__.py:1309: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; anyio
+    self._mark_plugins_for_rewrite(hook, disable_autoload)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================ slowest 30 durations =============================
+0.12s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[False-False]
+0.02s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[False-False]
+
+(28 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ===========================
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[False-False]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[False-True]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[True-False]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[True-True]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-False]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-True]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-False]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-True]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-False]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-True]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-False]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-True]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_fit_commit_marks_host_dirty_once[False]
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_fit_commit_marks_host_dirty_once[True]
+14 failed, 43 deselected, 1 warning in 1.26s

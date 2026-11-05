@@ -1,0 +1,1533 @@
+--- a/anylabeling/user_config.py
++++ b/anylabeling/user_config.py
+@@ -623,8 +623,10 @@
+ # ---------------------------------------------------------------------------
+ 
+ 
+-class ConfigSession:
++class ConfigSession(QtCore.QObject):
+     """Process-wide committed configuration state and its disk baseline."""
++
++    effective_changed = QtCore.pyqtSignal()
+ 
+     def __init__(
+         self,
+@@ -639,6 +641,7 @@
+         validator: Callable[[dict], None] | None = None,
+         overrides: Mapping[Any, Any] | None = None,
+     ):
++        super().__init__()
+         self.target_path = target_path
+         self.origin = origin
+         self.template = copy.deepcopy(dict(template or {}))
+@@ -682,11 +685,17 @@
+ 
+         return self._baseline_value(key)
+ 
++    def editing_baseline(self, key: Any) -> Any:
++        """Capture a persistent value, including absence, for a UI draft.
++
++        Defaults and command-line overrides belong to the displayed view;
++        they must never stand in for the field's original value on disk.
++        """
++        value = self._baseline_value(key)
++        return DELETE if value is _MISSING else copy.deepcopy(value)
++
+     def effective_value(self, key: Any) -> Any:
+         return _lookup(self.effective, key)
+-
+-    def _override_paths(self) -> set[str]:
+-        return {_format_key(key) for key in self.overrides}
+ 
+     def _editing_baseline(self, patch: ConfigPatch, key: Any) -> Any:
+         """Draft baseline supplied by the caller, else this process's view."""
+@@ -707,19 +716,7 @@
+         entry had written.
+         """
+ 
+-        if not isinstance(document, Mapping):
+-            return
+-        overrides = self._override_paths()
+-        for path, value in _iter_leaf_paths(document):
+-            if _format_key(path) in overrides:
+-                continue
+-            try:
+-                _set_value(self.effective, path, copy.deepcopy(value))
+-            except ConfigError:
+-                logger.warning(
+-                    "Ignoring incompatible configuration field: %s",
+-                    _format_key(path),
+-                )
++        self._replace_effective(document)
+ 
+     def _replace_effective(self, document: Mapping[str, Any] | None) -> None:
+         """Rebuild the effective view from the template and ``document``.
+@@ -740,8 +737,28 @@
+                     "Ignoring incompatible configuration override: %s",
+                     _format_key(key),
+                 )
+-        self.effective.clear()
+-        self.effective.update(rebuilt)
++        _reconcile_mapping(self.effective, rebuilt)
++
++    def _notify_effective_changed(self, before: dict) -> None:
++        if not _values_equal(before, self.effective):
++            self.effective_changed.emit()
++
++    def _retire_saved_overrides(self, patch: ConfigPatch) -> None:
++        # A UI edit supersedes only its own startup override. Keep the other
++        # temporary fields out of the file and visible for this process.
++        saved = [_path_segments(key) for key in patch.keys()]
++        remaining = {}
++        for key, value in self.overrides.items():
++            prefix = _path_segments(key)
++            leaves = (
++                _iter_leaf_paths(value, prefix)
++                if isinstance(value, dict) and value
++                else [(prefix, value)]
++            )
++            for path, item in leaves:
++                if not any(path[: len(field)] == field for field in saved):
++                    remaining[path] = copy.deepcopy(item)
++        self.overrides = remaining
+ 
+     def _disk_changed_since_read(self, payload: bytes | None) -> bool:
+         try:
+@@ -781,6 +798,7 @@
+             )
+         if patch.is_empty():
+             return SaveResult(path=path, written_keys=[])
++        before = copy.deepcopy(self.effective)
+         if self.disk_error is not None:
+             # The file may have been repaired since it was read at startup.
+             # Re-reading keeps a damaged document protected (it still fails
+@@ -807,9 +825,7 @@
+             applied: list[Any] = []
+             for key, value in patch.values.items():
+                 current_value = (
+-                    _lookup(current_normalized, key)
+-                    if exists
+-                    else _MISSING
++                    _lookup(current_normalized, key) if exists else _MISSING
+                 )
+                 baseline_value = self._editing_baseline(patch, key)
+                 if _values_equal(current_value, value):
+@@ -823,9 +839,7 @@
+ 
+             for key in patch.deletes:
+                 current_value = (
+-                    _lookup(current_normalized, key)
+-                    if exists
+-                    else _MISSING
++                    _lookup(current_normalized, key) if exists else _MISSING
+                 )
+                 if current_value is _MISSING:
+                     applied.append(key)
+@@ -855,10 +869,7 @@
+                 # system limitation, not something a lock can remove.
+                 if self._disk_changed_since_read(current_payload):
+                     raise ConfigExternalChange(
+-                        [
+-                            _format_key(key)
+-                            for key in patch.values
+-                        ]
++                        [_format_key(key) for key in patch.values]
+                         + [_format_key(key) for key in patch.deletes],
+                         path=path,
+                         message=(
+@@ -883,7 +894,7 @@
+             self.disk_error = None
+             self.last_backup_path = backup_target
+             self.last_saved_keys = [_format_key(key) for key in applied]
+-            self._update_effective(patch, applied)
++            self._retire_saved_overrides(patch)
+             self._sync_effective(self.baseline)
+ 
+             logger.info(
+@@ -892,24 +903,17 @@
+                 len(applied),
+                 f", backup {backup_target}" if backup_target else "",
+             )
+-            return SaveResult(
++            result = SaveResult(
+                 path=path,
+                 written_keys=self.last_saved_keys,
+                 backup_path=backup_target,
+                 created=not exists,
+                 changed=changed,
+             )
+-
+-    def _update_effective(
+-        self, patch: ConfigPatch, applied: Sequence[Any]
+-    ) -> None:
+-        applied_set = set(_format_key(key) for key in applied)
+-        for key, value in patch.values.items():
+-            if _format_key(key) in applied_set:
+-                _set_value(self.effective, key, copy.deepcopy(value))
+-        for key in patch.deletes:
+-            if _format_key(key) in applied_set:
+-                _delete_value(self.effective, key)
++        # Runtime handlers can themselves submit preferences. Notify after
++        # releasing the file lock, with the complete committed view installed.
++        self._notify_effective_changed(before)
++        return result
+ 
+     def refresh_from_disk(self) -> bool:
+         """Re-read the committed document; return whether it changed."""
+@@ -929,6 +933,7 @@
+         if not path:
+             return False
+         data, payload = read_config_document(path)
++        before = copy.deepcopy(self.effective)
+         fingerprint = (
+             hashlib.sha256(payload).hexdigest()
+             if payload is not None
+@@ -941,6 +946,8 @@
+             self.baseline = {}
+             self.fingerprint = None
+             self.disk_error = None
++            self._sync_effective(None)
++            self._notify_effective_changed(before)
+             return changed
+         if fingerprint == self.fingerprint and self.disk_error is None:
+             self.disk_exists = True
+@@ -953,8 +960,8 @@
+         self.fingerprint = fingerprint
+         self.disk_error = None
+         self._sync_effective(self.baseline)
++        self._notify_effective_changed(before)
+         return True
+-
+ 
+ 
+ def _apply_patch_value(document: dict, key: Any, value: Any) -> None:
+@@ -1017,6 +1024,17 @@
+         else:
+             target[key] = copy.deepcopy(value)
+ 
++
++def _reconcile_mapping(target: dict, source: Mapping[Any, Any]) -> None:
++    """Adopt deletions and retain references to existing dictionary nodes."""
++    for key in list(target):
++        if key not in source:
++            del target[key]
++    for key, value in source.items():
++        if isinstance(value, dict) and isinstance(target.get(key), dict):
++            _reconcile_mapping(target[key], value)
++        else:
++            target[key] = copy.deepcopy(value)
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -1258,12 +1276,14 @@
+         _atomic_write_bytes(path, backup_payload)
+ 
+     if session is not None and session.target_path == path:
++        before = copy.deepcopy(session.effective)
+         session.disk_exists = True
+         session.disk_data = copy.deepcopy(backup_data)
+         session.baseline = session._normalize(backup_data)
+         session.fingerprint = hashlib.sha256(backup_payload).hexdigest()
+         session.disk_error = None
+         session._replace_effective(backup_data)
++        session._notify_effective_changed(before)
+     logger.info("Restored user configuration from backup: %s", backup_path)
+     return SaveResult(
+         path=path,
+--- a/anylabeling/views/labeling/settings/controller.py
++++ b/anylabeling/views/labeling/settings/controller.py
+@@ -14,7 +14,6 @@
+     defaults_map,
+     fields_for_page,
+ )
+-
+ 
+ _MISSING = object()
+ 
+@@ -123,15 +122,78 @@
+         self._dirty_keys: set[str] = set()
+         self._last_saved_keys: list[str] = []
+         self._base_values: dict[str, Any] = {}
++        self._disk_base_values: dict[str, Any] = {}
+         self._modified_keys: set[str] = set()
+         self._last_error: Exception | None = None
+         self._apply_failed_keys: set[str] = set()
+         self._apply_errors: dict[str, Exception] = {}
++        self._saving = False
++        from anylabeling import user_config
++
++        session = user_config.current_session()
++        self._config_session = (
++            session
++            if session is not None and session.effective is config
++            else None
++        )
++        self._runtime_keys = set(self._field_map) | {
++            "digit_shortcuts",
++            "keep_prev",
++            "keep_prev_scale",
++            "keep_prev_brightness",
++            "keep_prev_contrast",
++            "auto_save",
++            "store_data",
++            "auto_use_last_label",
++            "auto_use_last_gid",
++            "share_view_across_same_size",
++        }
++        self._observed_values = self._committed_values()
+         self._save_timer = QtCore.QTimer(self)
+         self._save_timer.setSingleShot(True)
+         self._save_timer.setInterval(save_delay_ms)
+         self._save_timer.timeout.connect(self._save_now)
++        if self._config_session is not None:
++            self._config_session.effective_changed.connect(
++                self._on_committed_changed
++            )
+         self.begin_session()
++
++    def _committed_values(self) -> dict[str, Any]:
++        return {
++            key: copy.deepcopy(get_nested_value(self._config, key))
++            for key in self._runtime_keys
++        }
++
++    def _capture_baseline(self, key: str) -> None:
++        self._base_values[key] = copy.deepcopy(
++            get_nested_value(self._config, key)
++        )
++        if self._config_session is not None:
++            self._disk_base_values[key] = (
++                self._config_session.editing_baseline(key)
++            )
++
++    def _apply_committed_changes(self, explicit_keys=()) -> None:
++        current = self._committed_values()
++        changed = {
++            key
++            for key, value in current.items()
++            if not _same_value(value, self._observed_values.get(key, _MISSING))
++        }
++        self._observed_values = current
++        self._apply_saved_keys(sorted(changed | set(explicit_keys)))
++        if self._apply_failed_keys:
++            pending = self.apply_failed_keys
++            self.apply_failed.emit(
++                self._apply_failure_message(pending), pending
++            )
++
++    def _on_committed_changed(self) -> None:
++        if self._saving:
++            return
++        self.refresh_from_committed()
++        self._apply_committed_changes()
+ 
+     def begin_session(self) -> None:
+         """Start a draft from the latest committed configuration.
+@@ -141,20 +203,21 @@
+         value and cannot submit a stale snapshot.  Pending drafts are
+         discarded; callers open a session when the dialog becomes visible.
+         """
++        previewed = set(self._previewed_keys)
++        if self._config_session is not None:
++            self._config_session.reload()
++        # A new draft does not resolve an outstanding runtime failure.
++        for key in self._field_map:
++            self._capture_baseline(key)
+         if self._defer_runtime_apply:
+             self._working_config = copy.deepcopy(self._config)
+-        self._base_values = {
+-            key: copy.deepcopy(get_nested_value(self._config, key))
+-            for key in self._field_map
+-        }
+         self._modified_keys.clear()
+         self._dirty_keys.clear()
+         self._previewed_keys.clear()
+         self._last_saved_keys = []
+         self._last_error = None
+-        self._apply_failed_keys.clear()
+-        self._apply_errors.clear()
+         self._save_timer.stop()
++        self._apply_committed_changes(previewed)
+ 
+     def reload_session(self) -> bool:
+         """Re-read the document and start a new draft from its values.
+@@ -164,13 +227,11 @@
+         the file differed from what this process had committed.
+         """
+ 
+-        from anylabeling import user_config
+-
+-        session = user_config.current_session()
+         changed = False
+-        if session is not None:
+-            changed = session.reload()
++        if self._config_session is not None:
++            changed = self._config_session.reload()
+         self.begin_session()
++        self.retry_apply()
+         return changed
+ 
+     def rebase_draft(self) -> None:
+@@ -192,13 +253,9 @@
+                 set_nested_value(
+                     self._working_config, key, copy.deepcopy(committed)
+                 )
+-                self._base_values[key] = copy.deepcopy(committed)
++                self._capture_baseline(key)
+         for key in list(self._modified_keys):
+-            try:
+-                committed = get_nested_value(self._config, key)
+-            except KeyError:
+-                committed = None
+-            self._base_values[key] = copy.deepcopy(committed)
++            self._capture_baseline(key)
+             self._record_modification(key)
+ 
+     def refresh_from_committed(self, reload_disk: bool = False) -> bool:
+@@ -209,11 +266,8 @@
+         """
+         changed = False
+         if reload_disk:
+-            from anylabeling import user_config
+-
+-            session = user_config.current_session()
+-            if session is not None:
+-                changed = session.reload()
++            if self._config_session is not None:
++                changed = self._config_session.reload()
+         if not self._defer_runtime_apply:
+             return changed
+         for key in self._field_map:
+@@ -226,9 +280,8 @@
+             set_nested_value(
+                 self._working_config, key, copy.deepcopy(committed)
+             )
+-            self._base_values[key] = copy.deepcopy(committed)
++            self._capture_baseline(key)
+         return changed
+-
+ 
+     def has_modified_fields(self) -> bool:
+         return bool(self._modified_keys)
+@@ -414,7 +467,9 @@
+                     conflicts.append(key)
+                     continue
+             patch.set(key, proposed)
+-            if base is not _MISSING:
++            if key in self._disk_base_values:
++                patch.set_baseline(key, self._disk_base_values[key])
++            elif base is not _MISSING:
+                 # Hand the draft's own baseline to the transaction.  Without
+                 # it a draft opened before another window wrote the field
+                 # could still replace the newer value.
+@@ -450,8 +505,11 @@
+                 self._apply_callback(
+                     key, copy.deepcopy(get_nested_value(self._config, key))
+                 )
++                self._apply_failed_keys.discard(key)
++                self._apply_errors.pop(key, None)
+             except Exception as exc:  # noqa: BLE001 - report, do not crash
+                 failed.append(key)
++                self._apply_failed_keys.add(key)
+                 self._apply_errors[key] = exc
+                 logger.warning(
+                     "Saved '%s' but could not apply it to this session: %s",
+@@ -504,34 +562,36 @@
+         if conflicts:
+             error = self._conflict_error(conflicts)
+             self._last_error = error
++            self.save_failed.emit(_describe_save_error(error))
+             self.save_error.emit(error)
+-            self.save_failed.emit(_describe_save_error(error))
+             return
+         if patch.is_empty():
+             self._last_error = None
+             self._last_saved_keys = []
+             self.save_succeeded.emit()
++            self._apply_committed_changes()
+             return
+         saved_keys = sorted(self._modified_keys)
+         try:
++            self._saving = True
+             result = self._save_callback(patch)
+             if result is False:
+                 raise RuntimeError("save callback returned False")
+         except Exception as exc:
++            self._saving = False
+             self._last_error = exc
++            self.save_failed.emit(_describe_save_error(exc))
+             self.save_error.emit(exc)
+-            self.save_failed.emit(_describe_save_error(exc))
+             return
++        finally:
++            self._saving = False
+         # The document is committed from here on.  Draft state and the
+         # runtime application are updated separately so a runtime failure is
+         # never reported as a failed save.
+         for key in saved_keys:
+             committed = get_nested_value(self._working_config, key)
+             if self._defer_runtime_apply:
+-                set_nested_value(
+-                    self._config, key, copy.deepcopy(committed)
+-                )
+-            self._base_values[key] = copy.deepcopy(committed)
++                set_nested_value(self._config, key, copy.deepcopy(committed))
+             self._modified_keys.discard(key)
+             self._dirty_keys.discard(key)
+         self._last_error = None
+@@ -539,14 +599,10 @@
+         if self._defer_runtime_apply:
+             self._working_config = copy.deepcopy(self._config)
+             self._previewed_keys.clear()
++        for key in self._field_map:
++            self._capture_baseline(key)
+         self.save_succeeded.emit()
+-        failed = self._apply_saved_keys(saved_keys)
+-        if failed:
+-            self._apply_failed_keys = set(failed)
+-            self.apply_failed.emit(self._apply_failure_message(failed), failed)
+-        else:
+-            self._apply_failed_keys.clear()
+-            self._apply_errors.clear()
++        self._apply_committed_changes(saved_keys)
+ 
+     def _validate_and_normalize(self, field, value: Any) -> Any:
+         control = field.control
+--- a/anylabeling/views/labeling/settings/dialog.py
++++ b/anylabeling/views/labeling/settings/dialog.py
+@@ -2121,7 +2121,8 @@
+             return
+         self._last_save_failed = False
+         self._find_and_apply_pending_apply_retry()
+-        self._set_status(self.tr("Reloaded the latest settings"), "info")
++        if not self._controller.has_pending_apply():
++            self._set_status(self.tr("Reloaded the latest settings"), "info")
+ 
+     def _find_and_apply_pending_apply_retry(self) -> None:
+         """Re-apply committed values that failed to reach the run time."""
+@@ -2146,8 +2147,7 @@
+         edits in these fields" action offered on the conflict dialog.
+         """
+ 
+-        changed = self._controller.refresh_from_committed(reload_disk=True)
+-        self._controller.begin_session()
++        changed = self._controller.reload_session()
+         self._dirty_primaries.clear()
+         self.shortcuts_save_button.setEnabled(False)
+         if self._active_primary:
+--- a/anylabeling/views/labeling/settings/runtime_applier.py
++++ b/anylabeling/views/labeling/settings/runtime_applier.py
+@@ -1,5 +1,6 @@
+ from __future__ import annotations
+ 
++import copy
+ import math
+ from typing import Any
+ 
+@@ -217,6 +218,39 @@
+         )
+ 
+     def apply_change(self, key: str, value: Any) -> None:
++        if key == "digit_shortcuts":
++            self._widget.drawing_digit_shortcuts = copy.deepcopy(value or {})
++            return
++        if key in {
++            "keep_prev",
++            "keep_prev_scale",
++            "keep_prev_brightness",
++            "keep_prev_contrast",
++            "auto_save",
++            "store_data",
++            "auto_use_last_label",
++            "auto_use_last_gid",
++            "share_view_across_same_size",
++        }:
++            action_name = {
++                "keep_prev": "keep_prev_mode",
++                "store_data": "save_with_image_data",
++            }.get(key, key)
++            action = getattr(self._widget.actions, action_name, None)
++            if action is not None:
++                # Updating controls from a committed value must not submit
++                # a second preference transaction through their toggle slots.
++                with QtCore.QSignalBlocker(action):
++                    action.setChecked(bool(value))
++            pin_name = {
++                "keep_prev_brightness": "brightness_pin",
++                "keep_prev_contrast": "contrast_pin",
++            }.get(key)
++            if pin_name:
++                pin = getattr(self._widget.canvas_adjustment, pin_name)
++                with QtCore.QSignalBlocker(pin):
++                    pin.setChecked(bool(value))
++            return
+         if key == "font_family":
+             apply_application_font(value)
+             return
+--- a/anylabeling/views/labeling/label_widget.py
++++ b/anylabeling/views/labeling/label_widget.py
+@@ -4183,8 +4183,22 @@
+             OverviewDialog(parent=self)
+ 
+     def digit_shortcut_manager(self):
++        from anylabeling import user_config
++
++        session = user_config.current_session()
++        persistent_baselines = (
++            {
++                digit: session.editing_baseline(("digit_shortcuts", digit))
++                for digit in range(10)
++            }
++            if session is not None and session.effective is self._config
++            else None
++        )
+         digit_shortcut_dialog = DigitShortcutDialog(
+-            parent=self, commit_handler=self._commit_digit_shortcuts
++            parent=self,
++            commit_handler=lambda proposed, baseline: self._commit_digit_shortcuts(
++                proposed, baseline, persistent_baselines
++            ),
+         )
+         digit_shortcut_dialog.exec()
+ 
+@@ -4198,7 +4212,9 @@
+                 result[key] = value
+         return result
+ 
+-    def _commit_digit_shortcuts(self, proposed, baseline):
++    def _commit_digit_shortcuts(
++        self, proposed, baseline, persistent_baselines=None
++    ):
+         """Persist the digit mappings edited in the manager dialog.
+ 
+         Each digit is its own field and the dialog's opening value is the
+@@ -4217,14 +4233,16 @@
+             key = ("digit_shortcuts", digit)
+             had_value = digit in baseline
+             has_value = digit in proposed
+-            if had_value == has_value and baseline.get(
++            if had_value == has_value and baseline.get(digit) == proposed.get(
+                 digit
+-            ) == proposed.get(digit):
++            ):
+                 continue
+             if had_value:
+                 baselines[key] = baseline[digit]
+             else:
+                 baselines[key] = user_config.DELETE
++            if persistent_baselines is not None:
++                baselines[key] = persistent_baselines[digit]
+             if has_value:
+                 values[key] = copy.deepcopy(proposed[digit])
+             else:
+@@ -8435,13 +8453,19 @@
+ 
+         had_key = key in self._config
+         previous = self._config.get(key, None)
+-        baseline = previous if had_key else user_config.DELETE
+-        self._config[key] = value
+         if not persist:
++            self._config[key] = value
+             return True
++        session = user_config.current_session()
++        baseline = (
++            session.editing_baseline(key)
++            if session is not None and session.effective is self._config
++            else previous if had_key else user_config.DELETE
++        )
+         if self.persist_user_preferences(
+             {key: value}, baselines={key: baseline}
+         ):
++            self._config[key] = value
+             return True
+         if had_key:
+             self._config[key] = previous
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -34,23 +34,6 @@
+ #: real escapes (the user profile or another project) instead of duplicated
+ #: harness roots.
+ _ISOLATION_ROOT = os.path.join(_REPO_ROOT, ".tmp")
+-
+-
+-def _ini_scope_path() -> str:
+-    """Directory QSettings currently uses for user-scope INI files.
+-
+-    PyQt6 exposes ``QSettings.setPath`` but no ``path`` accessor, so the
+-    location is derived from a probe settings object instead of assuming the
+-    platform default.
+-    """
+-
+-    probe = QtCore.QSettings(
+-        QtCore.QSettings.Format.IniFormat,
+-        QtCore.QSettings.Scope.UserScope,
+-        "anylabeling",
+-        "anylabeling",
+-    )
+-    return os.path.dirname(probe.fileName())
+ 
+ 
+ class _IsolatedQSettings:
+@@ -98,9 +81,7 @@
+     from anylabeling import config as app_config
+     from anylabeling import user_config
+ 
+-    root = os.path.join(
+-        _REPO_ROOT, ".tmp", "pytest-config", uuid.uuid4().hex
+-    )
++    root = os.path.join(_REPO_ROOT, ".tmp", "pytest-config", uuid.uuid4().hex)
+     os.makedirs(root, exist_ok=True)
+     config_path = os.path.join(root, ".xanylabelingrc")
+     settings_path = os.path.join(root, "settings.ini")
+@@ -109,8 +90,6 @@
+     previous_session = user_config.current_session()
+     previous_work_directory = app_config._work_directory
+     previous_config_file = app_config.current_config_file
+-    previous_format = QtCore.QSettings.defaultFormat()
+-    previous_ini_path = _ini_scope_path()
+ 
+     os.environ[user_config.CONFIG_PATH_ENV] = config_path
+     app_config._work_directory = root
+@@ -118,12 +97,8 @@
+     user_config.end_session()
+ 
+     monkeypatch.setattr(QtCore, "QSettings", _IsolatedQSettings(settings_path))
+-    QtCore.QSettings.setDefaultFormat(QtCore.QSettings.Format.IniFormat)
+-    QtCore.QSettings.setPath(
+-        QtCore.QSettings.Format.IniFormat,
+-        QtCore.QSettings.Scope.UserScope,
+-        root,
+-    )
++    # The factory passes an explicit INI file/format, so no process-wide
++    # format or setPath mutation (and no inferred path restoration) is needed.
+ 
+     real_save = user_config.ConfigSession.save
+ 
+@@ -137,6 +112,18 @@
+         return real_save(self, patch, **kwargs)
+ 
+     monkeypatch.setattr(user_config.ConfigSession, "save", guarded_save)
++    real_write = user_config._atomic_write_bytes
++
++    def guarded_write(path, payload):
++        if not _is_inside(path, _ISOLATION_ROOT):
++            raise AssertionError(
++                f"configuration write outside isolated area: {path!r}"
++            )
++        return real_write(path, payload)
++
++    # Initialization, backup recovery and kept-aside copies also write files;
++    # protecting only save() leaves these entry points outside the guard.
++    monkeypatch.setattr(user_config, "_atomic_write_bytes", guarded_write)
+     try:
+         yield root
+     finally:
+@@ -148,11 +135,4 @@
+             os.environ.pop(user_config.CONFIG_PATH_ENV, None)
+         else:
+             os.environ[user_config.CONFIG_PATH_ENV] = previous_target
+-        QtCore.QSettings.setDefaultFormat(previous_format)
+-        if previous_ini_path:
+-            QtCore.QSettings.setPath(
+-                QtCore.QSettings.Format.IniFormat,
+-                QtCore.QSettings.Scope.UserScope,
+-                previous_ini_path,
+-            )
+         shutil.rmtree(root, ignore_errors=True)
+--- a/tests/test_config/test_isolation.py
++++ b/tests/test_config/test_isolation.py
+@@ -112,3 +112,69 @@
+         module.install_session(previous)
+ 
+     assert module.current_session() is previous
++
++
++@pytest.mark.parametrize("exceptional", [False, True])
++@pytest.mark.parametrize("empty_state", [False, True])
++def test_fixture_lifecycle_restores_settings_path_and_global_state(
++    exceptional, empty_state
++):
++    """Exercise teardown, nested use and an interrupted test."""
++    import importlib.util
++    import uuid
++
++    specification = importlib.util.spec_from_file_location(
++        "isolation_lifecycle_fixture",
++        os.path.join(REPO_ROOT, "tests", "conftest.py"),
++    )
++    fixture_module = importlib.util.module_from_spec(specification)
++    specification.loader.exec_module(fixture_module)
++    isolated_user_configuration = fixture_module.isolated_user_configuration
++
++    real_settings = QtCore.QSettings
++    while hasattr(real_settings, "_real"):
++        real_settings = real_settings._real
++
++    # A unique, nonexistent organization avoids reading any real settings.
++    organization = "settings-fixture-probe-" + uuid.uuid4().hex
++
++    def ini_location():
++        return real_settings(
++            real_settings.Format.IniFormat,
++            real_settings.Scope.UserScope,
++            organization,
++            "state",
++        ).fileName()
++
++    with pytest.MonkeyPatch.context() as original:
++        if empty_state:
++            original.setattr(app_config, "_work_directory", None)
++            original.setattr(app_config, "current_config_file", None)
++            original.delenv(user_config.CONFIG_PATH_ENV, raising=False)
++        before = (
++            ini_location(),
++            real_settings.defaultFormat(),
++            QtCore.QSettings,
++            app_config._work_directory,
++            app_config.current_config_file,
++            os.environ.get(user_config.CONFIG_PATH_ENV),
++            user_config.current_session(),
++        )
++        with pytest.MonkeyPatch.context() as patch:
++            lifecycle = isolated_user_configuration.__wrapped__(patch)
++            next(lifecycle)
++            if exceptional:
++                with pytest.raises(RuntimeError, match="interrupted"):
++                    lifecycle.throw(RuntimeError("interrupted"))
++            else:
++                lifecycle.close()
++        after = (
++            ini_location(),
++            real_settings.defaultFormat(),
++            QtCore.QSettings,
++            app_config._work_directory,
++            app_config.current_config_file,
++            os.environ.get(user_config.CONFIG_PATH_ENV),
++            user_config.current_session(),
++        )
++        assert after == before
+--- a/openspec/changes/fix-user-settings-persistence/tasks.md
++++ b/openspec/changes/fix-user-settings-persistence/tasks.md
+@@ -1,105 +1,55 @@
+-## 2026-11-05 实施后复核结论
++# 用户设置持久化修复任务
+ 
+-最新复核结果以本节及各任务末尾的复核备注为准；下方实施说明和处理结论保留为历史过程。已有改动解决了上轮的多项问题，但本轮仍实测发现6类缺口（7个场景），尚不能判定全部实施完成。详见 [实施后复核报告](review-20261105.md)。
++## 当前状态（2026-11-05 后续修复）
+ 
+-本轮在项目内隔离配置环境中重跑7个定向测试文件，结果为74 passed；另执行内存探针确认正常保存误报冲突、未修改字段基线未推进、待应用状态丢失、外部删除残留、外部更新未应用到动作及QSettings还原路径错误。仅修改本任务文档并新增复核报告，未修改产品或测试源码。原7.2、7.3、7.4继续待验收。
++六类实施后复核问题 R1—R6 已修复，并新增正式行为、fixture 生命周期及真实 MainWindow 集成回归。当前 **25/27 项完成**；7.2 真实用户终端交互验收与7.4独立提交仍未完成，不自动归档。
+ 
+-## 2026-11-04 代码复核说明
+-
+-本轮仅复核并修订本任务文档，不实施产品代码或测试代码。勾选表示整项要求已有充分证据；已有部分实现但仍存在明确缺口的任务改回未勾选，原测试成绩作为历史证据保留，不视为覆盖新发现的问题。
+-
+-复核依据为当前源码、两份 specs、design.md、verification.md 及现有测试。历史记录中的 settings/config 77 passed、1 skipped、9 subtests passed 和用户确认的“快捷键及数字映射重启保持已修复”仍有效，但不能替代故障、跨进程恢复、全部入口及真实启动方式的验收。本轮尝试使用 `x-anylabeling-cu12` Python 3.12 导入 PyQt6.QtCore 时遇到 `ImportError: DLL load failed while importing QtCore: 拒绝访问`，因此以下实现问题为静态代码复核发现，本轮未重跑 GUI/存储回归，未声称新增失败用例已经执行。
+-
+-## 2026-11-05 实施说明
+-
+-本轮按上文复核索引逐项修改源码与测试，PyQt6.QtCore 现已可导入，回归已实际执行。勾选项表示该项要求已有本轮可复现的证据，证据位置见 verification.md“本轮实施—测试—结果”表。仍未勾选项保留真实缺口：真实用户终端启动验收（7.2）与独立提交（7.4 部分）受沙箱限制未执行。
+-
+-落地要点：
+-
+-- `user_config.py`：`ConfigPatch` 支持调用方草稿基线（`baselines`，缺失用 `DELETE` 表达）；`ConfigSession.save` 在锁内按“草稿基线 B／最新值 C／拟提交值 P”比较，替换前再核对文件字节，外部改动抛 `ConfigExternalChange`；保存后把未编辑字段同步进有效配置，避免无关保存“吸收”外部新值；`ConfigError.conflict_keys` 统一冲突字段名；`_atomic_write_bytes` 把建目录、建临时文件、写入、fsync、替换统一映射为 `ConfigWriteError` 并清理临时文件；`restore_backup` 按模板＋规范化备份＋启动覆盖重建有效配置，保留损坏副本且不覆盖同名副本；`reload()` 重读磁盘；`install_session()` 供测试还原原会话。
+-- `config.py`：启动时先按目标缺失保护创建/迁移（`initialize_target`），再构建有效配置，首次启动即可使用旧 `.anylabelingrc` 的快捷键与数字映射；记录内联/CLI 临时覆盖路径交给会话；安装合并后的完整快捷键冲突校验器；`save_config` 必须携带显式字段或调用方基线，否则拒绝整份快照，并用元组路径保留数字键整数段。
+-- settings controller：提交时携带草稿基线；写盘成功后单独执行 runtime 应用，失败发 `apply_failed` 并支持 `retry_apply()`；新增 `reload_session()`、`rebase_draft()`，冲突/恢复后可真正重读磁盘。
+-- settings dialog：统一用 `conflict_keys` 渲染冲突字段；“重新载入”重读文件；备份恢复保留草稿并把恢复结果作为新基线；“已保存但未应用”单独提示，关闭前可重试应用。
+-- 数字快捷键：`DigitShortcutDialog` 打开时固定基线，确认→落盘→成功关闭，失败保持窗口与输入；`LabelingWidget._commit_digit_shortcuts` 按数字提交字段与基线，冲突可重载重试。
+-- 模型管理：`update_model_config`、`load_custom_model`、`remove_custom_model` 传播保存失败，不再出现“界面已移除、磁盘仍在”的分歧。
+-- 验证隔离：`tests/conftest.py` 同时隔离配置目标、工作目录、环境变量、会话与 `QSettings`（含 Windows 注册表路径），结束后完整还原并安装越界写入守卫；`scripts/dev_isolation.py` 为截图/基准脚本提供同一套真会话隔离与还原。
+-- 四语种文案：为保存失败、冲突重载、备份恢复、运行应用失败、数字与模型保存失败新增 zh_CN/en_US/ja_JP/ko_KR 条目并重建 `.qm`。
+-
++本轮只叠加设置持久化相关修复，保留此前工作区成果。修复前记录见 [实施后复核报告](review-20261105.md)，修复后行为、执行命令和限制见 [验证记录](verification.md) 的“后续修复 R1—R6”。实施前源码及文档副本位于项目内 `.tmp/settings-followup-baseline-20261105/`。
+ 
+ ## 1. 固化反例与调用范围
+ 
+-- [x] 1.1 重新记录当前源码基线，保存受影响实现的可恢复备份，在项目内临时配置目录复现“数字映射保存后被通用设置清空”和“旧窗口保存还原快捷键”。（基线 `67c98a80`；反例固化为 `test_controller_persistence.py`，Git 即源码恢复来源）
+-- [x] 1.2 清点全部全局用户配置 writer、读取入口及退出回写位置，区分密集审核/训练/点云等独立配置；形成迁入清单和受影响测试范围。（writer：settings 控制器、数字管理器、主题/语言/共享视图/矩形规则/显示开关、模型管理、退出流程；dense_review/训练/点云为独立配置）
+-- [x] 1.3 记录当前配置/设置/数字快捷键/模型管理回归结果和既有失败，并核对隔离范围。（历史记录：`test_pointcloud/test_integration.py` 基线与当时工作区同为 5 个失败；`tests/conftest.py` 已有隔离 fixture，但完整恢复与脚本会话接入仍有缺口，见 6.1、6.2，不据此声明全部验证工具均已隔离。）
++- [x] 1.1 记录源码基线与备份，固化数字映射及旧窗口保存覆盖反例。既有基线为 `67c98a80`；本轮另保留实施前工作区副本，新增行为回归在修改前为11失败、1通过。
++- [x] 1.2 清点全局用户配置 writer、读取与退出入口，区分密集审核、训练及点云独立配置。保留字段事务接入及独立业务配置边界。
++- [x] 1.3 记录配置、设置、数字动作、模型管理及相关主窗口回归，区分已有问题、跳过和未运行范围。本轮扩大回归401 passed、1 skipped、15 subtests passed；2项远端模型测试因 Windows NamedTemporaryFile 共享限制失败，标准库探针独立复现该限制。
+ 
+ ## 2. 确定配置上下文与目标
+ 
+-- [x] 2.1 实现显式配置上下文，记录规范化持久目标、磁盘基线/指纹、有效状态与启动覆盖层；保持现有读取调用兼容。（`user_config.ConfigSession`）
+-- [x] 2.2 统一默认启动、work-dir、文件型 config 与参数组合的读取/保存目标，移除模板读取引发的无关用户默认文件写入；首次创建与旧 rc 迁移走目标缺失保护，并使首次迁移读到的内容立即进入当前有效配置，再正确叠加内联/CLI 临时值。（路径解析、只读模板和受锁初始化已有实现；本轮改为 `get_config` 先调用 `user_config.initialize_target` 完成创建/迁移，再读取磁盘并构建 effective，首次启动即使用旧快捷键/数字映射。证据：`test_first_start_uses_a_migrated_legacy_file`、`test_existing_target_is_not_overwritten_by_legacy_migration`、`test_default_startup_uses_work_directory_and_is_stable`。）
+-- [ ] 2.3 实现内联 YAML/CLI 临时覆盖与显式 UI 修改的分离，验证保存不相关字段不会固化全部临时参数，cwd 改变不漂移配置目标。（`tests/test_config/test_config_targets.py`） 【2026-11-05实施后复核：R1：CLI epsilon=9.9 启动后，在 UI 明确改成 9.5 仍报 ConfigConflict；临时有效值被当作磁盘编辑基线。须分开持久基线与显示/启动覆盖，验证显式编辑可以落盘且无关临时值继续不落盘。】
++- [x] 2.1 显式配置上下文记录确定的持久目标、磁盘基线、指纹、有效状态与启动覆盖，保持读取兼容。
++- [x] 2.2 统一默认、work-dir、文件型 config 目标；模板只读，创建/迁移受锁且仅作用于缺失目标，迁移结果在首次启动立即生效。已有目标矩阵与迁移回归继续通过。
++- [x] 2.3 分离磁盘基线与显示默认值/内联 YAML/CLI 临时覆盖。UI明确编辑被覆盖字段可落盘，其他临时字段仍不落盘；显式保存只退休对应覆盖路径，后续重载不会恢复已被用户修改的旧临时值。证据：`test_ui_can_save_a_default_field_absent_from_the_document`、`test_ui_can_replace_one_transient_value_without_persisting_the_rest`。
+ 
+ ## 3. 实现字段事务与原子存储
+ 
+-- [x] 3.1 定义字段补丁和基线比较规则，按 schema 叶字段、快捷键动作、数字各条映射及完整列表粒度合并；支持明确清空且保留未知扩展键。（`ConfigPatch`，删除用 `DELETE`/`deletes`）
+-- [ ] 3.2 实现同目标进程间锁及有限等待，在锁内重读、比较编辑时 B/C/P、执行合并后校验，返回可重试锁忙及明确同字段冲突，等值提交保持幂等；补齐外部指纹复核和会话同步。（`QLockFile` 与三方比较已有实现；本轮 `ConfigPatch` 增加调用方草稿基线，`ConfigSession.save` 优先使用草稿基线比较，保存后把重读到的未编辑字段同步进 effective，避免“B 改 X、A 存 Y 后旧草稿再写 X”被静默覆盖；替换前再次读取文件字节，变化抛 `ConfigExternalChange`（可重试、带冲突字段），并在锁内对合并后的完整有效配置执行快捷键冲突校验。证据：`test_old_draft_field_conflicts_after_an_unrelated_save`、`test_stale_process_cannot_replace_a_field_written_elsewhere`、`test_external_change_between_read_and_replace_is_refused`、`test_merged_shortcut_conflict_is_refused`、`test_whitelisted_duplicate_shortcut_is_allowed`。） 【2026-11-05实施后复核：R1、R4：持久字段缺失与有效默认值不等，调用方传入的 UI 基线导致无并发也报冲突；同步 effective 仍是只增改的叶字段 overlay，未处理外部删除。须覆盖缺失字段、外部删除及重载后的基线/有效值一致，见实施后复核报告。】
+-- [x] 3.3 实现同目录临时文件、序列化验证、flush/fsync、关闭后原子替换及异常清理；失败不截断原配置，保存结果不得被吞没。（`_atomic_write_bytes` 现把建目录、`mkstemp`、打开文件描述符、写入、flush、fsync、替换的失败统一包装为 `ConfigWriteError`，失败时删除临时文件并保留原文件；主窗口、数字管理器、模型入口均只捕获 `ConfigError`。证据：`test_temporary_file_creation_failure_is_a_storage_error`（故障解除后可重试）、`test_backup_failure_keeps_the_target_untouched`、`test_target_replace_failure_keeps_original_and_backup`。）
+-- [x] 3.4 实现最近有效 `.bak` 的原子更新、首次新建无旧备份处理、损坏原配置拒绝覆盖，以及保留损坏内容后的显式备份恢复。（`.bak`、损坏内容保留与“目标缺失才创建”已存在；本轮 `restore_backup` 按模板＋规范化备份＋显式启动覆盖重建有效配置（不再把备份递归 overlay 到旧值上，备份缺失的字段会消失、数字条目删除生效、旧键按正常加载规则归一化），保留副本遇到同名时追加序号不覆盖，并在恢复前校验备份可读。证据：`test_restore_rebuilds_effective_instead_of_overlaying`、`test_restore_normalizes_legacy_backup_keys`、`test_restore_keeps_a_second_copy_of_the_damaged_file`、`test_restore_backup_keeps_damaged_content`、`test_missing_backup_is_reported`。）
+-- [x] 3.5 增加存储故障回归，覆盖序列化、备份、创建临时文件、写入、flush/fsync、目标替换、锁忙、损坏文件和外部指纹变化，验证原文件/有效备份/错误类型与重试结果。（新增 `tests/test_config/test_transaction_hardening.py` 17 项：按目标区分备份/主文件失败注入、`mkstemp` 失败、损坏后手工修复可再次保存、重读后外部改写、草稿基线保留与合并校验、删除与旧键恢复。证据：该文件全绿；`test_lock_busy_is_retryable_and_writes_nothing`、`test_unserializable_value_is_rejected_without_damage` 仍覆盖锁忙与序列化。）
++- [x] 3.1 字段补丁按叶字段、快捷键动作、整数数字项和完整列表合并，显式删除使用DELETE，未知扩展键保留。
++- [x] 3.2 同目标进程间锁、有限等待、锁内B/C/P比较、合并校验及提交前字节复核。新增 `editing_baseline()` 表达持久字段原值/缺失；普通重载与保存完整重建有效配置，同步外部删除且保留现有嵌套字典引用；变化通知在释放锁后发送。旧草稿仍会拒绝真正并发冲突。证据：事务加固、双进程及本轮删除/基线回归。
++- [x] 3.3 同目录临时文件、序列化验证、flush/fsync、原子替换与清理；创建/备份/替换失败统一为可重试存储错误，保留原文件和输入。
++- [x] 3.4 有效.bak、首次创建无伪备份、损坏配置拒绝普通覆盖；显式恢复保留损坏副本且不覆盖同名副本，按模板、规范化备份和剩余启动覆盖重建有效配置，通知运行窗口。
++- [x] 3.5 序列化、备份、临时文件创建、目标替换、锁忙、损坏修复、外部改写与恢复故障回归；区分备份和目标的失败注入。原有事务加固与存储回归全部通过。
+ 
+ ## 4. 修复设置草稿与数字管理器
+ 
+-- [ ] 4.1 改为从最新已提交状态打开设置会话，记录修改字段及原基线，外部更新刷新未修改字段，保留草稿中已修改字段用于冲突检测。（`begin_session` 仍以进程内有效配置为基线，但该有效配置现在会随每次保存同步重读到的外部字段，`reload_session()` 显式重读磁盘；controller 提交时携带草稿基线，一次成功保存后 `_working_config` 与 `_base_values` 一起推进。证据：`test_untouched_field_can_be_edited_after_a_save`、`test_reload_session_rereads_a_file_written_elsewhere`、`test_old_draft_cannot_replace_a_field_written_externally`、`test_refresh_keeps_draft_values_and_updates_untouched_fields`。） 【2026-11-05实施后复核：R1、R2、R4、R5：成功保存仅更新 saved_keys 的 _base_values，未修改字段虽进入新 working_config，基线仍旧；外部删除不从有效配置移除，吸收的外部快捷键也未通知 runtime。补“他人改字体为20→本窗存 epsilon→再改字体为22”的回归；持久基线须与默认/临时覆盖分开。】
+-- [ ] 4.2 将控制器保存改为字段事务，成功后推进基线和运行状态，无修改不写入；取消/预览回滚/页面及全部重置只影响相应管理范围。（字段 patch 已实现；本轮把持久化与 runtime 应用拆成两个结果：写盘成功即清除 dirty、推进基线并发 `save_succeeded`，逐个应用失败时发 `apply_failed(message, keys)`、保留 `has_pending_apply()`/`retry_apply()`，不再在异常捕获范围外调用回调。证据：`test_runtime_apply_failure_keeps_the_saved_document`、`test_retry_apply_reports_a_persistent_failure`、`test_dialog_reports_a_runtime_apply_failure_as_saved`、`test_reset_page_and_reset_all`、`test_cancel_in_one_window_keeps_the_other_windows_changes`。） 【2026-11-05实施后复核：R3、R5：runtime 失败后的 pending 集合被下一次无关字段保存整体清空；begin_session 也直接清空失败状态，重载尚未重试即失去待应用记录。另有外部快捷键已进入 effective 但回调仅收到 saved_keys。须逐字段保留/清除待应用状态，并为采纳的外部字段或明确重载触发实际应用。】
+-- [x] 4.3 将数字管理器改为显式映射事务，规范整数数字键，成功后同步父窗口状态及成功提示，失败或冲突时保留输入而不提前宣称保存。（`_commit_digit_shortcuts` 按数字提交字段并携带对话框打开时固定的基线；`DigitShortcutDialog` 的确认流程改为“确认→落盘→成功后关闭并提示”，失败弹窗说明且保持窗口与输入，落盘失败不改写父窗口映射。证据：`tests/test_settings/test_digit_shortcut_flow.py`（失败保留输入、成功关闭、使用打开时基线、未编辑数字合并、同数字冲突、清空数字），`test_digit_entries_use_integer_keys`。）
+-- [ ] 4.4 接入冲突字段、失败、锁忙、损坏配置与 runtime 应用失败提示；保存失败保留草稿，设置关闭不静默丢弃，应用退出可重试或明确放弃。（`ConfigError.conflict_keys` 为统一字段入口，controller 的同进程冲突改为 `ConfigConflict`，dialog 对 `ConfigConflict`/`SettingsValidationError`/`ConfigExternalChange` 走同一“重新载入/保留草稿”流程；`reload_committed_values()` 先 `refresh_from_committed(reload_disk=True)` 再重建草稿，备份恢复后 `rebase_draft()` 保留未放弃的草稿；新增“已保存但未应用”提示与关闭前重试。证据：`test_conflict_reload_reads_the_file_again`、`test_conflict_between_two_windows_keeps_first_value`、`test_dialog_reports_a_runtime_apply_failure_as_saved`、`test_restore_rebuilds_effective_instead_of_overlaying`。） 【2026-11-05实施后复核：R3、R4、R5：成功重读文件不代表删除已同步或动作已更新；当前重载会遗留删除的数字项，且 begin_session 先清掉 pending apply。须验收删除后的重载/再编辑、失败应用保留及真正更新快捷键 QAction，而非仅断言 controller.get_value。】
+-- [ ] 4.5 增加窗口级交错保存回归：数字后通用设置、快捷键后数字/显示设置、打开草稿期间外部更新、取消与重置，以及重开时绑定和映射实际生效。（`test_two_window_persistence.py` 现有 7 项：两个真实 SettingsDialog 交错保存、取消不撤销他人修改、同字段冲突、重开可见、外部写入后无关保存再提交旧值必须冲突、冲突后重新载入读到磁盘、保存后再编辑未修改字段；模块统一登记窗口并在 fixture 内清理。数字管理器以真实 `DigitShortcutDialog` + `_commit_digit_shortcuts` 单元覆盖（`test_digit_shortcut_flow.py`），未通过 MainWindow 打开真实数字弹窗；模型入口仍以存储层＋调用方返回值覆盖，未做窗口级重开验证，作为剩余缺口保留。） 【2026-11-05实施后复核：R1—R5：现有定向用例通过不覆盖本轮复现场景；test_untouched_field_can_be_edited_after_a_save 没有另一入口先改该字段，无法证明基线同步。该项原备注自身仍保留真实 MainWindow 数字入口、模型窗口重开的缺口，不应整项勾选。补复核报告中的场景后按真实覆盖验收。】
++- [x] 4.1 草稿分别保存显示基线与持久基线；打开/重载读取最新配置。未编辑字段随提交刷新基线，已编辑字段保留原始基线；成功保存后全量推进新草稿基线。证据：同进程/外部修改字体20→本窗保存epsilon→再改字体22均通过，陈旧已编辑草稿仍冲突。
++- [x] 4.2 控制器仅保存显式字段；持久化成功与runtime应用失败独立处理。待应用状态逐字段维护，无关保存、重开和重载不会丢失；只清除实际应用成功的字段，支持重试。明确重载还会撤销未保存预览。证据：运行时失败保持、重试及预览回滚回归。
++- [x] 4.3 数字管理器固定打开时基线，确认→落盘→成功关闭；失败保持真实弹窗及输入供重试。主窗口入口另捕获持久基线以兼容默认值/启动覆盖，逐数字保存和删除。证据：原数字流测试及 `test_main_window_digit_failure_preserves_input_for_retry`。
++- [x] 4.4 统一冲突字段与恢复入口，先报告失败再处理恢复选择；重载真正同步删除、快捷键QAction、数字绘制映射及其他运行字段，失败仍保留待应用记录。新会话及备份恢复不静默丢弃待重试状态。
++- [x] 4.5 窗口级交错保存、取消、重置及重开实际生效回归。本轮通过真实MainWindow入口打开数字弹窗，设置草稿保持打开，交错保存数字、快捷键、导航、亮度/对比度保持与模型列表；关闭后重建主窗口，验证实际QAction、模型配置列表及数字键绘框，并保存标注JSON。此为offscreen自动验收，不替代7.2的真实终端交互。
+ 
+ ## 5. 迁入其他入口与退出流程
+ 
+-- [ ] 5.1 迁入共享视图、显示保持、矩形尺寸规则等主窗口全局偏好写入，按实际修改字段提交并保留其他入口新值。 【2026-11-05实施后复核：R1：update_user_preference 仍将有效配置中的默认/临时值作为持久事务基线；旧配置未含新增偏好时也可能无并发误报冲突。须与4.1统一采用持久基线，并补稀疏/旧配置下主窗口显示偏好实际保存。】
+-- [x] 5.2 迁入自动标注模型管理及清单中其余全局 writer，必要的旧接口适配必须携带调用方编辑基线/显式补丁；复核不把独立业务配置纳入全局 YAML。（模型存储仍为字段提交；`update_model_config` 返回是否落盘，`load_custom_model` / `remove_custom_model` 检查 `save_custom_models` 结果，失败时给出可见提示、不改内存列表、不返回成功；远端服务器设置保存失败也在界面提示“仅当前会话生效”。`config.save_config` 改为必须传 `fields` 或调用方 `baselines`，否则记录警告并拒绝整份提交，diff 使用元组路径保留数字整数段。证据：`test_save_config_refuses_an_unsafe_whole_snapshot`、`test_save_config_accepts_explicit_fields_and_baselines`、`test_digit_paths_keep_integer_segments`、`test_models`/`test_auto_labeling` 179 passed。）
+-- [x] 5.3 去除退出时整份旧配置回写，仅保存明确待持久化偏好；验证未修改的旧窗口退出不会还原其他窗口保存的映射和快捷键。
+-- [x] 5.4 搜索复核全部全局 writer 的字段事务及失败结果均已迁入，验证旧键归一化、未知字段、显式清空、快捷键冲突检测和无修改退出不写文件。（dispatch 复核：settings 控制器、数字管理器、主题/语言/共享视图/矩形规则/显示开关、模型与远端设置均为显式字段提交并返回结果；`config.save_config` 已收紧且全仓无产品调用方；训练/密集审核/点云使用独立配置。旧键归一化、未知字段保留、显式清空、合并后快捷键冲突、无修改不写文件均有测试覆盖（`test_legacy_key_is_replaced_by_nested_target`、`test_delete_removes_field_and_preserves_unknown_keys`、`test_merged_shortcut_conflict_is_refused`、`test_no_modified_fields_does_not_touch_the_file`）。真实窗口冒烟（`.tmp/app_smoke.py` one/two）通过。）
++- [x] 5.1 主窗口共享视图、显示保持、矩形规则等偏好按字段保存。即时偏好写入使用持久原值/缺失作为基线，成功后更新有效状态；失败不污染配置并还原动作/保持按钮。稀疏配置下真实主窗口亮度与对比度保持保存通过。
++- [x] 5.2 模型管理等全局 writer 字段提交并反馈结果；旧整份适配器必须提供明确字段或调用方基线，数字路径保持整数段，独立业务配置不并入全局YAML。模型/自动标注回归已运行，2项临时文件共享限制见1.3与验证记录。
++- [x] 5.3 退出不再回写整份旧快照；仅处理明确未保存修改及待应用字段，失败可重试或明确放弃。重开窗口的实际绑定和映射验证通过。
++- [x] 5.4 搜索核对全局writer、未知字段、旧键归一化、显式清空、合并快捷键冲突及无修改不写文件；原有定向回归和真实窗口集成保持通过。
+ 
+ ## 6. 统一开发验证隔离
+ 
+-- [ ] 6.1 建立共享测试 fixture/harness，在窗口/服务初始化前隔离配置目标和 QSettings INI，结束后完整恢复全局状态，包括原值为 None 的情况。（`tests/conftest.py` 现在同时隔离目标环境变量、`config._work_directory`、`current_config_file`、原会话与 `QSettings`：由于 `QSettings(org, app)` 在 Windows 上即使设置默认格式仍写注册表，改为注入绑定到临时 INI 的工厂；结束时按原值（含 None）还原会话、工作目录、配置文件、环境变量、默认格式与 INI 路径，并安装越界写入守卫。证据：`tests/test_config/test_isolation.py` 4 项。） 【2026-11-05实施后复核：R6：实际执行 fixture 进入/退出后，INI 路径从 root/anylabeling/anylabeling.ini 变成 root/anylabeling/anylabeling/anylabeling.ini。_ini_scope_path 返回含组织名的目录，setPath 又追加一次组织名；现有 test_previous_global_state_is_restored_after_a_test 仅验证 install_session，未验收 fixture teardown。须校验真实退出后的 QSettings 路径与全局状态。】
+-- [x] 6.2 检查并迁入截图、性能与诊断脚本的配置上下文，所有子进程显式使用独立目录；用路径写入防护及内容哨兵证明不污染宿主配置。（新增 `scripts/dev_isolation.py`：在独立目录建立真会话（走 `get_config`）、绑定临时 QSettings INI、退出时完整还原；`benchmark_dense_review.py` 与 `capture_dense_review_screenshots.py` 改为使用它，截图脚本用 finally 关闭窗口并在异常时也还原。证据：`.tmp/check_isolation.py`（真会话、写入落到独立目录、QSettings 在隔离目录、退出后会话/工作目录复原、宿主配置 mtime/size 不变）输出 `isolation check ok`；两个脚本可正常导入。脚本未在本沙箱完整渲染（`images/` 目录被沙箱拒绝写入），未以“没有会话导致保存失败”充当通过。）
+-- [x] 6.3 增加确定性双进程回归：不同字段同时保存、同字段不同值冲突、等值幂等、锁忙、旧进程退出；比较最终有效 YAML 与真实重开结果。（worker 扩展为多步骤并可为每步声明草稿基线与等待文件；新增 `test_stale_process_cannot_replace_a_field_written_elsewhere`（A 先存无关字段、B 改 X、A 再提交旧 X → 退出码 3、磁盘保留 B 的值）、`test_fresh_process_reads_the_committed_document`（独立进程经 `get_config` 读取）。连同 `test_two_processes_merge_different_fields`、`test_two_processes_conflict_on_same_field`、等值/锁忙用例，比较最终 YAML 与重开结果。旧进程退出不回写由 5.3 的移除以及“保存后关闭窗口再新进程读取”的冒烟覆盖，未单列双进程退出用例。）
++- [x] 6.1 窗口/服务初始化前隔离YAML、工作目录、环境变量、session及QSettings。显式INI工厂使fixture无需修改全局setPath/defaultFormat，避免还原时重复组织目录；写入守卫同时保护保存、初始化、备份和恢复。4项新增生命周期回归覆盖正常/异常退出、None和嵌套使用，检查真实前后INI路径与全局状态。
++- [x] 6.2 开发截图/性能脚本使用真会话隔离助手，保存落在独立目录，结束恢复此前会话与配置；既有脚本隔离实现保留。本轮不以无会话导致保存失败冒充隔离通过。
++- [x] 6.3 确定性双进程覆盖不同字段合并、同字段冲突、旧草稿经过无关保存仍拒绝覆盖和独立进程读取；保留等值幂等、锁忙与退出不整份回写验证。
+ 
+ ## 7. 集成与交付
+ 
+-- [ ] 7.1 运行配置、controller/dialog/runtime、数字动作、模型管理及受影响主窗口回归；验证写入失败后修复故障能够重试，磁盘成功但 runtime 失败的提示不误报。（本轮实测：`tests/test_config` 54 passed、4 个 `tmp_path` 沙箱 ACL 错误；`tests/test_settings` 72 passed、1 skipped、3 个与本变更无关的 `test_schema` 字段计数失败（147/146 等，来自其它未提交变更）；`tests/test_models tests/test_auto_labeling` 179 passed、5 个 `tmp_path` 沙箱拒绝；`.tmp/app_smoke.py one|two`（真实 MainWindow offscreen + 新进程重读）通过。写入失败重试与“已保存但未应用”分别由 `test_failed_write_keeps_draft_and_retry_succeeds`、`test_runtime_apply_failure_keeps_the_saved_document`、`test_dialog_reports_a_runtime_apply_failure_as_saved` 覆盖。`test_labeling`/`test_canvas` 等 GUI 重用例在本沙箱长时间无输出，仍未作为门禁。） 【2026-11-05实施后复核：本轮受控提权后执行7个现有定向测试文件，51+23=74 passed；额外7个隔离探针场景均证实R1—R6缺口，不能据现有通过数将完整修复判为通过。须新增这些行为回归、修复后复测，再补此前未运行的受影响模块与明确区分既有失败。】
+-- [ ] 7.2 在真实窗口通过用户的终端启动方式、独立测试配置目录完成保存—退出—重启，并验证自定义快捷键绑定、数字模式/类别和模型配置均保留。（历史 offscreen MainWindow + 独立进程读取是部分证据；用户已确认原有快捷键还原/数字映射清空问题修复，但未记录覆盖本项全部操作的隔离终端验收。补实际启动命令、配置目标、样本和动作结果，真实验证绑定/绘制及模型读取，不能把手工读取 YAML 或 offscreen 等同于完整交互验收。）
+-- [ ] 7.3 与恢复变更联测导航和亮度/对比度保持按钮与数字/通用设置的交错保存；更新必要四语言文案与保存/冲突/备份恢复说明。（四语言文案已完成：`Settings Conflict`、`Reload Latest Values`、`Keep Draft`、`Restore Last Valid Backup`、`Keep Damaged File`、`Retry Save`、`Discard Changes`、`Saved, but not applied: {message}`、运行应用失败提示、数字与模型保存失败提示等已写入 zh_CN/en_US/ja_JP/ko_KR 的 `.ts` 并用 `lrelease` 重编 `.qm`，用 `QTranslator` 实测加载返回对应译文。交错保存本身由本变更的数字/快捷键/无关字段用例覆盖，但与 `restore-v430-canvas-controls` 的导航、亮度/对比度按钮联合手测仍未执行，故不勾选。）
+-- [ ] 7.4 记录行为—测试—结果对照、配置兼容和回退说明，按实际结果勾选；独立提交本修复差异，运行 OpenSpec strict 与差异检查，不自动归档或恢复用户历史映射。（verification.md 已按实际结果新增“本轮实施—测试—结果”表和执行命令；`openspec validate fix-user-settings-persistence --strict` 已通过。独立提交仍未执行：工作区存在先于本变更的未提交差异，且本沙箱禁止写 `.git`，需在干净环境拆分提交。）
+-
+-## 复核索引与处理状态
+-
+-下表保留 2026-11-04 的复核依据；每条的处理结论见表格后的状态清单。
+-
+-| 发现 | 当前代码依据 | 对应待办与验收重点 |
+-| --- | --- | --- |
+-| P1：数字输入可能丢失且提前提示保存成功 | `widgets/label_dialog.py:315`—`327`；`label_widget.py:4218`—`4228` | 4.3、4.5：落盘前无成功提示，失败保留可重试输入 |
+-| P1：无关保存推进全量磁盘基线，而有效值仍旧，旧草稿可能覆盖外部新值 | `user_config.py:629`、`:673`、`:682`—`707` | 3.2、4.1、6.3：保留编辑原基线，跨进程 X/Y 交错后旧 X 必须冲突 |
+-| P1：缺少合并后完整快捷键校验及提交前指纹核对 | `config.py:368`—`378`；`user_config.py:610`—`669` | 3.2、3.5：两个不同动作合并出冲突或重读后文件变化时拒绝提交 |
+-| P1：写盘后 runtime 回调异常没有结果处理 | `settings/controller.py:362`—`382` | 4.2、4.4、7.1：明确磁盘成功和会话应用失败，能重载/重试应用 |
+-| P1：模型调用方忽略保存失败 | `auto_labeling/model_manager.py:779`、`:865`—`884` | 5.2、5.4：失败不返回移除成功、不让列表与磁盘分离，用户能重试 |
+-| P2：旧整份保存适配器仍可回写旧字段 | `config.py:176`—`213` | 5.2：显式修改范围/调用方原基线，不根据最新 effective 猜测 |
+-| P2：冲突类型/字段不统一，“重新载入”仍是旧内存 | `settings/controller.py:337`—`345`；`settings/dialog.py:2011`—`2017`、`:2077`、`:2095`—`2101` | 4.1、4.4：同/跨进程均显示字段并真正重读最新值，可再次保存 |
+-| P2：首次迁移与备份恢复的当前有效配置不完整 | `config.py:326`—`378`；`user_config.py:821`—`840`、`:954`—`974` | 2.2、3.4：首次迁移立即生效，恢复删除/旧键与正常启动一致 |
+-| P2：创建临时文件失败绕过统一错误 | `user_config.py:479`—`482`（`mkstemp` 位于 try 外） | 3.3、3.5：结构化错误、无未处理异常、故障解除后可重试 |
+-| P2：隔离与回归覆盖不足以支持整项勾选 | `tests/conftest.py:33`—`64`；`test_two_window_persistence.py:41`—`79`；两个开发脚本窗口初始化 | 4.5、6.1—6.3、7.1—7.3：会话/全局恢复、真实入口、故障与实际启动证据分开记录 |
+-
+-### 2026-11-05 处理结论
+-
+-1. 数字输入丢失与提前提示：已改为“确认→落盘→成功关闭”，失败保留输入；证据 `test_digit_shortcut_flow.py`。
+-2. 无关保存吸收外部值：草稿基线进入事务，保存后同步未编辑字段；`test_stale_process_cannot_replace_a_field_written_elsewhere` 复现并验证拒绝覆盖。
+-3. 合并后快捷键校验与提交前指纹核对：`validate_merged_config`、`ConfigExternalChange`；对应两项测试通过。
+-4. runtime 应用失败：拆分持久化与应用结果，新增 `apply_failed`/`retry_apply()` 与“已保存但未应用”提示。
+-5. 模型保存失败传播：`load_custom_model`/`remove_custom_model`/`update_model_config` 均检查结果并提示。
+-6. 旧整份保存适配器：必须提供 `fields` 或 `baselines`，否则拒绝；数字键保持整数段。
+-7. 冲突类型/字段统一与“重新载入”：`conflict_keys` 统一，重载真正重读磁盘；备份恢复保留草稿并重建有效值。
+-8. 首次迁移与备份恢复的有效配置：先初始化再构建 effective；恢复按模板+规范化备份重建。
+-9. 临时文件创建失败：统一为 `ConfigWriteError`，临时文件被清理，故障解除后可重试。
+-10. 隔离与回归覆盖：conftest 完整隔离/还原并加写入守卫，双窗口统一登记清理，开发脚本接入真会话隔离；真实终端启动验收（7.2）与独立提交（7.4 部分）仍待执行。
++- [x] 7.1 执行配置、controller/dialog/runtime、数字动作、模型管理及受影响画布/主窗口回归，验证写入重试、磁盘成功但runtime失败、重载实际动作和预览范围。本轮扩大回归401通过、1跳过、2项Windows临时文件共享限制失败；没有本次设置修复新增失败。画布保持子集单独26通过。Black、语法/未定义变量检查及差异空白检查通过；全量Flake8既有长行/复杂度等提示单列，不伪称全量静态检查全绿。
++- [ ] 7.2 在用户真实终端启动方式及独立配置目录中交互完成保存—退出—重启，验证自定义快捷键、数字模式/类别和模型配置。现有真实MainWindow offscreen自动验收与独立进程读取已通过，但未执行用户终端原启动方式的可见交互，不以自动测试替代。
++- [x] 7.3 与画布恢复变更联测导航、亮度/对比度保持、数字/通用设置交错保存及重开；必要四语言资源沿用已编译结果，本轮未新增界面文案。真实MainWindow自动联测通过导航模式、菜单动作/面板保持按钮、切图显示值与重开配置；真实屏幕手感仍属于7.2交互确认范围。
++- [ ] 7.4 更新行为—测试—结果、配置兼容与回退说明，运行OpenSpec strict和差异检查；独立提交本修复，不自动归档或恢复历史映射。文档与检查已完成；当前混合工作区包含先于本轮的未提交功能，不能整份暂存并冒充独立提交。本轮提供以实施前工作区为基线的增量补丁与恢复材料，独立提交仍待在适当基线上完成。
+--- a/openspec/changes/fix-user-settings-persistence/verification.md
++++ b/openspec/changes/fix-user-settings-persistence/verification.md
+@@ -180,9 +180,85 @@
+ - 与 `restore-v430-canvas-controls` 的导航、亮度/对比度按钮联合手测（7.3 的交错部分）。
+ - 独立提交（7.4）：工作区存在先于本变更的未提交差异，且沙箱禁止写 `.git`。
+ 
+-## 未完成事项
++## 前轮未完成事项（下文后续修复结果优先）
+ 
+ - 与 `restore-v430-canvas-controls` 的联合回归（该变更的交错联测尚未执行）。
+ - 真实终端启动方式的完整验收（7.2）。
+ - 独立提交：工作区存在先于本变更的未提交差异（`dense_review` 等），且沙箱禁止写 `.git`，需在干净环境拆分提交。
+ 
++## 后续修复 R1—R6（2026-11-05）
++
++### 实施范围与保全
++
++本轮已获授权按任务清单实施源码与测试，补齐 review-20261105.md 的6类问题。修改前保存相关源码/文档副本到 `.tmp/settings-followup-baseline-20261105/`；保留工作区此前的密集复核、Inspector、画布等成果。最新任务状态为25/27：真实终端交互7.2、独立提交7.4仍未完成，未归档。
++
++### 行为—实施—证据
++
++| 问题 | 实施结果 | 实际验证 |
++| --- | --- | --- |
++| R1 默认值/启动覆盖被误用为磁盘基线 | `ConfigSession.editing_baseline()` 表达原磁盘值和缺失；controller分开记录显示/持久基线，主窗口即时偏好及数字入口使用持久基线；显式保存退休对应临时覆盖 | 稀疏 `{}` 可保存epsilon；CLI epsilon明确修改成功且其他临时labels不落盘；真正并发修改仍拒绝。`test_persistence_review_regressions.py` |
++| R2 无关保存后未修改字段基线仍旧 | 未修改字段收到已提交变化时刷新基线；成功保存后同步整个新草稿及基线，已修改字段保留原始基线 | 同进程与外部文件更新字体20→本窗保存epsilon→再改字体22均成功 |
++| R3 pending apply被无关保存/重开清空 | 按字段累计失败，仅在实际应用成功时删除；重开不清除，重载支持重试；无修改保存仍保留错误状态提示 | runtime持续失败→无关保存→重开→重载仍保留pending，解除故障后重试清除；重载未变化文件也撤回未保存预览 |
++| R4 重载留下删除项 | 保存/重载按模板、完整规范化磁盘与剩余临时覆盖重建有效配置；原位协调嵌套字典，保留引用并同步删除 | 删除单个数字、整个映射、整个文件均回到正确有效状态；重载不会凭空新建被删除文件 |
++| R5 最新字段未应用到真实动作 | 配置会话在释放文件锁后发出effective_changed；controller识别所有运行字段变化并通知runtime，保存、其他入口提交、重载/恢复均覆盖；新增数字绘制映射与保持按钮同步 | 使用真实QAction验证保存/重载/其他入口提交3条路径；真实MainWindow重开后快捷键、数字模式/类别、模型列表及保持控件均有效 |
++| R6 fixture还原重复组织目录 | 显式INI工厂已足够隔离，移除全局setPath/defaultFormat修改；保存/初始化/备份/恢复共用写入守卫 | 新增4项真实fixture生命周期测试：正常/异常、原值None/非None、嵌套使用，逐项对比INI路径及全局状态 |
++| 主窗口联测4.5/7.3 | 打开设置草稿，经主窗口真正打开数字弹窗、保存数字，再交错操作菜单/面板保持、导航和模型列表 | `test_real_entries_interleave_restart_and_keep_drawing_bindings`：实际MainWindow关闭重开，QAction保留，数字键创建“车辆”矩形且标注JSON正确；亮度/对比度切图保留、导航模式及模型配置列表保留 |
++| 数字失败重试 | 真实主窗口数字弹窗落盘失败时保持窗口/文本；解除故障后同一弹窗重试成功 | `test_main_window_digit_failure_preserves_input_for_retry` |
++
++新建 `tests/test_settings/test_persistence_review_regressions.py`（13项）及 `test_persistence_window_integration.py`（2项），扩展 `test_config/test_isolation.py`（4项生命周期回归）。修改前先执行最初12项行为回归，实际结果11 failed、1 passed，固化缺口；新增预览回滚场景后共13项。
++
++本轮还更新既有schema测试的计数：导航模式字段使总数为147、非快捷键57、Canvas29；保留其他字段/排除/默认值断言，未删除失败用例或跳过新场景。`anylabeling/config.py` 仅清理既有EOF多余空行。
++
++### 执行命令与结果
++
++环境：Windows、Python 3.12.12（`C:/Users/20441/.conda/envs/x-anylabeling-cu12/python.exe`）、`QT_QPA_PLATFORM=offscreen`、`PYTHONDONTWRITEBYTECODE=1`。普通沙箱仍阻止Qt DLL加载；本轮测试经受控提权执行，所有配置/INI/样本使用项目 `.tmp/`，未改真实用户配置。
++
++```text
++python -B .tmp/run_tests.py tests/test_settings/test_persistence_review_regressions.py -q -p no:cacheprovider --basetemp=.tmp/settings-followup-before
++# 修改实现前：11 failed, 1 passed
++
++python -B .tmp/run_tests.py tests/test_settings/test_persistence_review_regressions.py tests/test_config/test_transaction_hardening.py tests/test_settings/test_controller_persistence.py tests/test_settings/test_two_window_persistence.py -q -p no:cacheprovider --basetemp=.tmp/settings-followup-core
++46 passed in 17.64s
++
++python -B .tmp/run_tests.py tests/test_config/test_isolation.py tests/test_settings/test_schema.py -q -p no:cacheprovider --basetemp=.tmp/settings-followup-fixtures
++15 passed in 2.60s
++
++python -B .tmp/run_tests.py tests/test_settings/test_persistence_window_integration.py -vv --tb=short -p no:cacheprovider --basetemp=.tmp/settings-followup-windows
++2 passed in 14.14s
++
++python -B .tmp/run_tests.py tests/test_config tests/test_settings tests/test_labeling/test_canvas_display_retention.py tests/test_labeling/test_toolbar_display_actions.py tests/test_labeling/test_review_status_panel.py tests/test_models tests/test_auto_labeling -q --tb=short -p no:cacheprovider --basetemp=.tmp/settings-followup-final --junitxml=.tmp/settings-followup-final.xml
++401 passed, 2 failed, 1 skipped, 15 subtests passed in 177.94s
++
++python -B .tmp/run_tests.py tests/test_labeling/test_canvas_display_retention.py -vv --tb=short -o faulthandler_timeout=30 -p no:cacheprovider --basetemp=.tmp/settings-followup-navigation-diagnosis
++26 passed in 76.89s
++```
++
++最后一条是扩大回归长时间无新输出时启动的独立诊断：实际全部通过，没有线程阻塞或新失败，未把较慢初始化误记为功能挂起。扩大回归已正常结束。
++
++两项失败均为 `test_auto_labeling/test_remote_server.py` 的 `test_prediction_forwards_selected_classes` 与 `test_selecting_all_classes_sends_empty_filter_override`：测试保持Windows NamedTemporaryFile打开时，远端模型再次open该文件被拒绝，调用栈不经过本次设置持久化代码。用仅导入标准库的探针独立确认：
++
++```python
++import tempfile
++with tempfile.NamedTemporaryFile(suffix=".jpg") as sample:
++    with open(sample.name, "rb") as stream:
++        stream.read()
++# PermissionError（不导入任何项目代码也出现）
++```
++
++未修改远端模型或临时文件测试来掩盖该平台限制。唯一跳过为环境没有可用字体导致的 `test_font_family_applies_and_restores_without_restart`，不冒称字体应用已验证。完整JUnit结果保留在 `.tmp/settings-followup-final.xml`。
++
++### 静态检查与差异检查
++
++- Black检查8个本轮设置模块/fixture/测试文件通过；主窗口仅格式化本次数字管理器及即时偏好函数范围。
++- Flake8 `--select=E9,F821,F822,F823`（语法/未定义变量）通过。
++- 全量Flake8还报告大函数C901、旧字符串F541及长行等提示，未将其声称为全部通过，未对无关UI结构做大幅重排或增加忽略注释。
++- `git diff --check` 通过（仅现有CRLF/LF转换提示）；OpenSpec strict结果按本轮执行记录更新。
++
++### 兼容、回退与剩余事项
++
++YAML存储结构及数字整数键不变，不新增运行依赖；变化通知使用现有PyQt6，先释放文件锁再运行UI回调。无关临时覆盖继续仅当前会话生效。回退只撤销本轮增量，保留用户YAML、备份和其他功能工作区成果，禁止用旧备份自动恢复丢失映射。
++
++7.2仍需用户真实终端原启动方式的可见交互验收；本轮真实MainWindow为offscreen自动测试，不将其冒称为真实桌面手测。7.3已完成与画布恢复控件的自动联测；屏幕布局、主题和系统缩放手感未因此获得额外结论。
++
++7.4的验证文档、strict和增量交付材料已完成，但尚未独立提交。当前基线包含先于本轮的未提交功能及未跟踪文件，不能整份stage并冒充独立修复。`evidence/followup-20261105.patch` 与对应交付说明保留本轮工作区增量；它基于本轮实施前工作区，而非宣称可直接应用于HEAD。没有归档或修改用户历史配置。
++
+--- a/openspec/changes/fix-user-settings-persistence/review-20261105.md
++++ b/openspec/changes/fix-user-settings-persistence/review-20261105.md
+@@ -1,4 +1,6 @@
+ # 用户设置持久化：2026-11-05 实施后复核
++
++> 后续状态：本报告记录的是修复前发现。R1—R6现已按任务清单实施并补充正式回归；最新结果见 verification.md“后续修复 R1—R6”和 tasks.md。原复现场景与原始证据保留，不能将下文历史“尚未修复”作为当前状态。
+ 
+ ## 结论与范围
+ 
+--- a/anylabeling/config.py
++++ b/anylabeling/config.py
+@@ -553,4 +553,3 @@
+             value = value[part]
+         applied[".".join(str(part) for part in path)] = copy.deepcopy(value)
+     return applied
+-
+--- a/tests/test_settings/test_schema.py
++++ b/tests/test_settings/test_schema.py
+@@ -24,18 +24,18 @@
+ class TestSettingsSchema(unittest.TestCase):
+ 
+     def test_field_count(self):
+-        # 146 = 56 non-shortcut fields + 90 shortcut fields. The shortcut set
++        # 147 = 57 non-shortcut fields + 90 shortcut fields. The shortcut set
+         # gained ``shortcuts.redo`` with the dense-review redo stack and
+         # ``shortcuts.open_correction_metrics`` with the correction-metrics
+-        # workflow entry.
+-        self.assertEqual(len(SETTING_FIELDS), 146)
++        # workflow entry. The canvas group also includes wheel navigation mode.
++        self.assertEqual(len(SETTING_FIELDS), 147)
+ 
+     def test_shortcut_and_non_shortcut_count(self):
+         shortcut_fields = [
+             field for field in SETTING_FIELDS if field.primary == "Shortcuts"
+         ]
+         self.assertEqual(len(shortcut_fields), 90)
+-        self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 56)
++        self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 57)
+ 
+     def test_defaults_cover_all_keys(self):
+         defaults = defaults_map()
+@@ -117,7 +117,7 @@
+         )
+         for key in SETTINGS_SHORTCUT_KEYS_CORE:
+             self.assertIn(key, [field.key for field in shortcut_fields])
+-        self.assertEqual(len(canvas_fields), 28)
++        self.assertEqual(len(canvas_fields), 29)
+         canvas_keys = {field.key for field in canvas_fields}
+         self.assertIn("canvas.label_font_size", canvas_keys)
+         self.assertIn("canvas.crosshair.show", canvas_keys)
+--- /dev/null
++++ b/tests/test_settings/test_persistence_review_regressions.py
+@@ -0,0 +1,220 @@
++"""Behavioral regressions from the settings persistence review."""
++
++import copy
++import os
++import shutil
++import uuid
++from types import SimpleNamespace
++
++import pytest
++import yaml
++from PyQt6 import QtGui, QtWidgets
++
++from anylabeling import config as app_config
++from anylabeling import user_config
++from anylabeling.views.labeling.settings.controller import SettingsController
++from anylabeling.views.labeling.settings.runtime_applier import (
++    SettingsRuntimeApplier,
++)
++
++
++@pytest.fixture
++def profile():
++    root = os.path.join(
++        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
++        ".tmp",
++        "settings-review-regressions",
++        uuid.uuid4().hex,
++    )
++    os.makedirs(root, exist_ok=True)
++    controllers = []
++
++    def start(document=None, overrides=None, apply_callback=None):
++        target = os.path.join(root, "config.yaml")
++        write(
++            target,
++            app_config.get_default_config() if document is None else document,
++        )
++        app_config.set_work_directory(root)
++        config = app_config.get_config(target, overrides)
++        controller = SettingsController(
++            config,
++            apply_callback=apply_callback,
++            defer_runtime_apply=True,
++        )
++        controllers.append(controller)
++        return config, target, controller
++
++    yield start
++    for controller in controllers:
++        controller.close_session()
++        controller.deleteLater()
++    user_config.end_session()
++    shutil.rmtree(root, ignore_errors=True)
++
++
++def write(path, document):
++    with open(path, "w", encoding="utf-8") as stream:
++        yaml.safe_dump(document, stream, allow_unicode=True)
++
++
++def read(path):
++    with open(path, encoding="utf-8") as stream:
++        return yaml.safe_load(stream)
++
++
++def edit(controller, key, value):
++    controller.update_field(key, value, schedule_save=False)
++    controller.save_now()
++    assert controller.last_error is None
++
++
++def test_ui_can_save_a_default_field_absent_from_the_document(profile):
++    config, target, controller = profile({})
++    edit(controller, "canvas.epsilon", 9.5)
++    assert read(target) == {"canvas": {"epsilon": 9.5}}
++    assert config["canvas"]["epsilon"] == 9.5
++
++
++def test_ui_can_replace_one_transient_value_without_persisting_the_rest(
++    profile,
++):
++    config, target, controller = profile(
++        overrides={"canvas": {"epsilon": 9.9}, "labels": ["temporary"]}
++    )
++    edit(controller, "canvas.epsilon", 9.5)
++    edit(controller, "model_hub", "modelscope")
++    controller.reload_session()
++    assert config["canvas"]["epsilon"] == 9.5
++    assert config["labels"] == ["temporary"]
++    assert read(target)["canvas"]["epsilon"] == 9.5
++    assert read(target)["labels"] != ["temporary"]
++
++
++@pytest.mark.parametrize("external", [False, True])
++def test_peer_update_then_unrelated_save_advances_the_untouched_baseline(
++    profile, external
++):
++    config, target, controller = profile()
++    if external:
++        document = read(target)
++        document["canvas"]["label_font_size"] = 20
++        write(target, document)
++    else:
++        user_config.save_values({"canvas.label_font_size": 20})
++    edit(controller, "canvas.epsilon", 9.5)
++    assert controller.get_value("canvas.label_font_size") == 20
++    edit(controller, "canvas.label_font_size", 22)
++    assert read(target)["canvas"]["label_font_size"] == 22
++
++
++def test_a_modified_draft_keeps_its_original_persistent_baseline(profile):
++    config, target, controller = profile({})
++    controller.update_field("canvas.epsilon", 9.5, schedule_save=False)
++    user_config.save_values({"canvas.epsilon": 9.0})
++    controller.save_now()
++    assert isinstance(controller.last_error, user_config.ConfigConflict)
++    assert controller.get_value("canvas.epsilon") == 9.5
++    assert read(target)["canvas"]["epsilon"] == 9.0
++
++
++def test_unrelated_save_and_reopening_keep_a_runtime_failure_until_retry(
++    profile,
++):
++    unavailable = {"value": True}
++
++    def apply(key, value):
++        if key == "canvas.epsilon" and unavailable["value"]:
++            raise RuntimeError("runtime temporarily unavailable")
++
++    config, target, controller = profile(apply_callback=apply)
++    edit(controller, "canvas.epsilon", 9.5)
++    assert controller.apply_failed_keys == ["canvas.epsilon"]
++    edit(controller, "model_hub", "modelscope")
++    assert controller.apply_failed_keys == ["canvas.epsilon"]
++    controller.begin_session()
++    assert controller.apply_failed_keys == ["canvas.epsilon"]
++    controller.reload_session()
++    assert controller.apply_failed_keys == ["canvas.epsilon"]
++    unavailable["value"] = False
++    assert controller.retry_apply()
++    assert not controller.has_pending_apply()
++
++
++def test_reloading_an_unchanged_file_rolls_back_a_live_preview(profile):
++    applied = {}
++    config, target, controller = profile(
++        apply_callback=lambda key, value: applied.update({key: value})
++    )
++    key = "shape.line_width"
++    original = config["shape"]["line_width"]
++    controller._preview_keys.add(key)
++    controller.update_field(key, original + 1, schedule_save=False)
++    assert applied[key] == original + 1
++    controller.reload_session()
++    assert applied[key] == original
++    assert not controller.has_modified_fields()
++
++
++@pytest.mark.parametrize("removal", ["digit", "mapping", "file"])
++def test_reload_removes_deleted_fields_and_uses_template_defaults(
++    profile, removal
++):
++    document = copy.deepcopy(app_config.get_default_config())
++    document["digit_shortcuts"] = {
++        1: {"mode": "rectangle", "label": "car"},
++        2: {"mode": "polygon", "label": "road"},
++    }
++    config, target, controller = profile(document)
++    if removal == "digit":
++        del document["digit_shortcuts"][1]
++        expected = document["digit_shortcuts"]
++        write(target, document)
++    elif removal == "mapping":
++        del document["digit_shortcuts"]
++        expected = app_config.get_default_config()["digit_shortcuts"]
++        write(target, document)
++    else:
++        os.unlink(target)
++        expected = app_config.get_default_config()["digit_shortcuts"]
++    controller.reload_session()
++    assert config["digit_shortcuts"] == expected
++    if removal == "file":
++        assert not os.path.exists(target)
++
++
++@pytest.mark.parametrize("operation", ["save", "reload", "peer_save"])
++def test_adopted_shortcut_reaches_the_real_qaction(profile, operation):
++    config, target, controller = profile()
++    host = QtWidgets.QWidget()
++    action = QtGui.QAction(host)
++    action.setShortcut(config["shortcuts"]["open"])
++    runtime = SettingsRuntimeApplier(
++        SimpleNamespace(
++            _config=config,
++            auto_labeling_widget=SimpleNamespace(
++                update_shortcut_button_texts=lambda value: None
++            ),
++            label_instruction=SimpleNamespace(setText=lambda value: None),
++            get_labeling_instruction=lambda: "",
++        )
++    )
++    runtime._shortcut_action_map = {"shortcuts.open": action}
++    controller._apply_callback = lambda key, value: (
++        runtime.apply_change(key, value)
++        if key.startswith("shortcuts.")
++        else None
++    )
++    wanted = "Ctrl+Alt+Shift+F12"
++    if operation == "peer_save":
++        user_config.save_values({"shortcuts.open": wanted})
++    else:
++        document = read(target)
++        document["shortcuts"]["open"] = wanted
++        write(target, document)
++        if operation == "save":
++            edit(controller, "canvas.epsilon", 9.5)
++        else:
++            controller.reload_session()
++    assert action.shortcut().toString() == wanted
++    host.deleteLater()
+--- /dev/null
++++ b/tests/test_settings/test_persistence_window_integration.py
+@@ -0,0 +1,221 @@
++"""Real window integration for settings, digit drawing and canvas retention."""
++
++import json
++import os
++import shutil
++import uuid
++
++import pytest
++import yaml
++from PIL import Image
++from PyQt6 import QtCore, QtTest, QtWidgets
++
++from anylabeling import config as app_config, user_config
++from anylabeling.resources import resources  # noqa: F401
++from anylabeling.views.mainwindow import MainWindow
++from anylabeling.views.labeling.widgets.label_dialog import DigitShortcutDialog
++
++
++@pytest.fixture
++def workspace():
++    root = os.path.join(
++        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
++        ".tmp",
++        "settings-window-integration",
++        uuid.uuid4().hex,
++    )
++    os.makedirs(root, exist_ok=True)
++    target = os.path.join(root, "config.yaml")
++    with open(target, "w", encoding="utf-8") as stream:
++        stream.write("{}")
++    app = QtWidgets.QApplication.instance()
++    windows = []
++
++    def close(window):
++        view = window.labeling_widget.view
++        view.dirty = False
++        if view._settings_dialog is not None:
++            view._settings_dialog.close()
++        window.close()
++        for _attempt in range(100):
++            if not window.isVisible():
++                break
++            QtTest.QTest.qWait(10)
++        assert (
++            not window.isVisible()
++        ), "window did not complete its close lifecycle"
++        app.removeEventFilter(view)
++        window.deleteLater()
++        app.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
++        windows.remove(window)
++        user_config.end_session()
++
++    def open_window():
++        app_config.set_work_directory(root)
++        config = app_config.get_config(
++            target, {"auto_save": False, "labels": ["车辆"]}
++        )
++        window = MainWindow(app, config=config)
++        windows.append(window)
++        window.resize(1400, 900)
++        window.show()
++        app.processEvents()
++        return window
++
++    yield root, target, open_window, close
++    for window in list(windows):
++        close(window)
++    shutil.rmtree(root, ignore_errors=True)
++
++
++def save_digit_through_the_main_window(view, before_retry=None):
++    errors = []
++
++    def fill_dialog():
++        dialog = QtWidgets.QApplication.activeModalWidget()
++        try:
++            assert isinstance(dialog, DigitShortcutDialog)
++            combo = dialog._get_combo(1)
++            combo.setCurrentIndex(combo.findData("rectangle"))
++            dialog._get_label_edit(1).setText("车辆")
++            dialog.save_settings()
++            if before_retry is not None:
++                assert dialog.isVisible()
++                assert dialog._get_label_edit(1).text() == "车辆"
++                before_retry()
++                dialog.save_settings()
++            assert dialog.result() == QtWidgets.QDialog.DialogCode.Accepted
++        except Exception as error:
++            errors.append(error)
++            if dialog is not None:
++                dialog.reject()
++
++    QtCore.QTimer.singleShot(0, fill_dialog)
++    view.digit_shortcut_manager()
++    if errors:
++        raise errors[0]
++
++
++def test_real_entries_interleave_restart_and_keep_drawing_bindings(
++    workspace, monkeypatch
++):
++    root, target, open_window, close = workspace
++    first_image = os.path.join(root, "first.png")
++    next_image = os.path.join(root, "next.png")
++    Image.new("RGB", (200, 160), "white").save(first_image)
++    Image.new("RGB", (200, 160), "blue").save(next_image)
++    window = open_window()
++    view = window.labeling_widget.view
++    assert view.load_file(first_image)
++    view.open_settings_dialog()
++    controller = view._settings_controller
++    # Leave a draft open while the digit manager and canvas controls save.
++    controller.update_field("canvas.epsilon", 9.5, schedule_save=False)
++    save_digit_through_the_main_window(view)
++    view.actions.keep_prev_brightness.trigger()
++    view.canvas_adjustment.contrast_pin.click()
++    assert view.canvas_adjustment.brightness_pin.isChecked()
++    assert view.actions.keep_prev_contrast.isChecked()
++    wanted = "Ctrl+Alt+Shift+F12"
++    controller.update_field("shortcuts.open", wanted, schedule_save=False)
++    controller.update_field(
++        "canvas.wheel_navigation_mode", "traditional", schedule_save=False
++    )
++    controller.save_now()
++    assert controller.last_error is None
++    assert not controller.has_pending_apply()
++    assert view.actions.open.shortcut().toString() == wanted
++    assert view.canvas.wheel_navigation_mode == "traditional"
++    view._on_inline_brightness_contrast(70, 80)
++    view.canvas_adjustment.set_brightness_contrast(70, 80)
++    assert view.load_file(next_image)
++    assert view.canvas_adjustment.brightness_slider.value() == 70
++    assert view.canvas_adjustment.contrast_slider.value() == 80
++
++    model_file = os.path.join(root, "model.yaml")
++    model = {
++        "type": "yolov8",
++        "name": "settings-review-model",
++        "display_name": "Settings review model",
++        "config_file": model_file,
++        "classes": ["车辆"],
++    }
++    with open(model_file, "w", encoding="utf-8") as stream:
++        yaml.safe_dump(model, stream, allow_unicode=True)
++    manager = view.auto_labeling_widget.model_manager
++    assert manager.save_custom_models([model])
++    manager.load_model_configs()
++    assert any(
++        item["config_file"] == model_file
++        for item in manager.get_model_configs()
++    )
++    close(window)
++
++    window = open_window()
++    view = window.labeling_widget.view
++    assert view.actions.open.shortcut().toString() == wanted
++    assert view._config["canvas"]["epsilon"] == 9.5
++    assert view.canvas.wheel_navigation_mode == "traditional"
++    assert view.actions.keep_prev_brightness.isChecked()
++    assert view.canvas_adjustment.contrast_pin.isChecked()
++    assert view.drawing_digit_shortcuts[1] == {
++        "mode": "rectangle",
++        "label": "车辆",
++    }
++    assert any(
++        item["config_file"] == model_file
++        for item in view.auto_labeling_widget.model_manager.get_model_configs()
++    )
++    assert view.load_file(first_image)
++    canvas = view.canvas
++    canvas.setFocus()
++    QtTest.QTest.keyClick(canvas, QtCore.Qt.Key.Key_1)
++    assert canvas.drawing() and canvas.create_mode == "rectangle"
++    assert view.digit_to_label == "车辆"
++    for x, y in ((20, 30), (100, 110)):
++        point = (
++            QtCore.QPointF(x, y) + canvas.offset_to_center()
++        ) * canvas.scale
++        QtTest.QTest.mouseClick(
++            canvas, QtCore.Qt.MouseButton.LeftButton, pos=point.toPoint()
++        )
++    assert len(canvas.shapes) == 1
++    annotation = os.path.join(root, "first.json")
++    monkeypatch.setattr(view, "save_file_dialog", lambda: annotation)
++    view.save_file()
++    with open(annotation, encoding="utf-8") as stream:
++        saved = json.load(stream)
++    assert saved["shapes"][0]["label"] == "车辆"
++    assert saved["shapes"][0]["shape_type"] == "rectangle"
++    with open(target, encoding="utf-8") as stream:
++        persisted = yaml.safe_load(stream)
++    assert persisted["digit_shortcuts"][1]["label"] == "车辆"
++    assert persisted["shortcuts"]["open"] == wanted
++    assert (
++        persisted["keep_prev_brightness"] and persisted["keep_prev_contrast"]
++    )
++
++
++def test_main_window_digit_failure_preserves_input_for_retry(
++    workspace, monkeypatch
++):
++    root, target, open_window, close = workspace
++    view = open_window().labeling_widget.view
++    real_save = user_config.save_patch
++    warnings = []
++
++    def fail_save(patch):
++        raise user_config.ConfigWriteError("simulated disk failure")
++
++    monkeypatch.setattr(user_config, "save_patch", fail_save)
++    monkeypatch.setattr(
++        QtWidgets.QMessageBox, "warning", lambda *args: warnings.append(args)
++    )
++    save_digit_through_the_main_window(
++        view,
++        before_retry=lambda: monkeypatch.setattr(
++            user_config, "save_patch", real_save
++        ),
++    )
++    assert warnings
++    assert view.drawing_digit_shortcuts[1]["label"] == "车辆"

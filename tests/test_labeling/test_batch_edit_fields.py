@@ -348,10 +348,12 @@ class TestBatchEditUndo(unittest.TestCase):
         self.assertEqual(
             [shape.label for shape in canvas.shapes], ["cat", "dog"]
         )
-        # The widget reloads the restored shapes, which pushes the state
-        # that makes the next undo possible again.
-        canvas.load_shapes(canvas.shapes)
+        # The widget reloads the restored shapes. ``restore_shape`` already
+        # restored the undo-stack invariant (and recorded the redo snapshot),
+        # so the reload must not push a second copy of the same state.
+        canvas.load_shapes(canvas.shapes, record_history=False)
         self.assertEqual(len(canvas.shapes_backups), before)
+        self.assertTrue(canvas.is_shape_redo_available)
         canvas.close()
 
     def test_label_attribute_resolution_preserves_exact_baseline(self) -> None:

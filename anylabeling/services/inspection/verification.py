@@ -6,8 +6,17 @@ import os.path as osp
 from dataclasses import dataclass
 from typing import Mapping, Optional
 
-from .manifest import load_file_snapshot, shape_collection_digest
-from .models import FileSnapshot, InspectionProfile, Manifest, RunReport
+from .manifest import file_digest, load_file_snapshot, shape_collection_digest
+from .models import (
+    FileSnapshot,
+    InspectionProfile,
+    Manifest,
+    RunReport,
+    config_rule_versions,
+    dataset_identity,
+    normalize_path,
+    output_identity,
+)
 from .profiles import RuleCatalog
 
 
@@ -41,6 +50,25 @@ def _shape_digest(file: FileSnapshot) -> str:
     return file.shape_digest or shape_collection_digest(file.shapes)
 
 
+def _normalized_digest(file: FileSnapshot) -> str:
+    return file.annotation_normalized_digest or _shape_digest(file)
+
+
+def _normalization_only(file: FileSnapshot, current: FileSnapshot) -> bool:
+    """Return whether only the serialized form changed, not the content.
+
+    Re-saving a file rewrites point order and formatting; the normalized
+    digest is identical in that case, so the report must stay valid instead
+    of being reported as an external modification.
+    """
+    return bool(
+        file.annotation_digest
+        and current.annotation_digest
+        and file.annotation_digest != current.annotation_digest
+        and _normalized_digest(file) == _normalized_digest(current)
+    )
+
+
 def _dimensions_changed(file: FileSnapshot, current: FileSnapshot) -> bool:
     return bool(
         (
@@ -56,6 +84,35 @@ def _dimensions_changed(file: FileSnapshot, current: FileSnapshot) -> bool:
     )
 
 
+def _report_image_digest_kind(file: FileSnapshot) -> str:
+    # Older reports stored a stat digest without recording the kind.
+    return file.image_digest_kind or ("stat" if file.image_digest else "")
+
+
+def _image_problem(
+    file: FileSnapshot,
+    current: FileSnapshot,
+    image_path: str,
+) -> tuple[str, str]:
+    """Compare image identity even when the report came from the canvas."""
+    if not file.image_digest:
+        return "stale", "报告缺少可核验的图片身份"
+    kind = _report_image_digest_kind(file)
+    actual = file_digest(image_path, content=(kind != "stat"))
+    if not actual:
+        return "stale", "图片缺失或不可读，无法核验图片身份"
+    if actual != file.image_digest:
+        return "stale", "图片内容已变化"
+    if (
+        file.image_orientation
+        and file.image_orientation != current.image_orientation
+    ):
+        return "stale", "图片 EXIF 方向已变化或无法核验"
+    if _dimensions_changed(file, current):
+        return "stale", "图片尺寸已变化"
+    return "", ""
+
+
 def _memory_problem(
     file: FileSnapshot, current: FileSnapshot
 ) -> tuple[str, str]:
@@ -69,20 +126,20 @@ def _memory_problem(
 
 
 def _disk_problem(
-    file: FileSnapshot, current: FileSnapshot
+    file: FileSnapshot,
+    current: FileSnapshot,
+    image_path: str,
 ) -> tuple[str, str]:
     if current.annotation_state != "present":
         return "stale", "标注缺失或损坏"
     if file.annotation_state == "memory":
-        if _shape_digest(file) != _shape_digest(current):
+        # The report was taken from unsaved canvas content: the disk
+        # annotation is not the recorded input and must not be compared.
+        return _image_problem(file, current, image_path)
+    if current.annotation_digest != file.annotation_digest:
+        if not _normalization_only(file, current):
             return "stale", "标注内容已变化"
-    elif current.annotation_digest != file.annotation_digest:
-        return "stale", "标注内容已变化"
-    if file.image_digest and current.image_digest != file.image_digest:
-        return "stale", "图片内容已变化"
-    if _dimensions_changed(file, current):
-        return "stale", "图片尺寸已变化"
-    return "", ""
+    return _image_problem(file, current, image_path)
 
 
 def _read_disk_file(
@@ -99,6 +156,7 @@ def _read_disk_file(
             report.output_root or output_dir,
             relative_path=file.relative_path,
             annotation_path=file.annotation_path,
+            read_orientation=True,
         )
     except (OSError, TypeError, ValueError):
         return None
@@ -128,22 +186,34 @@ def _verify_files(
         relative = file.relative_path
         memory = memory_files.get(relative)
         disk = _read_disk_file(report, file, dataset_root, output_dir)
+        image_path = file.image_path or osp.join(
+            manifest.dataset_root or dataset_root, relative
+        )
+        if file.annotation_state == "memory" and memory is None:
+            stale_files.add(relative)
+            reasons.append(
+                f"{relative} 报告来自未保存画布，当前画布不在此文件，无法核验"
+            )
+            continue
         if memory is not None:
             current_files[relative] = memory
-            if file.annotation_state != "memory":
-                if disk is None:
-                    stale_files.add(relative)
-                    reasons.append(f"{relative} 磁盘标注读取失败")
-                else:
-                    record(relative, *_disk_problem(file, disk))
             record(relative, *_memory_problem(file, memory))
+            if disk is None:
+                record(relative, "stale", "磁盘标注读取失败")
+                continue
+            if file.annotation_state != "memory":
+                record(relative, *_disk_problem(file, disk, image_path))
+            else:
+                # Memory report: the image identity still has to match the
+                # file on disk; the annotation content is covered above.
+                record(relative, *_image_problem(file, disk, image_path))
             continue
         if disk is None:
             stale_files.add(relative)
             reasons.append(f"{relative} 读取失败")
             continue
         current_files[relative] = disk
-        record(relative, *_disk_problem(file, disk))
+        record(relative, *_disk_problem(file, disk, image_path))
     return current_files, stale_files, pending_files, reasons
 
 
@@ -182,6 +252,46 @@ def _verify_issue_objects(
                     f"{relative} 对象身份已变化: " + ", ".join(missing)
                 )
     return stale_files, pending_files, reasons
+
+
+def report_context_summary(
+    report: RunReport, manifest: Optional[Manifest] = None
+) -> dict[str, object]:
+    """Return the fingerprints a restored report was produced from.
+
+    The summary covers annotation content, image boundary/orientation,
+    effective configuration and rule implementation versions so a caller
+    can show exactly what an old conclusion depends on.
+    """
+    files: list[dict[str, object]] = []
+    source = manifest if manifest is not None else None
+    for file in (source.files if source is not None else ()):  # type: ignore[union-attr]
+        files.append(
+            {
+                "relative_path": file.relative_path,
+                "annotation_state": file.annotation_state,
+                "annotation_digest": file.annotation_digest,
+                "annotation_normalized_digest": _normalized_digest(file),
+                "image_digest": file.image_digest,
+                "image_digest_kind": file.image_digest_kind,
+                "image_width": file.image_width,
+                "image_height": file.image_height,
+                "image_orientation": file.image_orientation,
+            }
+        )
+    return {
+        "run_id": report.run_id,
+        "dataset_root": normalize_path(report.dataset_root),
+        "output_root": output_identity(report.output_root),
+        "dataset_key": dataset_identity(report.dataset_root),
+        "manifest_fingerprint": report.manifest_fingerprint,
+        "config_digest": report.config_digest,
+        "profile_fingerprint": report.profile_snapshot.get(
+            "profile_fingerprint", ""
+        ),
+        "rule_versions": config_rule_versions(report.profile_snapshot),
+        "files": files,
+    }
 
 
 def _verify_profile(
@@ -247,20 +357,31 @@ def verify_report_context(
     reasons: list[str] = []
     stale_files: set[str] = set()
     pending_files: set[str] = set()
+    report_dataset = normalize_path(report.dataset_root)
+    current_dataset = normalize_path(dataset_root)
     dataset_changed = bool(
-        report.dataset_root
-        and dataset_root
-        and osp.abspath(report.dataset_root) != osp.abspath(dataset_root)
+        report_dataset
+        and current_dataset
+        and report_dataset != current_dataset
     )
+    if not report_dataset:
+        reasons.append("报告缺少数据集身份，无法核验数据集范围")
     if dataset_changed:
         reasons.append("数据集根与报告不一致")
-    output_changed = bool(
-        report.output_root
-        and output_dir
-        and osp.abspath(report.output_root) != osp.abspath(output_dir)
-    )
+    # Normalize the default ("annotations beside images") identity before
+    # comparing, so an explicit output root that is later cleared is a
+    # change instead of being treated as "both empty".
+    report_output = output_identity(report.output_root)
+    current_output = output_identity(output_dir)
+    output_changed = report_output != current_output
     if output_changed:
         reasons.append("标注输出目录与报告不一致")
+    if report.dataset_root and not dataset_changed:
+        if dataset_identity(report.dataset_root) != dataset_identity(
+            dataset_root
+        ):
+            dataset_changed = True
+            reasons.append("数据集身份与报告不一致")
     current_files, file_stale, file_pending, file_reasons = _verify_files(
         report,
         manifest,

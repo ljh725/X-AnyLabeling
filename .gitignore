@@ -57,6 +57,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 mlruns/
+.tmp/
 
 # Translations
 *.mo
@@ -202,3 +203,17 @@ calibration_*.npy
 /benchmarks/canvas_drawing_20261029/profile/
 /reports/ui_review_20261103/.xanylabelingrc
 /reports/**/pytest-runtime/
+
+# Local test sandboxes, permission probes and installer staging
+/.pytest-run/
+/.pytest-shim-run/
+/.pytest-tmp/
+/pytest-tmp/
+/pytest-work*/
+/.probe*/
+/.dsh-q/
+/.installers/
+/acl-repair/
+
+# Editor recovery files (keep real source files visible)
+*~RF*.TMP

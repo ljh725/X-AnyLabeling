@@ -37,6 +37,9 @@ class PointFitMixin:
         self._point_fit_corner = None
         self._point_fit_box = None
         self._point_fit_inward = False
+        self._point_fit_source_target = None
+        self._point_fit_source_box = None
+        self._point_fit_pointer = None
         if not keep_press:
             self._point_fit_pressed = False
         self.update()
@@ -102,6 +105,21 @@ class PointFitMixin:
         )
         return clipped if self._point_fit_valid_box(clipped) else None
 
+    def _point_fit_candidate_source_changed(self, target: Shape) -> bool:
+        """Return whether the candidate no longer matches its source."""
+        return (
+            self._point_fit_source_target is not target
+            or self._point_fit_source_box is None
+            or self._point_fit_shape_box(target) != self._point_fit_source_box
+        )
+
+    def _point_fit_capture_geometry_changed(self, target: Shape) -> bool:
+        """Return whether a captured gesture lost its press-time geometry."""
+        return (
+            self._point_fit_box is not None
+            and self._point_fit_shape_box(target) != self._point_fit_box
+        )
+
     def _update_point_fit(
         self, shape: Shape, pos: QtCore.QPointF, inward: bool = False
     ) -> None:
@@ -134,6 +152,12 @@ class PointFitMixin:
                 corner if inward else OPPOSITE_CORNER[corner],
             )
         width, height = self.pixmap.width(), self.pixmap.height()
+        # Record the source of this candidate: the same target with different
+        # coordinates or a different target invalidates it.
+        self._point_fit_source_target = shape
+        self._point_fit_source_box = box
+        self._point_fit_pointer = QtCore.QPointF(pos)
+        self._point_fit_inward = bool(inward)
         self._point_fit_target = shape
         self._point_fit_cursor = QtCore.QPointF(
             max(0.0, min(pos.x(), width)),
@@ -179,6 +203,14 @@ class PointFitMixin:
         ):
             self._clear_point_fit(keep_press=self._point_fit_pressed)
             return self._point_fit_pressed
+        if (
+            self._point_fit_pressed
+            and self._point_fit_capture_geometry_changed(shape)
+        ):
+            # Another edit entry moved the captured rectangle: drop the
+            # gesture but keep its press so the release is consumed.
+            self._clear_point_fit(keep_press=True)
+            return True
         inward = bool(modifiers & Qt.KeyboardModifier.AltModifier)
         self._update_point_fit(shape, pos, inward)
         return True
@@ -268,16 +300,40 @@ class PointFitMixin:
         return True
 
     def _build_point_fit_preview(self) -> PointFitPreview | None:
-        """Snapshot the fit target, candidate, and shared-edge outline."""
+        """Snapshot the fit target, candidate, and shared-edge outline.
+
+        The pending candidate is only reused while its recorded source target
+        and original geometry still match the rectangle. A hover preview is
+        recomputed from the current geometry and the recorded pointer before
+        this snapshot; a captured gesture whose geometry changed elsewhere is
+        cancelled and its release stays consumed.
+        """
         if self._point_fit_cursor is None:
             return None
         target = self._point_fit_target
-        box = None
         if (
             target is not None
             and self._point_fit_selected_rectangle() is target
         ):
-            box = rectangle_box_from_points(target.points)
+            if self._point_fit_pressed:
+                if self._point_fit_capture_geometry_changed(target):
+                    self._clear_point_fit(keep_press=True)
+                    return None
+            elif self._point_fit_candidate_source_changed(target):
+                pointer = self._point_fit_pointer
+                if pointer is None:
+                    pointer = self._point_fit_cursor
+                self._update_point_fit(target, pointer, self._point_fit_inward)
+                target = self._point_fit_target
+                if self._point_fit_selected_rectangle() is not target:
+                    target = None
+        else:
+            target = None
+        box = (
+            rectangle_box_from_points(target.points)
+            if target is not None
+            else None
+        )
         candidate = self._point_fit_pending_box if box is not None else None
         outline_path = None
         if candidate is not None and candidate != box:

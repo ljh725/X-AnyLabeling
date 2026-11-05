@@ -217,6 +217,10 @@ Review the prompt before generating.</source>
 </context><context>
     <name>AutoLabelingWidget</name>
     <message>
+        <source>Remote server settings could not be saved; they apply to this session only.</source>
+        <translation>원격 서버 설정을 저장할 수 없습니다. 이 세션에서만 적용됩니다.</translation>
+    </message>
+    <message>
         <location filename="..\..\views\labeling\widgets\auto_labeling\auto_labeling.py" line="252" />
         <source>Output</source>
         <translation>출력</translation>
@@ -808,6 +812,34 @@ Review the prompt before generating.</source>
         <location filename="..\..\views\labeling\widgets\canvas_adjustment.py" line="347" />
         <source>Expand adjustments</source>
         <translation>조정 패널 펼치기</translation>
+    </message>
+    <message>
+        <source>Review</source>
+        <translation>검토</translation>
+    </message>
+    <message>
+        <source>Unchecked</source>
+        <translation>확인되지 않음</translation>
+    </message>
+    <message>
+        <source>Checked</source>
+        <translation>검토 통과</translation>
+    </message>
+    <message>
+        <source>Failed</source>
+        <translation>검토 불합격</translation>
+    </message>
+    <message>
+        <source>Set the review status of the current image.</source>
+        <translation>현재 이미지의 검토 상태를 설정합니다.</translation>
+    </message>
+    <message>
+        <source>Keep this value when switching images</source>
+        <translation>이미지를 전환해도 이 값을 유지합니다</translation>
+    </message>
+    <message>
+        <source>Scale the transparency of annotation fills. Borders, vertices and label text remain fully visible.</source>
+        <translation>주석 채우기의 투명도를 조정합니다. 테두리, 꼭짓점, 라벨 텍스트는 완전히 표시됩니다.</translation>
     </message>
 </context><context>
     <name>ChatMessage</name>
@@ -2413,444 +2445,362 @@ Review the prompt before generating.</source>
 </context><context>
     <name>DenseReviewConfigDialog</name>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="35" />
         <source>Dense Review Configuration</source>
-        <translation type="unfinished" />
+        <translation>밀집 검토 설정</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="46" />
         <source>Confusion batches (a label may appear in only one)</source>
-        <translation type="unfinished" />
+        <translation>혼동 클래스 배치(클래스당 한 배치)</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="51" />
         <source>Batch name</source>
-        <translation type="unfinished" />
+        <translation>배치 이름</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="51" />
         <source>Labels (comma separated)</source>
-        <translation type="unfinished" />
+        <translation>클래스(쉼표 구분)</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="57" />
         <source>Add batch</source>
-        <translation type="unfinished" />
+        <translation>배치 추가</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="59" />
         <source>Remove selected batch</source>
-        <translation type="unfinished" />
+        <translation>선택한 배치 삭제</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="68" />
         <source>Class rules (unknown rules stay conservative)</source>
-        <translation type="unfinished" />
+        <translation>클래스 규칙(알 수 없으면 보수적으로 처리)</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="74" />
         <source>Label</source>
-        <translation type="unfinished">레이블</translation>
+        <translation>클래스</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="75" />
         <source>Box rule</source>
-        <translation type="unfinished" />
+        <translation>상자 규칙</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="76" />
         <source>Category note</source>
-        <translation type="unfinished" />
+        <translation>클래스 설명</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="83" />
         <source>Add class</source>
-        <translation type="unfinished" />
+        <translation>클래스 추가</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="85" />
         <source>Remove selected class</source>
-        <translation type="unfinished" />
+        <translation>선택한 클래스 삭제</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="93" />
         <source>Default box rule</source>
-        <translation type="unfinished" />
+        <translation>기본 상자 규칙</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="99" />
         <source>Spatial omission grid</source>
-        <translation type="unfinished" />
+        <translation>공간 누락 격자</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="108" />
         <source>Columns</source>
-        <translation type="unfinished" />
+        <translation>열 수</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="110" />
         <source>Rows</source>
-        <translation type="unfinished" />
+        <translation>행 수</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="112" />
         <source>Overlap</source>
-        <translation type="unfinished" />
+        <translation>겹침</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="267" />
         <source>No confusion batch is configured; all objects will enter the other-pending queue.</source>
-        <translation type="unfinished" />
+        <translation>혼동 배치가 없어 모든 객체가 기타 대기열에 들어갑니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="274" />
         <source>Batches only control order; every label remains selectable.</source>
-        <translation type="unfinished" />
+        <translation>배치는 순서만 정하며 모든 클래스를 선택할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>可见框</source>
+        <translation>보이는 영역 상자</translation>
+    </message>
+    <message>
+        <source>完整框</source>
+        <translation>전체 영역 상자</translation>
+    </message>
+    <message>
+        <source>未知</source>
+        <translation>알 수 없음</translation>
+    </message>
+    <message>
+        <source>批次“{name}”没有配置类别</source>
+        <translation>배치 "{name}"에 클래스가 없습니다</translation>
+    </message>
+    <message>
+        <source>类别“{label}”同时出现在批次：{names}</source>
+        <translation>클래스 "{label}"이(가) 여러 배치에 있습니다: {names}</translation>
     </message>
 </context><context>
     <name>DenseReviewWorkspace</name>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="534" />
         <source>Dense Annotation Review</source>
-        <translation type="unfinished" />
+        <translation>밀집 주석 검토</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="569" />
         <source>开始/重建本轮</source>
-        <translation type="unfinished" />
+        <translation>라운드 시작/재구성</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="570" />
         <source>复核配置</source>
-        <translation type="unfinished" />
+        <translation>검토 설정</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="572" />
         <source>刷新</source>
-        <translation type="unfinished" />
+        <translation>새로 고침</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1795" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1749" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="574" />
         <source>关闭</source>
-        <translation type="unfinished" />
+        <translation>닫기</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="600" />
         <source>对象复核</source>
-        <translation type="unfinished" />
+        <translation>객체 검토</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="601" />
         <source>空间查漏</source>
-        <translation type="unfinished" />
+        <translation>공간 누락 검토</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="627" />
         <source>类别批次</source>
-        <translation type="unfinished" />
+        <translation>클래스 배치</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="643" />
         <source>审核范围</source>
-        <translation type="unfinished" />
+        <translation>검토 범위</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="646" />
         <source>类别 + 框</source>
-        <translation type="unfinished" />
+        <translation>클래스 + 상자</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="648" />
         <source>仅类别</source>
-        <translation type="unfinished" />
+        <translation>클래스만</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="649" />
         <source>仅框</source>
-        <translation type="unfinished" />
+        <translation>상자만</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="653" />
         <source>逐框模式（完成并下一个 / 暂跳下一个）</source>
-        <translation type="unfinished" />
+        <translation>객체별 모드(완료/건너뛰고 다음)</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="682" />
         <source>卡片上下文</source>
-        <translation type="unfinished" />
+        <translation>카드 주변 범위</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="688" />
         <source>应用</source>
-        <translation type="unfinished" />
+        <translation>적용</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="723" />
         <source>画布</source>
-        <translation type="unfinished" />
+        <translation>캔버스</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="726" />
         <source>聚焦当前目标</source>
-        <translation type="unfinished" />
+        <translation>현재 객체에 초점</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="727" />
         <source>显示全部标注</source>
-        <translation type="unfinished" />
+        <translation>모든 주석 표시</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="728" />
         <source>原图（无标注）</source>
-        <translation type="unfinished" />
+        <translation>원본 이미지(주석 없음)</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1813" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="729" />
         <source>看全图</source>
-        <translation type="unfinished" />
+        <translation>전체 이미지 보기</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="731" />
         <source>更多</source>
-        <translation type="unfinished" />
+        <translation>더 보기</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="737" />
         <source>完成本批并进入下一批</source>
-        <translation type="unfinished" />
+        <translation>배치 완료 후 다음</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="741" />
         <source>完成并下一个</source>
-        <translation type="unfinished" />
+        <translation>완료 후 다음</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="743" />
         <source>暂跳下一个</source>
-        <translation type="unfinished" />
+        <translation>건너뛰고 다음</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1624" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="744" />
         <source>标记疑难</source>
-        <translation type="unfinished" />
+        <translation>불확실 표시</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="767" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="746" />
         <source>解除疑难</source>
-        <translation type="unfinished" />
+        <translation>불확실 표시 해제</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="768" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="748" />
         <source>取消暂跳</source>
-        <translation type="unfinished" />
+        <translation>건너뛰기 해제</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1674" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="769" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="750" />
         <source>加入当前批次</source>
-        <translation type="unfinished" />
+        <translation>현재 배치에 추가</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="771" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="752" />
         <source>查看成员</source>
-        <translation type="unfinished" />
+        <translation>구성원 보기</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1693" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="772" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="753" />
         <source>重建剩余队列</source>
-        <translation type="unfinished" />
+        <translation>남은 대기열 재구성</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1766" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="773" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="754" />
         <source>并排比较</source>
-        <translation type="unfinished" />
+        <translation>나란히 비교</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="793" />
         <source>列</source>
-        <translation type="unfinished" />
+        <translation>열</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="797" />
         <source>行</source>
-        <translation type="unfinished" />
+        <translation>행</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="801" />
         <source>重叠</source>
-        <translation type="unfinished" />
+        <translation>겹침</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1968" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="807" />
         <source>重建区域计划</source>
-        <translation type="unfinished" />
+        <translation>영역 계획 재구성</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="836" />
         <source>完成区域并下一区</source>
-        <translation type="unfinished" />
+        <translation>영역 완료 후 다음</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="840" />
         <source>区域疑难</source>
-        <translation type="unfinished" />
+        <translation>영역을 불확실로 표시</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="843" />
         <source>解除区域疑难</source>
-        <translation type="unfinished" />
+        <translation>영역 불확실 표시 해제</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="845" />
         <source>区域暂跳</source>
-        <translation type="unfinished" />
+        <translation>영역 건너뛰기</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="847" />
         <source>取消区域暂跳</source>
-        <translation type="unfinished" />
+        <translation>영역 건너뛰기 해제</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="850" />
         <source>定位当前区域</source>
-        <translation type="unfinished" />
+        <translation>현재 영역으로 이동</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="864" />
         <source>查漏区域覆盖整幅图像。平移、缩放或浏览不会记为完成；新增框进入新增待处理，不会随区域完成而自动确认。</source>
-        <translation type="unfinished" />
+        <translation>영역은 이미지 전체를 포함합니다. 이동, 확대/축소나 탐색만으로 완료되지 않습니다. 새 상자는 대기 상태이며 영역 완료로 자동 확인되지 않습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="988" />
         <source>重建本轮</source>
-        <translation type="unfinished" />
+        <translation>라운드 재구성</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="989" />
         <source>重建本轮会按当前配置和当前对象重新建立队列；已保存的内容确认会尽量保留。是否继续？</source>
-        <translation type="unfinished" />
+        <translation>현재 설정과 객체로 대기열을 재구성하고 유효한 저장된 확인을 가능한 한 유지할까요?</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1004" />
         <source>本轮已开始</source>
-        <translation type="unfinished" />
+        <translation>라운드를 시작했습니다</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1040" />
         <source>复核配置已保存</source>
-        <translation type="unfinished" />
+        <translation>검토 설정을 저장했습니다</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1091" />
         <source>尚未开始本轮复核。</source>
-        <translation type="unfinished" />
+        <translation>이 검토 라운드를 아직 시작하지 않았습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1110" />
         <source>已确认 {done}/{total}</source>
-        <translation type="unfinished" />
+        <translation>확인됨 {done}/{total}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1115" />
         <source>对象 {total} · 全图待审 {pending} · 类别已确认 {category} · 框已确认 {geometry} · 疑难 {difficult} · 暂跳 {skipped} · 新增待处理 {new_pending}</source>
-        <translation type="unfinished" />
+        <translation>객체 {total} · 검토 대기 {pending} · 클래스 확인 {category} · 상자 확인 {geometry} · 불확실 {difficult} · 건너뜀 {skipped} · 신규 대기 {new_pending}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1130" />
         <source>查漏尚未开始</source>
-        <translation type="unfinished" />
+        <translation>누락 검토 미시작</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1135" />
         <source>查漏 {done}/{total}</source>
-        <translation type="unfinished" />
+        <translation>누락 검토 {done}/{total}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1140" />
         <source>{status} · {coverage}{unsaved}</source>
-        <translation type="unfinished" />
+        <translation>{status} · {coverage}{unsaved}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1143" />
         <source> · 复核进度待保存</source>
-        <translation type="unfinished" />
+        <translation> · 검토 진행 미저장</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1152" />
         <source>；</source>
-        <translation type="unfinished" />
+        <translation>; </translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="2071" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1328" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1158" />
         <source>类别✓</source>
-        <translation type="unfinished" />
+        <translation>클래스✓</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1160" />
         <source>类别待审</source>
-        <translation type="unfinished" />
+        <translation>클래스 검토 대기</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="2073" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1330" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1163" />
         <source>框✓</source>
-        <translation type="unfinished" />
+        <translation>상자✓</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1165" />
         <source>框待审</source>
-        <translation type="unfinished" />
+        <translation>상자 검토 대기</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1168" />
         <source>#{index} {label} · {status} · {category} · {geometry}</source>
-        <translation type="unfinished" />
+        <translation>#{index} {label} · {status} · {category} · {geometry}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1179" />
         <source>本类规则：{rules}</source>
-        <translation type="unfinished" />
+        <translation>클래스 규칙: {rules}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1184" />
         <source>本批没有对象</source>
-        <translation type="unfinished" />
+        <translation>이 배치에 객체가 없습니다</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1191" />
         <source>{batches} 批 · {labels} 类</source>
-        <translation type="unfinished" />
+        <translation>{batches} 배치 · {labels} 클래스</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1196" />
         <source>固定数字映射下仍可改为任意类别。当前类别统计：{stats}</source>
-        <translation type="unfinished" />
+        <translation>숫자 키 매핑을 유지하면서 모든 클래스로 변경할 수 있습니다. 현재 클래스 수: {stats}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1198" />
         <source>无</source>
-        <translation type="unfinished" />
+        <translation>없음</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1243" />
         <source>新增待处理</source>
-        <translation type="unfinished" />
+        <translation>신규 대기</translation>
     </message>
     <message>
         <location filename="..\..\views\labeling\dense_review\workspace.py" line="1318" />
@@ -2860,24 +2810,20 @@ Review the prompt before generating.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1331" />
         <source>待审</source>
-        <translation type="unfinished" />
+        <translation>검토 대기</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1333" />
         <source>图块加载失败</source>
-        <translation type="unfinished" />
+        <translation>썸네일 로드 실패</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1360" />
         <source>本批成员 {total} · 可确认 {candidate} · 排除 {excluded} · 屏外候选 {offscreen}</source>
-        <translation type="unfinished" />
+        <translation>배치 {total} · 확인 가능 {candidate} · 제외 {excluded} · 화면 밖 후보 {offscreen}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1371" />
         <source>完成本批并进入下一批（确认 {n}，保留 {m}）</source>
-        <translation type="unfinished" />
+        <translation>배치 완료 후 다음(확인 {n}, 보류 {m})</translation>
     </message>
     <message>
         <location filename="..\..\views\labeling\dense_review\workspace.py" line="1467" />
@@ -2885,184 +2831,330 @@ Review the prompt before generating.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1554" />
         <source>确认期间对象或范围发生变化，已刷新；请重新确认。</source>
-        <translation type="unfinished" />
+        <translation>확인 중 객체 또는 범위가 변경되어 새로 고쳤습니다. 다시 확인하세요.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1559" />
         <source>本批没有可确认对象；请先处理排除项。</source>
-        <translation type="unfinished" />
+        <translation>확인 가능한 객체가 없습니다. 제외 항목을 먼저 처리하세요.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1568" />
         <source>已确认 {n} 个；保留待处理 {m} 个。</source>
-        <translation type="unfinished" />
+        <translation>{n}개 확인, {m}개 대기 유지.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1591" />
         <source>当前对象已完成并前进。</source>
-        <translation type="unfinished" />
+        <translation>객체를 완료하고 다음으로 이동했습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1593" />
         <source>当前对象没有新的可确认内容。</source>
-        <translation type="unfinished" />
+        <translation>이 객체에 새로 확인할 내용이 없습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1613" />
         <source>当前对象已暂跳，仍保持待审。</source>
-        <translation type="unfinished" />
+        <translation>객체를 건너뛰고 검토 대기로 유지했습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1625" />
         <source>疑难原因（可留空）：</source>
-        <translation type="unfinished" />
+        <translation>사유(선택):</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1642" />
         <source>当前对象已标记疑难；解除前不会自动确认。</source>
-        <translation type="unfinished" />
+        <translation>객체를 불확실로 표시했습니다. 해제 전에는 자동 확인되지 않습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1650" />
         <source>已解除疑难；请重新确认相关维度。</source>
-        <translation type="unfinished" />
+        <translation>불확실 표시를 해제했습니다. 관련 항목을 다시 확인하세요.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1658" />
         <source>已取消暂跳；请重新确认相关维度。</source>
-        <translation type="unfinished" />
+        <translation>건너뛰기를 해제했습니다. 관련 항목을 다시 확인하세요.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1669" />
         <source>没有可加入的批次。</source>
-        <translation type="unfinished" />
+        <translation>추가할 배치가 없습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1675" />
         <source>选择目标批次：</source>
-        <translation type="unfinished" />
+        <translation>대상 배치 선택:</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1686" />
         <source>新增对象已加入批次；确认范围已更新。</source>
-        <translation type="unfinished" />
+        <translation>새 객체를 배치에 추가하고 확인 범위를 갱신했습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1694" />
         <source>将按当前类别和配置重新分配全部存活对象。已有内容确认会保留，但新增待处理队列会被清空。是否继续？</source>
-        <translation type="unfinished" />
+        <translation>현재 클래스와 설정으로 모든 객체를 재배치할까요? 유효한 확인은 유지되지만 신규 대기열은 비워집니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1707" />
         <source>剩余队列已按当前类别显式重建。</source>
-        <translation type="unfinished" />
+        <translation>현재 클래스로 남은 대기열을 다시 만들었습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1715" />
         <source>本批成员</source>
-        <translation type="unfinished" />
+        <translation>배치 구성원</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1721" />
         <source>短编号</source>
-        <translation type="unfinished" />
+        <translation>짧은 ID</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1722" />
         <source>对象 ID</source>
-        <translation type="unfinished" />
+        <translation>객체 ID</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1723" />
         <source>类别</source>
-        <translation type="unfinished" />
+        <translation>클래스</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1724" />
         <source>状态</source>
-        <translation type="unfinished" />
+        <translation>상태</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1725" />
         <source>疑难原因</source>
-        <translation type="unfinished" />
+        <translation>불확실 사유</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1760" />
         <source>请用 Ctrl 选择两个对象后再比较。</source>
-        <translation type="unfinished" />
+        <translation>Ctrl 키로 객체 두 개를 선택한 후 비교하세요.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1791" />
         <source>图块准备中…</source>
-        <translation type="unfinished" />
+        <translation>썸네일 준비 중…</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1799" />
         <source>比较不会复制标注或改变对象身份。</source>
-        <translation type="unfinished" />
+        <translation>비교는 주석을 복제하거나 객체 ID를 변경하지 않습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1813" />
         <source>返回局部</source>
-        <translation type="unfinished" />
+        <translation>상세 보기로 돌아가기</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1837" />
         <source>查漏计划尚未建立；重建区域计划后可开始。</source>
-        <translation type="unfinished" />
+        <translation>영역 계획이 없습니다. 다시 만들어 시작하세요.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1854" />
         <source>疑难</source>
-        <translation type="unfinished" />
+        <translation>불확실</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1856" />
         <source>暂跳</source>
-        <translation type="unfinished" />
+        <translation>건너뜀</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1858" />
         <source>已完成</source>
-        <translation type="unfinished" />
+        <translation>완료</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1860" />
         <source>待查</source>
-        <translation type="unfinished" />
+        <translation>영역 대기</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1887" />
         <source>区域 {done}/{total} 已完成 · 疑难 {difficult} · 暂跳 {skipped}。区域完成只代表用户检查声明，不代表机器保证无漏标。</source>
-        <translation type="unfinished" />
+        <translation>영역 {done}/{total} 완료 · 불확실 {difficult} · 건너뜀 {skipped}. 완료는 사용자의 확인 선언이며 누락이 없음을 기계가 보장하지 않습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1940" />
         <source>当前区域仍有疑难或暂跳，不能记为完成。</source>
-        <translation type="unfinished" />
+        <translation>현재 영역이 불확실 또는 건너뜀 상태여서 완료할 수 없습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1945" />
         <source>当前区域已完成；新框仍需单独确认。</source>
-        <translation type="unfinished" />
+        <translation>영역을 완료했습니다. 새 상자는 별도로 확인해야 합니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1969" />
         <source>重建会清除现有区域完成记录，是否继续？</source>
-        <translation type="unfinished" />
+        <translation>재구성하면 기존 영역 완료 기록이 지워집니다. 계속할까요?</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="2023" />
         <source>快捷键 {key} 与现有操作冲突，已禁用。</source>
-        <translation type="unfinished" />
+        <translation>단축키 {key}이(가) 기존 작업과 충돌하여 비활성화되었습니다.</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="2062" />
         <source>{action}（{key}）</source>
-        <translation type="unfinished" />
+        <translation>{action} ({key})</translation>
+    </message>
+    <message>
+        <source>不支持</source>
+        <translation>지원되지 않음</translation>
+    </message>
+    <message>
+        <source>不支持完整复核</source>
+        <translation>전체 검토 미지원</translation>
+    </message>
+    <message>
+        <source>加载失败</source>
+        <translation>로드 실패</translation>
+    </message>
+    <message>
+        <source>区域 {region} · {state}</source>
+        <translation>영역 {region} · {state}</translation>
+    </message>
+    <message>
+        <source>可见框</source>
+        <translation>보이는 영역 상자</translation>
+    </message>
+    <message>
+        <source>图块已就绪</source>
+        <translation>썸네일 준비 완료</translation>
+    </message>
+    <message>
+        <source>完整框</source>
+        <translation>전체 영역 상자</translation>
+    </message>
+    <message>
+        <source>对象不存在</source>
+        <translation>객체가 더 이상 존재하지 않습니다</translation>
+    </message>
+    <message>
+        <source>对象卡片列表</source>
+        <translation>객체 카드 목록</translation>
+    </message>
+    <message>
+        <source>对象卡片栏显示开关</source>
+        <translation>객체 카드 표시 전환</translation>
+    </message>
+    <message>
+        <source>小窗口时可单独收起对象卡片栏；主画布、待处理数量和批次操作保留。</source>
+        <translation>좁은 창에서 객체 카드만 접습니다. 캔버스, 대기 수와 배치 작업은 유지됩니다.</translation>
+    </message>
+    <message>
+        <source>小窗口时可单独收起类别批次栏；主画布、待处理数量和批次操作保留。</source>
+        <translation>좁은 창에서 배치 패널만 접습니다. 캔버스, 대기 수와 배치 작업은 유지됩니다.</translation>
+    </message>
+    <message>
+        <source>尚无区域计划
+点「重建区域计划」后显示</source>
+        <translation>영역 계획 없음
+영역 계획 재구성을 누르세요</translation>
+    </message>
+    <message>
+        <source>已确认</source>
+        <translation>확인됨</translation>
+    </message>
+    <message>
+        <source>手动隐藏</source>
+        <translation>수동 숨김</translation>
+    </message>
+    <message>
+        <source>批次快捷切换</source>
+        <translation>빠른 배치 전환</translation>
+    </message>
+    <message>
+        <source>收起类别批次栏后仍可直接切换批次。</source>
+        <translation>배치 패널을 접은 상태에서도 직접 배치를 전환할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>新增待审</source>
+        <translation>신규 검토 대기</translation>
+    </message>
+    <message>
+        <source>显示对象卡片栏</source>
+        <translation>객체 카드 표시</translation>
+    </message>
+    <message>
+        <source>显示类别批次栏</source>
+        <translation>클래스 배치 표시</translation>
+    </message>
+    <message>
+        <source>未填写类别规则说明</source>
+        <translation>클래스 규칙 설명 없음</translation>
+    </message>
+    <message>
+        <source>未完成</source>
+        <translation>미완료</translation>
+    </message>
+    <message>
+        <source>未知</source>
+        <translation>알 수 없음</translation>
+    </message>
+    <message>
+        <source>未知（跨类不保留框确认）</source>
+        <translation>알 수 없음(클래스 변경 시 상자 확인 무효화)</translation>
+    </message>
+    <message>
+        <source>本流程整图完成</source>
+        <translation>이미지 검토 작업 완료</translation>
+    </message>
+    <message>
+        <source>框：{rule}</source>
+        <translation>상자: {rule}</translation>
+    </message>
+    <message>
+        <source>类别批次栏显示开关</source>
+        <translation>클래스 배치 표시 전환</translation>
+    </message>
+    <message>
+        <source>类别：{note}</source>
+        <translation>클래스: {note}</translation>
+    </message>
+    <message>
+        <source>缺失</source>
+        <translation>없음</translation>
+    </message>
+    <message>
+        <source>重试</source>
+        <translation>다시 시도</translation>
+    </message>
+    <message>
+        <source>隐藏对象卡片栏</source>
+        <translation>객체 카드 숨기기</translation>
+    </message>
+    <message>
+        <source>隐藏类别批次栏</source>
+        <translation>클래스 배치 숨기기</translation>
+    </message>
+    <message>
+        <source>其他待处理</source>
+        <translation>기타 대기</translation>
+    </message>
+    <message>
+        <source>对象 #{index}（{label}）为首版不支持的非矩形形状</source>
+        <translation>객체 #{index}({label})는 지원되지 않는 비사각형입니다</translation>
+    </message>
+    <message>
+        <source>对象 #{index}（{label}）仍为暂跳</source>
+        <translation>객체 #{index}({label})는 건너뜀 상태입니다</translation>
+    </message>
+    <message>
+        <source>对象 #{index}（{label}）仍为疑难</source>
+        <translation>객체 #{index}({label})는 불확실 상태입니다</translation>
+    </message>
+    <message>
+        <source>对象 #{index}（{label}）无法呈现</source>
+        <translation>객체 #{index}({label})를 표시할 수 없습니다</translation>
+    </message>
+    <message>
+        <source>对象 #{index}（{label}）框待审</source>
+        <translation>객체 #{index}({label}) 상자 검토 대기</translation>
+    </message>
+    <message>
+        <source>对象 #{index}（{label}）类别待审</source>
+        <translation>객체 #{index}({label}) 클래스 검토 대기</translation>
+    </message>
+    <message>
+        <source>批次“{name}”没有配置类别</source>
+        <translation>배치 "{name}"에 클래스가 없습니다</translation>
+    </message>
+    <message>
+        <source>新增待处理还有 {count} 个对象</source>
+        <translation>신규 객체 {count}개가 대기 중입니다</translation>
+    </message>
+    <message>
+        <source>空间查漏尚未开始</source>
+        <translation>공간 누락 검토를 아직 시작하지 않았습니다</translation>
+    </message>
+    <message>
+        <source>类别“{label}”同时出现在批次：{names}</source>
+        <translation>클래스 "{label}"이(가) 여러 배치에 있습니다: {names}</translation>
+    </message>
+    <message>
+        <source>还有 {count} 个查漏区域为疑难</source>
+        <translation>누락 검토 영역 {count}개가 불확실합니다</translation>
+    </message>
+    <message>
+        <source>还有 {count} 个查漏区域未完成</source>
+        <translation>누락 검토 영역 {count}개가 미완료입니다</translation>
     </message>
 </context><context>
     <name>DescriptionEditor</name>
@@ -3191,6 +3283,14 @@ Review the prompt before generating.</source>
     </message>
 </context><context>
     <name>DigitShortcutDialog</name>
+    <message>
+        <source>Save Failed</source>
+        <translation>저장 실패</translation>
+    </message>
+    <message>
+        <source>The digit shortcuts could not be saved. The previous mapping is still active; retry or cancel.</source>
+        <translation>숫자 단축키를 저장할 수 없습니다. 이전 매핑이 계속 적용됩니다. 다시 시도하거나 취소하십시오.</translation>
+    </message>
     <message>
         <location filename="..\..\views\labeling\widgets\label_dialog.py" line="92" />
         <source>Digit Shortcut Manager</source>
@@ -4742,6 +4842,400 @@ Original images backed up to:
         <source>取消当前检查并关闭 Inspector？</source>
         <translation type="unfinished" />
     </message>
+    <message>
+        <source>保留两者</source>
+        <translation>둘 다 유지</translation>
+    </message>
+    <message>
+        <source>疑难暂存</source>
+        <translation>보류(검토 필요)</translation>
+    </message>
+    <message>
+        <source>批量删除问题框</source>
+        <translation>문제 박스 일괄 삭제</translation>
+    </message>
+    <message>
+        <source>按类别批量重标</source>
+        <translation>클래스별 일괄 재라벨</translation>
+    </message>
+    <message>
+        <source>撤销上次修改</source>
+        <translation>마지막 편집 실행 취소</translation>
+    </message>
+    <message>
+        <source>交接密集复核</source>
+        <translation>밀집 검토로 인계</translation>
+    </message>
+    <message>
+        <source>调整后接受</source>
+        <translation>조정 후 수락</translation>
+    </message>
+    <message>
+        <source>批量接受</source>
+        <translation>일괄 수락</translation>
+    </message>
+    <message>
+        <source>F5 开始检查 · Enter 定位选中问题</source>
+        <translation>F5 검사 시작 · Enter 선택한 문제로 이동</translation>
+    </message>
+    <message>
+        <source>密集复核不可用</source>
+        <translation>밀집 검토를 사용할 수 없습니다</translation>
+    </message>
+    <message>
+        <source>这两个快捷键只在 Inspector 窗口内生效，不占用画布编辑键。</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <source>0 条</source>
+        <translation>0개</translation>
+    </message>
+    <message>
+        <source>上一页</source>
+        <translation>이전 페이지</translation>
+    </message>
+    <message>
+        <source>下一页</source>
+        <translation>다음 페이지</translation>
+    </message>
+    <message>
+        <source>另存检查报告</source>
+        <translation>검사 보고서를 다른 위치에 저장</translation>
+    </message>
+    <message>
+        <source>未绑定</source>
+        <translation>미지정</translation>
+    </message>
+    <message>
+        <source>是</source>
+        <translation>예</translation>
+    </message>
+    <message>
+        <source>否</source>
+        <translation>아니요</translation>
+    </message>
+    <message>
+        <source>范围说明：</source>
+        <translation>범위: </translation>
+    </message>
+    <message>
+        <source>运行说明：</source>
+        <translation>실행 참고: </translation>
+    </message>
+    <message>
+        <source>{run} 开始检查 · {locate} 定位选中问题</source>
+        <translation>{run} 검사 시작 · {locate} 선택한 문제로 이동</translation>
+    </message>
+    <message>
+        <source>{shown} / {total} 条 · 当前 {current} · 待复查 {pending} · 未再检出 {history} · 过期 {stale}</source>
+        <translation>{shown} / {total}개 · 현재 {current} · 재검사 {pending} · 미검출 {history} · 만료 {stale}</translation>
+    </message>
+    <message>
+        <source>仅修改当前画布「{file}」中选中的问题对象：{ids}</source>
+        <translation>현재 캔버스의 {file}에서 선택한 문제 객체만 수정: {ids}</translation>
+    </message>
+    <message>
+        <source>候选属于 {path}，请先定位到该图片再接受。</source>
+        <translation>이 후보는 {path}에 속합니다. 해당 이미지를 연 후 수락하세요.</translation>
+    </message>
+    <message>
+        <source>原问题已不在当前队列；请查看运行记录后再决定。</source>
+        <translation>원래 문제가 현재 대기열에 없습니다. 실행 기록을 확인하세요.</translation>
+    </message>
+    <message>
+        <source>反馈未保存：另一窗口已更新。当前判断已保留在内存中，可稍后重试保存。</source>
+        <translation>다른 창에서 업데이트하여 피드백을 저장하지 못했습니다. 판단은 메모리에 유지됩니다. 나중에 다시 저장하세요.</translation>
+    </message>
+    <message>
+        <source>对象 {objects}；问题图片 {images}/{files}；未处理 {pending}；已处理 {handled}；过期/不可核验 {stale}</source>
+        <translation>객체 {objects}; 문제 이미지 {images}/{files}; 대기 {pending}; 처리 {handled}; 만료/검증 불가 {stale}</translation>
+    </message>
+    <message>
+        <source>已交接问题 {issue}；返回后仍定位原队列位置。</source>
+        <translation>문제 {issue}를 전달했습니다. 돌아오면 원래 대기열 위치를 복원합니다.</translation>
+    </message>
+    <message>
+        <source>已回到原问题队列位置。</source>
+        <translation>원래 문제 위치로 돌아왔습니다.</translation>
+    </message>
+    <message>
+        <source>已接受候选；画布中已选中新对象，可直接调整后按普通流程保存。</source>
+        <translation>후보를 수락하고 캔버스에서 선택했습니다. 필요하면 조정한 후 일반 방식으로 저장하세요.</translation>
+    </message>
+    <message>
+        <source>当前图片没有待处理的候选。</source>
+        <translation>현재 이미지에 대기 중인 후보가 없습니다.</translation>
+    </message>
+    <message>
+        <source>当前窗口不支持密集复核交接。</source>
+        <translation>이 창은 밀집 검토 전달을 지원하지 않습니다.</translation>
+    </message>
+    <message>
+        <source>批量接受 {accepted} 个候选；失败 {failed} 个。</source>
+        <translation>후보 {accepted}개 수락, {failed}개 실패.</translation>
+    </message>
+    <message>
+        <source>批量接受预览</source>
+        <translation>일괄 수락 미리보기</translation>
+    </message>
+    <message>
+        <source>报告数据集与当前数据集不一致，请重新检查。</source>
+        <translation>보고서 데이터셋이 현재 데이터셋과 다릅니다. 다시 검사하세요.</translation>
+    </message>
+    <message>
+        <source>报告缺少可恢复的方案快照，无法安全复查；请重新选择方案后运行检查。</source>
+        <translation>보고서에 복원 가능한 프로필 스냅샷이 없습니다. 프로필을 선택하고 다시 검사하세요.</translation>
+    </message>
+    <message>
+        <source>文件：{file}
+仅删除以下画布选中对象（共 {count} 个）：
+{ids}
+
+未选中的对象会保留；此操作可通过撤销恢复。</source>
+        <translation>파일: {file}
+선택한 다음 객체 {count}개만 삭제:
+{ids}
+
+다른 객체는 유지됩니다. 실행 취소할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>文件：{file}
+将接受 {count} 个候选（精确集合）：
+{ids}
+
+每个候选都会新增一个正式对象，均可撤销。</source>
+        <translation>파일: {file}
+다음 후보 {count}개를 수락:
+{ids}
+
+각 후보가 정식 객체로 추가되며 실행 취소할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>请先在画布中选中要删除/重标的问题对象</source>
+        <translation>삭제하거나 라벨을 변경할 문제 객체를 캔버스에서 선택하세요.</translation>
+    </message>
+    <message>
+        <source>请求图片 {requested}；问题图片 {images}；对象 {objects}；截断 {truncated}</source>
+        <translation>요청 이미지 {requested}; 문제 이미지 {images}; 객체 {objects}; 잘림 {truncated}</translation>
+    </message>
+    <message>
+        <source>打开报告保存位置</source>
+        <translation>보고서 저장 위치 열기</translation>
+    </message>
+    <message>
+        <source>停用</source>
+        <translation>사용 중지</translation>
+    </message>
+    <message>
+        <source>停用/启用方案</source>
+        <translation>프로필 사용 중지/활성화</translation>
+    </message>
+    <message>
+        <source>停用方案</source>
+        <translation>프로필 사용 중지</translation>
+    </message>
+    <message>
+        <source>全部来源</source>
+        <translation>모든 출처</translation>
+    </message>
+    <message>
+        <source>全部规则</source>
+        <translation>모든 규칙</translation>
+    </message>
+    <message>
+        <source>全部风险</source>
+        <translation>모든 위험</translation>
+    </message>
+    <message>
+        <source>内置检查模板不能直接修改。请先「复制方案」，再编辑副本；历史报告仍保留原有效配置。</source>
+        <translation>내장 템플릿은 직접 수정할 수 없습니다. 프로필을 복사한 후 편집하세요. 과거 보고서는 원래 설정을 유지합니다.</translation>
+    </message>
+    <message>
+        <source>内置模板只读</source>
+        <translation>내장 템플릿은 읽기 전용</translation>
+    </message>
+    <message>
+        <source>启用</source>
+        <translation>사용</translation>
+    </message>
+    <message>
+        <source>复查完成：{outcome}；来源 {sources} 个；保留其他图片问题 {preserved} 项。</source>
+        <translation>재검사 완료: {outcome}; 출처 {sources}개; 다른 이미지 문제 {preserved}개 유지.</translation>
+    </message>
+    <message>
+        <source>已批量删除 {count} 个问题对象；可撤销。</source>
+        <translation>문제 객체 {count}개를 일괄 삭제했습니다. 실행 취소할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>已批量重标 {count} 个对象；可撤销。</source>
+        <translation>객체 {count}개의 라벨을 일괄 변경했습니다. 실행 취소할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>已撤销上一次画布修改。</source>
+        <translation>마지막 캔버스 수정을 실행 취소했습니다.</translation>
+    </message>
+    <message>
+        <source>已暂存为疑难问题；可在筛选「需讨论」中继续处理。</source>
+        <translation>어려운 문제로 보류했습니다. '논의 필요' 필터에서 계속 처리할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>已记录「两者保留」：不会自动删除任何框；复查前仍显示该问题。</source>
+        <translation>'둘 다 유지'를 기록했습니다. 상자를 삭제하지 않으며 재검사 전까지 문제가 표시됩니다.</translation>
+    </message>
+    <message>
+        <source>当前图片没有可删除的问题对象。</source>
+        <translation>현재 이미지에 삭제할 수 있는 문제 객체가 없습니다.</translation>
+    </message>
+    <message>
+        <source>当前图片没有可重标的问题对象。</source>
+        <translation>현재 이미지에 라벨을 변경할 문제 객체가 없습니다.</translation>
+    </message>
+    <message>
+        <source>成功复查，未再检出</source>
+        <translation>재검사 성공, 다시 검출되지 않음</translation>
+    </message>
+    <message>
+        <source>批量删除</source>
+        <translation>일괄 삭제</translation>
+    </message>
+    <message>
+        <source>批量删除失败</source>
+        <translation>일괄 삭제 실패</translation>
+    </message>
+    <message>
+        <source>批量删除预览</source>
+        <translation>일괄 삭제 미리보기</translation>
+    </message>
+    <message>
+        <source>批量重标</source>
+        <translation>라벨 일괄 변경</translation>
+    </message>
+    <message>
+        <source>批量重标失败</source>
+        <translation>라벨 일괄 변경 실패</translation>
+    </message>
+    <message>
+        <source>批量重标预览</source>
+        <translation>라벨 일괄 변경 미리보기</translation>
+    </message>
+    <message>
+        <source>报告 {run_id} 无法恢复：{error}
+原文件保持未修改；该报告范围内的人工结论不能作为当前结论。</source>
+        <translation>보고서 {run_id}를 복원할 수 없습니다: {error}
+원본 파일은 변경하지 않습니다. 이 보고서의 판단은 현재 결론으로 사용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>改名</source>
+        <translation>이름 변경</translation>
+    </message>
+    <message>
+        <source>文件：{file}
+将删除 {count} 个未锁定对象（精确集合）：
+{ids}
+
+不会删除未列出的对象；可撤销。</source>
+        <translation>파일: {file}
+잠기지 않은 다음 객체 {count}개 삭제:
+{ids}
+
+목록에 없는 객체는 삭제하지 않습니다. 실행 취소할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>文件：{file}
+将把 {count} 个「{source}」对象改为「{target}」：
+{ids}
+
+其他类别、点、多边形与属性不变；可撤销。</source>
+        <translation>파일: {file}
+'{source}' 객체 {count}개를 '{target}'(으)로 변경:
+{ids}
+
+다른 라벨, 점, 다각형 및 속성은 유지됩니다. 실행 취소할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>新名称：</source>
+        <translation>새 이름:</translation>
+    </message>
+    <message>
+        <source>方案 {name} 已{state}；历史报告不受影响。</source>
+        <translation>프로필 {name}을(를) {state}했습니다. 과거 보고서는 유지됩니다.</translation>
+    </message>
+    <message>
+        <source>方案 {} 已停用；历史报告仍保留。本次仍要运行吗？</source>
+        <translation>프로필 {}은(는) 사용 중지되었습니다. 과거 보고서는 유지됩니다. 실행할까요?</translation>
+    </message>
+    <message>
+        <source>方案不可编辑</source>
+        <translation>프로필을 편집할 수 없음</translation>
+    </message>
+    <message>
+        <source>方案已停用</source>
+        <translation>프로필 사용 중지됨</translation>
+    </message>
+    <message>
+        <source>方案改名</source>
+        <translation>프로필 이름 변경</translation>
+    </message>
+    <message>
+        <source>方案无法保存</source>
+        <translation>프로필을 저장할 수 없음</translation>
+    </message>
+    <message>
+        <source>方案状态保存失败</source>
+        <translation>프로필 상태 저장 실패</translation>
+    </message>
+    <message>
+        <source>无法定位：文件未加载/切换被取消，或对象已删除、身份待重检；画布选择未改变。</source>
+        <translation>이동할 수 없습니다. 파일을 불러오지 못했거나 전환을 취소했거나 객체가 삭제되었거나 ID 재검사가 필요합니다. 캔버스 선택은 유지됩니다.</translation>
+    </message>
+    <message>
+        <source>无法核验，保留原问题</source>
+        <translation>검증 불가, 원래 문제 유지</translation>
+    </message>
+    <message>
+        <source>未再检出</source>
+        <translation>다시 검출되지 않음</translation>
+    </message>
+    <message>
+        <source>未找到原问题，已保留队列</source>
+        <translation>원래 문제를 찾지 못했습니다. 대기열은 유지했습니다</translation>
+    </message>
+    <message>
+        <source>没有可撤销的编辑。</source>
+        <translation>실행 취소할 수정이 없습니다.</translation>
+    </message>
+    <message>
+        <source>源类别（仅当前图片问题对象）：</source>
+        <translation>원래 라벨(현재 이미지의 문제 객체만):</translation>
+    </message>
+    <message>
+        <source>编辑规则</source>
+        <translation>규칙 편집</translation>
+    </message>
+    <message>
+        <source>该方案没有可写的本地文件，请重新复制或导入。</source>
+        <translation>이 프로필에는 쓰기 가능한 로컬 파일이 없습니다. 복사하거나 다시 가져오세요.</translation>
+    </message>
+    <message>
+        <source>重新检出，已回到待处理</source>
+        <translation>다시 검출되어 대기 상태로 돌아감</translation>
+    </message>
+    <message>
+        <source>（已停用）</source>
+        <translation>(사용 중지)</translation>
+    </message>
+    <message>
+        <source>查看规则与参数</source>
+        <translation>규칙 및 매개변수 보기</translation>
+    </message>
+    <message>
+        <source>扫描文件 {done}/{total}: {path}</source>
+        <translation>파일 스캔 {done}/{total}: {path}</translation>
+    </message>
+    <message>
+        <source>正在查找图片，已找到 {count} 个: {path}</source>
+        <translation>이미지 검색 중, {count}개 발견: {path}</translation>
+    </message>
 </context><context>
     <name>LabelDialog</name>
     <message>
@@ -5074,6 +5568,22 @@ Continue?</source>
     </message>
 </context><context>
     <name>LabelingWidget</name>
+    <message>
+        <source>Save Failed</source>
+        <translation>저장 실패</translation>
+    </message>
+    <message>
+        <source>Retry Save</source>
+        <translation>저장 다시 시도</translation>
+    </message>
+    <message>
+        <source>Discard Changes</source>
+        <translation>변경 사항 버리기</translation>
+    </message>
+    <message>
+        <source>Settings could not be written. Retry before quitting? Discarding keeps the previous saved configuration.</source>
+        <translation>설정을 기록할 수 없습니다. 종료하기 전에 다시 시도하시겠습니까? 버리면 마지막으로 저장된 설정이 유지됩니다.</translation>
+    </message>
     <message>
         <location filename="..\..\views\labeling\label_widget.py" line="2563" />
         <source>Rectangle Edge Editing</source>
@@ -5573,8 +6083,8 @@ Enter 키를 눌러 검색합니다.</translation>
     </message>
     <message>
         <location filename="..\..\views\labeling\label_widget.py" line="1138" />
-        <source>Select one polygon, then paint to add, hold Ctrl to erase, and use Ctrl+Wheel to resize the brush</source>
-        <translation>다각형 하나를 선택한 후 칠하여 영역을 추가하고, Ctrl을 누른 채 지우며, Ctrl+휠로 브러시 크기를 조절합니다</translation>
+        <source>Select one polygon, then paint to add, hold Ctrl to erase, and use Alt+Wheel to resize the brush</source>
+        <translation>다각형 하나를 선택한 후 칠하여 영역을 추가하고, Ctrl을 누른 채 지우며, Alt+휠로 브러시 크기를 조절합니다</translation>
     </message>
     <message>
         <location filename="..\..\views\labeling\label_widget.py" line="1147" />
@@ -5665,6 +6175,16 @@ Enter 키를 눌러 검색합니다.</translation>
         <location filename="..\..\views\labeling\label_widget.py" line="1217" />
         <source>Undo last add and edit of shape</source>
         <translation>도형의 마지막 추가 및 편집 실행 취소</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\label_widget.py" line="1227" />
+        <source>Redo</source>
+        <translation>다시 실행</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\label_widget.py" line="1231" />
+        <source>Redo the last undone shape edit</source>
+        <translation>실행 취소한 도형 편집을 다시 실행합니다</translation>
     </message>
     <message>
         <location filename="..\..\views\labeling\label_widget.py" line="1221" />
@@ -7426,6 +7946,30 @@ This warning will only be shown once. Do you want to continue?</source>
 
 이 경고는 한 번만 표시됩니다. 계속하시겠습니까?</translation>
     </message>
+    <message>
+        <source>Candidate image dimensions do not match</source>
+        <translation>후보 이미지 크기가 일치하지 않습니다</translation>
+    </message>
+    <message>
+        <source>Candidate coordinates are invalid</source>
+        <translation>후보 좌표가 잘못되었습니다</translation>
+    </message>
+    <message>
+        <source>Candidate image orientation does not match</source>
+        <translation>후보 이미지 방향이 일치하지 않습니다</translation>
+    </message>
+    <message>
+        <source>Candidate object identity is already in use</source>
+        <translation>후보 객체 ID가 이미 사용 중입니다</translation>
+    </message>
+    <message>
+        <source>Candidate image contents have changed</source>
+        <translation>후보 이미지 내용이 변경되었습니다</translation>
+    </message>
+    <message>
+        <source>Candidate association is ambiguous; recheck current objects</source>
+        <translation>후보 연결이 모호합니다. 현재 객체를 다시 확인하세요</translation>
+    </message>
 </context><context>
     <name>Model</name>
     <message>
@@ -7762,6 +8306,14 @@ This warning will only be shown once. Do you want to continue?</source>
     </message>
 </context><context>
     <name>ModelManager</name>
+    <message>
+        <source>Failed to save the custom model list. The model was loaded but will not be remembered after a restart; retry saving from Settings.</source>
+        <translation>사용자 정의 모델 목록을 저장하지 못했습니다. 모델은 로드되었지만 다시 시작하면 유지되지 않습니다. 설정에서 저장을 다시 시도하십시오.</translation>
+    </message>
+    <message>
+        <source>Failed to save the custom model list, so the model was not removed. Retry once the storage problem is fixed.</source>
+        <translation>사용자 정의 모델 목록을 저장하지 못해 모델이 제거되지 않았습니다. 저장소 문제를 해결한 후 다시 시도하십시오.</translation>
+    </message>
     <message>
         <location filename="..\..\services\auto_labeling\model_manager.py" line="643" />
         <source>Download cancelled.</source>
@@ -10092,6 +10644,66 @@ The main application remains available.</source>
 </context><context>
     <name>SettingsDialog</name>
     <message>
+        <source>Settings Conflict</source>
+        <translation>설정 충돌</translation>
+    </message>
+    <message>
+        <source>Reload Latest Values</source>
+        <translation>최신 값 다시 불러오기</translation>
+    </message>
+    <message>
+        <source>Keep Draft</source>
+        <translation>초안 유지</translation>
+    </message>
+    <message>
+        <source>Restore Last Valid Backup</source>
+        <translation>마지막 유효 백업 복원</translation>
+    </message>
+    <message>
+        <source>Keep Damaged File</source>
+        <translation>손상된 파일 유지</translation>
+    </message>
+    <message>
+        <source>Damaged Configuration</source>
+        <translation>설정 파일 손상</translation>
+    </message>
+    <message>
+        <source>Retry Save</source>
+        <translation>저장 다시 시도</translation>
+    </message>
+    <message>
+        <source>Discard Changes</source>
+        <translation>변경 사항 버리기</translation>
+    </message>
+    <message>
+        <source>Saved, but not applied: {message}</source>
+        <translation>저장했지만 적용하지 못했습니다: {message}</translation>
+    </message>
+    <message>
+        <source>Reloaded the saved values; the running session still could not apply every field.</source>
+        <translation>저장된 값을 다시 불러왔지만 이 세션에서는 아직 모든 항목을 적용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <source>The configuration file cannot be read safely, so it was left untouched. Restore the last valid backup ({path})? The damaged content is kept next to the file.</source>
+        <translation>설정 파일을 안전하게 읽을 수 없어 그대로 두었습니다. 마지막 유효 백업({path})을 복원하시겠습니까? 손상된 내용은 파일 옆에 보관됩니다.</translation>
+    </message>
+    <message>
+        <source>Other settings in this window or another instance changed these fields while this draft was open, so the draft was not saved.</source>
+        <translation>이 창의 다른 설정 또는 다른 인스턴스가 초안을 여는 동안 이 항목을 변경했기 때문에 초안이 저장되지 않았습니다.</translation>
+    </message>
+    <message>
+        <source>The last save did not complete. Retry before closing the settings window?</source>
+        <translation>마지막 저장이 완료되지 않았습니다. 설정 창을 닫기 전에 다시 시도하시겠습니까?</translation>
+    </message>
+    <message>
+        <source>Restored the last valid configuration backup</source>
+        <translation>마지막 유효 설정 백업을 복원했습니다</translation>
+    </message>
+    <message>
+        <source>Reloaded the latest settings</source>
+        <translation>최신 설정을 다시 불러왔습니다</translation>
+    </message>
+    <message>
         <location filename="..\..\views\labeling\settings\dialog.py" line="393" />
         <location filename="..\..\views\labeling\settings\dialog.py" line="106" />
         <source>Settings</source>
@@ -10558,6 +11170,14 @@ Changes will not be saved until you click Save.</source>
         <translation>실행 취소 백업 수</translation>
     </message>
     <message>
+        <source>Wheel Navigation Mode</source>
+        <translation>휠 탐색 모드</translation>
+    </message>
+    <message>
+        <source>Use 'direct' to zoom with the bare wheel or 'traditional' to scroll the view. Ctrl+Wheel always zooms.</source>
+        <translation>'direct'는 휠로 직접 확대/축소하고, 'traditional'은 보기를 스크롤합니다. Ctrl+휠은 항상 확대/축소합니다.</translation>
+    </message>
+    <message>
         <location filename="..\..\views\labeling\settings\schema.py" line="102" />
         <source>Enable Wheel Rectangle Editing</source>
         <translation>마우스 휠 사각형 편집 활성화</translation>
@@ -10759,8 +11379,8 @@ Changes will not be saved until you click Save.</source>
     </message>
     <message>
         <location filename="..\..\views\labeling\settings\schema.py" line="186" />
-        <source>Use Ctrl+Wheel to adjust rectangle geometry while editing. Disabled by default.</source>
-        <translation>편집 중 Ctrl+휠로 사각형의 모양을 조절합니다. 기본적으로 비활성화되어 있습니다.</translation>
+        <source>Use Alt+Wheel to adjust rectangle geometry while editing; Ctrl+Wheel always zooms. Disabled by default.</source>
+        <translation>편집 중 Alt+휠로 사각형의 모양을 조절합니다. Ctrl+휠은 항상 확대/축소합니다. 기본적으로 비활성화되어 있습니다.</translation>
     </message>
     <message>
         <location filename="..\..\views\labeling\settings\schema.py" line="190" />
@@ -11178,6 +11798,41 @@ Changes will not be saved until you click Save.</source>
         <translation>객체 붙여넣기</translation>
     </message>
     <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="348" />
+        <source>Redo</source>
+        <translation>다시 실행</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="55" />
+        <source>Open Dense Review Workspace</source>
+        <translation>밀집 검토 작업 공간 열기</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="57" />
+        <source>Dense Review: Complete Batch and Next</source>
+        <translation>밀집 검토: 배치 완료 후 다음</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="60" />
+        <source>Dense Review: Complete Object and Next</source>
+        <translation>밀집 검토: 객체 완료 후 다음</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="62" />
+        <source>Dense Review: Skip Object</source>
+        <translation>밀집 검토: 객체 건너뛰기</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="64" />
+        <source>Dense Review: Mark Difficult</source>
+        <translation>밀집 검토: 어려움으로 표시</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="67" />
+        <source>Dense Review: Toggle Full Image View</source>
+        <translation>밀집 검토: 전체 이미지 보기 전환</translation>
+    </message>
+    <message>
         <location filename="..\..\views\labeling\settings\schema.py" line="334" />
         <source>Remove Selected Point</source>
         <translation>선택한 포인트 제거</translation>
@@ -11284,6 +11939,14 @@ Changes will not be saved until you click Save.</source>
     <message>
         <source>Show full-image guides while drawing two-point rectangles.</source>
         <translation type="vanished">두 점 사각형을 그리는 동안 전체 이미지 가이드를 표시합니다.</translation>
+    </message>
+    <message>
+        <source>Inspector: Run Inspection</source>
+        <translation>Inspector: 검사 시작</translation>
+    </message>
+    <message>
+        <source>Inspector: Locate Selected Issue</source>
+        <translation>Inspector: 선택한 문제로 이동</translation>
     </message>
 </context><context>
     <name>SettingsRuntimeApplier</name>
@@ -12983,36 +13646,30 @@ Response preview:
 </context><context>
     <name>_CoverageGrid</name>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="393" />
         <source>已完成</source>
-        <translation type="unfinished" />
+        <translation>완료</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="394" />
         <source>疑难</source>
-        <translation type="unfinished" />
+        <translation>불확실</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="395" />
         <source>暂跳</source>
-        <translation type="unfinished" />
+        <translation>건너뜀</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="398" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="396" />
         <source>待查</source>
-        <translation type="unfinished" />
+        <translation>영역 대기</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="432" />
         <source>尚无区域计划
 点「重建区域计划」后显示</source>
-        <translation type="unfinished" />
+        <translation>영역 계획 없음
+영역 계획 재구성을 누르세요</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="489" />
         <source>区域 {region} · {state}</source>
-        <translation type="unfinished" />
+        <translation>영역 {region} · {state}</translation>
     </message>
 </context><context>
     <name>_PointCloudGLWidget</name>
@@ -13269,4 +13926,89 @@ Response preview:
         <source>Ready!</source>
         <translation type="unfinished" />
     </message>
-</context></TS>
+</context><context>
+    <name>CandidateAdjustmentDialog</name>
+    <message>
+        <source>调整后接受</source>
+        <translation>조정 후 수락</translation>
+    </message>
+    <message>
+        <source>类别</source>
+        <translation>라벨</translation>
+    </message>
+    <message>
+        <source>请输入类别和有效矩形坐标。</source>
+        <translation>라벨과 유효한 사각형 좌표를 입력하세요.</translation>
+    </message>
+</context>
+<context>
+    <name>ProfileRuleEditor</name>
+    <message>
+        <source>%s（本机未登记）</source>
+        <translation>%s(이 환경에 등록되지 않음)</translation>
+    </message>
+    <message>
+        <source>保存</source>
+        <translation>저장</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>취소</translation>
+    </message>
+    <message>
+        <source>启用</source>
+        <translation>사용</translation>
+    </message>
+    <message>
+        <source>规则</source>
+        <translation>규칙</translation>
+    </message>
+    <message>
+        <source>编辑检查方案：%s</source>
+        <translation>검사 프로필 편집: %s</translation>
+    </message>
+    <message>
+        <source>参数（JSON）</source>
+        <translation>매개변수(JSON)</translation>
+    </message>
+    <message>
+        <source>勾选启用规则；参数为 JSON 对象。保存后生成新版本，历史报告保留原有效配置。</source>
+        <translation>사용할 규칙을 선택하세요. 매개변수는 JSON 객체입니다. 저장하면 새 버전이 생성되며 과거 보고서는 원래 설정을 유지합니다.</translation>
+    </message>
+    <message>
+        <source>当前为只读查看；修改内置模板请先复制方案，再编辑副本。</source>
+        <translation>읽기 전용입니다. 기본 템플릿을 변경하려면 프로필을 복사한 후 사본을 편집하세요。</translation>
+    </message>
+</context>
+<context>
+    <name>_CompareDialog</name>
+    <message>
+        <source>关闭</source>
+        <translation>닫기</translation>
+    </message>
+    <message>
+        <source>图块准备中…</source>
+        <translation>썸네일 준비 중…</translation>
+    </message>
+    <message>
+        <source>图块加载失败</source>
+        <translation>썸네일 로드 실패</translation>
+    </message>
+    <message>
+        <source>图块已就绪</source>
+        <translation>썸네일 준비 완료</translation>
+    </message>
+    <message>
+        <source>并排比较</source>
+        <translation>나란히 비교</translation>
+    </message>
+    <message>
+        <source>比较不会复制标注或改变对象身份。</source>
+        <translation>비교는 주석을 복제하거나 객체 ID를 변경하지 않습니다.</translation>
+    </message>
+    <message>
+        <source>重试</source>
+        <translation>다시 시도</translation>
+    </message>
+</context>
+</TS>

@@ -66,13 +66,11 @@
 
 ## 未完成 / 未验证
 
-- 真实屏幕与授权密集样本的人工验收。
-- 性能：暖缓存首帧 p95 ≤150ms、GUI 心跳 p95 ≤50ms、拖框回退 ≤10%、缓存峰值；未实测。
-- 两位实际使用者对照试用、独立质量复核和减负结论。
-- `.ts/.qm` 翻译与四语言显示。
-- 训练导出/旧程序往返实测。
-- 卡片迟到/快速切图等延迟注入自动化。
-- 完整虚拟列表、小窗口专用收起控件、批次确认 redo（现有画布无重做栈）。
+- 真实屏幕与授权密集样本的人工验收；offscreen 截图不能替代真实字体度量与观感检查。
+- 性能（10.2）：暖缓存切换与 GUI 心跳在 30/300 对象均达标；拖框回退在 300 对象达标（+8.7%/+8.2%），30 对象未达标（+18.9%/+24.8%，绝对 p95 5.5–5.8ms），需真实屏幕与更高样本复核。
+- 两位实际使用者对照试用、独立质量复核和减负结论（10.4/10.5）。
+- ja_JP/ko_KR 仍有 413 条历史未翻译；打包产物的 `resources.py` 仍嵌入旧 `.qm`，需在具备兼容 rcc 的机器重生成。
+- 完整虚拟列表、小窗口专用收起控件（不属于本变更验收门槛）。
 
 ## 迁移与回退
 
@@ -91,3 +89,5 @@
 | 2026-11-02 | 修复第二轮 R2-1/R2-2 | 每条事务持有完整审核快照，重复内容不再覆盖早期确认；审核/编辑事务与快照统一保留最近100条 | 密集复核与三轮独立探针合跑 **85 passed in 44.80s**；见 [修复记录](../../reports/dense_review_workflow_20261102/ROUND2-UNDO-FIX-20261102.md) |
 | 2026-11-03 | UI 重构（P0） | 接入 `get_dialog_style()` + `get_workbench_qss()`；顶部进度条 + 单行工具条；批次改卡片；卡片流加状态色条/底板/角标并按宽度自适应列数；操作条单行化；查漏区域行渲染器 | `tests/test_dense_review` 78 passed；截图见 `reports/ui_review_20261103/`；详见 [实施记录](../../reports/ui_review_20261103/UI-IMPLEMENTATION.md) |
 | 2026-11-03 | UI 打磨（P2，`feat/ui-polish-p2`） | 查漏页新增网格示意图并与列表联动；五个快捷键改 `WindowShortcut`，按钮 tooltip 按实际绑定生成；主操作图标 | `tests/test_dense_review` 87 passed；见 [验证](../../openspec/changes/polish-inspector-dense-review-ui/verification.md) 与 [P2 实施记录](../../reports/ui_review_20261103/UI-P2-IMPLEMENTATION.md) |
+| 2026-11-03 | 补齐剩余验收项 | 重做栈与统一 LIFO 历史（`Ctrl+Shift+Z`）；四语言翻译与 `load_translator` 磁盘回退；自制 7 场景样本与生成器；延迟注入、训练导出往返、翻译覆盖测试；性能基准与拖框让路（worker 解码、按 tick 限量、指针按下暂停卡片后台）；用户手册与截图 | `tests/test_dense_review` **123 passed**；`tests/test_canvas` 578 passed/1 基线失败；`tests/test_labeling` 192 passed/10 failed（8 基线+2 沙箱临时目录）；性能见 `perf_reports/dense_review/performance-20261103/`；10.2 部分达标，10.4/10.5 未做 |
+| 2026-11-05 | 按 11-04 复核补齐代码 | 在已有未提交的导航、虚拟卡片和异步比较实现上补齐逐框/暂跳跨批及保存游标顺序、查漏重开定位、图块任务/结果共同容量限制与取消、比较重试与清理；补四语言主体/动态提示及内嵌资源，修正性能终点和真实切图测量 | 完整结果与原始证据见 [实施记录](../../openspec/changes/add-dense-annotation-review-workflow/implementation-20261105.md)。当前 61/66 项勾选；最终离屏性能门槛通过，人工屏幕/质量试用和大范围 Qt 合跑问题仍保留，未归档 |

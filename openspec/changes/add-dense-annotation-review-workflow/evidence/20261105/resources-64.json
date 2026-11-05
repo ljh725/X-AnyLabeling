@@ -1,0 +1,3732 @@
+{
+  "30": {
+    "switches": 64,
+    "method": "normal load_file, two images, two outputs, close/reopen",
+    "trace": [
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 4,
+        "switch": 1,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 245432320
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 5,
+        "switch": 2,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 245510144
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 6,
+        "switch": 3,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 248692736
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 7,
+        "switch": 4,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 249602048
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 9,
+        "switch": 5,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 249610240
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 10,
+        "switch": 6,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 249610240
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 11,
+        "switch": 7,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 250990592
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 12,
+        "switch": 8,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 252235776
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 14,
+        "switch": 9,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 252235776
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 15,
+        "switch": 10,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 252243968
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 16,
+        "switch": 11,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 253112320
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 17,
+        "switch": 12,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 253960192
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 19,
+        "switch": 13,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 253984768
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 20,
+        "switch": 14,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 253980672
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 21,
+        "switch": 15,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 256262144
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 22,
+        "switch": 16,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 256897024
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 24,
+        "switch": 17,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 256897024
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 25,
+        "switch": 18,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 256897024
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 26,
+        "switch": 19,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 258506752
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 27,
+        "switch": 20,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 259379200
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 29,
+        "switch": 21,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 259379200
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 30,
+        "switch": 22,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 259379200
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 31,
+        "switch": 23,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 259784704
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 32,
+        "switch": 24,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 259989504
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 34,
+        "switch": 25,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 259997696
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 35,
+        "switch": 26,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 259997696
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 36,
+        "switch": 27,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 260804608
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 37,
+        "switch": 28,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 260943872
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 39,
+        "switch": 29,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 260943872
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 40,
+        "switch": 30,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 260943872
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 41,
+        "switch": 31,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 260943872
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 42,
+        "switch": 32,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 260943872
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 44,
+        "switch": 33,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 260943872
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 45,
+        "switch": 34,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 260943872
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 46,
+        "switch": 35,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 260943872
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 47,
+        "switch": 36,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 260947968
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 49,
+        "switch": 37,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 260947968
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 50,
+        "switch": 38,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 260947968
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 51,
+        "switch": 39,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 261238784
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 52,
+        "switch": 40,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 261746688
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 54,
+        "switch": 41,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 261746688
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 55,
+        "switch": 42,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 261746688
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 56,
+        "switch": 43,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 261881856
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 57,
+        "switch": 44,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 261881856
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 59,
+        "switch": 45,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 261881856
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 60,
+        "switch": 46,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 261881856
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 61,
+        "switch": 47,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 261881856
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 62,
+        "switch": 48,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 261881856
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 64,
+        "switch": 49,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 261881856
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 65,
+        "switch": 50,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 261881856
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 66,
+        "switch": 51,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 261976064
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 67,
+        "switch": 52,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 262221824
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 69,
+        "switch": 53,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 262221824
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 70,
+        "switch": 54,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 262221824
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 71,
+        "switch": 55,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 262221824
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 72,
+        "switch": 56,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 262246400
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 74,
+        "switch": 57,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 262246400
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 75,
+        "switch": 58,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 262246400
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 76,
+        "switch": 59,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 262246400
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 77,
+        "switch": 60,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 262275072
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 79,
+        "switch": 61,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 262275072
+      },
+      {
+        "entries": 5,
+        "limit": 64,
+        "bytes": 1133352,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 5,
+        "card_request_keys": 5,
+        "shape_items": 5,
+        "card_count": 5,
+        "resources": {
+          "rows": 5,
+          "icons": 5,
+          "provider_cache": 5,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 80,
+        "switch": 62,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 262275072
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 81,
+        "switch": 63,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 262324224
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 4074324,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 30,
+        "resources": {
+          "rows": 30,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 82,
+        "switch": 64,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\30\\lifecycle-output",
+        "rss_bytes": 262324224
+      }
+    ],
+    "bounded_graphical_resources": true,
+    "peak_rss_bytes": 262324224,
+    "memory_note": "RSS includes Qt/allocator caches; inspect warm trace for growth separately from discrete cache limits."
+  },
+  "300": {
+    "switches": 64,
+    "method": "normal load_file, two images, two outputs, close/reopen",
+    "trace": [
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 4,
+        "switch": 1,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 278507520
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 5,
+        "switch": 2,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 278724608
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 6,
+        "switch": 3,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 279871488
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 7,
+        "switch": 4,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 280391680
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 9,
+        "switch": 5,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 280023040
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 10,
+        "switch": 6,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 280875008
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 11,
+        "switch": 7,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 280596480
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 12,
+        "switch": 8,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 280629248
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 14,
+        "switch": 9,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 280793088
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 15,
+        "switch": 10,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 280838144
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 16,
+        "switch": 11,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281321472
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 17,
+        "switch": 12,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281481216
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 19,
+        "switch": 13,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 281563136
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 20,
+        "switch": 14,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 281567232
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 21,
+        "switch": 15,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281571328
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 22,
+        "switch": 16,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281571328
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 24,
+        "switch": 17,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 281571328
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 25,
+        "switch": 18,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 281997312
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 26,
+        "switch": 19,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281387008
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 27,
+        "switch": 20,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281735168
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 29,
+        "switch": 21,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 281935872
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 30,
+        "switch": 22,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 281604096
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 31,
+        "switch": 23,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281886720
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 32,
+        "switch": 24,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281915392
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 34,
+        "switch": 25,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 282075136
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 35,
+        "switch": 26,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 281505792
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 36,
+        "switch": 27,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281788416
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 37,
+        "switch": 28,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281509888
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 39,
+        "switch": 29,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 281792512
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 40,
+        "switch": 30,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 281001984
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 41,
+        "switch": 31,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281513984
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 42,
+        "switch": 32,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281513984
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 44,
+        "switch": 33,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 281698304
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 45,
+        "switch": 34,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 281526272
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 46,
+        "switch": 35,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281509888
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 47,
+        "switch": 36,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281661440
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 49,
+        "switch": 37,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 282095616
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 50,
+        "switch": 38,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 281370624
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 51,
+        "switch": 39,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 282042368
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 52,
+        "switch": 40,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 282042368
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 54,
+        "switch": 41,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 282247168
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 55,
+        "switch": 42,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 282247168
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 56,
+        "switch": 43,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 282247168
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 57,
+        "switch": 44,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 282263552
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 59,
+        "switch": 45,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 282263552
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 60,
+        "switch": 46,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 280993792
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 61,
+        "switch": 47,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 280993792
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 62,
+        "switch": 48,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281276416
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 64,
+        "switch": 49,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 281518080
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 65,
+        "switch": 50,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 281563136
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 66,
+        "switch": 51,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281563136
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 67,
+        "switch": 52,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281231360
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 69,
+        "switch": 53,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 281640960
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 70,
+        "switch": 54,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 281300992
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 71,
+        "switch": 55,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281874432
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 72,
+        "switch": 56,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281653248
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 74,
+        "switch": 57,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 281804800
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 75,
+        "switch": 58,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 281145344
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 76,
+        "switch": 59,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281817088
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 77,
+        "switch": 60,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 282050560
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 79,
+        "switch": 61,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": "",
+        "rss_bytes": 282529792
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1738560,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 50,
+        "resources": {
+          "rows": 50,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 80,
+        "switch": 62,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": "",
+        "rss_bytes": 281726976
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 81,
+        "switch": 63,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-0.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281726976
+      },
+      {
+        "entries": 18,
+        "limit": 64,
+        "bytes": 1467112,
+        "pending": 0,
+        "failed": 0,
+        "latest_requests": 18,
+        "card_request_keys": 18,
+        "shape_items": 18,
+        "card_count": 300,
+        "resources": {
+          "rows": 300,
+          "icons": 18,
+          "provider_cache": 18,
+          "pending_requests": 0,
+          "queued_results": 0,
+          "compare_dialogs": 0
+        },
+        "worker": {
+          "inflight": 0,
+          "outstanding": 0,
+          "limit": 32
+        },
+        "generation": 82,
+        "switch": 64,
+        "image": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\dataset\\lifecycle-1.png",
+        "output_dir": ".tmp\\dense-implementation-20261105\\resource-longrun\\300\\lifecycle-output",
+        "rss_bytes": 281726976
+      }
+    ],
+    "bounded_graphical_resources": true,
+    "peak_rss_bytes": 282529792,
+    "memory_note": "RSS includes Qt/allocator caches; inspect warm trace for growth separately from discrete cache limits."
+  }
+}

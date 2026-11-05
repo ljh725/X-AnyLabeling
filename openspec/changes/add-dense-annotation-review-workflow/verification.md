@@ -1,10 +1,12 @@
 # 密集标注复核工作流实施验证
 
-日期：2026-11-02（Asia/Shanghai）
-分支：`codex/refactor-data-inspector-workflow`
+> 当前状态以 [2026-11-05 实施与验证](implementation-20261105.md) 和 [tasks.md](tasks.md) 为准：代码补齐及自动化验证已推进，61/66 项勾选；人工和大范围合跑未决项仍未完成。下文为 2026-11-02 至 11-04 历史证据，原日期的“未实现/仅修改文档”等陈述不代表当前状态。
+
+日期：2026-11-02 起，2026-11-03 补齐；2026-11-04 文档复核（Asia/Shanghai）
+分支：`codex/refactor-data-inspector-workflow`（当前工作树 `codex/4.2.1-baseline-organization`）
 基线：`9a37c5474c390e93243e33a88e8232a19c833280`
 本地基线标签：`backup/add-dense-annotation-review-workflow-20261102`（已核验 SHA，尚未推送远端）
-状态：代码实施完成首版；自动化验证通过；人工试用、性能门槛、翻译导出和训练导出往返未完成。
+状态：首版已有实现与历史证据，整体验收未完成。2026-11-04 仅只读检查代码/测试/报告并修订 OpenSpec，未修改代码、未重跑产品或性能测试；当前缺口见 [review-20261104.md](review-20261104.md)。下文历史通过结果按其原日期、代码和范围解释。
 
 ## 环境
 
@@ -32,7 +34,7 @@
 
 数据写入标注 JSON 顶层可选 `xanylabeling_dense_review`；不写入 shape，不改变旧 `checked`/`review_status` 语义。
 
-## 自动化证据（本轮实际运行）
+## 历史自动化证据（2026-11-02/03；本次文档复核未重跑）
 
 | 检查 | 命令 | 结果 |
 | --- | --- | --- |
@@ -70,16 +72,28 @@
 - 事务及其快照共用最近100条历史上限，一起保留或淘汰，移除独立50条审核快照栈；达到上限后不会暴露缺失快照的审核撤销。
 - 强化状态模型及主窗口的两次移框撤销断言；增加50/51/99/100/101/151次审核变更、130条审核/编辑混合历史及画布内容未变的撤销回归。
 - 修改前原两项探针为 **2 failed in 2.80s**；修改后 `tests/test_dense_review` 与三轮独立探针合跑 **85 passed in 44.80s**。三个修改的 Python 文件通过 Black（79列）及 flake8。
-- 证据及完整命令见 [第二轮修复记录](../../../reports/dense_review_workflow_20261102/ROUND2-UNDO-FIX-20261102.md)，JUnit 见 [round2-fix-regression.xml](../../../reports/dense_review_audit_20261102/round2-fix-regression.xml)。任务3.6因 redo 未实现继续保持未完成；本轮不包含人工或性能验收。
+- 证据及完整命令见 [第二轮修复记录](../../../reports/dense_review_workflow_20261102/ROUND2-UNDO-FIX-20261102.md)，JUnit 见 [round2-fix-regression.xml](../../../reports/dense_review_audit_20261102/round2-fix-regression.xml)。截至 2026-11-02 任务3.6因 redo 未实现保持未完成；2026-11-03 补齐情况见下一节。该历史轮次不包含人工或性能验收。
+
+### 2026-11-03 补齐（重做、翻译、样本、延迟注入、导出往返）
+
+- **重做（3.6）**：画布新增 `shapes_redo` 快照栈，会话新增进度/内容重做流与共享 LIFO 顺序；`Ctrl+Z` / `Ctrl+Shift+Z`（设置可改键）。新编辑清空重做；画布快照保留 10 条、审核事务 100 条。`restore_shape` 现在自行恢复撤销栈不变式，撤销/重做后的列表刷新改用 `load_shapes(record_history=False)`。新增 5 项会话级与 3 项 GUI 回归（`test_redo_progress_restores_confirmation_and_cursor`、`test_redo_after_canvas_restores_review_state`、`test_new_progress_action_clears_redo`、`test_noop_confirm_keeps_redo_stream`、`test_mixed_undo_then_redo_restores_every_transaction`、`test_batch_confirmation_redo_restores_progress`、`test_canvas_edit_redo_restores_bounds_and_review_state`、`test_new_edit_clears_redo`）；`tests/test_labeling/test_batch_edit_fields.py` 的单步撤销断言同步到新契约。
+- **翻译（7.8）**：四语言 `.ts` 各 +9 条新文案（`LabelingWidget` 的 `Redo`/tooltip、`SettingsDialog` 的 `Redo` 与 6 条密集复核快捷键标签），并补齐 22 条此前仍是英文占位的 zh_CN 密集复核文案；`schema.py` 的 `_settings_translation_markers()` 注册了 7 条 SettingsDialog 字面量（原提取机制遗漏），`lrelease` 重编 `.qm`（en_US 296559 / zh_CN 221211 / ja_JP 205323 / ko_KR 205549 字节）。新增 `app.py::load_translator()`，源码环境优先磁盘 `.qm`、打包环境回退 `:/languages/...` 资源。新增 `tests/test_dense_review/test_translations.py`：**6 passed, 10 subtests**，覆盖四语言新文案、工作区代表文案与 zh_CN 无 unfinished。ja/ko 其余 413 条历史 backlog 未翻译（工作区在 ja/ko 下仍显示英文），见“未验证”。
+- **自制样本（1.3）**：新增 `scripts/generate_dense_review_samples.py`（确定性、`--check` 逐字节校验）与 `samples/dense_review/` 7 个场景（30 对象 6 类、12 全对、小目标遮挡、截断手臂、第三批错分、空图、混合形状）+ `manifest.json`/中文 `README.md`；新增 `tests/test_dense_review/test_samples.py` **8 passed**（计数/类别/ID、真实 `LabelFile` 零修复加载、真实 `DenseReviewSession` 批次成员与 `supported=False`）。
+- **延迟注入（9.3）**：新增 `tests/test_dense_review/test_delay_injection.py` 6 项：快速切图、快速切输出目录、旧边界迟到结果、迟到失败、背景扫描回填、关窗/取消切换；用假 executor/假 worker 确定性投递，未发现代际或状态污染缺陷。
+- **训练导出与旧程序往返（9.5）**：新增 `tests/test_dense_review/test_export_roundtrip.py` 5 项：进度命名空间只在顶层、旧 `checked`/`review_status` 与扩展字段保真、真实 `LabelConverter.custom_to_yolo` 导出仅 2 行数值字段、旧程序删除命名空间或修改标签后不恢复过期确认且覆盖部分失效。
+- **性能（10.1–10.3）**：新增 `scripts/benchmark_dense_review.py`（真实 MainWindow + 工作区，30/300 对象、冷/暖缓存、心跳、拖框、缓存有界性）与 `test_performance_smoke.py`。首次实测 30 对象拖框+后台卡片 +36.0%/+23.0%；定位为 GUI 线程 PNG 解码、每 tick 32 条卡片的图标/标签刷新及 worker 争用，随后改为 worker 解码、每 tick 8 条、指针按下期间暂停卡片后台与 worker 争用、合并标签刷新，并补充 `is_pointer_down` 与两个缩略图回归测试。复测（300 样本）：暖切换 16.5/31.7 ms、心跳 2.5/3.2 ms 通过；拖框回退 300 对象 +8.7%/+8.2% 通过，30 对象 +18.9%/+24.8% 未通过（绝对亚帧）。缓存有界性通过（峰值 30/64 与 64/64，无线性增长）。10.2 不写成已实现。
+- 汇总：`tests/test_dense_review` **123 passed in 53.06s**；`tests/test_canvas` **578 passed / 1 项基线失败**（`test_shape_label_keeps_fixed_screen_size_while_zooming`）；`tests/test_labeling` **192 passed / 10 failed**（8 项基线 + 2 项沙箱临时目录权限）；`tests/test_settings` 各文件通过，字段计数守卫更新为 146/90（新增 `shortcuts.redo` 与既有的 `shortcuts.open_correction_metrics`）；flake8/Black 通过。
 
 ### 未纳入通过结论
 
 - `tests/test_settings` 整个目录一次运行时，在 `test_dialog_layout` 之后出现原生访问冲突退出（exit 3221226505）。各文件单独运行通过；该组合运行的崩溃未确认属于本变更新增，不能记为通过。
 - 未重新运行全部历史版本或全部历史人工验收。
 
-## 规格 Scenario 映射
+## 历史主题级覆盖索引（不等于逐 Scenario 验收表）
 
-| 规格 | 自动化覆盖 |
+以下为原始主题索引，含缩略测试名和泛称；不能据此完成 9.1。逐 Scenario 的完整 node ID、人工步骤及实际结果仍待补齐，本轮新增场景也须纳入。
+
+| 规格主题 | 历史自动化指代 |
 | --- | --- |
 | 工作区可选/退出恢复 | `test_closing_workspace_restores_canvas_and_writes_nothing`、`test_display_modes_and_full_image_restore` |
 | 混淆批次互斥/规则 | `test_config_dialog_round_trip_and_validation`、模型 `test_conflicting_config_cannot_start` |
@@ -105,13 +119,32 @@
 
 - 真实屏幕上的卡片布局、缩略图观感、并排比较、快捷键和无障碍可用性。
 - 30 对象/6 类真实密集图、小目标、遮挡规则差异、框截断手臂等授权样本的人工验收。
-- 冷/暖缓存首帧 p95、GUI 心跳 p95、拖框 p95 相对基线、缓存峰值；未做性能实测，不能引用设计目标为已达成。
+- 性能门槛（10.2）未全部达标：按旧脚本口径，图内暖对象/批次切换与心跳数字在 30/300 对象均低于阈值；正确目标首帧可编辑终点尚未证明，切换验收未完成。拖框回退在 300 对象通过（+8.7% / +8.2%），**30 对象未通过**（+18.9% / +24.8%，绝对 p95 5.5–5.8 ms、p50 +0.08 ms）。修复与复测数据见 `perf_reports/dense_review/performance-20261103/SUMMARY.md` 的「修复后复测」；30 对象小基线下需真实屏幕与更高样本复核。
 - 两位实际使用者、顺序交叉对照组和独立质量复核；减负效果未验证。
-- `.ts/.qm` 翻译生成与四种语言显示；新增文案未完成翻译周期。
-- 训练导出/旧程序标签往返；仅确认新命名空间不写入 shape，未运行导出与旧程序实测。
-- 卡片迟到/快速切图/关闭窗口等延迟注入自动化；已实现代际检查，但没有专门注入测试。
-- 现有画布没有重做栈，批次确认的 redo 未实现。
-- 完整虚拟列表和小窗口专用收起控件；当前实现为懒加载缩略图 + 可调整布局。
+- `anylabeling/resources/resources.py` 仍嵌入 2026-11-02 的旧 `.qm`；本环境无兼容 `pyrcc6`，未重生成。源码运行改为优先读取磁盘 `.qm`，打包产物需在具备兼容 rcc 的机器重生成资源并回归后再发布。
+- ja_JP / ko_KR 仍有 413 条历史未翻译消息（含工作区卡片/配置对话框主体文案），运行时回退英文；本次只补齐本变更新增文案与 22 条 zh_CN 占位。
+- 四语言真实屏幕布局、字体度量和无障碍检查；offscreen 截图见 `images/dense_review/`，不能替代真实屏幕验收。
+- 完整虚拟列表和小窗口辅助区域收起仍未完成。当前为懒生成缩略图与布局调整；二者属于设计 D1/D5 和任务 4.1/5.3/5.5 的承诺，不能排除出验收门槛。
+
+## 2026-11-04 复核更正与剩余证据
+
+本节为当前判定；前文保留历史结果，不代表本轮重新执行。问题详情、静态路径及验收条件见 [review-20261104.md](review-20261104.md)。
+
+| 领域 | 已有证据可支持的范围 | 不能据此得出的结论 / 剩余工作 |
+| --- | --- | --- |
+| 批次导航 | 存在会话导航及单批次确认测试 | 跨批次列表/卡片/画布/确认范围一致；4.4 重开 |
+| 卡片与比较 | 可见缩略图懒生成、provider LRU、已缓存比较图 | 直接切批必然加载、冷比较图迟到更新、完整虚拟化及小窗口收起；4.1/5.3/5.5 重开 |
+| 翻译 | 中文及部分新文案/快捷键测试、磁盘 qm | 日/韩主体和打包资源、真实屏幕及无障碍全部可用；7.8 重开 |
+| 查漏恢复 | 状态含区域游标，存在纯状态保存恢复 | GUI 关闭重开后的区域位置、疑难/暂跳均正确；8.3 重开 |
+| 保存与冲突 | 保存失败内存保留、冲突函数检测 | 自动保存写入边界和真实冲突选择路径；新增 3.8/3.9 |
+| 异步与集成 | 假 worker 注入及历史分文件测试 | 真实线程退出安全、关闭后全部主要操作、当前合跑无崩溃；9.3/9.6 重开，新增 9.7 |
+| 导航性能 | offscreen navigate 加一次 pump 的旧耗时 | 正确目标首帧完成且可编辑，或真实切图性能；10.1 重开，10.2 仍未通过 |
+| 资源有界 | 同图对象遍历时 provider 图像条目/字节及模拟代际清空 | 正常多图/目录生命周期全部资源和进程内存稳定；10.3 重开 |
+| 减负与交付 | 自制样本、说明文档、历史 strict | 两位使用者真实效果与独立质量通过、所有承诺完成；10.4/10.5 保持未完成，11.3 重开 |
+
+特别更正：10.3 原注释“切换 90/300 次”实际为同图对象切换；脚本的 image_switch_reset 是模拟 generation 清空，不是真实图片加载。provider 的 QImage 字节峰值不等于卡片图标、在途队列或进程总内存。历史数据保留，不改写成未做过的实验。
+
+本轮检查：`openspec validate add-dense-annotation-review-workflow --strict` 通过；本变更目录 `git diff --check` 通过（清理任务 1.3 原有行尾空格后复验）。修改范围为本目录的 proposal、design、tasks、verification、三份增量规格及新增复核记录。功能、GUI、性能、翻译和人工验收均未在本轮执行，不因文档修改而关闭问题。
 
 ## 回退
 

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="6" time="17.804" timestamp="2026-11-05T15:15:54.901438+08:00" hostname="DESKTOP-RBDJ37M"><testcase classname="tests.test_dense_review.test_workspace_evidence" name="test_cross_batch_completion_keeps_views_in_sync" time="2.726" /><testcase classname="tests.test_dense_review.test_workspace_evidence" name="test_direct_batch_click_schedules_visible_thumbnails" time="2.669" /><testcase classname="tests.test_dense_review.test_workspace_evidence" name="test_card_view_virtualizes_and_bounds_resources" time="3.098" /><testcase classname="tests.test_dense_review.test_workspace_evidence" name="test_small_window_can_collapse_each_auxiliary_panel" time="2.684" /><testcase classname="tests.test_dense_review.test_workspace_evidence" name="test_compare_cold_cache_requests_updates_and_failures" time="2.617" /><testcase classname="tests.test_dense_review.test_workspace_evidence" name="test_spatial_region_state_restores_after_save_and_reopen" time="2.892"><failure message="AssertionError: assert None == (288.0, 216.0, 640.0, 480.0)&#10; +  where None = &lt;anylabeling.views.labeling.widgets.canvas.Canvas object at 0x000002B51BB65130&gt;.dense_review_region&#10; +    where &lt;anylabeling.views.labeling.widgets.canvas.Canvas object at 0x000002B51BB65130&gt; = &lt;anylabeling.views.labeling.label_widget.LabelingWidget object at 0x000002B51C134910&gt;.canvas&#10; +  and   (288.0, 216.0, 640.0, 480.0) = CoverageRegion(region_id='r01-01', row=1, column=1, rect=(288.0, 216.0, 640.0, 480.0), completed=False, difficult=False, skipped=True, baseline={}).rect">app = &lt;PyQt6.QtWidgets.QApplication object at 0x000002B51B4CD630&gt;
+open_window = &lt;function open_window.&lt;locals&gt;._open at 0x000002B51C1354E0&gt;
+
+    def test_spatial_region_state_restores_after_save_and_reopen(
+        app, open_window
+    ):
+        window = open_window(
+            [
+                _rectangle("A", "id1", 20, 20),
+                _rectangle("B", "id2", 120, 20),
+            ],
+            batches=(("A/B", ("A", "B")),),
+            rules=_label_rules("AB"),
+        )
+        app.processEvents()
+        widget = window.labeling_widget.view
+        workspace = widget.dense_review_workspace
+        session = widget.dense_review_session
+        workspace.tabs.setCurrentIndex(1)
+        app.processEvents()
+        plan = session.state.coverage
+        assert plan is not None
+    
+        workspace._complete_current_region()
+        app.processEvents()
+        difficult_id = session.state.coverage.current_region
+        workspace._set_current_region_state("difficult", True)
+        app.processEvents()
+        workspace._complete_current_region()
+        app.processEvents()
+        skipped_id = session.state.coverage.current_region
+        workspace._set_current_region_state("skipped", True)
+        app.processEvents()
+        saved_cursor = session.state.coverage.current_region
+        completed_before = {
+            region.region_id
+            for region in session.state.coverage.regions
+            if region.completed
+        }
+        assert completed_before
+    
+        assert widget._save_file(widget.get_label_file()) is True
+        assert widget.dirty is False
+        workspace.close()
+        app.processEvents()
+        assert widget.load_file(widget.filename)
+        app.processEvents()
+        widget.open_dense_review()
+        app.processEvents()
+        workspace = widget.dense_review_workspace
+        restored = widget.dense_review_session
+        workspace.tabs.setCurrentIndex(1)
+        app.processEvents()
+        coverage = restored.state.coverage
+        assert coverage is not None
+        assert coverage.current_region == saved_cursor
+        assert coverage.region(difficult_id).difficult is True
+        assert coverage.region(skipped_id).skipped is True
+        assert {
+            region.region_id for region in coverage.regions if region.completed
+        } == completed_before
+        current_item = workspace.region_list.currentItem()
+        assert current_item is not None
+        assert (
+            current_item.data(QtCore.Qt.ItemDataRole.UserRole) == saved_cursor
+        )
+        region = coverage.region(saved_cursor)
+&gt;       assert widget.canvas.dense_review_region == region.rect
+E       AssertionError: assert None == (288.0, 216.0, 640.0, 480.0)
+E        +  where None = &lt;anylabeling.views.labeling.widgets.canvas.Canvas object at 0x000002B51BB65130&gt;.dense_review_region
+E        +    where &lt;anylabeling.views.labeling.widgets.canvas.Canvas object at 0x000002B51BB65130&gt; = &lt;anylabeling.views.labeling.label_widget.LabelingWidget object at 0x000002B51C134910&gt;.canvas
+E        +  and   (288.0, 216.0, 640.0, 480.0) = CoverageRegion(region_id='r01-01', row=1, column=1, rect=(288.0, 216.0, 640.0, 480.0), completed=False, difficult=False, skipped=True, baseline={}).rect
+
+tests\test_dense_review\test_workspace_evidence.py:543: AssertionError</failure></testcase></testsuite></testsuites>

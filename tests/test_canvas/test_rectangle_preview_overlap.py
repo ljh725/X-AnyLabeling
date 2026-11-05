@@ -2,6 +2,9 @@
 
 import os
 from collections.abc import Iterator
+from functools import partial
+from types import SimpleNamespace
+from unittest import mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -22,6 +25,39 @@ from anylabeling.views.labeling.shape import Shape
 from anylabeling.views.labeling.widgets.canvas import Canvas
 
 BOX = (100.0, 100.0, 200.0, 200.0)
+
+
+@pytest.fixture
+def dirty_host(canvas):
+    """Use real host dirty handlers without loading a window or user files.
+
+    Only UI actions are stubs; signal routing and the dirty assignment run
+    through LabelingWidget's production methods. Autosave is disabled.
+    """
+    from anylabeling.views.labeling.label_widget import LabelingWidget
+
+    host = SimpleNamespace(
+        dirty=False,
+        correction_metrics=None,
+        dense_review_session=None,
+        actions=SimpleNamespace(
+            save=mock.Mock(), undo=mock.Mock(), redo=mock.Mock()
+        ),
+        _config={"auto_save": False},
+        _dense_review_undo_available=lambda: canvas.is_shape_restorable,
+        _dense_review_redo_available=lambda: canvas.is_shape_redo_available,
+        update_progress_title=mock.Mock(),
+    )
+    host.set_dirty = mock.Mock(wraps=partial(LabelingWidget.set_dirty, host))
+    committed = partial(LabelingWidget._on_geometry_committed, host)
+    canvas.shape_moved.connect(committed)
+    canvas.shape_rotated.connect(committed)
+    canvas.new_shape.connect(host.set_dirty)
+    host.moves = QtTest.QSignalSpy(canvas.shape_moved)
+    yield host
+    canvas.shape_moved.disconnect(committed)
+    canvas.shape_rotated.disconnect(committed)
+    canvas.new_shape.disconnect(host.set_dirty)
 
 
 @pytest.fixture(scope="module")
@@ -152,6 +188,79 @@ def start_fit(canvas: Canvas, point: tuple[float, float]) -> None:
     canvas._update_point_fit(
         canvas.shapes[0], QtCore.QPointF(*point)
     )
+
+
+def send_mouse(
+    canvas: Canvas,
+    kind: QtCore.QEvent.Type,
+    point: tuple[float, float],
+    *,
+    shift: bool = True,
+    alt: bool = False,
+    buttons: QtCore.Qt.MouseButton | None = None,
+) -> None:
+    """Send a real canvas mouse event at an image-space position."""
+    pos = (QtCore.QPointF(*point) + canvas.offset_to_center()) * canvas.scale
+    button = (
+        QtCore.Qt.MouseButton.NoButton
+        if kind == QtCore.QEvent.Type.MouseMove
+        else QtCore.Qt.MouseButton.LeftButton
+    )
+    if buttons is None:
+        buttons = (
+            button
+            if kind == QtCore.QEvent.Type.MouseButtonPress
+            else QtCore.Qt.MouseButton.NoButton
+        )
+    modifiers = QtCore.Qt.KeyboardModifier.NoModifier
+    if shift:
+        modifiers |= QtCore.Qt.KeyboardModifier.ShiftModifier
+    if alt:
+        modifiers |= QtCore.Qt.KeyboardModifier.AltModifier
+    event = QtGui.QMouseEvent(kind, pos, pos, button, buttons, modifiers)
+    {
+        QtCore.QEvent.Type.MouseMove: canvas.mouseMoveEvent,
+        QtCore.QEvent.Type.MouseButtonPress: canvas.mousePressEvent,
+        QtCore.QEvent.Type.MouseButtonRelease: canvas.mouseReleaseEvent,
+    }[kind](event)
+
+
+def nudge(canvas: Canvas, key: QtCore.Qt.Key) -> None:
+    """Send a real Shift+arrow keyboard edit with Shift held down.
+
+    ``QTest.keyClick`` synthesizes its own Shift press/release, which would
+    end the fit preview. These events keep the modifier pressed so only the
+    rectangle geometry changes between the two frames.
+    """
+    modifiers = QtCore.Qt.KeyboardModifier.ShiftModifier
+    canvas.keyPressEvent(
+        QtGui.QKeyEvent(QtCore.QEvent.Type.KeyPress, key, modifiers)
+    )
+    canvas.keyReleaseEvent(
+        QtGui.QKeyEvent(QtCore.QEvent.Type.KeyRelease, key, modifiers)
+    )
+
+
+def seed_pointer(canvas: Canvas) -> None:
+    """Click once so a keyboard nudge uses an in-image pointer origin.
+
+    ``Canvas.prev_point`` only follows presses, and a keyboard edit rejects
+    targets that would move the shape beyond the image border at the origin.
+    """
+    point = (150, 150)
+    send_mouse(
+        canvas, QtCore.QEvent.Type.MouseButtonPress, point, shift=False
+    )
+    send_mouse(
+        canvas, QtCore.QEvent.Type.MouseButtonRelease, point, shift=False
+    )
+
+
+def bounds(shape: Shape) -> tuple[float, float, float, float]:
+    """Return the rectangle bounds for assertions."""
+    xs = [point.x() for point in shape.points]
+    ys = [point.y() for point in shape.points]
+    return min(xs), min(ys), max(xs), max(ys)
 
 
 def snapshot(canvas: Canvas) -> tuple[list[dict], list[list[dict]]]:
@@ -633,3 +742,266 @@ def test_candidate_color_matches_the_plan(canvas: Canvas) -> None:
     preview = canvas._build_point_fit_preview()
     assert preview is not None and preview.candidate_differs
     assert preview.outline_path is not None
+
+
+def test_hover_preview_does_not_recompute_without_source_change(
+    canvas: Canvas,
+) -> None:
+    """A steady hover reuses its candidate instead of recomputing it."""
+    send_mouse(canvas, QtCore.QEvent.Type.MouseMove, (151.5, 120))
+    assert canvas._point_fit_pending_box == (100, 120, 151.5, 200)
+    with mock.patch.object(
+        canvas, "_update_point_fit", wraps=canvas._update_point_fit
+    ) as recompute:
+        render(canvas)
+    assert not recompute.called
+
+
+@pytest.mark.parametrize("show_masks", [False, True])
+def test_keyboard_nudge_recomputes_still_valid_hover_candidate(
+    canvas: Canvas, show_masks: bool
+) -> None:
+    """A nudge under a hover preview rebuilds the candidate from new bounds."""
+    canvas.show_masks = show_masks
+    canvas.cross_line_show = True
+    seed_pointer(canvas)
+    send_mouse(canvas, QtCore.QEvent.Type.MouseMove, (151.5, 120))
+    assert canvas._point_fit_pending_box == (100, 120, 151.5, 200)
+    assert not canvas._native_crosshair_enabled()
+    backups = len(canvas.shapes_backups)
+
+    nudge(canvas, QtCore.Qt.Key.Key_Left)
+    assert bounds(canvas.shapes[0]) == (99, 100, 199, 200)
+    # The keyboard edit is the only new undo step; previews add none.
+    assert len(canvas.shapes_backups) == backups + 1
+    nudge_snapshot = snapshot(canvas)
+
+    image = render(canvas)
+    assert canvas._point_fit_pending_box == (99, 120, 151.5, 200)
+    assert canvas._point_fit_source_box == (99, 100, 199, 200)
+    assert count_orange(image, [(151, y) for y in range(130, 190)]) > 0
+    assert count_ink(image, [(99, y) for y in range(130, 190)]) == 0
+    assert count_ink(image, [(x, 200) for x in range(110, 145)]) == 0
+    assert count_ink(image, [(x, 200) for x in range(160, 190)]) > 20
+    assert count_ink(image, [(x, 100) for x in range(110, 190)]) > 60
+    assert count_ink(image, [(199, y) for y in range(110, 190)]) > 60
+    assert snapshot(canvas) == nudge_snapshot
+    assert len(canvas.shapes_backups) == backups + 1
+
+    with mock.patch.object(
+        canvas, "_update_point_fit", wraps=canvas._update_point_fit
+    ) as recompute:
+        render(canvas)
+    assert not recompute.called
+
+
+@pytest.mark.parametrize("show_masks", [False, True])
+def test_keyboard_nudge_invalidates_hover_candidate(
+    canvas: Canvas, show_masks: bool
+) -> None:
+    """The stale orange candidate disappears once the nudge makes it invalid."""
+    canvas.show_masks = show_masks
+    canvas.cross_line_show = True
+    seed_pointer(canvas)
+    send_mouse(canvas, QtCore.QEvent.Type.MouseMove, (151.5, 120))
+    assert canvas._point_fit_pending_box == (100, 120, 151.5, 200)
+    assert not canvas._native_crosshair_enabled()
+    backups = len(canvas.shapes_backups)
+
+    nudge(canvas, QtCore.Qt.Key.Key_Right)
+    assert bounds(canvas.shapes[0]) == (101, 100, 201, 200)
+    assert len(canvas.shapes_backups) == backups + 1
+    nudge_snapshot = snapshot(canvas)
+
+    image = render(canvas)
+    assert canvas._point_fit_pending_box is None
+    assert canvas._point_fit_source_box == (101, 100, 201, 200)
+    assert canvas._native_crosshair_enabled()
+    assert count_orange(image, [(151, y) for y in range(130, 190)]) == 0
+    assert count_ink(image, [(x, 200) for x in range(111, 190)]) > 60
+    assert count_ink(image, [(101, y) for y in range(110, 190)]) > 60
+    assert count_ink(image, [(x, 100) for x in range(111, 191)]) > 60
+    assert count_ink(image, [(201, y) for y in range(110, 190)]) > 60
+    # The always-on crosshair paints at half opacity, so the invalid marker
+    # shows up as a light red blend rather than a fully opaque ring.
+    red = [
+        image.pixelColor(x, y)
+        for x in range(145, 158)
+        for y in range(114, 127)
+    ]
+    assert any(
+        color.red() > 200
+        and color.red() - color.green() > 40
+        and color.blue() > 100
+        for color in red
+    )
+    assert snapshot(canvas) == nudge_snapshot
+    assert len(canvas.shapes_backups) == backups + 1
+
+
+def test_keyboard_nudge_keeps_alt_hover_mode(canvas: Canvas) -> None:
+    """Recomputing an Alt hover keeps the inward candidate semantics."""
+    seed_pointer(canvas)
+    send_mouse(canvas, QtCore.QEvent.Type.MouseMove, (120, 120), alt=True)
+    assert canvas._point_fit_pending_box == (100, 100, 120, 120)
+
+    nudge(canvas, QtCore.Qt.Key.Key_Left)
+    image = render(canvas)
+    assert canvas._point_fit_pending_box == (99, 100, 120, 120)
+    assert canvas._point_fit_source_box == (99, 100, 199, 200)
+    assert count_ink(image, [(x, 100) for x in range(105, 116)]) == 0
+    assert count_orange(image, [(x, 100) for x in range(105, 116)]) > 0
+    assert count_ink(image, [(x, 200) for x in range(110, 190)]) > 60
+
+
+def test_captured_fit_cancels_when_keyboard_moves_source(
+    canvas: Canvas,
+) -> None:
+    """A captured gesture whose geometry changed is dropped, not committed."""
+    canvas.cross_line_show = True
+    backups = len(canvas.shapes_backups)
+    seed_pointer(canvas)
+    send_mouse(canvas, QtCore.QEvent.Type.MouseButtonPress, (151.5, 120))
+    assert canvas._point_fit_pressed
+    assert canvas._point_fit_pending_box == (100, 120, 151.5, 200)
+    assert not canvas._native_crosshair_enabled()
+
+    nudge(canvas, QtCore.Qt.Key.Key_Right)
+    assert bounds(canvas.shapes[0]) == (101, 100, 201, 200)
+    assert len(canvas.shapes_backups) == backups + 1
+    moved_snapshot = snapshot(canvas)
+
+    image = render(canvas)
+    assert canvas._point_fit_pressed
+    assert canvas._point_fit_pending_box is None
+    assert canvas._native_crosshair_enabled()
+    assert count_orange(image, [(151, y) for y in range(130, 190)]) == 0
+    assert count_ink(image, [(101, y) for y in range(110, 190)]) > 60
+    assert count_ink(image, [(201, y) for y in range(110, 190)]) > 60
+    assert count_ink(image, [(x, 200) for x in range(111, 145)]) > 30
+    assert count_ink(image, [(x, 200) for x in range(160, 190)]) > 20
+
+    # A pointer move before the release cannot revive the old candidate.
+    send_mouse(
+        canvas,
+        QtCore.QEvent.Type.MouseMove,
+        (151.5, 120),
+        buttons=QtCore.Qt.MouseButton.LeftButton,
+    )
+    assert canvas._point_fit_pending_box is None
+    assert canvas._native_crosshair_enabled()
+
+    send_mouse(canvas, QtCore.QEvent.Type.MouseButtonRelease, (151.5, 120))
+    assert bounds(canvas.shapes[0]) == (101, 100, 201, 200)
+    assert not canvas._point_fit_pressed
+    assert snapshot(canvas) == moved_snapshot
+    assert len(canvas.shapes_backups) == backups + 1
+
+    canvas.restore_shape()
+    assert bounds(canvas.shapes[0]) == (100, 100, 200, 200)
+
+
+def test_refit_after_cancelled_capture_commits_and_undoes(
+    canvas: Canvas,
+) -> None:
+    """A new gesture after the cancellation still commits and undoes."""
+    seed_pointer(canvas)
+    send_mouse(canvas, QtCore.QEvent.Type.MouseButtonPress, (151.5, 120))
+    nudge(canvas, QtCore.Qt.Key.Key_Right)
+    render(canvas)
+    send_mouse(canvas, QtCore.QEvent.Type.MouseButtonRelease, (151.5, 120))
+    assert bounds(canvas.shapes[0]) == (101, 100, 201, 200)
+    backups = len(canvas.shapes_backups)
+
+    send_mouse(canvas, QtCore.QEvent.Type.MouseMove, (180, 130))
+    assert canvas._point_fit_pending_box == (101, 130, 180, 200)
+    send_mouse(canvas, QtCore.QEvent.Type.MouseButtonPress, (180, 130))
+    send_mouse(canvas, QtCore.QEvent.Type.MouseButtonRelease, (180, 130))
+    assert bounds(canvas.shapes[0]) == (101, 130, 180, 200)
+    assert len(canvas.shapes_backups) == backups + 1
+
+    canvas.restore_shape()
+    assert bounds(canvas.shapes[0]) == (101, 100, 201, 200)
+    canvas.restore_shape()
+    assert bounds(canvas.shapes[0]) == (100, 100, 200, 200)
+
+
+@pytest.mark.parametrize("initial_dirty", [False, True])
+@pytest.mark.parametrize("inward", [False, True])
+def test_preview_cancel_preserves_host_dirty(canvas, dirty_host,
+                                           initial_dirty, inward):
+    """Hover, repeated paint and modifier cancellation never mark dirty."""
+    dirty_host.dirty = initial_dirty
+    before = snapshot(canvas)
+    send_mouse(canvas, QtCore.QEvent.Type.MouseMove, (180, 120), alt=inward)
+    render(canvas)
+    render(canvas)
+    canvas.keyReleaseEvent(QtGui.QKeyEvent(
+        QtCore.QEvent.Type.KeyRelease, QtCore.Qt.Key.Key_Shift,
+        QtCore.Qt.KeyboardModifier.NoModifier,
+    ))
+    render(canvas)
+    assert dirty_host.dirty is initial_dirty
+    assert dirty_host.set_dirty.call_count == 0
+    assert len(dirty_host.moves) == 0
+    assert snapshot(canvas) == before
+
+
+@pytest.mark.parametrize("show_masks", [False, True])
+@pytest.mark.parametrize("captured", [False, True])
+@pytest.mark.parametrize("key", [QtCore.Qt.Key.Key_Left,
+                                 QtCore.Qt.Key.Key_Right])
+def test_nudge_preview_preserves_host_dirty(canvas, dirty_host, show_masks,
+                                          captured, key):
+    """Only the nudge commits; recomputation/cancel/release stay silent."""
+    canvas.show_masks = show_masks
+    seed_pointer(canvas)
+    kind = (QtCore.QEvent.Type.MouseButtonPress if captured
+            else QtCore.QEvent.Type.MouseMove)
+    send_mouse(canvas, kind, (151.5, 120))
+    render(canvas)
+    assert dirty_host.dirty is False
+    assert dirty_host.set_dirty.call_count == len(dirty_host.moves) == 0
+
+    nudge(canvas, key)
+    assert dirty_host.dirty is True
+    assert dirty_host.set_dirty.call_count == len(dirty_host.moves) == 1
+    after_nudge = snapshot(canvas)
+    # Simulate a clean checkpoint: a stray preview signal must dirty it again.
+    dirty_host.dirty = False
+    render(canvas)
+    render(canvas)
+    if captured:
+        send_mouse(canvas, QtCore.QEvent.Type.MouseButtonRelease,
+                   (151.5, 120))
+    else:
+        canvas._clear_point_fit()
+    render(canvas)
+    assert dirty_host.dirty is False
+    assert dirty_host.set_dirty.call_count == len(dirty_host.moves) == 1
+    assert snapshot(canvas) == after_nudge
+
+
+@pytest.mark.parametrize("inward", [False, True])
+def test_fit_commit_marks_host_dirty_once(canvas, dirty_host, inward):
+    """Valid fit commits once and a single undo restores the starting box."""
+    seed_pointer(canvas)
+    before = snapshot(canvas)
+    backups = len(canvas.shapes_backups)
+    send_mouse(canvas, QtCore.QEvent.Type.MouseMove, (180, 120), alt=inward)
+    render(canvas)
+    assert dirty_host.dirty is False
+    assert dirty_host.set_dirty.call_count == len(dirty_host.moves) == 0
+    assert snapshot(canvas) == before
+    send_mouse(canvas, QtCore.QEvent.Type.MouseButtonPress,
+               (180, 120), alt=inward)
+    send_mouse(canvas, QtCore.QEvent.Type.MouseButtonRelease,
+               (180, 120), alt=inward)
+    render(canvas)
+    assert dirty_host.dirty is True
+    assert dirty_host.set_dirty.call_count == len(dirty_host.moves) == 1
+    assert len(canvas.shapes_backups) == backups + 1
+    canvas.restore_shape()
+    render(canvas)
+    assert bounds(canvas.shapes[0]) == BOX
+    assert dirty_host.set_dirty.call_count == len(dirty_host.moves) == 1

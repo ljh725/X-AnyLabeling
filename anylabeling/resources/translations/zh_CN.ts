@@ -217,6 +217,10 @@ Review the prompt before generating.</source>
 </context><context>
     <name>AutoLabelingWidget</name>
     <message>
+        <source>Remote server settings could not be saved; they apply to this session only.</source>
+        <translation>远程服务器设置无法保存；仅在当前会话生效。</translation>
+    </message>
+    <message>
         <location filename="..\..\views\labeling\widgets\auto_labeling\auto_labeling.py" line="252" />
         <source>Output</source>
         <translation>输出</translation>
@@ -808,6 +812,34 @@ Review the prompt before generating.</source>
         <location filename="..\..\views\labeling\widgets\canvas_adjustment.py" line="347" />
         <source>Expand adjustments</source>
         <translation>展开调整面板</translation>
+    </message>
+    <message>
+        <source>Review</source>
+        <translation>审核</translation>
+    </message>
+    <message>
+        <source>Unchecked</source>
+        <translation>未检查</translation>
+    </message>
+    <message>
+        <source>Checked</source>
+        <translation>检查通过</translation>
+    </message>
+    <message>
+        <source>Failed</source>
+        <translation>检查不通过</translation>
+    </message>
+    <message>
+        <source>Set the review status of the current image.</source>
+        <translation>设置当前图片的审核状态。</translation>
+    </message>
+    <message>
+        <source>Keep this value when switching images</source>
+        <translation>切换图片时保持此值</translation>
+    </message>
+    <message>
+        <source>Scale the transparency of annotation fills. Borders, vertices and label text remain fully visible.</source>
+        <translation>缩放标注填充的透明度，边框、顶点和标签文字保持完全可见。</translation>
     </message>
 </context><context>
     <name>ChatMessage</name>
@@ -2412,442 +2444,360 @@ Review the prompt before generating.</source>
 </context><context>
     <name>DenseReviewConfigDialog</name>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="35" />
         <source>Dense Review Configuration</source>
-        <translation>Dense Review Configuration</translation>
+        <translation>密集复核配置</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="46" />
         <source>Confusion batches (a label may appear in only one)</source>
-        <translation>Confusion batches (a label may appear in only one)</translation>
+        <translation>混淆类别批次（每类仅属于一批）</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="51" />
         <source>Batch name</source>
-        <translation>Batch name</translation>
+        <translation>批次名称</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="51" />
         <source>Labels (comma separated)</source>
-        <translation>Labels (comma separated)</translation>
+        <translation>类别（逗号分隔）</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="57" />
         <source>Add batch</source>
-        <translation>Add batch</translation>
+        <translation>添加批次</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="59" />
         <source>Remove selected batch</source>
-        <translation>Remove selected batch</translation>
+        <translation>删除选中批次</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="68" />
         <source>Class rules (unknown rules stay conservative)</source>
-        <translation>Class rules (unknown rules stay conservative)</translation>
+        <translation>类别规则（未知规则采用保守策略）</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="74" />
         <source>Label</source>
-        <translation>Label</translation>
+        <translation>类别</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="75" />
         <source>Box rule</source>
-        <translation>Box rule</translation>
+        <translation>框规则</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="76" />
         <source>Category note</source>
-        <translation>Category note</translation>
+        <translation>类别说明</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="83" />
         <source>Add class</source>
-        <translation>Add class</translation>
+        <translation>添加类别</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="85" />
         <source>Remove selected class</source>
-        <translation>Remove selected class</translation>
+        <translation>删除选中类别</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="93" />
         <source>Default box rule</source>
-        <translation>Default box rule</translation>
+        <translation>默认框规则</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="99" />
         <source>Spatial omission grid</source>
-        <translation>Spatial omission grid</translation>
+        <translation>空间查漏网格</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="108" />
         <source>Columns</source>
-        <translation>Columns</translation>
+        <translation>列数</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="110" />
         <source>Rows</source>
-        <translation>Rows</translation>
+        <translation>行数</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="112" />
         <source>Overlap</source>
-        <translation>Overlap</translation>
+        <translation>重叠</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="267" />
         <source>No confusion batch is configured; all objects will enter the other-pending queue.</source>
-        <translation>No confusion batch is configured; all objects will enter the other-pending queue.</translation>
+        <translation>未配置混淆批次；全部对象将进入其他待处理队列。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\config_dialog.py" line="274" />
         <source>Batches only control order; every label remains selectable.</source>
-        <translation>Batches only control order; every label remains selectable.</translation>
+        <translation>批次仅控制顺序，仍可选择任意类别。</translation>
+    </message>
+    <message>
+        <source>可见框</source>
+        <translation>可见框</translation>
+    </message>
+    <message>
+        <source>完整框</source>
+        <translation>完整框</translation>
+    </message>
+    <message>
+        <source>未知</source>
+        <translation>未知</translation>
+    </message>
+    <message>
+        <source>批次“{name}”没有配置类别</source>
+        <translation>批次“{name}”没有配置类别</translation>
+    </message>
+    <message>
+        <source>类别“{label}”同时出现在批次：{names}</source>
+        <translation>类别“{label}”同时出现在批次：{names}</translation>
     </message>
 </context><context>
     <name>DenseReviewWorkspace</name>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="534" />
         <source>Dense Annotation Review</source>
-        <translation>Dense Annotation Review</translation>
+        <translation>密集标注复核</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="569" />
         <source>开始/重建本轮</source>
         <translation>开始/重建本轮</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="570" />
         <source>复核配置</source>
         <translation>复核配置</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="572" />
         <source>刷新</source>
         <translation>刷新</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1795" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1749" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="574" />
         <source>关闭</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="600" />
         <source>对象复核</source>
         <translation>对象复核</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="601" />
         <source>空间查漏</source>
         <translation>空间查漏</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="627" />
         <source>类别批次</source>
         <translation>类别批次</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="643" />
         <source>审核范围</source>
         <translation>审核范围</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="646" />
         <source>类别 + 框</source>
         <translation>类别 + 框</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="648" />
         <source>仅类别</source>
         <translation>仅类别</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="649" />
         <source>仅框</source>
         <translation>仅框</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="653" />
         <source>逐框模式（完成并下一个 / 暂跳下一个）</source>
         <translation>逐框模式（完成并下一个 / 暂跳下一个）</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="682" />
         <source>卡片上下文</source>
         <translation>卡片上下文</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="688" />
         <source>应用</source>
         <translation>应用</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="723" />
         <source>画布</source>
         <translation>画布</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="726" />
         <source>聚焦当前目标</source>
         <translation>聚焦当前目标</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="727" />
         <source>显示全部标注</source>
         <translation>显示全部标注</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="728" />
         <source>原图（无标注）</source>
         <translation>原图（无标注）</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1813" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="729" />
         <source>看全图</source>
         <translation>看全图</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="731" />
         <source>更多</source>
         <translation>更多</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="737" />
         <source>完成本批并进入下一批</source>
         <translation>完成本批并进入下一批</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="741" />
         <source>完成并下一个</source>
         <translation>完成并下一个</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="743" />
         <source>暂跳下一个</source>
         <translation>暂跳下一个</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1624" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="744" />
         <source>标记疑难</source>
         <translation>标记疑难</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="767" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="746" />
         <source>解除疑难</source>
         <translation>解除疑难</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="768" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="748" />
         <source>取消暂跳</source>
         <translation>取消暂跳</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1674" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="769" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="750" />
         <source>加入当前批次</source>
         <translation>加入当前批次</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="771" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="752" />
         <source>查看成员</source>
         <translation>查看成员</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1693" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="772" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="753" />
         <source>重建剩余队列</source>
         <translation>重建剩余队列</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1766" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="773" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="754" />
         <source>并排比较</source>
         <translation>并排比较</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="793" />
         <source>列</source>
         <translation>列</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="797" />
         <source>行</source>
         <translation>行</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="801" />
         <source>重叠</source>
         <translation>重叠</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1968" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="807" />
         <source>重建区域计划</source>
         <translation>重建区域计划</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="836" />
         <source>完成区域并下一区</source>
         <translation>完成区域并下一区</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="840" />
         <source>区域疑难</source>
         <translation>区域疑难</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="843" />
         <source>解除区域疑难</source>
         <translation>解除区域疑难</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="845" />
         <source>区域暂跳</source>
         <translation>区域暂跳</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="847" />
         <source>取消区域暂跳</source>
         <translation>取消区域暂跳</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="850" />
         <source>定位当前区域</source>
         <translation>定位当前区域</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="864" />
         <source>查漏区域覆盖整幅图像。平移、缩放或浏览不会记为完成；新增框进入新增待处理，不会随区域完成而自动确认。</source>
         <translation>查漏区域覆盖整幅图像。平移、缩放或浏览不会记为完成；新增框进入新增待处理，不会随区域完成而自动确认。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="988" />
         <source>重建本轮</source>
         <translation>重建本轮</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="989" />
         <source>重建本轮会按当前配置和当前对象重新建立队列；已保存的内容确认会尽量保留。是否继续？</source>
         <translation>重建本轮会按当前配置和当前对象重新建立队列；已保存的内容确认会尽量保留。是否继续？</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1004" />
         <source>本轮已开始</source>
         <translation>本轮已开始</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1040" />
         <source>复核配置已保存</source>
         <translation>复核配置已保存</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1091" />
         <source>尚未开始本轮复核。</source>
         <translation>尚未开始本轮复核。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1110" />
         <source>已确认 {done}/{total}</source>
         <translation>已确认 {done}/{total}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1115" />
         <source>对象 {total} · 全图待审 {pending} · 类别已确认 {category} · 框已确认 {geometry} · 疑难 {difficult} · 暂跳 {skipped} · 新增待处理 {new_pending}</source>
         <translation>对象 {total} · 全图待审 {pending} · 类别已确认 {category} · 框已确认 {geometry} · 疑难 {difficult} · 暂跳 {skipped} · 新增待处理 {new_pending}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1130" />
         <source>查漏尚未开始</source>
         <translation>查漏尚未开始</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1135" />
         <source>查漏 {done}/{total}</source>
         <translation>查漏 {done}/{total}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1140" />
         <source>{status} · {coverage}{unsaved}</source>
         <translation>{status} · {coverage}{unsaved}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1143" />
         <source> · 复核进度待保存</source>
         <translation> · 复核进度待保存</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1152" />
         <source>；</source>
         <translation>；</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="2071" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1328" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1158" />
         <source>类别✓</source>
         <translation>类别✓</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1160" />
         <source>类别待审</source>
         <translation>类别待审</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="2073" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1330" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1163" />
         <source>框✓</source>
         <translation>框✓</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1165" />
         <source>框待审</source>
         <translation>框待审</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1168" />
         <source>#{index} {label} · {status} · {category} · {geometry}</source>
         <translation>#{index} {label} · {status} · {category} · {geometry}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1179" />
         <source>本类规则：{rules}</source>
         <translation>本类规则：{rules}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1184" />
         <source>本批没有对象</source>
         <translation>本批没有对象</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1191" />
         <source>{batches} 批 · {labels} 类</source>
         <translation>{batches} 批 · {labels} 类</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1196" />
         <source>固定数字映射下仍可改为任意类别。当前类别统计：{stats}</source>
         <translation>固定数字映射下仍可改为任意类别。当前类别统计：{stats}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1198" />
         <source>无</source>
         <translation>无</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1243" />
         <source>新增待处理</source>
         <translation>新增待处理</translation>
     </message>
@@ -2860,22 +2810,18 @@ Review the prompt before generating.</source>
 {status}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1331" />
         <source>待审</source>
         <translation>待审</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1333" />
         <source>图块加载失败</source>
         <translation>图块加载失败</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1360" />
         <source>本批成员 {total} · 可确认 {candidate} · 排除 {excluded} · 屏外候选 {offscreen}</source>
         <translation>本批成员 {total} · 可确认 {candidate} · 排除 {excluded} · 屏外候选 {offscreen}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1371" />
         <source>完成本批并进入下一批（确认 {n}，保留 {m}）</source>
         <translation>完成本批并进入下一批（确认 {n}，保留 {m}）</translation>
     </message>
@@ -2885,184 +2831,330 @@ Review the prompt before generating.</source>
         <translation>对象 {shape_id} 图块加载失败：{reason}</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1554" />
         <source>确认期间对象或范围发生变化，已刷新；请重新确认。</source>
         <translation>确认期间对象或范围发生变化，已刷新；请重新确认。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1559" />
         <source>本批没有可确认对象；请先处理排除项。</source>
         <translation>本批没有可确认对象；请先处理排除项。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1568" />
         <source>已确认 {n} 个；保留待处理 {m} 个。</source>
         <translation>已确认 {n} 个；保留待处理 {m} 个。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1591" />
         <source>当前对象已完成并前进。</source>
         <translation>当前对象已完成并前进。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1593" />
         <source>当前对象没有新的可确认内容。</source>
         <translation>当前对象没有新的可确认内容。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1613" />
         <source>当前对象已暂跳，仍保持待审。</source>
         <translation>当前对象已暂跳，仍保持待审。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1625" />
         <source>疑难原因（可留空）：</source>
         <translation>疑难原因（可留空）：</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1642" />
         <source>当前对象已标记疑难；解除前不会自动确认。</source>
         <translation>当前对象已标记疑难；解除前不会自动确认。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1650" />
         <source>已解除疑难；请重新确认相关维度。</source>
         <translation>已解除疑难；请重新确认相关维度。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1658" />
         <source>已取消暂跳；请重新确认相关维度。</source>
         <translation>已取消暂跳；请重新确认相关维度。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1669" />
         <source>没有可加入的批次。</source>
         <translation>没有可加入的批次。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1675" />
         <source>选择目标批次：</source>
         <translation>选择目标批次：</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1686" />
         <source>新增对象已加入批次；确认范围已更新。</source>
         <translation>新增对象已加入批次；确认范围已更新。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1694" />
         <source>将按当前类别和配置重新分配全部存活对象。已有内容确认会保留，但新增待处理队列会被清空。是否继续？</source>
         <translation>将按当前类别和配置重新分配全部存活对象。已有内容确认会保留，但新增待处理队列会被清空。是否继续？</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1707" />
         <source>剩余队列已按当前类别显式重建。</source>
         <translation>剩余队列已按当前类别显式重建。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1715" />
         <source>本批成员</source>
         <translation>本批成员</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1721" />
         <source>短编号</source>
         <translation>短编号</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1722" />
         <source>对象 ID</source>
         <translation>对象 ID</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1723" />
         <source>类别</source>
         <translation>类别</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1724" />
         <source>状态</source>
         <translation>状态</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1725" />
         <source>疑难原因</source>
         <translation>疑难原因</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1760" />
         <source>请用 Ctrl 选择两个对象后再比较。</source>
         <translation>请用 Ctrl 选择两个对象后再比较。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1791" />
         <source>图块准备中…</source>
         <translation>图块准备中…</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1799" />
         <source>比较不会复制标注或改变对象身份。</source>
         <translation>比较不会复制标注或改变对象身份。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1813" />
         <source>返回局部</source>
         <translation>返回局部</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1837" />
         <source>查漏计划尚未建立；重建区域计划后可开始。</source>
         <translation>查漏计划尚未建立；重建区域计划后可开始。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1854" />
         <source>疑难</source>
         <translation>疑难</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1856" />
         <source>暂跳</source>
         <translation>暂跳</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1858" />
         <source>已完成</source>
         <translation>已完成</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1860" />
         <source>待查</source>
         <translation>待查</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1887" />
         <source>区域 {done}/{total} 已完成 · 疑难 {difficult} · 暂跳 {skipped}。区域完成只代表用户检查声明，不代表机器保证无漏标。</source>
         <translation>区域 {done}/{total} 已完成 · 疑难 {difficult} · 暂跳 {skipped}。区域完成只代表用户检查声明，不代表机器保证无漏标。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1940" />
         <source>当前区域仍有疑难或暂跳，不能记为完成。</source>
         <translation>当前区域仍有疑难或暂跳，不能记为完成。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1945" />
         <source>当前区域已完成；新框仍需单独确认。</source>
         <translation>当前区域已完成；新框仍需单独确认。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="1969" />
         <source>重建会清除现有区域完成记录，是否继续？</source>
         <translation>重建会清除现有区域完成记录，是否继续？</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="2023" />
         <source>快捷键 {key} 与现有操作冲突，已禁用。</source>
         <translation>快捷键 {key} 与现有操作冲突，已禁用。</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="2062" />
         <source>{action}（{key}）</source>
-        <translation>{action}（{key}）</translation>
+        <translation>{action} ({key})</translation>
+    </message>
+    <message>
+        <source>不支持</source>
+        <translation>不支持</translation>
+    </message>
+    <message>
+        <source>不支持完整复核</source>
+        <translation>不支持完整复核</translation>
+    </message>
+    <message>
+        <source>加载失败</source>
+        <translation>加载失败</translation>
+    </message>
+    <message>
+        <source>区域 {region} · {state}</source>
+        <translation>区域 {region} · {state}</translation>
+    </message>
+    <message>
+        <source>可见框</source>
+        <translation>可见框</translation>
+    </message>
+    <message>
+        <source>图块已就绪</source>
+        <translation>图块已就绪</translation>
+    </message>
+    <message>
+        <source>完整框</source>
+        <translation>完整框</translation>
+    </message>
+    <message>
+        <source>对象不存在</source>
+        <translation>对象不存在</translation>
+    </message>
+    <message>
+        <source>对象卡片列表</source>
+        <translation>对象卡片列表</translation>
+    </message>
+    <message>
+        <source>对象卡片栏显示开关</source>
+        <translation>对象卡片栏显示开关</translation>
+    </message>
+    <message>
+        <source>小窗口时可单独收起对象卡片栏；主画布、待处理数量和批次操作保留。</source>
+        <translation>小窗口时可单独收起对象卡片栏；主画布、待处理数量和批次操作保留。</translation>
+    </message>
+    <message>
+        <source>小窗口时可单独收起类别批次栏；主画布、待处理数量和批次操作保留。</source>
+        <translation>小窗口时可单独收起类别批次栏；主画布、待处理数量和批次操作保留。</translation>
+    </message>
+    <message>
+        <source>尚无区域计划
+点「重建区域计划」后显示</source>
+        <translation>尚无区域计划
+点「重建区域计划」后显示</translation>
+    </message>
+    <message>
+        <source>已确认</source>
+        <translation>已确认</translation>
+    </message>
+    <message>
+        <source>手动隐藏</source>
+        <translation>手动隐藏</translation>
+    </message>
+    <message>
+        <source>批次快捷切换</source>
+        <translation>批次快捷切换</translation>
+    </message>
+    <message>
+        <source>收起类别批次栏后仍可直接切换批次。</source>
+        <translation>收起类别批次栏后仍可直接切换批次。</translation>
+    </message>
+    <message>
+        <source>新增待审</source>
+        <translation>新增待审</translation>
+    </message>
+    <message>
+        <source>显示对象卡片栏</source>
+        <translation>显示对象卡片栏</translation>
+    </message>
+    <message>
+        <source>显示类别批次栏</source>
+        <translation>显示类别批次栏</translation>
+    </message>
+    <message>
+        <source>未填写类别规则说明</source>
+        <translation>未填写类别规则说明</translation>
+    </message>
+    <message>
+        <source>未完成</source>
+        <translation>未完成</translation>
+    </message>
+    <message>
+        <source>未知</source>
+        <translation>未知</translation>
+    </message>
+    <message>
+        <source>未知（跨类不保留框确认）</source>
+        <translation>未知（跨类不保留框确认）</translation>
+    </message>
+    <message>
+        <source>本流程整图完成</source>
+        <translation>本流程整图完成</translation>
+    </message>
+    <message>
+        <source>框：{rule}</source>
+        <translation>框：{rule}</translation>
+    </message>
+    <message>
+        <source>类别批次栏显示开关</source>
+        <translation>类别批次栏显示开关</translation>
+    </message>
+    <message>
+        <source>类别：{note}</source>
+        <translation>类别：{note}</translation>
+    </message>
+    <message>
+        <source>缺失</source>
+        <translation>缺失</translation>
+    </message>
+    <message>
+        <source>重试</source>
+        <translation>重试</translation>
+    </message>
+    <message>
+        <source>隐藏对象卡片栏</source>
+        <translation>隐藏对象卡片栏</translation>
+    </message>
+    <message>
+        <source>隐藏类别批次栏</source>
+        <translation>隐藏类别批次栏</translation>
+    </message>
+    <message>
+        <source>其他待处理</source>
+        <translation>其他待处理</translation>
+    </message>
+    <message>
+        <source>对象 #{index}（{label}）为首版不支持的非矩形形状</source>
+        <translation>对象 #{index}（{label}）为首版不支持的非矩形形状</translation>
+    </message>
+    <message>
+        <source>对象 #{index}（{label}）仍为暂跳</source>
+        <translation>对象 #{index}（{label}）仍为暂跳</translation>
+    </message>
+    <message>
+        <source>对象 #{index}（{label}）仍为疑难</source>
+        <translation>对象 #{index}（{label}）仍为疑难</translation>
+    </message>
+    <message>
+        <source>对象 #{index}（{label}）无法呈现</source>
+        <translation>对象 #{index}（{label}）无法呈现</translation>
+    </message>
+    <message>
+        <source>对象 #{index}（{label}）框待审</source>
+        <translation>对象 #{index}（{label}）框待审</translation>
+    </message>
+    <message>
+        <source>对象 #{index}（{label}）类别待审</source>
+        <translation>对象 #{index}（{label}）类别待审</translation>
+    </message>
+    <message>
+        <source>批次“{name}”没有配置类别</source>
+        <translation>批次“{name}”没有配置类别</translation>
+    </message>
+    <message>
+        <source>新增待处理还有 {count} 个对象</source>
+        <translation>新增待处理还有 {count} 个对象</translation>
+    </message>
+    <message>
+        <source>空间查漏尚未开始</source>
+        <translation>空间查漏尚未开始</translation>
+    </message>
+    <message>
+        <source>类别“{label}”同时出现在批次：{names}</source>
+        <translation>类别“{label}”同时出现在批次：{names}</translation>
+    </message>
+    <message>
+        <source>还有 {count} 个查漏区域为疑难</source>
+        <translation>还有 {count} 个查漏区域为疑难</translation>
+    </message>
+    <message>
+        <source>还有 {count} 个查漏区域未完成</source>
+        <translation>还有 {count} 个查漏区域未完成</translation>
     </message>
 </context><context>
     <name>DescriptionEditor</name>
@@ -3191,6 +3283,14 @@ Review the prompt before generating.</source>
     </message>
 </context><context>
     <name>DigitShortcutDialog</name>
+    <message>
+        <source>Save Failed</source>
+        <translation>保存失败</translation>
+    </message>
+    <message>
+        <source>The digit shortcuts could not be saved. The previous mapping is still active; retry or cancel.</source>
+        <translation>数字快捷键无法保存，仍使用之前的映射；请重试或取消。</translation>
+    </message>
     <message>
         <location filename="..\..\views\labeling\widgets\label_dialog.py" line="92" />
         <source>Digit Shortcut Manager</source>
@@ -4752,6 +4852,400 @@ Original images backed up to:
         <source>取消当前检查并关闭 Inspector？</source>
         <translation>取消当前检查并关闭 Inspector？</translation>
     </message>
+    <message>
+        <source>保留两者</source>
+        <translation>保留两者</translation>
+    </message>
+    <message>
+        <source>疑难暂存</source>
+        <translation>疑难暂存</translation>
+    </message>
+    <message>
+        <source>批量删除问题框</source>
+        <translation>批量删除问题框</translation>
+    </message>
+    <message>
+        <source>按类别批量重标</source>
+        <translation>按类别批量重标</translation>
+    </message>
+    <message>
+        <source>撤销上次修改</source>
+        <translation>撤销上次修改</translation>
+    </message>
+    <message>
+        <source>交接密集复核</source>
+        <translation>交接密集复核</translation>
+    </message>
+    <message>
+        <source>调整后接受</source>
+        <translation>调整后接受</translation>
+    </message>
+    <message>
+        <source>批量接受</source>
+        <translation>批量接受</translation>
+    </message>
+    <message>
+        <source>F5 开始检查 · Enter 定位选中问题</source>
+        <translation>F5 开始检查 · Enter 定位选中问题</translation>
+    </message>
+    <message>
+        <source>0 条</source>
+        <translation>0 条</translation>
+    </message>
+    <message>
+        <source>上一页</source>
+        <translation>上一页</translation>
+    </message>
+    <message>
+        <source>下一页</source>
+        <translation>下一页</translation>
+    </message>
+    <message>
+        <source>另存检查报告</source>
+        <translation>另存检查报告</translation>
+    </message>
+    <message>
+        <source>未绑定</source>
+        <translation>未绑定</translation>
+    </message>
+    <message>
+        <source>是</source>
+        <translation>是</translation>
+    </message>
+    <message>
+        <source>否</source>
+        <translation>否</translation>
+    </message>
+    <message>
+        <source>范围说明：</source>
+        <translation>范围说明：</translation>
+    </message>
+    <message>
+        <source>运行说明：</source>
+        <translation>运行说明：</translation>
+    </message>
+    <message>
+        <source>{run} 开始检查 · {locate} 定位选中问题</source>
+        <translation>{run} 开始检查 · {locate} 定位选中问题</translation>
+    </message>
+    <message>
+        <source>{shown} / {total} 条 · 当前 {current} · 待复查 {pending} · 未再检出 {history} · 过期 {stale}</source>
+        <translation>{shown} / {total} 条 · 当前 {current} · 待复查 {pending} · 未再检出 {history} · 过期 {stale}</translation>
+    </message>
+    <message>
+        <source>仅修改当前画布「{file}」中选中的问题对象：{ids}</source>
+        <translation>仅修改当前画布「{file}」中选中的问题对象：{ids}</translation>
+    </message>
+    <message>
+        <source>候选属于 {path}，请先定位到该图片再接受。</source>
+        <translation>候选属于 {path}，请先定位到该图片再接受。</translation>
+    </message>
+    <message>
+        <source>原问题已不在当前队列；请查看运行记录后再决定。</source>
+        <translation>原问题已不在当前队列；请查看运行记录后再决定。</translation>
+    </message>
+    <message>
+        <source>反馈未保存：另一窗口已更新。当前判断已保留在内存中，可稍后重试保存。</source>
+        <translation>反馈未保存：另一窗口已更新。当前判断已保留在内存中，可稍后重试保存。</translation>
+    </message>
+    <message>
+        <source>对象 {objects}；问题图片 {images}/{files}；未处理 {pending}；已处理 {handled}；过期/不可核验 {stale}</source>
+        <translation>对象 {objects}；问题图片 {images}/{files}；未处理 {pending}；已处理 {handled}；过期/不可核验 {stale}</translation>
+    </message>
+    <message>
+        <source>已交接问题 {issue}；返回后仍定位原队列位置。</source>
+        <translation>已交接问题 {issue}；返回后仍定位原队列位置。</translation>
+    </message>
+    <message>
+        <source>已回到原问题队列位置。</source>
+        <translation>已回到原问题队列位置。</translation>
+    </message>
+    <message>
+        <source>已接受候选；画布中已选中新对象，可直接调整后按普通流程保存。</source>
+        <translation>已接受候选；画布中已选中新对象，可直接调整后按普通流程保存。</translation>
+    </message>
+    <message>
+        <source>当前图片没有待处理的候选。</source>
+        <translation>当前图片没有待处理的候选。</translation>
+    </message>
+    <message>
+        <source>当前窗口不支持密集复核交接。</source>
+        <translation>当前窗口不支持密集复核交接。</translation>
+    </message>
+    <message>
+        <source>批量接受 {accepted} 个候选；失败 {failed} 个。</source>
+        <translation>批量接受 {accepted} 个候选；失败 {failed} 个。</translation>
+    </message>
+    <message>
+        <source>批量接受预览</source>
+        <translation>批量接受预览</translation>
+    </message>
+    <message>
+        <source>报告数据集与当前数据集不一致，请重新检查。</source>
+        <translation>报告数据集与当前数据集不一致，请重新检查。</translation>
+    </message>
+    <message>
+        <source>报告缺少可恢复的方案快照，无法安全复查；请重新选择方案后运行检查。</source>
+        <translation>报告缺少可恢复的方案快照，无法安全复查；请重新选择方案后运行检查。</translation>
+    </message>
+    <message>
+        <source>文件：{file}
+仅删除以下画布选中对象（共 {count} 个）：
+{ids}
+
+未选中的对象会保留；此操作可通过撤销恢复。</source>
+        <translation>文件：{file}
+仅删除以下画布选中对象（共 {count} 个）：
+{ids}
+
+未选中的对象会保留；此操作可通过撤销恢复。</translation>
+    </message>
+    <message>
+        <source>文件：{file}
+将接受 {count} 个候选（精确集合）：
+{ids}
+
+每个候选都会新增一个正式对象，均可撤销。</source>
+        <translation>文件：{file}
+将接受 {count} 个候选（精确集合）：
+{ids}
+
+每个候选都会新增一个正式对象，均可撤销。</translation>
+    </message>
+    <message>
+        <source>请先在画布中选中要删除/重标的问题对象</source>
+        <translation>请先在画布中选中要删除/重标的问题对象</translation>
+    </message>
+    <message>
+        <source>请求图片 {requested}；问题图片 {images}；对象 {objects}；截断 {truncated}</source>
+        <translation>请求图片 {requested}；问题图片 {images}；对象 {objects}；截断 {truncated}</translation>
+    </message>
+    <message>
+        <source>打开报告保存位置</source>
+        <translation>打开报告保存位置</translation>
+    </message>
+    <message>
+        <source>停用</source>
+        <translation>停用</translation>
+    </message>
+    <message>
+        <source>停用/启用方案</source>
+        <translation>停用/启用方案</translation>
+    </message>
+    <message>
+        <source>停用方案</source>
+        <translation>停用方案</translation>
+    </message>
+    <message>
+        <source>全部来源</source>
+        <translation>全部来源</translation>
+    </message>
+    <message>
+        <source>全部规则</source>
+        <translation>全部规则</translation>
+    </message>
+    <message>
+        <source>全部风险</source>
+        <translation>全部风险</translation>
+    </message>
+    <message>
+        <source>内置检查模板不能直接修改。请先「复制方案」，再编辑副本；历史报告仍保留原有效配置。</source>
+        <translation>内置检查模板不能直接修改。请先「复制方案」，再编辑副本；历史报告仍保留原有效配置。</translation>
+    </message>
+    <message>
+        <source>内置模板只读</source>
+        <translation>内置模板只读</translation>
+    </message>
+    <message>
+        <source>启用</source>
+        <translation>启用</translation>
+    </message>
+    <message>
+        <source>复查完成：{outcome}；来源 {sources} 个；保留其他图片问题 {preserved} 项。</source>
+        <translation>复查完成：{outcome}；来源 {sources} 个；保留其他图片问题 {preserved} 项。</translation>
+    </message>
+    <message>
+        <source>密集复核不可用</source>
+        <translation>密集复核不可用</translation>
+    </message>
+    <message>
+        <source>已批量删除 {count} 个问题对象；可撤销。</source>
+        <translation>已批量删除 {count} 个问题对象；可撤销。</translation>
+    </message>
+    <message>
+        <source>已批量重标 {count} 个对象；可撤销。</source>
+        <translation>已批量重标 {count} 个对象；可撤销。</translation>
+    </message>
+    <message>
+        <source>已撤销上一次画布修改。</source>
+        <translation>已撤销上一次画布修改。</translation>
+    </message>
+    <message>
+        <source>已暂存为疑难问题；可在筛选「需讨论」中继续处理。</source>
+        <translation>已暂存为疑难问题；可在筛选「需讨论」中继续处理。</translation>
+    </message>
+    <message>
+        <source>已记录「两者保留」：不会自动删除任何框；复查前仍显示该问题。</source>
+        <translation>已记录「两者保留」：不会自动删除任何框；复查前仍显示该问题。</translation>
+    </message>
+    <message>
+        <source>当前图片没有可删除的问题对象。</source>
+        <translation>当前图片没有可删除的问题对象。</translation>
+    </message>
+    <message>
+        <source>当前图片没有可重标的问题对象。</source>
+        <translation>当前图片没有可重标的问题对象。</translation>
+    </message>
+    <message>
+        <source>成功复查，未再检出</source>
+        <translation>成功复查，未再检出</translation>
+    </message>
+    <message>
+        <source>批量删除</source>
+        <translation>批量删除</translation>
+    </message>
+    <message>
+        <source>批量删除失败</source>
+        <translation>批量删除失败</translation>
+    </message>
+    <message>
+        <source>批量删除预览</source>
+        <translation>批量删除预览</translation>
+    </message>
+    <message>
+        <source>批量重标</source>
+        <translation>批量重标</translation>
+    </message>
+    <message>
+        <source>批量重标失败</source>
+        <translation>批量重标失败</translation>
+    </message>
+    <message>
+        <source>批量重标预览</source>
+        <translation>批量重标预览</translation>
+    </message>
+    <message>
+        <source>报告 {run_id} 无法恢复：{error}
+原文件保持未修改；该报告范围内的人工结论不能作为当前结论。</source>
+        <translation>报告 {run_id} 无法恢复：{error}
+原文件保持未修改；该报告范围内的人工结论不能作为当前结论。</translation>
+    </message>
+    <message>
+        <source>改名</source>
+        <translation>改名</translation>
+    </message>
+    <message>
+        <source>文件：{file}
+将删除 {count} 个未锁定对象（精确集合）：
+{ids}
+
+不会删除未列出的对象；可撤销。</source>
+        <translation>文件：{file}
+将删除 {count} 个未锁定对象（精确集合）：
+{ids}
+
+不会删除未列出的对象；可撤销。</translation>
+    </message>
+    <message>
+        <source>文件：{file}
+将把 {count} 个「{source}」对象改为「{target}」：
+{ids}
+
+其他类别、点、多边形与属性不变；可撤销。</source>
+        <translation>文件：{file}
+将把 {count} 个「{source}」对象改为「{target}」：
+{ids}
+
+其他类别、点、多边形与属性不变；可撤销。</translation>
+    </message>
+    <message>
+        <source>新名称：</source>
+        <translation>新名称：</translation>
+    </message>
+    <message>
+        <source>方案 {name} 已{state}；历史报告不受影响。</source>
+        <translation>方案 {name} 已{state}；历史报告不受影响。</translation>
+    </message>
+    <message>
+        <source>方案 {} 已停用；历史报告仍保留。本次仍要运行吗？</source>
+        <translation>方案 {} 已停用；历史报告仍保留。本次仍要运行吗？</translation>
+    </message>
+    <message>
+        <source>方案不可编辑</source>
+        <translation>方案不可编辑</translation>
+    </message>
+    <message>
+        <source>方案已停用</source>
+        <translation>方案已停用</translation>
+    </message>
+    <message>
+        <source>方案改名</source>
+        <translation>方案改名</translation>
+    </message>
+    <message>
+        <source>方案无法保存</source>
+        <translation>方案无法保存</translation>
+    </message>
+    <message>
+        <source>方案状态保存失败</source>
+        <translation>方案状态保存失败</translation>
+    </message>
+    <message>
+        <source>无法定位：文件未加载/切换被取消，或对象已删除、身份待重检；画布选择未改变。</source>
+        <translation>无法定位：文件未加载/切换被取消，或对象已删除、身份待重检；画布选择未改变。</translation>
+    </message>
+    <message>
+        <source>无法核验，保留原问题</source>
+        <translation>无法核验，保留原问题</translation>
+    </message>
+    <message>
+        <source>未再检出</source>
+        <translation>未再检出</translation>
+    </message>
+    <message>
+        <source>未找到原问题，已保留队列</source>
+        <translation>未找到原问题，已保留队列</translation>
+    </message>
+    <message>
+        <source>没有可撤销的编辑。</source>
+        <translation>没有可撤销的编辑。</translation>
+    </message>
+    <message>
+        <source>源类别（仅当前图片问题对象）：</source>
+        <translation>源类别（仅当前图片问题对象）：</translation>
+    </message>
+    <message>
+        <source>编辑规则</source>
+        <translation>编辑规则</translation>
+    </message>
+    <message>
+        <source>该方案没有可写的本地文件，请重新复制或导入。</source>
+        <translation>该方案没有可写的本地文件，请重新复制或导入。</translation>
+    </message>
+    <message>
+        <source>这两个快捷键只在 Inspector 窗口内生效，不占用画布编辑键。</source>
+        <translation>这两个快捷键只在 Inspector 窗口内生效，不占用画布编辑键。</translation>
+    </message>
+    <message>
+        <source>重新检出，已回到待处理</source>
+        <translation>重新检出，已回到待处理</translation>
+    </message>
+    <message>
+        <source>（已停用）</source>
+        <translation>（已停用）</translation>
+    </message>
+    <message>
+        <source>查看规则与参数</source>
+        <translation>查看规则与参数</translation>
+    </message>
+    <message>
+        <source>扫描文件 {done}/{total}: {path}</source>
+        <translation>扫描文件 {done}/{total}: {path}</translation>
+    </message>
+    <message>
+        <source>正在查找图片，已找到 {count} 个: {path}</source>
+        <translation>正在查找图片，已找到 {count} 个: {path}</translation>
+    </message>
 </context><context>
     <name>LabelDialog</name>
     <message>
@@ -5084,6 +5578,22 @@ Continue?</source>
     </message>
 </context><context>
     <name>LabelingWidget</name>
+    <message>
+        <source>Save Failed</source>
+        <translation>保存失败</translation>
+    </message>
+    <message>
+        <source>Retry Save</source>
+        <translation>重试保存</translation>
+    </message>
+    <message>
+        <source>Discard Changes</source>
+        <translation>放弃修改</translation>
+    </message>
+    <message>
+        <source>Settings could not be written. Retry before quitting? Discarding keeps the previous saved configuration.</source>
+        <translation>无法写入设置。是否在退出前重试？放弃将保留上次保存的配置。</translation>
+    </message>
     <message>
         <location filename="..\..\views\labeling\label_widget.py" line="2563" />
         <source>Rectangle Edge Editing</source>
@@ -5583,8 +6093,8 @@ Press Enter to search.</source>
     </message>
     <message>
         <location filename="..\..\views\labeling\label_widget.py" line="1138" />
-        <source>Select one polygon, then paint to add, hold Ctrl to erase, and use Ctrl+Wheel to resize the brush</source>
-        <translation>选择一个多边形，然后绘制以添加区域，按住 Ctrl 绘制以擦除，使用 Ctrl+滚轮调整笔刷大小</translation>
+        <source>Select one polygon, then paint to add, hold Ctrl to erase, and use Alt+Wheel to resize the brush</source>
+        <translation>选择一个多边形，然后绘制以添加区域，按住 Ctrl 绘制以擦除，使用 Alt+滚轮调整笔刷大小</translation>
     </message>
     <message>
         <location filename="..\..\views\labeling\label_widget.py" line="1147" />
@@ -5675,6 +6185,16 @@ Press Enter to search.</source>
         <location filename="..\..\views\labeling\label_widget.py" line="1217" />
         <source>Undo last add and edit of shape</source>
         <translation>撤销上一次添加和编辑对象操作</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\label_widget.py" line="1227" />
+        <source>Redo</source>
+        <translation>重做</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\label_widget.py" line="1231" />
+        <source>Redo the last undone shape edit</source>
+        <translation>重做上一步已撤销的形状编辑</translation>
     </message>
     <message>
         <location filename="..\..\views\labeling\label_widget.py" line="1221" />
@@ -6784,7 +7304,7 @@ Reset the label as {}.</source>
     <message>
         <location filename="..\..\views\labeling\label_widget.py" line="4134" />
         <source>Please open an image before opening dense review.</source>
-        <translation>Please open an image before opening dense review.</translation>
+        <translation>请先打开图片，再打开密集复核。</translation>
     </message>
     <message>
         <location filename="..\..\views\labeling\label_widget.py" line="4193" />
@@ -7435,6 +7955,30 @@ This warning will only be shown once. Do you want to continue?</source>
 
 此警告仅显示一次。是否继续？</translation>
     </message>
+    <message>
+        <source>Candidate image dimensions do not match</source>
+        <translation>Candidate image dimensions do not match</translation>
+    </message>
+    <message>
+        <source>Candidate coordinates are invalid</source>
+        <translation>Candidate coordinates are invalid</translation>
+    </message>
+    <message>
+        <source>Candidate image orientation does not match</source>
+        <translation>Candidate image orientation does not match</translation>
+    </message>
+    <message>
+        <source>Candidate object identity is already in use</source>
+        <translation>Candidate object identity is already in use</translation>
+    </message>
+    <message>
+        <source>Candidate image contents have changed</source>
+        <translation>Candidate image contents have changed</translation>
+    </message>
+    <message>
+        <source>Candidate association is ambiguous; recheck current objects</source>
+        <translation>Candidate association is ambiguous; recheck current objects</translation>
+    </message>
 </context><context>
     <name>Model</name>
     <message>
@@ -7771,6 +8315,14 @@ This warning will only be shown once. Do you want to continue?</source>
     </message>
 </context><context>
     <name>ModelManager</name>
+    <message>
+        <source>Failed to save the custom model list. The model was loaded but will not be remembered after a restart; retry saving from Settings.</source>
+        <translation>无法保存自定义模型列表。模型已加载，但重启后不会保留；请在设置中重试保存。</translation>
+    </message>
+    <message>
+        <source>Failed to save the custom model list, so the model was not removed. Retry once the storage problem is fixed.</source>
+        <translation>无法保存自定义模型列表，因此未移除该模型。请在存储问题解决后重试。</translation>
+    </message>
     <message>
         <location filename="..\..\services\auto_labeling\model_manager.py" line="643" />
         <source>Download cancelled.</source>
@@ -10101,6 +10653,66 @@ The main application remains available.</source>
 </context><context>
     <name>SettingsDialog</name>
     <message>
+        <source>Settings Conflict</source>
+        <translation>设置冲突</translation>
+    </message>
+    <message>
+        <source>Reload Latest Values</source>
+        <translation>重新载入最新值</translation>
+    </message>
+    <message>
+        <source>Keep Draft</source>
+        <translation>保留草稿</translation>
+    </message>
+    <message>
+        <source>Restore Last Valid Backup</source>
+        <translation>恢复最近的有效备份</translation>
+    </message>
+    <message>
+        <source>Keep Damaged File</source>
+        <translation>保留损坏文件</translation>
+    </message>
+    <message>
+        <source>Damaged Configuration</source>
+        <translation>配置文件损坏</translation>
+    </message>
+    <message>
+        <source>Retry Save</source>
+        <translation>重试保存</translation>
+    </message>
+    <message>
+        <source>Discard Changes</source>
+        <translation>放弃修改</translation>
+    </message>
+    <message>
+        <source>Saved, but not applied: {message}</source>
+        <translation>已保存，但未应用：{message}</translation>
+    </message>
+    <message>
+        <source>Reloaded the saved values; the running session still could not apply every field.</source>
+        <translation>已重新载入保存的值；当前会话仍无法应用全部字段。</translation>
+    </message>
+    <message>
+        <source>The configuration file cannot be read safely, so it was left untouched. Restore the last valid backup ({path})? The damaged content is kept next to the file.</source>
+        <translation>无法安全读取配置文件，已保持原样。是否恢复最近的有效备份（{path}）？损坏的内容会保留在文件旁。</translation>
+    </message>
+    <message>
+        <source>Other settings in this window or another instance changed these fields while this draft was open, so the draft was not saved.</source>
+        <translation>此窗口的其他设置或其他实例在草稿打开期间修改了这些字段，因此草稿未保存。</translation>
+    </message>
+    <message>
+        <source>The last save did not complete. Retry before closing the settings window?</source>
+        <translation>上次保存未完成。是否在关闭设置窗口前重试？</translation>
+    </message>
+    <message>
+        <source>Restored the last valid configuration backup</source>
+        <translation>已恢复最近的有效配置备份</translation>
+    </message>
+    <message>
+        <source>Reloaded the latest settings</source>
+        <translation>已重新载入最新设置</translation>
+    </message>
+    <message>
         <location filename="..\..\views\labeling\settings\dialog.py" line="393" />
         <location filename="..\..\views\labeling\settings\dialog.py" line="106" />
         <source>Settings</source>
@@ -10414,7 +11026,7 @@ Changes will not be saved until you click Save.</source>
     <message>
         <location filename="..\..\views\labeling\settings\schema.py" line="54" />
         <source>Dense Review</source>
-        <translation>Dense Review</translation>
+        <translation>密集复核</translation>
     </message>
     <message>
         <location filename="..\..\views\labeling\settings\schema.py" line="55" />
@@ -10565,6 +11177,14 @@ Changes will not be saved until you click Save.</source>
         <location filename="..\..\views\labeling\settings\schema.py" line="101" />
         <source>Undo Backups</source>
         <translation>撤销备份数</translation>
+    </message>
+    <message>
+        <source>Wheel Navigation Mode</source>
+        <translation>滚轮导航模式</translation>
+    </message>
+    <message>
+        <source>Use 'direct' to zoom with the bare wheel or 'traditional' to scroll the view. Ctrl+Wheel always zooms.</source>
+        <translation>选择“direct”以使用裸滚轮缩放，或选择“traditional”以滚动视图。Ctrl+滚轮始终缩放。</translation>
     </message>
     <message>
         <location filename="..\..\views\labeling\settings\schema.py" line="102" />
@@ -10768,8 +11388,8 @@ Changes will not be saved until you click Save.</source>
     </message>
     <message>
         <location filename="..\..\views\labeling\settings\schema.py" line="186" />
-        <source>Use Ctrl+Wheel to adjust rectangle geometry while editing. Disabled by default.</source>
-        <translation>编辑矩形时使用 Ctrl+滚轮调整其几何形状。默认关闭。</translation>
+        <source>Use Alt+Wheel to adjust rectangle geometry while editing; Ctrl+Wheel always zooms. Disabled by default.</source>
+        <translation>编辑矩形时使用 Alt+滚轮调整其几何形状；Ctrl+滚轮始终缩放。默认关闭。</translation>
     </message>
     <message>
         <location filename="..\..\views\labeling\settings\schema.py" line="190" />
@@ -11187,6 +11807,41 @@ Changes will not be saved until you click Save.</source>
         <translation>粘贴对象</translation>
     </message>
     <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="348" />
+        <source>Redo</source>
+        <translation>重做</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="55" />
+        <source>Open Dense Review Workspace</source>
+        <translation>打开密集复核工作区</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="57" />
+        <source>Dense Review: Complete Batch and Next</source>
+        <translation>密集复核：完成本批并进入下一批</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="60" />
+        <source>Dense Review: Complete Object and Next</source>
+        <translation>密集复核：完成对象并进入下一个</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="62" />
+        <source>Dense Review: Skip Object</source>
+        <translation>密集复核：暂跳对象</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="64" />
+        <source>Dense Review: Mark Difficult</source>
+        <translation>密集复核：标记疑难</translation>
+    </message>
+    <message>
+        <location filename="..\..\views\labeling\settings\schema.py" line="67" />
+        <source>Dense Review: Toggle Full Image View</source>
+        <translation>密集复核：切换全图查看</translation>
+    </message>
+    <message>
         <location filename="..\..\views\labeling\settings\schema.py" line="334" />
         <source>Remove Selected Point</source>
         <translation>删除所选点</translation>
@@ -11293,6 +11948,14 @@ Changes will not be saved until you click Save.</source>
     <message>
         <source>Show full-image guides while drawing two-point rectangles.</source>
         <translation type="vanished">绘制两点矩形时显示全图引导线。</translation>
+    </message>
+    <message>
+        <source>Inspector: Run Inspection</source>
+        <translation>Inspector：开始检查</translation>
+    </message>
+    <message>
+        <source>Inspector: Locate Selected Issue</source>
+        <translation>Inspector：定位选中问题</translation>
     </message>
 </context><context>
     <name>SettingsRuntimeApplier</name>
@@ -12992,35 +13655,28 @@ Response preview:
 </context><context>
     <name>_CoverageGrid</name>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="393" />
         <source>已完成</source>
         <translation>已完成</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="394" />
         <source>疑难</source>
         <translation>疑难</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="395" />
         <source>暂跳</source>
         <translation>暂跳</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="398" />
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="396" />
         <source>待查</source>
         <translation>待查</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="432" />
         <source>尚无区域计划
 点「重建区域计划」后显示</source>
         <translation>尚无区域计划
 点「重建区域计划」后显示</translation>
     </message>
     <message>
-        <location filename="..\..\views\labeling\dense_review\workspace.py" line="489" />
         <source>区域 {region} · {state}</source>
         <translation>区域 {region} · {state}</translation>
     </message>
@@ -13279,4 +13935,89 @@ Response preview:
         <source>Ready!</source>
         <translation>Ready!</translation>
     </message>
-</context></TS>
+</context><context>
+    <name>CandidateAdjustmentDialog</name>
+    <message>
+        <source>调整后接受</source>
+        <translation>调整后接受</translation>
+    </message>
+    <message>
+        <source>类别</source>
+        <translation>类别</translation>
+    </message>
+    <message>
+        <source>请输入类别和有效矩形坐标。</source>
+        <translation>请输入类别和有效矩形坐标。</translation>
+    </message>
+</context>
+<context>
+    <name>ProfileRuleEditor</name>
+    <message>
+        <source>%s（本机未登记）</source>
+        <translation>%s（本机未登记）</translation>
+    </message>
+    <message>
+        <source>保存</source>
+        <translation>保存</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>启用</source>
+        <translation>启用</translation>
+    </message>
+    <message>
+        <source>规则</source>
+        <translation>规则</translation>
+    </message>
+    <message>
+        <source>编辑检查方案：%s</source>
+        <translation>编辑检查方案：%s</translation>
+    </message>
+    <message>
+        <source>参数（JSON）</source>
+        <translation>参数（JSON）</translation>
+    </message>
+    <message>
+        <source>勾选启用规则；参数为 JSON 对象。保存后生成新版本，历史报告保留原有效配置。</source>
+        <translation>勾选启用规则；参数为 JSON 对象。保存后生成新版本，历史报告保留原有效配置。</translation>
+    </message>
+    <message>
+        <source>当前为只读查看；修改内置模板请先复制方案，再编辑副本。</source>
+        <translation>当前为只读查看；修改内置模板请先复制方案，再编辑副本。</translation>
+    </message>
+</context>
+<context>
+    <name>_CompareDialog</name>
+    <message>
+        <source>关闭</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>图块准备中…</source>
+        <translation>图块准备中…</translation>
+    </message>
+    <message>
+        <source>图块加载失败</source>
+        <translation>图块加载失败</translation>
+    </message>
+    <message>
+        <source>图块已就绪</source>
+        <translation>图块已就绪</translation>
+    </message>
+    <message>
+        <source>并排比较</source>
+        <translation>并排比较</translation>
+    </message>
+    <message>
+        <source>比较不会复制标注或改变对象身份。</source>
+        <translation>比较不会复制标注或改变对象身份。</translation>
+    </message>
+    <message>
+        <source>重试</source>
+        <translation>重试</translation>
+    </message>
+</context>
+</TS>

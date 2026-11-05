@@ -128,6 +128,15 @@ class Canvas(
         self.wheel_rectangle_editing = kwargs.pop(
             "wheel_rectangle_editing", {}
         )
+        self.wheel_navigation_mode = kwargs.pop(
+            "wheel_navigation_mode", "direct"
+        )
+        if self.wheel_navigation_mode not in ("direct", "traditional"):
+            logger.warning(
+                "Invalid wheel navigation mode %r; using direct zoom",
+                self.wheel_navigation_mode,
+            )
+            self.wheel_navigation_mode = "direct"
         self.enable_wheel_rectangle_editing = self.wheel_rectangle_editing.get(
             "enable", False
         )
@@ -157,9 +166,15 @@ class Canvas(
         self.mode = self.EDIT
         self.is_auto_labeling = False
         self.is_move_editing = False
+        # True between a left press and release; background card work yields
+        # to direct manipulation while it is set.
+        self._pointer_down = False
         self.auto_labeling_mode: AutoLabelingMode = None
         self.shapes = []
         self.shapes_backups = []
+        # Snapshots of undone collections, newest last, mirroring
+        # ``shapes_backups`` so redo can replay edits in LIFO order.
+        self.shapes_redo = []
         self.current = None
         self.selected_shapes = []  # save the selected shapes here
         self.selected_shapes_copy = []
@@ -173,6 +188,11 @@ class Canvas(
         self._point_fit_cursor = None
         self._point_fit_anchor = None
         self._point_fit_preview = None
+        # Identity, geometry, and pointer the current candidate was computed
+        # from. They stay transient: no Shape, JSON, or config is touched.
+        self._point_fit_source_target = None
+        self._point_fit_source_box = None
+        self._point_fit_pointer = None
         self._rectangle_edge_enabled = False
         self._rectangle_edge_hover = None
         self._rectangle_edge_drag = None
@@ -202,6 +222,7 @@ class Canvas(
         self.visible = {}
         self.dense_review_region = None
         self.dense_review_region_label = ""
+        self.inspection_candidates = []
         self._hide_backround = False
         self.hide_backround = False
         self.h_shape = None
@@ -484,6 +505,8 @@ class Canvas(
         if len(self.shapes_backups) > self.num_backups:
             self.shapes_backups = self.shapes_backups[-self.num_backups - 1 :]
         self.shapes_backups.append(shapes_backup)
+        # A new edit forks history and invalidates everything redo could replay.
+        self.shapes_redo.clear()
 
     def store_moving_shape(self):
         """Store a moving shape"""
@@ -669,6 +692,16 @@ class Canvas(
             return False
         return True
 
+    @property
+    def is_pointer_down(self):
+        """Whether a left button press is currently held on the canvas."""
+        return self._pointer_down
+
+    @property
+    def is_shape_redo_available(self):
+        """Check if an undone edit can be replayed."""
+        return bool(self.shapes_redo)
+
     def restore_shape(self):
         """Restore/Undo a shape"""
         # This does _part_ of the job of restoring shapes.
@@ -676,12 +709,38 @@ class Canvas(
         # and app.py::load_shapes and our own Canvas::load_shapes function.
         if not self.is_shape_restorable:
             return
-        self.shapes_backups.pop()  # latest
+        undone = self.shapes_backups.pop()  # latest
+        previous = self.shapes_backups.pop() if self.shapes_backups else []
+        self.shapes = previous
+        # Keep the restored collection on the undo stack: the caller refreshes
+        # labels with ``load_shapes(record_history=False)`` so the next undo
+        # still sees two snapshots.
+        self.shapes_backups.append(
+            [shape.copy() for shape in self.shapes]
+        )
+        # The collection we just left is what redo replays next.
+        self.shapes_redo.append([shape.copy() for shape in undone])
+        if len(self.shapes_redo) > self.num_backups:
+            self.shapes_redo = self.shapes_redo[-self.num_backups :]
+        self.selected_shapes = []
+        self._selected_group_id = None
+        self._hovered_group_id = None
+        for shape in self.shapes:
+            shape.selected = False
+        self.update()
 
-        # The application will eventually call Canvas.load_shapes which will
-        # push this right back onto the stack.
-        shapes_backup = self.shapes_backups.pop()
-        self.shapes = shapes_backup
+    def redo_shape(self):
+        """Replay the collection removed by the latest undo."""
+        if not self.shapes_redo:
+            return
+        target = self.shapes_redo.pop()
+        # Make the collection we are about to leave undoable again.
+        self.shapes_backups.append(
+            [shape.copy() for shape in self.shapes]
+        )
+        if len(self.shapes_backups) > self.num_backups + 1:
+            self.shapes_backups = self.shapes_backups[-self.num_backups - 1 :]
+        self.shapes = target
         self.selected_shapes = []
         self._selected_group_id = None
         self._hovered_group_id = None
@@ -1931,7 +1990,7 @@ class Canvas(
                     pen.setStyle(Qt.PenStyle.DashLine)
                 p.setPen(pen)
                 fill_color = QtGui.QColor(outline_color)
-                fill_color.setAlpha(int(self.mask_opacity))
+                fill_color.setAlpha(round(self.mask_opacity * self.shape_opacity))
                 p.setBrush(fill_color)
                 p.drawPath(outline_path)
 
@@ -3120,6 +3179,8 @@ class Canvas(
         """Mouse press event"""
         if self.is_loading:
             return
+        if ev.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._pointer_down = True
         self.interaction_started.emit()
         self._pending_edge_point = None
         if self._is_pan_gesture(ev) and self._start_space_pan(
@@ -3391,6 +3452,7 @@ class Canvas(
     # QT Overload
     def mouseReleaseEvent(self, ev):
         """Mouse release event"""
+        self._pointer_down = False
         if (
             self.is_loading
             or self._point_fit_handle_release_event(ev)
@@ -4614,11 +4676,6 @@ class Canvas(
             self.update()
             return
 
-        # Apply the global label/shape opacity to every annotation drawn
-        # below (masks, shapes, degrees, groups, brush overlays). Image text
-        # labels are restored to full opacity before being painted.
-        p.setOpacity(self.shape_opacity)
-
         # One frame snapshot keeps ordinary, mask, and candidate outlines
         # consistent during a Shift / Shift+Alt fit preview.
         self._point_fit_preview = self._build_point_fit_preview()
@@ -4769,7 +4826,7 @@ class Canvas(
                     fill_color.red(),
                     fill_color.green(),
                     fill_color.blue(),
-                    self.mask_opacity,
+                    round(self.mask_opacity * self.shape_opacity),
                 )
                 if not (self.moving_shape and shape.selected):
                     p.setPen(Qt.PenStyle.NoPen)
@@ -4810,6 +4867,7 @@ class Canvas(
                 if not getattr(shape, "_brush_using_mask", False):
                     shape.paint(
                         p,
+                        self.shape_opacity,
                         outline_path=(
                             preview_outline
                             if shape is preview_target
@@ -4881,6 +4939,8 @@ class Canvas(
 
         self._paint_dense_review_region(p)
 
+        self._paint_inspection_candidates(p)
+
         # Draw live brush-edit overlays on top of the regular shapes.
         self._paint_brush_overlays(p)
         self._paint_magic_wand_overlay(p)
@@ -4889,9 +4949,11 @@ class Canvas(
             self.rectangle_creation.paint_draft(p)
 
         if self.current:
-            self.current.paint(p)
+            self.current.paint(p, self.shape_opacity)
             self.line.paint(
-                p, outline_path=self._rectangle_creation_outline()
+                p,
+                self.shape_opacity,
+                outline_path=self._rectangle_creation_outline(),
             )
 
             if (
@@ -4912,7 +4974,7 @@ class Canvas(
                 p.drawLine(QtCore.QLineF(self.line[1], self.current.points[0]))
         if self.selected_shapes_copy:
             for s in self.selected_shapes_copy:
-                s.paint(p)
+                s.paint(p, self.shape_opacity)
 
         if (
             self.fill_drawing()
@@ -4923,7 +4985,7 @@ class Canvas(
             drawing_shape = copy.copy(self.current)
             drawing_shape.points = self.current.points + [self.line[1]]
             drawing_shape.fill = True
-            drawing_shape.paint(p)
+            drawing_shape.paint(p, self.shape_opacity)
         if (
             self.fill_drawing()
             and self.create_mode == "quadrilateral"
@@ -4937,13 +4999,13 @@ class Canvas(
             ]
             drawing_shape.fill = True
             drawing_shape._closed = True
-            drawing_shape.paint(p)
+            drawing_shape.paint(p, self.shape_opacity)
 
         # The creation guide sits above the draft preview but below the
         # label/size text added in the following sections.
         self._draw_rectangle_crosshair(p)
 
-        # Restore full opacity so labels/scores/attributes stay readable.
+        # Reset any tool-overlay opacity before drawing readable labels.
         p.setOpacity(1.0)
 
         # Draw texts
@@ -5589,6 +5651,26 @@ class Canvas(
             return self.scale * self.pixmap.size()
         return super().minimumSizeHint()
 
+    def interaction_in_progress(self):
+        """Return True while a mouse-driven edit is still in progress."""
+        creation = getattr(self, "rectangle_creation", None)
+        draft = (
+            getattr(creation, "draft", None) if creation is not None else None
+        )
+        return bool(
+            self.moving_shape
+            or self.rotating_shape
+            or self._right_panning
+            or self._space_panning
+            or self._point_fit_pressed
+            or self._rectangle_edge_drag is not None
+            or self._vertex_erasing
+            or self._magic_wand_active
+            or self._brush_drawing
+            or self.current is not None
+            or draft is not None
+        )
+
     # QT Overload
     def wheelEvent(self, ev: QWheelEvent):
         """Mouse wheel event"""
@@ -5599,11 +5681,19 @@ class Canvas(
         if delta.isNull():
             ev.accept()
             return
+        if self.pixmap is None or self.pixmap.isNull():
+            # No image: navigation requests would be no-ops downstream and
+            # an editing tool must not see a stray gesture.
+            ev.accept()
+            return
 
-        if (
-            self.is_brush_mode
-            and mods & QtCore.Qt.KeyboardModifier.ControlModifier
-        ):
+        alt = QtCore.Qt.KeyboardModifier.AltModifier
+        alt_shift = alt | QtCore.Qt.KeyboardModifier.ShiftModifier
+        ctrl = QtCore.Qt.KeyboardModifier.ControlModifier
+        shift = QtCore.Qt.KeyboardModifier.ShiftModifier
+        no_modifier = QtCore.Qt.KeyboardModifier.NoModifier
+
+        if self.is_brush_mode and mods == alt:
             # Resize the brush instead of zooming/scrolling.
             if delta.y() == 0:
                 ev.accept()
@@ -5622,17 +5712,13 @@ class Canvas(
             and len(self.selected_shapes) == 1
             and self.selected_shapes[0].shape_type == "rectangle"
             and not self.selected_shapes[0].locked
-            and mods & QtCore.Qt.KeyboardModifier.ControlModifier
+            and mods == alt
         ):
             if delta.y() == 0:
                 ev.accept()
                 return
             self.interaction_started.emit()
-            try:
-                pos = self.transform_pos(ev.position())
-            except AttributeError:
-                pos = self.transform_pos(ev.position())
-
+            pos = self.transform_pos(ev.position())
             shape = self.selected_shapes[0]
             wheel_up = delta.y() > 0
 
@@ -5647,16 +5733,15 @@ class Canvas(
             ev.accept()
             return
 
-        if mods & QtCore.Qt.KeyboardModifier.ControlModifier:
-            ev.accept()
-            return
-
-        # Shift+wheel: adjust compare view split position
+        # Alt+Shift+wheel: adjust compare view split position
         if (
-            mods == QtCore.Qt.KeyboardModifier.ShiftModifier
+            mods == alt_shift
             and self.compare_pixmap is not None
             and not self.compare_pixmap.isNull()
         ):
+            if delta.y() == 0:
+                ev.accept()
+                return
             step = 0.02 if delta.y() > 0 else -0.02
             self.split_position = max(
                 0.0, min(1.0, self.split_position + step)
@@ -5666,18 +5751,23 @@ class Canvas(
             ev.accept()
             return
 
-        if not mods & QtCore.Qt.KeyboardModifier.ShiftModifier:
-            # with Ctrl/Command key
-            # zoom
-            self.zoom_request.emit(delta.y(), ev.position())
-        else:
-            # scroll
-            self.scroll_request.emit(
-                delta.x(), QtCore.Qt.Orientation.Horizontal, 0
-            )
-            self.scroll_request.emit(
-                delta.y(), QtCore.Qt.Orientation.Vertical, 0
-            )
+        if mods == ctrl or (
+            mods == no_modifier and self.wheel_navigation_mode == "direct"
+        ):
+            if delta.y():
+                self.zoom_request.emit(delta.y(), ev.position())
+        elif mods == shift or (
+            mods == no_modifier
+            and self.wheel_navigation_mode == "traditional"
+        ):
+            if delta.x():
+                self.scroll_request.emit(
+                    delta.x(), QtCore.Qt.Orientation.Horizontal, 0
+                )
+            if delta.y():
+                self.scroll_request.emit(
+                    delta.y(), QtCore.Qt.Orientation.Vertical, 0
+                )
         ev.accept()
 
     def _scale_rectangle(self, shape, scale_up):
@@ -6060,7 +6150,7 @@ class Canvas(
             )
         return incoming
 
-    def load_shapes(self, shapes, replace=True):
+    def load_shapes(self, shapes, replace=True, record_history=True):
         """Load shapes"""
         shapes = self._normalize_incoming_shape_ids(shapes, replace)
         self.cancel_brush_mode()
@@ -6069,7 +6159,8 @@ class Canvas(
             self.shapes = list(shapes)
         else:
             self.shapes.extend(shapes)
-        self.store_shapes()
+        if record_history:
+            self.store_shapes()
         self.current = None
         self._brush_drawing = False
         self.h_shape = None
@@ -6094,6 +6185,51 @@ class Canvas(
         )
         self.dense_review_region_label = str(label or "")
         self.update()
+
+    def set_inspection_candidates(self, candidates=()):
+        """Show external model candidates in a read-only overlay.
+
+        The overlay never creates, edits or deletes shapes: candidates stay
+        separate until the user explicitly accepts one.
+        """
+        self.inspection_candidates = [
+            candidate
+            for candidate in (candidates or ())
+            if getattr(candidate, "region", None)
+        ]
+        self.update()
+
+    def _paint_inspection_candidates(self, painter):
+        if not getattr(self, "inspection_candidates", None):
+            return
+        painter.save()
+        pen = QtGui.QPen(QtGui.QColor("#2f9e44"))
+        pen.setWidthF(1.5)
+        pen.setStyle(QtCore.Qt.PenStyle.DashLine)
+        painter.setPen(pen)
+        painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+        font = painter.font()
+        font.setPointSizeF(9.0)
+        painter.setFont(font)
+        for candidate in self.inspection_candidates:
+            region = getattr(candidate, "region", None)
+            if not region or len(region) < 4:
+                continue
+            left, top, right, bottom = (
+                float(region[0]),
+                float(region[1]),
+                float(region[2]),
+                float(region[3]),
+            )
+            painter.drawRect(QtCore.QRectF(left, top, right - left, bottom - top))
+            painter.drawText(
+                QtCore.QPointF(left, max(0.0, top - 3.0)),
+                "{} · {}".format(
+                    getattr(candidate, "label", ""),
+                    getattr(candidate, "source", ""),
+                ),
+            )
+        painter.restore()
 
     def _paint_dense_review_region(self, painter):
         rect = self.dense_review_region
@@ -6152,6 +6288,7 @@ class Canvas(
 
     def reset_state(self) -> None:
         """Clear shapes and pixmap"""
+        self.inspection_candidates = []
         self._rectangle_edge_cancel()
         self._clear_point_fit()
         self._clear_space_pan_state()
@@ -6162,9 +6299,11 @@ class Canvas(
         self.restore_cursor()
         self.pixmap = None
         self.shapes_backups = []
+        self.shapes_redo = []
         self.dense_review_region = None
         self.dense_review_region_label = ""
         self.is_move_editing = False
+        self._pointer_down = False
         self.compare_pixmap = None
         self._selected_group_id = None
         self._hovered_group_id = None

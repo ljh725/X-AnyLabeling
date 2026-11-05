@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="41" time="57.715" timestamp="2026-11-04T18:28:26.193602+08:00" hostname="DESKTOP-RBDJ37M"><testcase classname="reports.autosave_review_20261104.test_probes" name="test_autosave_edit_roundtrip" time="3.045" /><testcase classname="reports.autosave_review_20261104.test_probes" name="test_failed_write_preserves_dirty_and_leave_guard" time="3.352" /><testcase classname="reports.autosave_review_20261104.test_probes" name="test_output_directory_autosave" time="3.106" /><testcase classname="reports.autosave_review_20261104.test_probes" name="test_directory_creation_failure_is_handled" time="3.294"><failure message="UnboundLocalError: cannot access local variable 'metrics_token' where it is not associated with a value">self = &lt;anylabeling.views.labeling.label_widget.LabelingWidget object at 0x000001E224A10C30&gt;
+filename = 'D:\\X-AnyLabeling-4.2.1\\.tmp\\autosave-review-session-20261104\\test_directory_creation_failur0\\blocked/drag.json'
+
+    def save_labels(self, filename):
+        self._dense_review_prepare_save()
+        label_file = LabelFile()
+        # Get current shapes
+        # Excluding auto labeling special shapes
+        shapes = [
+            item.shape().to_dict()
+            for item in self.label_list
+            if item.shape().label
+            not in [
+                AutoLabelingMode.OBJECT,
+                AutoLabelingMode.ADD,
+                AutoLabelingMode.REMOVE,
+            ]
+        ]
+        flags = {}
+        for i in range(self.flag_widget.count()):
+            item = self.flag_widget.item(i)
+            key = item.text()
+            flag = item.checkState() == Qt.CheckState.Checked
+            flags[key] = flag
+        self.other_data[CHECKED_FIELD] = self._annotation_checked()
+        try:
+            image_path = osp.relpath(self.image_path, osp.dirname(filename))
+            image_data = (
+                self.image_data if self._config["store_data"] else None
+            )
+            if osp.dirname(filename) and not osp.exists(osp.dirname(filename)):
+&gt;               os.makedirs(osp.dirname(filename))
+
+anylabeling\views\labeling\label_widget.py:7261: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\unittest\mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\unittest\mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;Mock id='2070787790928'&gt;
+args = ('D:\\X-AnyLabeling-4.2.1\\.tmp\\autosave-review-session-20261104\\test_directory_creation_failur0\\blocked',)
+kwargs = {}, effect = PermissionError('directory denied')
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+&gt;               raise effect
+E               PermissionError: directory denied
+
+C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\unittest\mock.py:1198: PermissionError
+
+During handling of the above exception, another exception occurred:
+
+view = &lt;anylabeling.views.labeling.label_widget.LabelingWidget object at 0x000001E224A10C30&gt;
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/autosave-review-session-20261104/test_directory_creation_failur0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001E2217D5220&gt;
+
+    def test_directory_creation_failure_is_handled(view, tmp_path, monkeypatch):
+        add_rectangle(view)
+        view.output_dir = str(tmp_path / "blocked")
+        view._config["auto_save"] = True
+        error = Mock()
+        monkeypatch.setattr(view, "error_message", error)
+        monkeypatch.setattr("anylabeling.views.labeling.label_widget.os.makedirs", Mock(side_effect=PermissionError("directory denied")))
+&gt;       view.set_dirty()
+
+reports\autosave_review_20261104\test_probes.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+anylabeling\views\labeling\label_widget.py:3629: in set_dirty
+    if self.save_labels(label_file):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;anylabeling.views.labeling.label_widget.LabelingWidget object at 0x000001E224A10C30&gt;
+filename = 'D:\\X-AnyLabeling-4.2.1\\.tmp\\autosave-review-session-20261104\\test_directory_creation_failur0\\blocked/drag.json'
+
+    def save_labels(self, filename):
+        self._dense_review_prepare_save()
+        label_file = LabelFile()
+        # Get current shapes
+        # Excluding auto labeling special shapes
+        shapes = [
+            item.shape().to_dict()
+            for item in self.label_list
+            if item.shape().label
+            not in [
+                AutoLabelingMode.OBJECT,
+                AutoLabelingMode.ADD,
+                AutoLabelingMode.REMOVE,
+            ]
+        ]
+        flags = {}
+        for i in range(self.flag_widget.count()):
+            item = self.flag_widget.item(i)
+            key = item.text()
+            flag = item.checkState() == Qt.CheckState.Checked
+            flags[key] = flag
+        self.other_data[CHECKED_FIELD] = self._annotation_checked()
+        try:
+            image_path = osp.relpath(self.image_path, osp.dirname(filename))
+            image_data = (
+                self.image_data if self._config["store_data"] else None
+            )
+            if osp.dirname(filename) and not osp.exists(osp.dirname(filename)):
+                os.makedirs(osp.dirname(filename))
+    
+            metrics_token = notify_metrics(self, "prepare_save", filename, shapes)
+            label_file.save(
+                filename=filename,
+                shapes=shapes,
+                image_path=image_path,
+                image_data=image_data,
+                image_height=self.image.height(),
+                image_width=self.image.width(),
+                other_data=self.other_data,
+                flags=flags,
+            )
+            notify_metrics(self, "save_result", metrics_token, True)
+            self.label_file = label_file
+            if self._metadata_generation is not None and self.filename:
+                self._metadata_revisions[self.filename] = (
+                    self._metadata_revisions.get(self.filename, 0) + 1
+                )
+            self.actions.save.setIcon(utils.new_icon("save-check"))
+            items = self.file_list_widget.findItems(
+                self.image_path, Qt.MatchFlag.MatchExactly
+            )
+            if len(items) &gt; 0:
+                if len(items) != 1:
+                    raise RuntimeError("There are duplicate files.")
+                items[0].setCheckState(Qt.CheckState.Checked)
+                self._set_file_item_checked(
+                    items[0], self._annotation_checked()
+                )
+                if self._metadata_generation is not None:
+                    items[0].setData(
+                        Qt.ItemDataRole.UserRole + 1, self._metadata_generation
+                    )
+                    items[0].setData(Qt.ItemDataRole.UserRole + 2, "ready")
+            self._refresh_attribute_search_after_save()
+            self._dense_review_after_save(filename)
+            # disable allows next and previous image to proceed
+            # self.filename = filename
+            return True
+        except (LabelFileError, OSError) as e:
+&gt;           notify_metrics(self, "save_result", metrics_token, False)
+                                                ^^^^^^^^^^^^^
+E           UnboundLocalError: cannot access local variable 'metrics_token' where it is not associated with a value
+
+anylabeling\views\labeling\label_widget.py:7302: UnboundLocalError</failure></testcase><testcase classname="reports.autosave_review_20261104.test_probes" name="test_save_as_target_is_retained_by_autosave" time="3.427"><failure message="AssertionError: assert 'person' == 'changed'&#10;  &#10;  #x1B[0m#x1B[91m- changed#x1B[39;49;00m#x1B[90m#x1B[39;49;00m&#10;  #x1B[92m+ person#x1B[39;49;00m#x1B[90m#x1B[39;49;00m">view = &lt;anylabeling.views.labeling.label_widget.LabelingWidget object at 0x000001E224A1BA70&gt;
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/autosave-review-session-20261104/test_save_as_target_is_retaine0')
+
+    def test_save_as_target_is_retained_by_autosave(view, tmp_path):
+        add_rectangle(view)
+        custom = tmp_path / "custom.json"
+        assert view._save_file(str(custom))
+        view._config["auto_save"] = True
+        view.canvas.shapes[0].label = "changed"
+        view.set_dirty()
+&gt;       assert json.loads(custom.read_text(encoding="utf-8"))["shapes"][0]["label"] == "changed"
+E       AssertionError: assert 'person' == 'changed'
+E         
+E         #x1B[0m#x1B[91m- changed#x1B[39;49;00m#x1B[90m#x1B[39;49;00m
+E         #x1B[92m+ person#x1B[39;49;00m#x1B[90m#x1B[39;49;00m
+
+reports\autosave_review_20261104\test_probes.py:68: AssertionError</failure></testcase><testcase classname="reports.autosave_review_20261104.test_probes" name="test_autosave_observes_dense_review_conflict_guard" time="3.420"><failure message="AssertionError: assert '' == 'external edit must survive'&#10;  &#10;  #x1B[0m#x1B[91m- external edit must survive#x1B[39;49;00m#x1B[90m#x1B[39;49;00m">view = &lt;anylabeling.views.labeling.label_widget.LabelingWidget object at 0x000001E227F3C0F0&gt;
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/autosave-review-session-20261104/test_autosave_observes_dense_r0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001E21E51EE10&gt;
+
+    def test_autosave_observes_dense_review_conflict_guard(view, tmp_path, monkeypatch):
+        image = _prepare_image(tmp_path)
+        assert view.load_file(image)
+        view.open_dense_review()
+        view.dense_review_workspace._complete_batch()
+        view.save_file()
+        target = tmp_path / "image.json"
+        payload = json.loads(target.read_text(encoding="utf-8"))
+        payload["description"] = "external edit must survive"
+        target.write_text(json.dumps(payload), encoding="utf-8")
+        assert view._dense_review_external_conflict()
+        guard = Mock(return_value=False)
+        monkeypatch.setattr(view, "_dense_review_resolve_conflict", guard)
+        view._config["auto_save"] = True
+        view.set_dirty()
+&gt;       assert json.loads(target.read_text(encoding="utf-8"))["description"] == "external edit must survive"
+E       AssertionError: assert '' == 'external edit must survive'
+E         
+E         #x1B[0m#x1B[91m- external edit must survive#x1B[39;49;00m#x1B[90m#x1B[39;49;00m
+
+reports\autosave_review_20261104\test_probes.py:86: AssertionError</failure></testcase><testcase classname="tests.test_labeling.test_drag_commit" name="test_autosave_runs_once_when_the_drag_is_released" time="3.530" /><testcase classname="tests.test_labeling.test_drag_commit" name="test_drag_survives_save_and_reopen" time="3.145" /><testcase classname="tests.test_labeling.test_drag_commit" name="test_undo_is_available_after_the_drag" time="3.174" /><testcase classname="tests.test_labeling.test_label_file_save.TestLabelFileSave" name="test_failed_save_preserves_existing_file" time="0.113" /><testcase classname="tests.test_labeling.test_label_file_save.TestLabelFileSave" name="test_image_dimensions_are_read_without_pixel_conversion" time="0.097" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_annotation_tool_displays_committed_semantic_color" time="0.943" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_output_directory_is_reused_when_reopening_dataset" time="1.081" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_autosave_debounces_edits_and_preserves_complete_frame" time="1.608" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_active_selection_defers_autosave_without_cancelling_it" time="1.227" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_undo_and_redo_automatically_save_restored_labels" time="1.721" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_leaving_flushes_pending_autosave_without_save_prompt" time="0.509" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_failed_autosave_retains_labels_and_original_leave_protection[4194304-cancel]" time="0.457" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_failed_autosave_retains_labels_and_original_leave_protection[8388608-discard]" time="0.449" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_failed_autosave_retains_labels_and_original_leave_protection[2048-cancel]" time="0.431" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_class_only_autosave_uses_settings_directory_without_file_dialog" time="0.706" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_partial_autosave_keeps_failed_class_configuration_dirty" time="0.908" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_output_directory_preserves_source_labels_and_missing_output_reload" time="1.559" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_existing_output_labels_take_priority_over_source" time="0.566" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_failed_output_directory_change_retains_original_session[write]" time="0.433" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_failed_output_directory_change_retains_original_session[overwrite_cancel]" time="0.439" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_existing_invalid_output_never_falls_back_to_source[truncated]" time="0.891" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_existing_invalid_output_never_falls_back_to_source[broken_symlink]" time="0.941" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_source_discovery_failure_during_output_fallback_preserves_frame" time="0.425" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_output_created_during_fallback_load_requires_overwrite_confirmation" time="0.783" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_cancelled_save_as_resumes_pending_autosave[file_dialog]" time="0.841" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_cancelled_save_as_resumes_pending_autosave[renamed_confirmation]" time="0.991" /><testcase classname="tests.test_pointcloud.test_autosave" name="test_save_as_keeps_global_output_directory_and_only_binds_current_frame" time="1.290" /><testcase classname="tests.test_labeling.test_check_status" name="test_check_status_actions_save_and_reload" time="2.968" /><testcase classname="tests.test_labeling.test_classification_flags.ClassificationFlagsTest" name="test_batch_flags_round_trip_and_reclassification" time="0.134" /><testcase classname="tests.test_labeling.test_classification_flags.ClassificationFlagsTest" name="test_classification_models_return_complete_flags_without_description" time="0.127" /><testcase classname="tests.test_labeling.test_classification_flags.ClassificationFlagsTest" name="test_live_prediction_is_available_to_classifier_before_saving" time="0.123" /></testsuite></testsuites>

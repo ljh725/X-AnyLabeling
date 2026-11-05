@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import math
 from typing import Any
 
@@ -102,6 +103,7 @@ class SettingsRuntimeApplier:
             "shortcuts.copy_polygon": self._widget.actions.copy,
             "shortcuts.paste_polygon": self._widget.actions.paste,
             "shortcuts.undo": self._widget.actions.undo,
+            "shortcuts.redo": self._widget.actions.redo,
             "shortcuts.undo_last_point": self._widget.actions.undo_last_point,
             "shortcuts.edit_label": self._widget.actions.edit,
             "shortcuts.edit_digit_shortcut": self._widget.actions.digit_shortcut_manager,
@@ -216,6 +218,39 @@ class SettingsRuntimeApplier:
         )
 
     def apply_change(self, key: str, value: Any) -> None:
+        if key == "digit_shortcuts":
+            self._widget.drawing_digit_shortcuts = copy.deepcopy(value or {})
+            return
+        if key in {
+            "keep_prev",
+            "keep_prev_scale",
+            "keep_prev_brightness",
+            "keep_prev_contrast",
+            "auto_save",
+            "store_data",
+            "auto_use_last_label",
+            "auto_use_last_gid",
+            "share_view_across_same_size",
+        }:
+            action_name = {
+                "keep_prev": "keep_prev_mode",
+                "store_data": "save_with_image_data",
+            }.get(key, key)
+            action = getattr(self._widget.actions, action_name, None)
+            if action is not None:
+                # Updating controls from a committed value must not submit
+                # a second preference transaction through their toggle slots.
+                with QtCore.QSignalBlocker(action):
+                    action.setChecked(bool(value))
+            pin_name = {
+                "keep_prev_brightness": "brightness_pin",
+                "keep_prev_contrast": "contrast_pin",
+            }.get(key)
+            if pin_name:
+                pin = getattr(self._widget.canvas_adjustment, pin_name)
+                with QtCore.QSignalBlocker(pin):
+                    pin.setChecked(bool(value))
+            return
         if key == "font_family":
             apply_application_font(value)
             return
@@ -227,6 +262,9 @@ class SettingsRuntimeApplier:
             "canvas.num_backups",
         }:
             self.apply_canvas_basic()
+            return
+        if key == "canvas.wheel_navigation_mode":
+            self._widget.apply_wheel_navigation_mode(value)
             return
         if key.startswith("canvas.wheel_rectangle_editing."):
             self.apply_canvas_wheel_edit()
@@ -552,6 +590,9 @@ class SettingsRuntimeApplier:
             self._widget.file_search.setText(value_text)
 
     def apply_shortcuts(self, key: str, value: Any) -> None:
+        inspector = getattr(self._widget, "inspector_dialog", None)
+        if inspector is not None:
+            inspector._refresh_shortcuts()
         action = self._shortcut_action_map.get(key)
         if action is None:
             return

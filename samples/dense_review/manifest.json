@@ -1,0 +1,2153 @@
+{
+  "schema": "xanylabeling.dense_review.samples/1",
+  "generator": "scripts/generate_dense_review_samples.py",
+  "label_format_version": "4.2.1",
+  "default_image_width": 1280,
+  "default_image_height": 720,
+  "deterministic": true,
+  "license": "自制合成素材，无真人照片、无外部下载，可自由使用。",
+  "object_id_scheme": "每个场景固定前缀 + 三位序号，写入 xanylabeling_shape_id",
+  "scenes": [
+    {
+      "key": "dense_30_six_classes",
+      "title": "30 个对象 / 6 类密集图",
+      "purpose": "密集相邻对象的类别判读、批次导航与性能对照",
+      "image": "dense_30_six_classes.png",
+      "label": "dense_30_six_classes.json",
+      "image_width": 1280,
+      "image_height": 720,
+      "object_count": 30,
+      "class_distribution": {
+        "A": 5,
+        "B": 5,
+        "C": 5,
+        "D": 5,
+        "E": 5,
+        "F": 5
+      },
+      "shape_type_distribution": {
+        "rectangle": 30
+      },
+      "box_rules": {
+        "A": "visible",
+        "B": "visible",
+        "C": "visible",
+        "D": "visible",
+        "E": "visible",
+        "F": "visible"
+      },
+      "coverage": {
+        "columns": 4,
+        "rows": 3,
+        "overlap": 0.15,
+        "region_count": 12
+      },
+      "batches": [
+        {
+          "name": "A/B",
+          "labels": [
+            "A",
+            "B"
+          ],
+          "member_count": 10
+        },
+        {
+          "name": "C/D",
+          "labels": [
+            "C",
+            "D"
+          ],
+          "member_count": 10
+        },
+        {
+          "name": "E/F",
+          "labels": [
+            "E",
+            "F"
+          ],
+          "member_count": 10
+        }
+      ],
+      "other_pending_count": 0,
+      "objects": [
+        {
+          "id": "d30-001",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            20,
+            20,
+            150,
+            230
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-002",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            144,
+            20,
+            274,
+            230
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-003",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            268,
+            20,
+            398,
+            230
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-004",
+          "label": "D",
+          "shape_type": "rectangle",
+          "bbox": [
+            392,
+            20,
+            522,
+            230
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-005",
+          "label": "E",
+          "shape_type": "rectangle",
+          "bbox": [
+            516,
+            20,
+            646,
+            230
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-006",
+          "label": "F",
+          "shape_type": "rectangle",
+          "bbox": [
+            640,
+            20,
+            770,
+            230
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-007",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            764,
+            20,
+            894,
+            230
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-008",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            888,
+            20,
+            1018,
+            230
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-009",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            1012,
+            20,
+            1142,
+            230
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-010",
+          "label": "D",
+          "shape_type": "rectangle",
+          "bbox": [
+            1136,
+            20,
+            1266,
+            230
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-011",
+          "label": "E",
+          "shape_type": "rectangle",
+          "bbox": [
+            20,
+            252,
+            150,
+            462
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-012",
+          "label": "F",
+          "shape_type": "rectangle",
+          "bbox": [
+            144,
+            252,
+            274,
+            462
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-013",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            268,
+            252,
+            398,
+            462
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-014",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            392,
+            252,
+            522,
+            462
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-015",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            516,
+            252,
+            646,
+            462
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-016",
+          "label": "D",
+          "shape_type": "rectangle",
+          "bbox": [
+            640,
+            252,
+            770,
+            462
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-017",
+          "label": "E",
+          "shape_type": "rectangle",
+          "bbox": [
+            764,
+            252,
+            894,
+            462
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-018",
+          "label": "F",
+          "shape_type": "rectangle",
+          "bbox": [
+            888,
+            252,
+            1018,
+            462
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-019",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            1012,
+            252,
+            1142,
+            462
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-020",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            1136,
+            252,
+            1266,
+            462
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-021",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            20,
+            484,
+            150,
+            694
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-022",
+          "label": "D",
+          "shape_type": "rectangle",
+          "bbox": [
+            144,
+            484,
+            274,
+            694
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-023",
+          "label": "E",
+          "shape_type": "rectangle",
+          "bbox": [
+            268,
+            484,
+            398,
+            694
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-024",
+          "label": "F",
+          "shape_type": "rectangle",
+          "bbox": [
+            392,
+            484,
+            522,
+            694
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-025",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            516,
+            484,
+            646,
+            694
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-026",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            640,
+            484,
+            770,
+            694
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-027",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            764,
+            484,
+            894,
+            694
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-028",
+          "label": "D",
+          "shape_type": "rectangle",
+          "bbox": [
+            888,
+            484,
+            1018,
+            694
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-029",
+          "label": "E",
+          "shape_type": "rectangle",
+          "bbox": [
+            1012,
+            484,
+            1142,
+            694
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        },
+        {
+          "id": "d30-030",
+          "label": "F",
+          "shape_type": "rectangle",
+          "bbox": [
+            1136,
+            484,
+            1266,
+            694
+          ],
+          "difficult": false,
+          "tags": [
+            "dense"
+          ],
+          "note": "与左右相邻框重叠 6 像素"
+        }
+      ],
+      "misclassified": [],
+      "expected": {
+        "outcome": "complete",
+        "object_complete": true,
+        "requires_object_edits": {
+          "category": 0,
+          "geometry": 0
+        },
+        "requires_coverage_regions": 12,
+        "outcome_when_difficult": "pending",
+        "summary": "30 个矩形全部正确；A/B、C/D、E/F 三批各 10 个一次确认，再完成 4×3 查漏区域后流程完成。",
+        "steps": [
+          "配置批次 A/B、C/D、E/F，框规则按“可见框”。",
+          "逐批查看卡片与主画布，确认 30 个矩形没有错误类别或错框。",
+          "依次点击“完成本批并进入下一批”，每批确认 10 个对象。",
+          "进入查漏，按 4×3 网格（重叠 0.15）逐区确认。"
+        ],
+        "alternatives": []
+      },
+      "tasks": {
+        "1.3": "30 对象 6 类密集样本",
+        "10.1": "冷/暖缓存 GUI 对照与拖框基线",
+        "10.2": "性能门槛的密集图场景",
+        "10.3": "卡片缓存峰值与连续切图",
+        "10.4": "两人对照的密集难度组",
+        "10.5": "质量抽查（本图标注全对）"
+      }
+    },
+    {
+      "key": "all_correct_12",
+      "title": "12 个对象全部正确的单批图",
+      "purpose": "验证“全正确批次一次确认”的低成本路径",
+      "image": "all_correct_12.png",
+      "label": "all_correct_12.json",
+      "image_width": 1280,
+      "image_height": 720,
+      "object_count": 12,
+      "class_distribution": {
+        "A": 6,
+        "B": 6
+      },
+      "shape_type_distribution": {
+        "rectangle": 12
+      },
+      "box_rules": {
+        "A": "visible",
+        "B": "visible"
+      },
+      "coverage": {
+        "columns": 4,
+        "rows": 3,
+        "overlap": 0.15,
+        "region_count": 12
+      },
+      "batches": [
+        {
+          "name": "A/B",
+          "labels": [
+            "A",
+            "B"
+          ],
+          "member_count": 12
+        }
+      ],
+      "other_pending_count": 0,
+      "objects": [
+        {
+          "id": "ok12-001",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            60,
+            40,
+            280,
+            230
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "类别与框均正确"
+        },
+        {
+          "id": "ok12-002",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            360,
+            40,
+            580,
+            230
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "类别与框均正确"
+        },
+        {
+          "id": "ok12-003",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            660,
+            40,
+            880,
+            230
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "类别与框均正确"
+        },
+        {
+          "id": "ok12-004",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            960,
+            40,
+            1180,
+            230
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "类别与框均正确"
+        },
+        {
+          "id": "ok12-005",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            60,
+            270,
+            280,
+            460
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "类别与框均正确"
+        },
+        {
+          "id": "ok12-006",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            360,
+            270,
+            580,
+            460
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "类别与框均正确"
+        },
+        {
+          "id": "ok12-007",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            660,
+            270,
+            880,
+            460
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "类别与框均正确"
+        },
+        {
+          "id": "ok12-008",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            960,
+            270,
+            1180,
+            460
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "类别与框均正确"
+        },
+        {
+          "id": "ok12-009",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            60,
+            500,
+            280,
+            690
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "类别与框均正确"
+        },
+        {
+          "id": "ok12-010",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            360,
+            500,
+            580,
+            690
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "类别与框均正确"
+        },
+        {
+          "id": "ok12-011",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            660,
+            500,
+            880,
+            690
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "类别与框均正确"
+        },
+        {
+          "id": "ok12-012",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            960,
+            500,
+            1180,
+            690
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "类别与框均正确"
+        }
+      ],
+      "misclassified": [],
+      "expected": {
+        "outcome": "complete",
+        "object_complete": true,
+        "requires_object_edits": {
+          "category": 0,
+          "geometry": 0
+        },
+        "requires_coverage_regions": 12,
+        "outcome_when_difficult": "pending",
+        "summary": "12 个矩形全部正确且同批；一次批次确认即可确认全部对象，无需逐卡点击或逐项打勾。",
+        "steps": [
+          "配置批次 A/B（12 个成员），框规则按“可见框”。",
+          "不做任何编辑，直接点击“完成本批并进入下一批（确认 12，保留 0）”。",
+          "完成 4×3 查漏区域。"
+        ],
+        "alternatives": []
+      },
+      "tasks": {
+        "1.3": "全正确批次的“一次确认”样本",
+        "7.1": "12 对象批次一次确认",
+        "7.2": "确认范围与屏外成员提示",
+        "10.2": "暖缓存切换与确认操作的耗时对照",
+        "10.4": "两人对照的低难度组",
+        "10.5": "质量抽查（无错可改时的误操作率）"
+      }
+    },
+    {
+      "key": "small_and_occluded",
+      "title": "小目标与遮挡",
+      "purpose": "验证小目标放大、上下文裁切与高度遮挡下的证据判断",
+      "image": "small_and_occluded.png",
+      "label": "small_and_occluded.json",
+      "image_width": 1280,
+      "image_height": 720,
+      "object_count": 18,
+      "class_distribution": {
+        "A": 7,
+        "B": 7,
+        "C": 4
+      },
+      "shape_type_distribution": {
+        "rectangle": 18
+      },
+      "box_rules": {
+        "A": "visible",
+        "B": "visible",
+        "C": "full"
+      },
+      "coverage": {
+        "columns": 4,
+        "rows": 3,
+        "overlap": 0.15,
+        "region_count": 12
+      },
+      "batches": [
+        {
+          "name": "A/B",
+          "labels": [
+            "A",
+            "B"
+          ],
+          "member_count": 14
+        },
+        {
+          "name": "C",
+          "labels": [
+            "C"
+          ],
+          "member_count": 4
+        }
+      ],
+      "other_pending_count": 0,
+      "objects": [
+        {
+          "id": "soc-001",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            40,
+            60,
+            170,
+            390
+          ],
+          "difficult": true,
+          "tags": [
+            "dense",
+            "occluded"
+          ],
+          "note": "相邻框重叠约 46%，越靠左被遮挡越多"
+        },
+        {
+          "id": "soc-002",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            110,
+            60,
+            240,
+            390
+          ],
+          "difficult": false,
+          "tags": [
+            "dense",
+            "occluded"
+          ],
+          "note": "相邻框重叠约 46%，越靠左被遮挡越多"
+        },
+        {
+          "id": "soc-003",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            180,
+            60,
+            310,
+            390
+          ],
+          "difficult": false,
+          "tags": [
+            "dense",
+            "occluded"
+          ],
+          "note": "相邻框重叠约 46%，越靠左被遮挡越多"
+        },
+        {
+          "id": "soc-004",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            250,
+            60,
+            380,
+            390
+          ],
+          "difficult": false,
+          "tags": [
+            "dense",
+            "occluded"
+          ],
+          "note": "相邻框重叠约 46%，越靠左被遮挡越多"
+        },
+        {
+          "id": "soc-005",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            320,
+            60,
+            450,
+            390
+          ],
+          "difficult": false,
+          "tags": [
+            "dense",
+            "occluded"
+          ],
+          "note": "相邻框重叠约 46%，越靠左被遮挡越多"
+        },
+        {
+          "id": "soc-006",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            500,
+            330,
+            650,
+            710
+          ],
+          "difficult": true,
+          "tags": [
+            "dense",
+            "occluded"
+          ],
+          "note": "相邻框重叠约 69%，soc-006/007 仅露出局部"
+        },
+        {
+          "id": "soc-007",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            546,
+            330,
+            696,
+            710
+          ],
+          "difficult": true,
+          "tags": [
+            "dense",
+            "occluded"
+          ],
+          "note": "相邻框重叠约 69%，soc-006/007 仅露出局部"
+        },
+        {
+          "id": "soc-008",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            592,
+            330,
+            742,
+            710
+          ],
+          "difficult": false,
+          "tags": [
+            "dense",
+            "occluded"
+          ],
+          "note": "相邻框重叠约 69%，soc-006/007 仅露出局部"
+        },
+        {
+          "id": "soc-009",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            638,
+            330,
+            788,
+            710
+          ],
+          "difficult": false,
+          "tags": [
+            "dense",
+            "occluded"
+          ],
+          "note": "相邻框重叠约 69%，soc-006/007 仅露出局部"
+        },
+        {
+          "id": "soc-010",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            684,
+            330,
+            834,
+            710
+          ],
+          "difficult": false,
+          "tags": [
+            "dense",
+            "occluded"
+          ],
+          "note": "相邻框重叠约 69%，soc-006/007 仅露出局部"
+        },
+        {
+          "id": "soc-011",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            900,
+            80,
+            926,
+            140
+          ],
+          "difficult": false,
+          "tags": [
+            "small"
+          ],
+          "note": "26×60 像素小目标"
+        },
+        {
+          "id": "soc-012",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            980,
+            150,
+            1010,
+            218
+          ],
+          "difficult": false,
+          "tags": [
+            "small"
+          ],
+          "note": "30×68 像素小目标"
+        },
+        {
+          "id": "soc-013",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            1060,
+            60,
+            1084,
+            114
+          ],
+          "difficult": false,
+          "tags": [
+            "small"
+          ],
+          "note": "24×54 像素小目标"
+        },
+        {
+          "id": "soc-014",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            1140,
+            180,
+            1172,
+            252
+          ],
+          "difficult": false,
+          "tags": [
+            "small"
+          ],
+          "note": "32×72 像素小目标"
+        },
+        {
+          "id": "soc-015",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            900,
+            300,
+            928,
+            364
+          ],
+          "difficult": false,
+          "tags": [
+            "small"
+          ],
+          "note": "28×64 像素小目标"
+        },
+        {
+          "id": "soc-016",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            60,
+            480,
+            90,
+            550
+          ],
+          "difficult": false,
+          "tags": [
+            "small"
+          ],
+          "note": "30×70 像素小目标"
+        },
+        {
+          "id": "soc-017",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            180,
+            560,
+            206,
+            618
+          ],
+          "difficult": false,
+          "tags": [
+            "small"
+          ],
+          "note": "26×58 像素小目标"
+        },
+        {
+          "id": "soc-018",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            300,
+            470,
+            334,
+            546
+          ],
+          "difficult": false,
+          "tags": [
+            "small"
+          ],
+          "note": "34×76 像素小目标"
+        }
+      ],
+      "misclassified": [],
+      "expected": {
+        "outcome": "complete",
+        "object_complete": true,
+        "requires_object_edits": {
+          "category": 0,
+          "geometry": 0
+        },
+        "requires_coverage_regions": 12,
+        "outcome_when_difficult": "pending",
+        "summary": "18 个矩形标注均正确；难点是证据：8 个小目标与两处密集遮挡需要放大和上下文。允许把 soc-001、soc-006、soc-007 标为疑难，标记后流程保持待审。",
+        "steps": [
+          "配置批次 A/B（14 个）与 C（4 个）；A/B 按可见框、C 按完整框。",
+          "用卡片上下文与画布放大检查 soc-011…soc-018 这 8 个小目标。",
+          "检查 soc-001…soc-010 两处重叠，判断遮挡是否影响类别与框。",
+          "确认批次并完成 4×3 查漏区域。"
+        ],
+        "alternatives": [
+          {
+            "when": "把高度遮挡对象标为疑难而不确认",
+            "outcome": "pending",
+            "summary": "流程保持待审，直到解除疑难并重新确认。"
+          }
+        ]
+      },
+      "tasks": {
+        "1.3": "小目标与遮挡样本",
+        "5.2": "卡片上下文与贴边/遮挡的证据查看",
+        "6.1": "小目标与相邻近似尺寸目标的倍率连续性",
+        "10.3": "小目标缩略图与缓存开销",
+        "10.5": "质量复核：遮挡导致的漏标/错标"
+      }
+    },
+    {
+      "key": "clipped_arm",
+      "title": "框截掉手臂（可见框 / 完整框规则）",
+      "purpose": "验证框外肢体证据、拖边扩框与规则差异判定",
+      "image": "clipped_arm.png",
+      "label": "clipped_arm.json",
+      "image_width": 1280,
+      "image_height": 720,
+      "object_count": 6,
+      "class_distribution": {
+        "A": 3,
+        "B": 3
+      },
+      "shape_type_distribution": {
+        "rectangle": 6
+      },
+      "box_rules": {
+        "A": "full",
+        "B": "visible"
+      },
+      "coverage": {
+        "columns": 4,
+        "rows": 3,
+        "overlap": 0.15,
+        "region_count": 12
+      },
+      "batches": [
+        {
+          "name": "A/B",
+          "labels": [
+            "A",
+            "B"
+          ],
+          "member_count": 6
+        }
+      ],
+      "other_pending_count": 0,
+      "objects": [
+        {
+          "id": "arm-001",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            60,
+            50,
+            150,
+            290
+          ],
+          "difficult": false,
+          "tags": [
+            "clipped"
+          ],
+          "note": "框截断可见手臂，需要拖边扩大"
+        },
+        {
+          "id": "arm-002",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            480,
+            50,
+            570,
+            290
+          ],
+          "difficult": false,
+          "tags": [
+            "clipped"
+          ],
+          "note": "框截断可见手臂，需要拖边扩大"
+        },
+        {
+          "id": "arm-003",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            60,
+            380,
+            150,
+            620
+          ],
+          "difficult": false,
+          "tags": [
+            "clipped"
+          ],
+          "note": "框截断可见手臂，需要拖边扩大"
+        },
+        {
+          "id": "arm-004",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            480,
+            380,
+            570,
+            620
+          ],
+          "difficult": false,
+          "tags": [
+            "clipped"
+          ],
+          "note": "框截断可见手臂，需要拖边扩大"
+        },
+        {
+          "id": "arm-005",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            900,
+            50,
+            990,
+            290
+          ],
+          "difficult": false,
+          "tags": [
+            "clipped",
+            "edge"
+          ],
+          "note": "手臂伸出图像右边界，完整范围不可知"
+        },
+        {
+          "id": "arm-006",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            900,
+            380,
+            990,
+            620
+          ],
+          "difficult": false,
+          "tags": [
+            "clipped"
+          ],
+          "note": "框截断可见手臂，需要拖边扩大"
+        }
+      ],
+      "misclassified": [],
+      "expected": {
+        "outcome": "complete",
+        "object_complete": true,
+        "requires_object_edits": {
+          "category": 0,
+          "geometry": 5
+        },
+        "requires_coverage_regions": 12,
+        "outcome_when_difficult": "pending",
+        "summary": "6 个矩形都截断可见手臂：arm-001…arm-004、arm-006 需要拖边扩框，扩框后已确认状态失效需重新确认；arm-005 的手臂伸出图像右边界。",
+        "steps": [
+          "配置批次 A/B（6 个）；A 按完整框、B 按可见框。",
+          "用卡片上下文查看每个框外手臂，确认手臂像素在框外可见。",
+          "拖边扩大 arm-001…arm-004、arm-006 到包含可见手臂；编辑后类别/框确认失效，在批次确认时重新确认。",
+          "arm-005 按可见框扩到图像边界；若按完整框判定完整手臂不可知，可标记疑难。",
+          "确认本批并完成 4×3 查漏区域。"
+        ],
+        "alternatives": [
+          {
+            "when": "arm-005 按完整框规则标记为疑难",
+            "outcome": "pending",
+            "summary": "流程保持待审，直到解除疑难并重新确认。"
+          }
+        ]
+      },
+      "tasks": {
+        "1.3": "框截掉手臂样本",
+        "5.2": "截断/贴边对象的上下文与倍率",
+        "6.3": "拖边扩框与当前对象保持",
+        "10.4": "两人对照的中等难度组",
+        "10.5": "质量复核：漏扩框与规则差异判定"
+      }
+    },
+    {
+      "key": "misclassified_third_batch",
+      "title": "第三批系统性错分",
+      "purpose": "验证批内改类、跨批改类不跳位与错误批次计数",
+      "image": "misclassified_third_batch.png",
+      "label": "misclassified_third_batch.json",
+      "image_width": 1280,
+      "image_height": 720,
+      "object_count": 19,
+      "class_distribution": {
+        "A": 3,
+        "B": 3,
+        "C": 4,
+        "D": 3,
+        "E": 3,
+        "F": 3
+      },
+      "shape_type_distribution": {
+        "rectangle": 19
+      },
+      "box_rules": {
+        "A": "visible",
+        "B": "visible",
+        "C": "visible",
+        "D": "visible",
+        "E": "visible",
+        "F": "visible"
+      },
+      "coverage": {
+        "columns": 4,
+        "rows": 3,
+        "overlap": 0.15,
+        "region_count": 12
+      },
+      "batches": [
+        {
+          "name": "A/B",
+          "labels": [
+            "A",
+            "B"
+          ],
+          "member_count": 6
+        },
+        {
+          "name": "C/D",
+          "labels": [
+            "C",
+            "D"
+          ],
+          "member_count": 7
+        },
+        {
+          "name": "E/F",
+          "labels": [
+            "E",
+            "F"
+          ],
+          "member_count": 6
+        }
+      ],
+      "other_pending_count": 0,
+      "objects": [
+        {
+          "id": "m3-001",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            20,
+            15,
+            200,
+            155
+          ],
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 A"
+        },
+        {
+          "id": "m3-002",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            270,
+            15,
+            450,
+            155
+          ],
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 B"
+        },
+        {
+          "id": "m3-003",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            520,
+            15,
+            700,
+            155
+          ],
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 A"
+        },
+        {
+          "id": "m3-004",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            770,
+            15,
+            950,
+            155
+          ],
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 B"
+        },
+        {
+          "id": "m3-005",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            1020,
+            15,
+            1200,
+            155
+          ],
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 A"
+        },
+        {
+          "id": "m3-006",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            20,
+            187,
+            200,
+            327
+          ],
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 B"
+        },
+        {
+          "id": "m3-007",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            270,
+            187,
+            450,
+            327
+          ],
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 C"
+        },
+        {
+          "id": "m3-008",
+          "label": "D",
+          "shape_type": "rectangle",
+          "bbox": [
+            520,
+            187,
+            700,
+            327
+          ],
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 D"
+        },
+        {
+          "id": "m3-009",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            770,
+            187,
+            950,
+            327
+          ],
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 C"
+        },
+        {
+          "id": "m3-010",
+          "label": "D",
+          "shape_type": "rectangle",
+          "bbox": [
+            1020,
+            187,
+            1200,
+            327
+          ],
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 D"
+        },
+        {
+          "id": "m3-011",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            20,
+            359,
+            200,
+            499
+          ],
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 C"
+        },
+        {
+          "id": "m3-012",
+          "label": "D",
+          "shape_type": "rectangle",
+          "bbox": [
+            270,
+            359,
+            450,
+            499
+          ],
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 D"
+        },
+        {
+          "id": "m3-013",
+          "label": "F",
+          "shape_type": "rectangle",
+          "bbox": [
+            520,
+            359,
+            700,
+            499
+          ],
+          "truth_label": "E",
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 E"
+        },
+        {
+          "id": "m3-014",
+          "label": "F",
+          "shape_type": "rectangle",
+          "bbox": [
+            770,
+            359,
+            950,
+            499
+          ],
+          "truth_label": "E",
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 E"
+        },
+        {
+          "id": "m3-015",
+          "label": "E",
+          "shape_type": "rectangle",
+          "bbox": [
+            1020,
+            359,
+            1200,
+            499
+          ],
+          "truth_label": "F",
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 F"
+        },
+        {
+          "id": "m3-016",
+          "label": "F",
+          "shape_type": "rectangle",
+          "bbox": [
+            20,
+            531,
+            200,
+            671
+          ],
+          "truth_label": "E",
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 E"
+        },
+        {
+          "id": "m3-017",
+          "label": "E",
+          "shape_type": "rectangle",
+          "bbox": [
+            270,
+            531,
+            450,
+            671
+          ],
+          "truth_label": "F",
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 F"
+        },
+        {
+          "id": "m3-018",
+          "label": "E",
+          "shape_type": "rectangle",
+          "bbox": [
+            520,
+            531,
+            700,
+            671
+          ],
+          "truth_label": "F",
+          "difficult": false,
+          "tags": [
+            "misclassified"
+          ],
+          "note": "第三批系统性错分：真值 F"
+        },
+        {
+          "id": "m3-019",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            770,
+            531,
+            950,
+            671
+          ],
+          "truth_label": "F",
+          "difficult": false,
+          "tags": [
+            "misclassified",
+            "cross_batch"
+          ],
+          "note": "跨批错分：真值 F，预标注落在 C/D 批"
+        }
+      ],
+      "misclassified": [
+        {
+          "id": "m3-013",
+          "given": "F",
+          "truth": "E"
+        },
+        {
+          "id": "m3-014",
+          "given": "F",
+          "truth": "E"
+        },
+        {
+          "id": "m3-015",
+          "given": "E",
+          "truth": "F"
+        },
+        {
+          "id": "m3-016",
+          "given": "F",
+          "truth": "E"
+        },
+        {
+          "id": "m3-017",
+          "given": "E",
+          "truth": "F"
+        },
+        {
+          "id": "m3-018",
+          "given": "E",
+          "truth": "F"
+        },
+        {
+          "id": "m3-019",
+          "given": "C",
+          "truth": "F"
+        }
+      ],
+      "expected": {
+        "outcome": "complete",
+        "object_complete": true,
+        "requires_object_edits": {
+          "category": 6,
+          "geometry": 0
+        },
+        "requires_coverage_regions": 12,
+        "outcome_when_difficult": "pending",
+        "summary": "19 个矩形；第三批（E/F）6 个对象全部标成同类批次中的另一类，需要 6 次数字键改类；m3-019 真值 F 却标成 C，属于跨批错分。",
+        "steps": [
+          "配置批次 A/B（6 个）、C/D（7 个）、E/F（6 个）。",
+          "确认 A/B 批。",
+          "在 C/D 批中把 m3-019 从 C 改为 F：它仍留在 C/D 批成员中，不会跳回 E/F 批。",
+          "在 E/F 批中把 m3-013…m3-018 改成真值类别（E↔F 互换）。",
+          "确认剩余批次并完成 4×3 查漏区域。"
+        ],
+        "alternatives": [],
+        "notes": [
+          "若未改类就确认第三批，流程仍会显示“完成”——流程只记录用户声明，不自动判对；独立复核时需比对真值。"
+        ]
+      },
+      "tasks": {
+        "1.3": "错分到第三批的样本",
+        "2.3": "改类不跳位、不重复进入另一批",
+        "7.3": "批次成员数与当前类别统计的区分",
+        "10.4": "两人对照的高难度组",
+        "10.5": "质量复核：改类错误与漏改"
+      },
+      "truth_class_distribution": {
+        "A": 3,
+        "B": 3,
+        "C": 3,
+        "D": 3,
+        "E": 3,
+        "F": 4
+      }
+    },
+    {
+      "key": "empty",
+      "title": "无对象图",
+      "purpose": "验证无标注图片仍必须完成空间查漏",
+      "image": "empty.png",
+      "label": "empty.json",
+      "image_width": 1280,
+      "image_height": 720,
+      "object_count": 0,
+      "class_distribution": {},
+      "shape_type_distribution": {},
+      "box_rules": {
+        "A": "visible",
+        "B": "visible"
+      },
+      "coverage": {
+        "columns": 4,
+        "rows": 3,
+        "overlap": 0.15,
+        "region_count": 12
+      },
+      "batches": [
+        {
+          "name": "A/B",
+          "labels": [
+            "A",
+            "B"
+          ],
+          "member_count": 0
+        }
+      ],
+      "other_pending_count": 0,
+      "objects": [],
+      "misclassified": [],
+      "expected": {
+        "outcome": "complete",
+        "object_complete": true,
+        "requires_object_edits": {
+          "category": 0,
+          "geometry": 0
+        },
+        "requires_coverage_regions": 12,
+        "outcome_when_difficult": "pending",
+        "summary": "无对象；对象侧立即完成（0/0），但流程完成仍取决于 4×3 查漏区域是否全部完成，打开时为待审。",
+        "steps": [
+          "打开后确认对象计数为 0/0，不需要对象确认。",
+          "仍要进入查漏，完成 4×3 个区域，否则流程保持待审。"
+        ],
+        "alternatives": [
+          {
+            "when": "跳过查漏直接看结果",
+            "outcome": "pending",
+            "summary": "流程完成条件不满足，界面必须保持未完成。"
+          }
+        ]
+      },
+      "tasks": {
+        "1.3": "无框图样本",
+        "8.6": "空标注图片仍需查漏的完成条件",
+        "10.4": "两人对照的空图巡查",
+        "10.5": "质量复核：空图漏巡"
+      }
+    },
+    {
+      "key": "mixed_shapes",
+      "title": "矩形 + 非矩形混合图",
+      "purpose": "验证首版只支持矩形时的“部分复核”路径",
+      "image": "mixed_shapes.png",
+      "label": "mixed_shapes.json",
+      "image_width": 1280,
+      "image_height": 720,
+      "object_count": 11,
+      "class_distribution": {
+        "A": 4,
+        "B": 3,
+        "C": 3,
+        "D": 1
+      },
+      "shape_type_distribution": {
+        "polygon": 2,
+        "rectangle": 9
+      },
+      "box_rules": {
+        "A": "visible",
+        "B": "visible",
+        "C": "visible"
+      },
+      "coverage": {
+        "columns": 4,
+        "rows": 3,
+        "overlap": 0.15,
+        "region_count": 12
+      },
+      "batches": [
+        {
+          "name": "A/B",
+          "labels": [
+            "A",
+            "B"
+          ],
+          "member_count": 6
+        },
+        {
+          "name": "C/D",
+          "labels": [
+            "C",
+            "D"
+          ],
+          "member_count": 3
+        }
+      ],
+      "other_pending_count": 2,
+      "objects": [
+        {
+          "id": "mix-001",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            50,
+            40,
+            270,
+            230
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "矩形，可按批次复核"
+        },
+        {
+          "id": "mix-002",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            350,
+            40,
+            570,
+            230
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "矩形，可按批次复核"
+        },
+        {
+          "id": "mix-003",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            650,
+            40,
+            870,
+            230
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "矩形，可按批次复核"
+        },
+        {
+          "id": "mix-004",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            950,
+            40,
+            1170,
+            230
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "矩形，可按批次复核"
+        },
+        {
+          "id": "mix-005",
+          "label": "A",
+          "shape_type": "rectangle",
+          "bbox": [
+            50,
+            270,
+            270,
+            460
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "矩形，可按批次复核"
+        },
+        {
+          "id": "mix-006",
+          "label": "B",
+          "shape_type": "rectangle",
+          "bbox": [
+            350,
+            270,
+            570,
+            460
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "矩形，可按批次复核"
+        },
+        {
+          "id": "mix-007",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            650,
+            270,
+            870,
+            460
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "矩形，可按批次复核"
+        },
+        {
+          "id": "mix-008",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            950,
+            270,
+            1170,
+            460
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "矩形，可按批次复核"
+        },
+        {
+          "id": "mix-009",
+          "label": "C",
+          "shape_type": "rectangle",
+          "bbox": [
+            50,
+            500,
+            270,
+            690
+          ],
+          "difficult": false,
+          "tags": [],
+          "note": "矩形，可按批次复核"
+        },
+        {
+          "id": "mix-010",
+          "label": "A",
+          "shape_type": "polygon",
+          "bbox": [
+            370,
+            520,
+            550,
+            660
+          ],
+          "points": [
+            [
+              370,
+              660
+            ],
+            [
+              460,
+              520
+            ],
+            [
+              550,
+              660
+            ]
+          ],
+          "difficult": false,
+          "tags": [
+            "polygon"
+          ],
+          "note": "三角形，首版不支持完整复核"
+        },
+        {
+          "id": "mix-011",
+          "label": "D",
+          "shape_type": "polygon",
+          "bbox": [
+            690,
+            520,
+            830,
+            660
+          ],
+          "points": [
+            [
+              760,
+              520
+            ],
+            [
+              830,
+              570
+            ],
+            [
+              805,
+              660
+            ],
+            [
+              715,
+              660
+            ],
+            [
+              690,
+              570
+            ]
+          ],
+          "difficult": false,
+          "tags": [
+            "polygon"
+          ],
+          "note": "五边形，首版不支持完整复核"
+        }
+      ],
+      "misclassified": [],
+      "expected": {
+        "outcome": "partial",
+        "object_complete": false,
+        "requires_object_edits": {
+          "category": 0,
+          "geometry": 0
+        },
+        "requires_coverage_regions": 12,
+        "outcome_when_difficult": "pending",
+        "summary": "9 个矩形 + 2 个多边形；矩形可按 A/B（6 个）、C/D（3 个）两批确认，两个多边形进入“其他待处理”，本流程只能部分复核，不会显示完整完成。",
+        "steps": [
+          "配置批次 A/B、C/D，框规则按“可见框”。",
+          "确认 A/B 与 C/D 两个矩形批次。",
+          "确认 mix-010、mix-011 仍为待处理，流程状态显示为部分/不支持完整复核。",
+          "原有画布编辑与正式验收不受影响，可继续用旧流程处理。"
+        ],
+        "alternatives": [],
+        "notes": [
+          "不得用删除多边形换取完成状态；原有编辑与正式验收仍按旧流程独立可用。"
+        ]
+      },
+      "tasks": {
+        "1.3": "含非矩形的混合图样本",
+        "4.5": "部分复核提示与原有编辑入口",
+        "8.6": "不支持形状阻止全流程完成",
+        "10.5": "质量复核：非矩形对象的处理"
+      }
+    }
+  ]
+}

@@ -86,7 +86,9 @@ class DenseReviewConfigDialog(QtWidgets.QDialog):
         )
         self.default_rule_combo = QtWidgets.QComboBox()
         for value in BOX_RULE_VALUES:
-            self.default_rule_combo.addItem(BOX_RULE_LABELS[value], value)
+            self.default_rule_combo.addItem(
+                self.tr(BOX_RULE_LABELS[value]), value
+            )
         rule_buttons.addWidget(self.add_rule_button)
         rule_buttons.addWidget(self.remove_rule_button)
         rule_buttons.addSpacing(12)
@@ -177,7 +179,7 @@ class DenseReviewConfigDialog(QtWidgets.QDialog):
         self.rule_table.setItem(row, 0, QtWidgets.QTableWidgetItem(label))
         combo = QtWidgets.QComboBox()
         for value in BOX_RULE_VALUES:
-            combo.addItem(BOX_RULE_LABELS[value], value)
+            combo.addItem(self.tr(BOX_RULE_LABELS[value]), value)
         combo.setCurrentIndex(max(0, combo.findData(box_rule)))
         combo.currentIndexChanged.connect(self._validate)
         self.rule_table.setCellWidget(row, 1, combo)
@@ -255,7 +257,7 @@ class DenseReviewConfigDialog(QtWidgets.QDialog):
 
     def _validate(self, *_args) -> None:
         config = self.config()
-        issues = config.validate()
+        issues = config.validate(self.tr)
         if issues:
             self.validation_label.setText(
                 "；".join(issue.message for issue in issues)

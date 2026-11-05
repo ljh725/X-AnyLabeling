@@ -1,3 +1,4 @@
+import copy
 import ssl
 
 import pytest
@@ -99,7 +100,13 @@ def test_load_custom_model_rejects_invalid_name(
         ModelManager, "load_model_configs", lambda self: None
     )
     monkeypatch.setattr(manager_module, "get_config", lambda: {})
-    monkeypatch.setattr(manager_module, "save_config", saved_configs.append)
+    monkeypatch.setattr(
+        ModelManager,
+        "save_custom_models",
+        lambda self, models: saved_configs.append(
+            {"custom_models": copy.deepcopy(models)}
+        ),
+    )
 
     manager = ModelManager()
 
@@ -132,10 +139,14 @@ filter_classes:
     saved_configs = []
     monkeypatch.setattr(ModelManager, "load_model_configs", lambda self: None)
     monkeypatch.setattr(ModelManager, "load_model", lambda self, _: None)
+    monkeypatch.setattr(manager_module, "get_config", lambda: {"custom_models": []})
     monkeypatch.setattr(
-        manager_module, "get_config", lambda: {"custom_models": []}
+        ModelManager,
+        "save_custom_models",
+        lambda self, models: saved_configs.append(
+            {"custom_models": copy.deepcopy(models)}
+        ),
     )
-    monkeypatch.setattr(manager_module, "save_config", saved_configs.append)
 
     manager = ModelManager()
 

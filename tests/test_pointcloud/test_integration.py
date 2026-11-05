@@ -176,8 +176,7 @@ class TestPointCloudIntegration(unittest.TestCase):
         calls.attach_mock(window.close_after_approval, "pointcloud_close")
         event = QtGui.QCloseEvent()
 
-        with patch.object(label_widget, "save_config"):
-            label_widget.LabelingWidget.closeEvent(widget, event)
+        label_widget.LabelingWidget.closeEvent(widget, event)
 
         self.assertTrue(event.isAccepted())
         self.assertEqual(

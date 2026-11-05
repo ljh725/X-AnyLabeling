@@ -428,7 +428,6 @@ def test_main_window_exposes_translated_edge_toggle(
         / "anylabeling/configs/xanylabeling_config.yaml"
     )
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-    monkeypatch.setattr(module, "save_config", lambda _config: True)
     monkeypatch.setattr(model_manager, "get_config", lambda: config)
     translator = QtCore.QTranslator()
     assert translator.load(":/languages/translations/zh_CN.qm")

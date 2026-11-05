@@ -155,3 +155,55 @@ def test_stale_same_id_result_is_ignored(app):
     assert cached is not None
     assert "id1" not in provider._pending
     provider.shutdown()
+
+
+def test_drain_defers_finished_cards_while_interacting(app):
+    provider = ThumbnailProvider()
+    provider.start_generation(1)
+    request = _request("image.png", (0, 0, 10, 10))
+    key = provider.request_key(
+        request.shape_id,
+        request.generation,
+        request.bounds,
+        request.margin_ratio,
+        request.target_size,
+        request.source_version,
+    )
+    provider._latest_requests[request.shape_id] = key
+    provider._pending.add(request.shape_id)
+    provider._queue.put(("ready", request, _png_bytes()))
+
+    provider.set_defer_predicate(lambda: True)
+    provider._drain()
+    # A drag frame must not pay for decode, cache fill or card signals.
+    assert provider._queue.qsize() == 1
+    assert not provider._cache
+
+    provider.set_defer_predicate(lambda: False)
+    provider._drain()
+    assert provider._queue.empty()
+    assert provider._cache[key] is not None
+    provider.shutdown()
+
+
+def test_crop_yielding_waits_until_interaction_ends(app, tmp_path):
+    path = tmp_path / "image.png"
+    Image.new("RGB", (100, 80), color=(10, 20, 30)).save(path)
+    provider = ThumbnailProvider()
+    provider.start_generation(1)
+    calls = {"count": 0}
+
+    def predicate():
+        calls["count"] += 1
+        return calls["count"] < 3
+
+    provider.set_defer_predicate(predicate)
+    shape_id, generation, data = provider._crop_yielding(
+        _request(path, (0, 0, 40, 40))
+    )
+    assert calls["count"] == 3
+    assert shape_id == "id1"
+    assert generation == 1
+    with Image.open(io.BytesIO(data)) as image:
+        assert image.width > 0
+    provider.shutdown()

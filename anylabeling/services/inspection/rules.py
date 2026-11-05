@@ -42,6 +42,7 @@ class RuleContext:
     profile: InspectionProfile
     file: FileSnapshot
     should_cancel: Callable[[], bool] = lambda: False
+    duplicate_pairs: Optional[tuple[DuplicatePair, ...]] = None
 
 
 @dataclass(frozen=True)
@@ -56,11 +57,13 @@ class RuleOutcome:
 
 
 def _bbox(shape: ShapeSnapshot) -> Optional[tuple[float, float, float, float]]:
-    if not shape.points:
+    if not shape.input_valid or len(shape.points) < 2:
         return None
     xs = [point[0] for point in shape.points]
     ys = [point[1] for point in shape.points]
     if not all(math.isfinite(value) for value in xs + ys):
+        return None
+    if max(xs) <= min(xs) or max(ys) <= min(ys):
         return None
     return (min(xs), min(ys), max(xs), max(ys))
 
@@ -287,6 +290,10 @@ def run_points_required(
 ) -> RuleOutcome:
     issues = []
     for shape in context.file.shapes:
+        if not shape.input_valid:
+            # Report the raw input problem from the geometry rule instead of
+            # guessing a point count from a partially parsed list.
+            continue
         if shape.shape_type == "rectangle":
             needed = 2
         elif shape.shape_type == "polygon":
@@ -357,6 +364,28 @@ def run_bbox_geometry_valid(
     issues = []
     skipped = 0
     for shape in rectangles:
+        if not shape.input_valid:
+            region = _partial_region(shape)
+            issues.append(
+                _make_issue(
+                    context,
+                    "bbox_geometry_valid",
+                    "1.0.0",
+                    "矩形几何合法性",
+                    "矩形输入坐标异常",
+                    "对象 #{} 的原始坐标存在异常，未按合法矩形处理: "
+                    "{}。检查不会丢弃这些异常点后继续计算。".format(
+                        shape.index, "；".join(shape.input_errors)
+                    ),
+                    IssueSeverity.ERROR,
+                    object_ids=(shape.shape_id,),
+                    shape_indices=(shape.index,),
+                    region=region,
+                    thresholds={"input_errors": list(shape.input_errors)},
+                    suggested_action="修正原始坐标或重新绘制该对象。",
+                )
+            )
+            continue
         box = _bbox(shape)
         if box is None or _bbox_area(box) <= 0:
             issues.append(
@@ -386,6 +415,18 @@ def run_bbox_geometry_valid(
     )
 
 
+def _partial_region(
+    shape: ShapeSnapshot,
+) -> Optional[tuple[float, float, float, float]]:
+    if len(shape.points) < 2:
+        return None
+    xs = [point[0] for point in shape.points]
+    ys = [point[1] for point in shape.points]
+    if not all(math.isfinite(value) for value in xs + ys):
+        return None
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
 def _thresholds(
     parameters: Mapping[str, Any],
 ) -> tuple[DuplicateThresholds, Mapping[str, Any]]:
@@ -407,6 +448,23 @@ def _duplicate_snapshots(
     issues: list[InspectionIssue] = []
     for shape in context.file.shapes:
         if shape.shape_type != "rectangle":
+            continue
+        if not shape.input_valid:
+            issues.append(
+                _make_issue(
+                    context,
+                    "duplicate_boxes",
+                    "1.0.0",
+                    "疑似重复框",
+                    "重复框输入坐标异常",
+                    "对象 #{} 的原始坐标存在异常，未参与重复框几何计算: "
+                    "{}。".format(shape.index, "；".join(shape.input_errors)),
+                    IssueSeverity.ERROR,
+                    object_ids=(shape.shape_id,),
+                    shape_indices=(shape.index,),
+                    suggested_action="修正原始坐标后重新检查。",
+                )
+            )
             continue
         try:
             snapshots.append(
@@ -444,22 +502,70 @@ def run_duplicate_boxes(
             return _completed(invalid_issues)
         return _not_applicable("没有可比较的矩形对象；仍需图像查漏")
     thresholds, threshold_snapshot = _thresholds(parameters)
-    result = full_scan(snapshots, thresholds, context.should_cancel)
     max_pairs = int(parameters.get("max_pairs", 5000) or 5000)
     truncated = False
-    pairs: Sequence[DuplicatePair] = result.pairs
+    if context.duplicate_pairs is None:
+        result = full_scan(
+            snapshots, thresholds, context.should_cancel, max_pairs=max_pairs
+        )
+        pairs = result.pairs
+        cancelled = result.cancelled
+        truncated = result.truncated
+    else:
+        pairs = context.duplicate_pairs
+        cancelled = context.should_cancel()
     if len(pairs) > max_pairs:
         pairs = pairs[:max_pairs]
         truncated = True
+    issues, filtered = duplicate_pair_issues(
+        context,
+        parameters,
+        pairs,
+        threshold_snapshot=threshold_snapshot,
+    )
+    issues = list(invalid_issues) + issues
+    reason = "已取消，保留部分证据" if cancelled else ""
+    if truncated:
+        reason = f"候选对超过上限 {max_pairs}，结果已截断"
+    if cancelled:
+        return RuleOutcome(
+            state=CoverageState.CANCELLED,
+            issues=tuple(issues),
+            reason=reason,
+            truncated=truncated,
+            filtered=tuple(filtered),
+        )
+    return _completed(
+        issues, reason=reason, truncated=truncated, filtered=filtered
+    )
+
+
+def duplicate_pair_issues(
+    context: RuleContext,
+    parameters: Mapping[str, Any],
+    pairs: Sequence[DuplicatePair],
+    *,
+    threshold_snapshot: Optional[Mapping[str, Any]] = None,
+) -> tuple[list[InspectionIssue], list[dict[str, Any]]]:
+    """Convert already classified pairs into issues.
+
+    Shared by the runner rule and the incremental edit refresh so both
+    paths produce identical families and evidence for the same pairs.
+    """
+    snapshots, _ = _duplicate_snapshots(context)
     by_id = {item.shape_id: item for item in snapshots}
+    if threshold_snapshot is None:
+        _, threshold_snapshot = _thresholds(parameters)
     relations = dict(parameters.get("relations", {}) or {})
     if not relations:
         relations = dict(context.profile.relations)
-    issues = list(invalid_issues)
+    issues: list[InspectionIssue] = []
     filtered: list[dict[str, Any]] = []
     for pair in pairs:
-        first = by_id[pair.first_id]
-        second = by_id[pair.second_id]
+        first = by_id.get(pair.first_id)
+        second = by_id.get(pair.second_id)
+        if first is None or second is None:
+            continue
         same_label = first.label == second.label
         relation = (
             "same_class"
@@ -490,7 +596,6 @@ def run_duplicate_boxes(
             relation_label = "同类几何重叠"
             title = "疑似重复矩形框"
             suggested = "查看两个框及证据，人工判断是否为重复对象。"
-        severity = IssueSeverity.WARNING
         issue = _make_issue(
             context,
             "duplicate_boxes",
@@ -502,7 +607,7 @@ def run_duplicate_boxes(
                 f"{second.shape_id}（{second.label}）几何重叠；"
                 f"{relation_label}。"
             ),
-            severity,
+            IssueSeverity.WARNING,
             object_ids=(first.shape_id, second.shape_id),
             region=_union_region(first, second),
             metrics=pair.metrics.to_dict(),
@@ -512,20 +617,7 @@ def run_duplicate_boxes(
             filtered_reason=relation_label,
         )
         issues.append(issue)
-    reason = "已取消，保留部分证据" if result.cancelled else ""
-    if truncated:
-        reason = f"候选对超过上限 {max_pairs}，结果已截断"
-    if result.cancelled:
-        return RuleOutcome(
-            state=CoverageState.CANCELLED,
-            issues=tuple(issues),
-            reason=reason,
-            truncated=truncated,
-            filtered=tuple(filtered),
-        )
-    return _completed(
-        issues, reason=reason, truncated=truncated, filtered=filtered
-    )
+    return issues, filtered
 
 
 def _union_region(
@@ -553,9 +645,21 @@ def run_legacy_same_group_duplicate(
     issues = list(invalid_issues)
     for index, first in enumerate(snapshots):
         for second in snapshots[index + 1 :]:
+            if context.should_cancel():
+                return RuleOutcome(
+                    state=CoverageState.CANCELLED,
+                    issues=tuple(issues),
+                    reason="已取消，保留部分证据",
+                )
             metrics = legacy_same_group_pair(first, second, tolerance)
             if metrics is None:
                 continue
+            if len(issues) >= 5000:
+                return _completed(
+                    issues,
+                    reason="旧重复框规则候选超过上限 5000，结果已截断",
+                    truncated=True,
+                )
             issues.append(
                 _make_issue(
                     context,
@@ -1002,6 +1106,34 @@ def register_default_rules(catalog: RuleCatalog) -> None:
         )
 
 
+RULE_DEPENDENCIES: dict[str, tuple[str, ...]] = {
+    "label_required": ("shapes.label",),
+    "shape_type_binding": ("shapes.label", "shapes.shape_type"),
+    "points_required": ("shapes.shape_type", "shapes.points"),
+    "group_id_required": ("shapes.label", "shapes.group_id"),
+    "bbox_geometry_valid": ("shapes.shape_type", "shapes.points"),
+    "duplicate_boxes": (
+        "shapes.shape_type",
+        "shapes.points",
+        "shapes.label",
+        "shapes.group_id",
+    ),
+    "legacy_same_group_duplicate": (
+        "shapes.points",
+        "shapes.label",
+        "shapes.group_id",
+    ),
+    "corner_completeness": (
+        "shapes.label",
+        "shapes.group_id",
+        "shapes.points",
+    ),
+    "classroom_relation": ("shapes.label", "shapes.points"),
+    "group_completeness": ("shapes.group_id", "shapes.label"),
+    "count_constraint": ("shapes.label", "shapes.group_id"),
+}
+
+
 def _meta(
     rule_id: str,
     version: str,
@@ -1025,4 +1157,5 @@ def _meta(
             "normal": "对象字段完整且几何合法。",
             "abnormal": "对象缺少必要字段或触发配置约束。",
         },
+        depends_on=RULE_DEPENDENCIES.get(rule_id, ()),
     )

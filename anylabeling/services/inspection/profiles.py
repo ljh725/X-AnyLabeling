@@ -19,6 +19,11 @@ from .models import (
     canonical_relation_key,
     utc_now_iso,
 )
+from .parameters import (
+    RULE_PARAMETERS,
+    describe_rule_parameters,
+    validate_rule_parameters,
+)
 
 RuleExecutor = Callable[..., Any]
 
@@ -93,6 +98,12 @@ class RuleCatalog:
                 }
             )
         )
+
+    def parameter_specs(self, rule_id: str) -> Mapping[str, Any]:
+        return RULE_PARAMETERS.get(rule_id, {})
+
+    def describe_parameters(self, rule_id: str) -> tuple[Mapping[str, Any], ...]:
+        return describe_rule_parameters(rule_id)
 
 
 def _profile(
@@ -227,6 +238,10 @@ def validate_profile(
             continue
         if not isinstance(rule.parameters, Mapping):
             errors.append(f"规则 {rule.rule_id} 参数必须是对象")
+            continue
+        # Declared parameters are validated even when the rule is disabled:
+        # a typo must stay visible instead of silently reappearing later.
+        errors.extend(validate_rule_parameters(rule.rule_id, rule.parameters))
     canonical_keys: dict[str, str] = {}
     for first, second in _relation_pairs(profile.relations):
         raw_value = profile.relations.get(f"{first}|{second}")
@@ -321,7 +336,11 @@ def prepare_profile(
 def effective_profile_snapshot(
     profile: InspectionProfile, catalog: RuleCatalog
 ) -> dict[str, Any]:
-    """Freeze the effective profile and rule implementation versions."""
+    """Freeze the effective profile and rule implementation versions.
+
+    The digest must be stable across runs with the same configuration, so
+    the wall-clock ``frozen_at`` value is excluded from it.
+    """
     prepared, validation = prepare_profile(profile, catalog)
     rules: list[dict[str, Any]] = []
     for rule in prepared.rules:
@@ -334,20 +353,27 @@ def effective_profile_snapshot(
                 ),
                 "rule_name": meta.name if meta else rule.rule_id,
                 "registered": meta is not None,
+                "depends_on": list(meta.depends_on) if meta else [],
             }
         )
+    frozen_profile = prepared.to_dict()
+    # Wall-clock bookkeeping must not participate in the configuration
+    # identity, otherwise every new process would invalidate feedback and
+    # changed-file comparisons.
+    frozen_profile.pop("created_at", None)
+    frozen_profile.pop("updated_at", None)
     payload = {
-        "profile": prepared.to_dict(),
+        "profile": frozen_profile,
         "profile_fingerprint": prepared.fingerprint(),
         "rules": rules,
         "catalog": catalog.snapshot(),
         "validation": validation.to_dict(),
-        "frozen_at": utc_now_iso(),
     }
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True)
     payload["snapshot_digest"] = hashlib.sha256(
         raw.encode("utf-8")
     ).hexdigest()
+    payload["frozen_at"] = utc_now_iso()
     return payload
 
 

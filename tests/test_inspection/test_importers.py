@@ -133,3 +133,113 @@ def test_native_report_round_trip_preserves_issue_identity(tmp_path):
     assert restored.family_key == source.family_key
     assert restored.location.object_ids == source.location.object_ids
     assert restored.verification is source.verification
+
+
+def test_native_report_round_trip_keeps_every_source_and_context(tmp_path):
+    image = tmp_path / "a.jpg"
+    image.write_bytes(b"fake")
+    (tmp_path / "a.json").write_text(
+        json.dumps(
+            {
+                "version": "4.2.1",
+                "imageWidth": 100,
+                "imageHeight": 80,
+                "shapes": [
+                    {
+                        "label": "person",
+                        "shape_type": "rectangle",
+                        "points": [[0, 0], [10, 10]],
+                        "group_id": 1,
+                        "xanylabeling_shape_id": "id1",
+                    },
+                    {
+                        "label": "person",
+                        "shape_type": "rectangle",
+                        "points": [[0, 0], [10, 10]],
+                        "group_id": 1,
+                        "xanylabeling_shape_id": "id2",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    manifest = build_manifest(str(tmp_path))
+    profile = default_profiles()[0]
+    profile = type(profile).from_dict(
+        {
+            **profile.to_dict(),
+            "rules": [
+                {"rule_id": "duplicate_boxes"},
+                {"rule_id": "legacy_same_group_duplicate"},
+            ],
+        }
+    )
+    report = InspectionRunner().run(manifest, profile, RunScope.DATASET)
+    assert report.issues
+    issue = report.issues[0]
+    assert {item.rule_id for item in issue.evidence} == {
+        "duplicate_boxes",
+        "legacy_same_group_duplicate",
+    }
+    json_path = tmp_path / "full-report.json"
+    export_report(report, str(json_path))
+    imported = import_legacy_report(str(json_path), manifest=manifest)
+    assert imported.format == "native-report"
+    assert imported.lossy is False
+    assert imported.context["run_id"] == report.run_id
+    assert imported.context["profile_id"] == profile.profile_id
+    restored = imported.issues[0]
+    assert len(restored.evidence) == 2
+    versions = {
+        item.rule_id: item.implementation_version
+        for item in restored.evidence
+    }
+    assert versions == {"duplicate_boxes": "1.0.0", "legacy_same_group_duplicate": "l2-13.v1"}
+    original_metrics = {
+        item.rule_id: dict(item.metrics) for item in issue.evidence
+    }
+    restored_metrics = {
+        item.rule_id: dict(item.metrics) for item in restored.evidence
+    }
+    assert restored_metrics == original_metrics
+    assert restored.location.region == issue.location.region
+    assert restored.location.group_id == issue.location.group_id
+    assert restored.decision is issue.decision
+    assert restored.verification is issue.verification
+    assert [dict(item) for item in restored.history] == [
+        dict(item) for item in issue.history
+    ]
+
+
+def test_unknown_report_schema_is_not_downgraded_to_rows(tmp_path):
+    path = tmp_path / "future.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": "inspection-report.v9",
+                "run_id": "future",
+                "issues": [
+                    {"file_path": "a.jpg", "rule_name": "dup", "message": "x"}
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = import_legacy_report(str(path))
+    assert result.format == "legacy-rows"
+    assert result.issues == ()
+    assert result.errors
+    assert "无法核验" in result.errors[0]["error"]
+
+
+def test_tsv_import_is_marked_lossy(tmp_path):
+    path = tmp_path / "legacy.tsv"
+    path.write_text(
+        "issue_id\tfile_path\tshape_index\tshape_id\trule_name\tseverity\tmessage\tlabel\tgroup_id\n"
+        "i1\ta.jpg\t0\tid1\tdup\twarning\toverlap\tperson\t\n",
+        encoding="utf-8",
+    )
+    result = import_legacy_report(str(path))
+    assert result.lossy is True
+    assert result.warnings

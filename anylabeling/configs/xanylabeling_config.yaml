@@ -110,6 +110,9 @@ canvas:
     enable: false
     adjust_step: 2.0
     scale_step: 0.05
+  # direct: bare wheel zooms; traditional: bare wheel scrolls the view.
+  # Ctrl+Wheel always zooms in both modes.
+  wheel_navigation_mode: direct
   crosshair:
     show: true
     width: 2.0
@@ -193,6 +196,7 @@ shortcuts:
   copy_polygon: Ctrl+C
   paste_polygon: Ctrl+V
   undo: Ctrl+Z
+  redo: Ctrl+Shift+Z
   undo_last_point: Ctrl+Z
   add_point_to_edge: Ctrl+Shift+P
   edit_label: Ctrl+E
@@ -219,6 +223,8 @@ shortcuts:
   toggle_visibility_shapes: Ctrl+H
   toggle_compare_view: Ctrl+Alt+C
   open_dense_review: Ctrl+Alt+R
+  inspector_run: F5
+  inspector_locate: Return
   open_correction_metrics: null
   dense_review_complete_batch: Ctrl+Return
   dense_review_complete_object: Alt+Return
