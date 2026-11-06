@@ -10,6 +10,7 @@ Point = tuple[float, float]
 
 INSIDE_BAND_SCREEN_PX = 1.0
 OUTSIDE_BAND_SCREEN_PX = 8.0
+HOVER_SWITCH_SCREEN_PX = 3.0
 
 OPPOSITE_CORNER = {
     "top_left": "bottom_right",
@@ -28,9 +29,15 @@ class ClickDecision:
 
 
 def point_fit_decision(
-    box: Box, point: Point, scale: float = 1.0
+    box: Box, point: Point, scale: float = 1.0,
+    *, previous_corner: str | None = None,
 ) -> ClickDecision:
-    """Determine the corner using an inside/outside screen-pixel band."""
+    """Acquire a quadrant, then resist small movements across its centre.
+
+    A fresh gesture still rejects the centre band. Once a corner is known,
+    each axis keeps its previous side until the pointer clearly crosses the
+    centre. Cap that margin for tiny rectangles so every side stays reachable.
+    """
     left, top, right, bottom = box
     if (
         not all(math.isfinite(value) for value in box)
@@ -48,6 +55,16 @@ def point_fit_decision(
     band_x = min(band, (right - left) * scale / 4) / scale
     band_y = min(band, (bottom - top) * scale / 4) / scale
     cx, cy = (left + right) / 2, (top + bottom) / 2
+    if previous_corner in OPPOSITE_CORNER:
+        vertical, horizontal = previous_corner.split("_")
+        switch_band = max(band, HOVER_SWITCH_SCREEN_PX)
+        switch_x = min(switch_band, (right - left) * scale / 4) / scale
+        switch_y = min(switch_band, (bottom - top) * scale / 4) / scale
+        if abs(x - cx) > switch_x:
+            horizontal = "left" if x < cx else "right"
+        if abs(y - cy) > switch_y:
+            vertical = "top" if y < cy else "bottom"
+        return ClickDecision(f"{vertical}_{horizontal}")
     if abs(x - cx) <= band_x or abs(y - cy) <= band_y:
         return ClickDecision(None, "dead_zone")
     horizontal = "left" if x < cx else "right"

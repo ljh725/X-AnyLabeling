@@ -25,7 +25,7 @@
 | CUSTOM-110 | 密集标注复核工作流 | 已保存，含 P2 UI；11-03 目录测试 87 通过，人工/性能/导出验收待做 | [实施记录](2026-11-02-dense-annotation-review-workflow.md) · [验证](../../openspec/changes/add-dense-annotation-review-workflow/verification.md) · [开发基线](../version-management/2026-11-03-development-baseline.md) |
 | CUSTOM-111 | 修正成本统计 | 部分实现已保存，工作区尚待接入；当前入口显示开发状态 | [状态记录](2026-11-03-correction-cost-statistics.md) · [任务](../../openspec/changes/add-annotation-correction-cost-statistics/tasks.md) |
 | CUSTOM-112～116 | v4.3.0 五项画布能力恢复（工具栏、滚轮导航、三态审核、仅填充透明度、显示参数保持） | 已实现待验证；专项 51 通过，性能/人工/配置联测待做 | [恢复记录](2026-11-04-canvas-controls-restore.md) · [验证](../../openspec/changes/restore-v430-canvas-controls/verification.md) |
-| CUSTOM-101/103-显示 | 矩形创建与单点拟合预览的共边显示修复 | 已实施；11-04 修复候选失效 P2，定向回归通过；真实屏幕验收未完成 | [方案与实施记录](2026-11-02-rectangle-preview-overlap-plan.md) · [验证](../../openspec/changes/fix-rectangle-preview-overlap/verification.md) |
+| CUSTOM-101/103-显示 | 矩形创建与单点拟合预览的共边显示修复 | 11-06 单点拟合按键刷新与小框防跳修复用户验收通过，132 项隔离 Qt 回归通过；原创建/共边完整屏幕验收另见记录 | [方案与实施记录](2026-11-02-rectangle-preview-overlap-plan.md) · [操作说明](../zh_cn/rectangle_point_fit.md) · [验证](../../openspec/changes/fix-rectangle-preview-overlap/verification.md) |
 | CUSTOM-010～014、101～108 | 4.2.1上的既有增强/迁移功能 | 已含于历史混合快照，非本轮新增实施 | [完整分类台账](CATALOG-20261030.md) |
 
 ## 已有相关材料

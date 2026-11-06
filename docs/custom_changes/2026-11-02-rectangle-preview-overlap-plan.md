@@ -150,3 +150,30 @@ Canvas 的 `show_masks` 分支在普通 Shape 之前还会绘制一次矩形轮�
 行为约定：重算无效时恢复完整原框并保留红色无效定位反馈；重算仍有效时只按新候选与当前原框的共边避让，并保持 Shift+Alt 向内语义；捕获期间几何改变后取消拟合，释放被消费，键盘微调自身的 dirty/撤销不受影响；预览刷新不新增撤销、序列化或配置写入。
 
 验证（2026-11-04）：定向 `82 passed` 与 `53 passed, 72 subtests passed`；`tests/test_canvas` 排除一个受并行设置持久化改动阻塞的窗口用例后 `599 passed / 5 failed / 2 errors`，失败与错误均为既有 `test_groups` 基线、Windows 临时目录 ACL 或并行 `label_widget.py` 改动，与本项无关；`flake8` 通过；`black --diff` 对 `point_fit.py`、`rectangle_preview.py`、`rectangle_crosshair.py` 无变更；`openspec validate fix-rectangle-preview-overlap --strict` 通过。真实屏幕验收（6.1）仍未完成。
+
+## 八、2026-11-06：按键立即刷新与小框预览防跳动
+
+状态：本次单点拟合修复已验证；基础几何、语法及隔离 Qt 回归通过（`132 passed`），用户于 2026-11-06 测试后明确确认功能验收通过。基线提交 `1ef860fa`，本次按独立修复提交保存；提交号见下方 Git 交付记录。工作区已有 Ctrl 框选等未提交改动，本修复仅归集自身差异。
+
+操作说明：[矩形单点拟合](../zh_cn/rectangle_point_fit.md)。验收范围为本次按键即时刷新、小框预览防跳动及相关拟合行为；没有据此将原共边显示计划中创建、深浅背景截图等完整 6.1 验收一并标为完成。
+
+复现使用真实 Canvas 的鼠标/键盘事件处理入口，未操作用户的真实标注：原有几何与交互用例 `57 passed`；新增 9 项复现均失败，分别确认鼠标静止时 Shift 不生成候选、Alt 不切换已有候选、小框中心附近候选消失及换角。显示宽高为 12 像素的框，在中心线上下 -2、-1、0、1、2 像素移动时，原判断依次为右上、无、无、无、右下。工具读取可见窗口截图两次超时，未取得截图证据；后续功能验收依据用户实际测试反馈。
+
+原因与改动：
+
+- 原预览仅由鼠标事件触发。`Canvas.keyPressEvent/keyReleaseEvent` 新增 Shift/Alt 状态刷新入口，`PointFitMixin._point_fit_refresh_from_cursor` 读取当前光标位置并重新生成候选；加载、平移、拖边和其他已按下鼠标的原生手势不抢占。
+- 原悬停每次独立判断象限，经过中线无效带会清空预览，跨线后立即换角。`rect_edge_click.point_fit_decision` 新增可选 `previous_corner`：已有角时分别保持横纵方向，超过中心线的切换缓冲区后才换边。框内缓冲为 3 个屏幕像素，每轴上限为框显示尺寸的四分之一；框外仍兼容原渐进判断带。
+- `_point_fit_hover_corner` 仅为 Canvas 临时状态。来源目标或几何变化时不复用，释放 Shift、失焦及原有清理入口会重置。初次位于中心判断带仍不猜角。
+- 鼠标按下时捕获预览实际使用的角，提交、拖动及撤销沿用现有流程，避免预览与点击结果不一致；序列化及配置格式不变。
+
+实际文件：`rect_edge_click.py`、`widgets/point_fit.py`、`widgets/canvas.py`；测试为 `test_shift_point_fit_geometry.py` 与 `test_shift_point_fit_interaction.py`，新增缩放、防跳、主动换角、静止按键、预览提交一致、重置和原生拖动保护回归；`test_rectangle_preview_overlap.py::dirty_host` 补齐生产通知方法绑定，见下方验证说明。
+
+已完成校验：修改源码及交互测试 AST 语法通过；使用不加载 Qt 的几何入口，在 0.3、0.5、1、2、4 倍缩放逐次输入指针位置，确认轻微抖动保持角、明确越过缓冲后正常换角；`git diff --check` 通过。
+
+首次验证受环境阻塞：沙箱内 QtCore DLL 加载被拒；沙箱外自动审批及一次重试均超时。备用 Python 环境缺少 Qt，亦无法收集测试，这些尝试均未记为通过。
+
+用户明确允许沙箱外补跑后，使用 `C:/Users/20441/.conda/envs/x-anylabeling-cu12/python.exe -m pytest tests/test_canvas/test_shift_point_fit_geometry.py tests/test_canvas/test_shift_point_fit_interaction.py tests/test_canvas/test_rectangle_preview_overlap.py -q --color=no -p no:cacheprovider --tb=short`，最终 `132 passed in 3.38s`。测试通过独立画布、隔离配置和 QSettings 执行，没有操作用户当前窗口或真实标注。
+
+补跑期间定位并修正一个旧测试替身契约问题：`dirty_host` 缺少当前 `LabelingWidget.set_dirty()` 调用的 `_notify_inspection_edit`，导致 Qt 信号回调异常、测试进程在无汇总时退出。测试替身现绑定真实 `LabelingWidget._notify_inspection_edit`（无检查器时安全返回），保留真实 dirty 方法及原有断言，不改运行时业务逻辑。修正后同一组用例全部通过，包括预览不修改 dirty、有效拟合只通知一次、撤销恢复及像素共边检查。
+
+回退按本节函数职责撤销按键刷新、悬停角与缓冲判断及新增测试，保留之前的共边显示和工作区已有 Ctrl 框选改动；不要整体回退 Canvas。

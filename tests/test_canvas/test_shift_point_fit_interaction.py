@@ -410,3 +410,95 @@ def test_alt_fit_still_rejects_locked_shapes(canvas: Canvas) -> None:
     send(canvas, QtCore.QEvent.Type.MouseButtonPress, (120, 120), alt=True)
     send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (120, 120), alt=True)
     assert coordinates(canvas.shapes[0]) == (100, 100, 200, 200)
+
+
+def key_event(canvas, key, modifiers, *, release=False):
+    event = QtGui.QKeyEvent(
+        QtCore.QEvent.Type.KeyRelease if release else QtCore.QEvent.Type.KeyPress,
+        key, modifiers,
+    )
+    (canvas.keyReleaseEvent if release else canvas.keyPressEvent)(event)
+
+
+def stationary_pointer(monkeypatch, canvas, point):
+    """Provide cursor coordinates without moving the user's real mouse."""
+    local = (QtCore.QPointF(*point) + canvas.offset_to_center()) * canvas.scale
+    monkeypatch.setattr(canvas, "mapFromGlobal", lambda _pos: local.toPoint())
+
+
+def test_shift_shows_preview_without_mouse_move(canvas, monkeypatch):
+    stationary_pointer(monkeypatch, canvas, (180, 120))
+    key_event(canvas, QtCore.Qt.Key.Key_Shift,
+              QtCore.Qt.KeyboardModifier.ShiftModifier)
+    assert canvas._point_fit_pending_box == (100, 120, 180, 200)
+
+
+def test_alt_press_and_release_refresh_stationary_preview(canvas, monkeypatch):
+    stationary_pointer(monkeypatch, canvas, (180, 120))
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 120))
+    shift = QtCore.Qt.KeyboardModifier.ShiftModifier
+    key_event(canvas, QtCore.Qt.Key.Key_Alt,
+              shift | QtCore.Qt.KeyboardModifier.AltModifier)
+    assert canvas._point_fit_pending_box == (180, 100, 200, 120)
+    key_event(canvas, QtCore.Qt.Key.Key_Alt, shift, release=True)
+    assert canvas._point_fit_pending_box == (100, 120, 180, 200)
+
+
+@pytest.mark.parametrize("scale", [0.5, 1, 2])
+@pytest.mark.parametrize("alt", [False, True])
+def test_small_box_preview_does_not_flip_with_center_jitter(canvas, scale, alt):
+    """A 12-screen-pixel box keeps its anchor through two-pixel jitter."""
+    canvas.scale = scale
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(x, y) for x, y in (
+        (100, 100), (100 + 12 / scale, 100),
+        (100 + 12 / scale, 100 + 12 / scale), (100, 100 + 12 / scale),
+    )]
+    x, cy = 100 + 10 / scale, 100 + 6 / scale
+    send(canvas, QtCore.QEvent.Type.MouseMove, (x, cy - 4 / scale), alt=alt)
+    anchor = canvas._point_fit_anchor
+    for offset in (-2, -1, 0, 1, 2, -2):
+        send(canvas, QtCore.QEvent.Type.MouseMove,
+             (x, cy + offset / scale), alt=alt)
+        assert canvas._point_fit_anchor == anchor
+        assert canvas._point_fit_pending_box is not None
+    # An intentional move into the other half must still switch corners.
+    send(canvas, QtCore.QEvent.Type.MouseMove, (x, cy + 4 / scale), alt=alt)
+    assert canvas._point_fit_anchor != anchor
+
+
+def test_click_commits_the_stable_preview_near_center(canvas):
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 140), alt=True)
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 152), alt=True)
+    expected = canvas._point_fit_pending_box
+    assert canvas._point_fit_anchor == (200, 100)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (180, 152), alt=True)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (180, 152), alt=True)
+    assert coordinates(canvas.shapes[0]) == expected
+
+
+def test_releasing_shift_resets_hover_corner(canvas):
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 140), alt=True)
+    key_event(canvas, QtCore.Qt.Key.Key_Shift,
+              QtCore.Qt.KeyboardModifier.NoModifier, release=True)
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 152), alt=True)
+    assert canvas._point_fit_anchor == (200, 200)
+
+
+def test_geometry_change_resets_hover_corner(canvas):
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 140), alt=True)
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(x, y) for x, y in (
+        (100, 80), (200, 80), (200, 200), (100, 200),
+    )]
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 142), alt=True)
+    assert canvas._point_fit_anchor == (200, 200)
+
+
+def test_modifier_refresh_does_not_steal_native_drag(canvas, monkeypatch):
+    stationary_pointer(monkeypatch, canvas, (180, 120))
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (150, 120), shift=False)
+    key_event(canvas, QtCore.Qt.Key.Key_Shift,
+              QtCore.Qt.KeyboardModifier.ShiftModifier)
+    assert canvas._point_fit_pending_box is None
+    assert not canvas._point_fit_pressed

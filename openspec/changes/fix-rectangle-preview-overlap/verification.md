@@ -1,5 +1,22 @@
 # 矩形预览共边显示实施与验证
 
+## 2026-11-06 单点拟合修复与用户验收
+
+本次 CUSTOM-101 修复已由用户实际测试并明确确认功能验收通过。范围为 Shift/Alt 按键即时刷新、小框中心附近预览防跳，以及相关拟合交互；原计划 6.1 还包含矩形创建、深浅背景截图等，不扩大解释为该整项验收已经完成。
+
+- 修改：`rect_edge_click.py` 增加已有角的切换缓冲；`widgets/point_fit.py` 保存悬停角、按当前光标刷新并在点击时捕获预览角；`widgets/canvas.py` 初始化状态并接入 Shift/Alt 键事件。
+- 复现：修复前新增 9 项事件回归均失败；原有几何与交互 57 项通过。
+- 修复后：以下隔离 Qt 回归 **132 passed in 3.38s**，覆盖几何、静止按键、缩放、小框轻微抖动、主动换角、提交/撤销、共边像素及 dirty 信号。
+- 修正旧测试夹具 `dirty_host` 缺失的 `_notify_inspection_edit` 生产方法绑定，消除 Qt 信号回调异常导致的提前退出；运行时 dirty 逻辑未修改。
+
+```powershell
+& C:/Users/20441/.conda/envs/x-anylabeling-cu12/python.exe -m pytest tests/test_canvas/test_shift_point_fit_geometry.py tests/test_canvas/test_shift_point_fit_interaction.py tests/test_canvas/test_rectangle_preview_overlap.py -q --color=no -p no:cacheprovider --tb=short
+```
+
+用户已授权沙箱外运行；采用项目隔离配置、QSettings 和离屏画布，没有操作当前真实标注。语法校验与 `git diff --check` 通过。修复代码在验收后归集提交，提交号及同步信息见 [实施与交付记录](../../../docs/custom_changes/2026-11-02-rectangle-preview-overlap-plan.md)。
+
+操作说明：[矩形单点拟合](../../../docs/zh_cn/rectangle_point_fit.md)。本次未重跑全项目测试，未构建安装包，也未自动归档整个共边显示变更。
+
 ## 2026-11-05 补齐 dirty 断言与实际反例证据
 
 **当前：5.3、5.6 验证缺口已关闭，6.4 证据已补齐；23/24 项完成，仅 6.1 真实屏幕验收未完成。** 本轮只新增测试和证据脚本/日志，未修改运行源码或回退共享工作区。

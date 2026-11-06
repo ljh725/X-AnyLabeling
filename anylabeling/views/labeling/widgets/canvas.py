@@ -180,6 +180,7 @@ class Canvas(
         self.selected_shapes_copy = []
         self._point_fit_pressed = False
         self._point_fit_corner = None
+        self._point_fit_hover_corner = None
         self._point_fit_box = None
         self._point_fit_inward = False
         self._point_fit_target = None
@@ -5937,6 +5938,15 @@ class Canvas(
                 self.override_cursor(CURSOR_GRAB)
             ev.accept()
             return
+        if key in (Qt.Key.Key_Shift, Qt.Key.Key_Alt) and not ev.isAutoRepeat():
+            flag = (
+                Qt.KeyboardModifier.ShiftModifier
+                if key == Qt.Key.Key_Shift
+                else Qt.KeyboardModifier.AltModifier
+            )
+            if self._point_fit_refresh_from_cursor(modifiers | flag):
+                ev.accept()
+                return
         if self.is_brush_mode and self.editing():
             if self._brush_key_press(ev):
                 return
@@ -6005,6 +6015,10 @@ class Canvas(
         key = ev.key()
         if key == QtCore.Qt.Key.Key_Shift and not ev.isAutoRepeat():
             self._clear_point_fit(keep_press=self._point_fit_pressed)
+        if key == Qt.Key.Key_Alt and not ev.isAutoRepeat():
+            self._point_fit_refresh_from_cursor(
+                modifiers & ~Qt.KeyboardModifier.AltModifier
+            )
         if key == QtCore.Qt.Key.Key_Space and not ev.isAutoRepeat():
             self._space_pressed = False
             self._space_panning = False

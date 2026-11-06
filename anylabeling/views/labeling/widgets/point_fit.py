@@ -35,6 +35,7 @@ class PointFitMixin:
         self._point_fit_cursor = None
         self._point_fit_anchor = None
         self._point_fit_corner = None
+        self._point_fit_hover_corner = None
         self._point_fit_box = None
         self._point_fit_inward = False
         self._point_fit_source_target = None
@@ -133,8 +134,17 @@ class PointFitMixin:
         corner = (
             self._point_fit_corner
             if self._point_fit_pressed
-            else point_fit_decision(box, point, self.scale).edge
+            else point_fit_decision(
+                box, point, self.scale,
+                previous_corner=(
+                    self._point_fit_hover_corner
+                    if not self._point_fit_candidate_source_changed(shape)
+                    else None
+                ),
+            ).edge
         )
+        if not self._point_fit_pressed:
+            self._point_fit_hover_corner = corner
         if self._point_fit_pressed:
             inward = self._point_fit_inward
         if corner is None:
@@ -215,6 +225,33 @@ class PointFitMixin:
         self._update_point_fit(shape, pos, inward)
         return True
 
+    def _point_fit_refresh_from_cursor(
+        self, modifiers: Qt.KeyboardModifier
+    ) -> bool:
+        """Refresh modifier-only changes without waiting for a mouse move."""
+        if (
+            self.is_loading
+            or self._space_pressed
+            or self._right_pan_start is not None
+            or self._rectangle_edge_drag is not None
+            or (
+                (self._pointer_down or QtGui.QGuiApplication.mouseButtons())
+                and not self._point_fit_pressed
+            )
+        ):
+            return False
+        local = self.mapFromGlobal(QtGui.QCursor.pos())
+        if not self.rect().contains(local):
+            if not self._point_fit_pressed:
+                self._clear_point_fit()
+            return False
+        handled = self._point_fit_move(
+            self.transform_pos(QtCore.QPointF(local)), modifiers
+        )
+        if handled and self._rectangle_edge_hover is not None:
+            self._rectangle_edge_cancel()
+        return handled
+
     def _point_fit_press(
         self, pos: QtCore.QPointF, modifiers: Qt.KeyboardModifier
     ) -> bool:
@@ -229,9 +266,8 @@ class PointFitMixin:
             self._clear_point_fit()
             return False
         self._point_fit_box = self._point_fit_shape_box(shape)
-        self._point_fit_corner = point_fit_decision(
-            self._point_fit_box, (pos.x(), pos.y()), self.scale
-        ).edge
+        # Capture exactly the corner used by the visible, stabilised preview.
+        self._point_fit_corner = self._point_fit_hover_corner
         self._point_fit_inward = bool(
             modifiers & Qt.KeyboardModifier.AltModifier
         )

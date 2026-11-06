@@ -150,3 +150,27 @@ def test_unknown_corner_is_rejected(proposal) -> None:
     """Both proposals keep the original ValueError contract."""
     with pytest.raises(ValueError):
         proposal(BOX, "center", (150.0, 150.0))
+
+
+@pytest.mark.parametrize("scale", [0.3, 0.5, 1, 2, 4])
+def test_hover_corner_survives_jitter_but_can_switch_both_axes(scale):
+    box = (100, 100, 100 + 12 / scale, 100 + 12 / scale)
+    cx, cy = 100 + 6 / scale, 100 + 6 / scale
+    corner = "top_right"
+    for dx, dy in ((2, -2), (-2, 2), (0, 0), (2, 2)):
+        corner = point_fit_decision(
+            box, (cx + dx / scale, cy + dy / scale), scale,
+            previous_corner=corner,
+        ).edge
+        assert corner == "top_right"
+    assert point_fit_decision(
+        box, (cx - 4 / scale, cy + 4 / scale), scale,
+        previous_corner=corner,
+    ).edge == "bottom_left"
+
+
+def test_tiny_box_caps_hover_buffer_to_keep_opposite_corner_reachable():
+    box = (0, 0, 1.5, 1.5)
+    assert point_fit_decision(
+        box, (0.15, 1.35), previous_corner="top_right",
+    ).edge == "bottom_left"

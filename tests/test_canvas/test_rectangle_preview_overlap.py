@@ -48,6 +48,9 @@ def dirty_host(canvas):
         _dense_review_redo_available=lambda: canvas.is_shape_redo_available,
         update_progress_title=mock.Mock(),
     )
+    host._notify_inspection_edit = partial(
+        LabelingWidget._notify_inspection_edit, host
+    )
     host.set_dirty = mock.Mock(wraps=partial(LabelingWidget.set_dirty, host))
     committed = partial(LabelingWidget._on_geometry_committed, host)
     canvas.shape_moved.connect(committed)
