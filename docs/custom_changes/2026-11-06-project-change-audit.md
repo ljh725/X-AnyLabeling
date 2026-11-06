@@ -10,7 +10,7 @@
 - 相对官方基线，当前 `anylabeling/` 下有 91 个差异文件：新增 59、修改 32。该口径包含配置、翻译及生成资源，不能解释成 91 个功能或 91 个手工编写的 Python 文件。
 - [逐文件清单](inventory/source-files-20261106.tsv) 来自 `git diff --name-status v4.2.1 -- anylabeling`，包括本次交付的 Canvas 框选和已提交的单点拟合修复；A/M 是文件状态，不是功能分类。
 - 11-05 的 `e4421908` 保存此前设置、画布、Inspector、Dense Review 等工作区成果；`f083a534` 合并版本首页；`1ef860fa` 保存操作说明与同步证据。[历史同步记录](../../reports/workspace_sync_20261105/README.md) 记录当时情况。11-06 已联网核对远端，交付前两个目标分支均为 `b27f122a`。
-- 今天剩余的框选源码、测试、实现记录及总览/索引更新均纳入本次 Git 交付，目标为个人仓库 `origin/codex/4.2.1-baseline-organization` 与 `origin/versions/4.2.1`；提交号及实际同步结果见 [框选交付记录](2026-11-06-marquee-selection.md)。
+- 今天剩余的框选源码、测试、实现记录及总览/索引更新已由 `c58e16b6` 保存，并同步至个人仓库 `origin/codex/4.2.1-baseline-organization` 与 `origin/versions/4.2.1`；交付补记随后的文档提交同步，详见 [框选交付记录](2026-11-06-marquee-selection.md)。
 
 ## 已进入当前源码的原功能修改与增强
 
@@ -42,7 +42,7 @@
 | CUSTOM-109 | Inspector：方案/规则、扫描进度、重复框与质量检查、问题队列、定位/复查/会话恢复 | `anylabeling/services/inspection/`、`inspector/`、`label_widget.py` | 已提交，代码/自动化 52/55，3 项人工验收保留；[最新验证](../../openspec/changes/refactor-data-inspector-workflow/verification.md) |
 | CUSTOM-110 | Dense Review：批次/逐框复核、比较卡片、空间查漏、确认与保存恢复、虚拟化及后台缩略图 | `anylabeling/services/dense_review/`、`dense_review/`、画布集成 | 已提交，专项功能/性能有证据，真实人工试用和完整组合回归未全完成；[11-05 实施](../../openspec/changes/add-dense-annotation-review-workflow/implementation-20261105.md) |
 | CUSTOM-112～116 | 可视化工具栏、滚轮导航、三态审核、仅填充透明度、透明度/亮度/对比度跨图保持 | `widgets/canvas.py`、`canvas_adjustment.py`、`toolbar.py`、`shape.py`、`label_widget.py`、settings | 已提交，专项和配置自动联测通过；[最新实施](../../openspec/changes/restore-v430-canvas-controls/implementation-20261105.md)，性能与真实屏幕验收未全完成 |
-| CUSTOM-117 | Ctrl + 左键框选多目标，部分覆盖即选中，连续操作状态保护 | `widgets/canvas.py`，两份新测试及既有拖动测试调整 | 已验收并纳入 Git 交付；交付专项 41 项通过，历史相关回归 225 项及 6 个子测试通过、1 项旧窗口测试排除；[实现与交付记录](2026-11-06-marquee-selection.md) |
+| CUSTOM-117 | Ctrl + 左键框选多目标，部分覆盖即选中，连续操作状态保护 | `widgets/canvas.py`，两份新测试及既有拖动测试调整 | 已验收，`c58e16b6` 已提交并同步；交付专项 41 项通过，历史相关回归 225 项及 6 个子测试通过、1 项旧窗口测试排除；[实现与交付记录](2026-11-06-marquee-selection.md) |
 
 上述多数能力源于旧个人修改版迁移或已有能力增强，不表示本次新开发，也不表示各功能都已完整人工验收。
 
@@ -61,4 +61,4 @@
 
 仍存在历史文档滞后：10-30 台账和部分实施记录开头保留了“尚未提交”“旧通过数”等当时状态。11-05 同步已将这些源码保存进 Git；本次更新总索引并给出最新证据入口，没有把旧验收待办统一勾成完成。部分历史功能同处混合快照，不能假定每项都存在可独立回退的提交；迁移或回退应按功能精确差异处理。
 
-本次整理后将剩余框选改动与资料归集提交，并同步工作分支及版本入口。已补跑 41 项交付专项并保存 JUnit 证据；没有运行新的全项目测试，也没有发布安装包。
+本次整理已将剩余框选改动与资料归集提交，并同步工作分支及版本入口。已补跑 41 项交付专项并保存 JUnit 证据；没有运行新的全项目测试，也没有发布安装包。

@@ -27,7 +27,7 @@
 | CUSTOM-110 | 密集标注复核工作流 | 11-05 已提交保存；功能/性能专项有通过证据，人工试用与完整组合回归仍待验收 | [最新实施结果](../../openspec/changes/add-dense-annotation-review-workflow/implementation-20261105.md) · [实施记录](2026-11-02-dense-annotation-review-workflow.md) · [任务](../../openspec/changes/add-dense-annotation-review-workflow/tasks.md) |
 | CUSTOM-111 | 修正成本统计 | 部分实现已保存，工作区尚待接入；当前入口显示开发状态 | [状态记录](2026-11-03-correction-cost-statistics.md) · [任务](../../openspec/changes/add-annotation-correction-cost-statistics/tasks.md) |
 | CUSTOM-112～116 | v4.3.0 五项画布能力恢复（工具栏、滚轮导航、三态审核、仅填充透明度、显示参数保持） | 11-05 已提交保存；专项与配置自动联测通过，性能/真实屏幕等验收未全部完成 | [恢复记录](2026-11-04-canvas-controls-restore.md) · [最新实施结果](../../openspec/changes/restore-v430-canvas-controls/implementation-20261105.md) · [验证](../../openspec/changes/restore-v430-canvas-controls/verification.md) |
-| CUSTOM-117 | Ctrl + 左键拖拽多选（部分覆盖即选中） | 已验收并纳入 Git 交付；41 项交付专项通过，历史 225 项相关回归通过；11-06 用户实测确认 | [实现、修复与交付记录](2026-11-06-marquee-selection.md) |
+| CUSTOM-117 | Ctrl + 左键拖拽多选（部分覆盖即选中） | 已验收并提交同步 GitHub（c58e16b6）；41 项交付专项通过，历史 225 项相关回归通过；11-06 用户实测确认 | [实现、修复与交付记录](2026-11-06-marquee-selection.md) |
 | 配置持久化修复 | 配置按字段保存、冲突处理、数字绑定/设置/显示保持同步、重启恢复 | 11-05 已提交保存；用户原启动方式的可见交互验收仍待做 | [任务与状态](../../openspec/changes/fix-user-settings-persistence/tasks.md) · [验证](../../openspec/changes/fix-user-settings-persistence/verification.md) |
 | 数字矩形标签保存修复 | 弹窗关闭且预选其他类别时数字绑定优先级 | 仅登记任务，尚未实施；不能作为已修复功能 | [任务](../../openspec/changes/fix-digit-rectangle-label-save/tasks.md) |
 | CUSTOM-101/103-显示 | 矩形创建与单点拟合预览的共边显示修复 | 11-06 单点拟合按键刷新与小框防跳修复用户验收通过，132 项隔离 Qt 回归通过；原创建/共边完整屏幕验收另见记录 | [方案与实施记录](2026-11-02-rectangle-preview-overlap-plan.md) · [操作说明](../zh_cn/rectangle_point_fit.md) · [验证](../../openspec/changes/fix-rectangle-preview-overlap/verification.md) |
