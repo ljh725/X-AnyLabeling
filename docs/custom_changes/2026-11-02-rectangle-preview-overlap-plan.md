@@ -183,5 +183,5 @@ Canvas 的 `show_masks` 分支在普通 Shape 之前还会绘制一次矩形轮�
 - 实现与验收文档提交：[834e494e](https://github.com/ljh725/X-AnyLabeling/commit/834e494e)，`fix(canvas): stabilize point-fit previews and record acceptance`，共 12 个文件。
 - 已将该实现提交通过原子快进推送同步到个人仓库 `origin/codex/4.2.1-baseline-organization` 和 `origin/versions/4.2.1`；两者同步前均为 `1ef860fa`。
 - 本段为实现推送后的交付补记，文档提交承接上述实现提交，并随同一工作分支和版本入口同步；最新分支头会包含这次文档补记。
-- 共享 `canvas.py` 仅提交拟合状态初始化和 Shift/Alt 键事件接入 14 行；共享索引仅提交本功能条目。已有 Ctrl 框选源码、测试、项目总览和其他索引更新仍留在本地工作区，未纳入本次交付。
+- 此次单点拟合交付中，共享 `canvas.py` 仅提交拟合状态初始化和 Shift/Alt 键事件接入 14 行，共享索引仅提交本功能条目。当时的 Ctrl 框选源码、测试、项目总览和其他索引更新独立保留；随后用户要求统一整理提交，见 [Ctrl 框选后续交付](2026-11-06-marquee-selection.md)。
 - 已记录用户实测验收及 `132 passed`；文档相对链接、`git diff --check`、`openspec validate fix-rectangle-preview-overlap --strict` 通过。未生成安装包，未自动归档整个共边显示计划。

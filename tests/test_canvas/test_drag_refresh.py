@@ -242,11 +242,11 @@ def test_multi_selection_moves_together(
     canvas.store_shapes()
 
     send(canvas, QtCore.QEvent.Type.MouseMove, (150, 150))
+    # Ctrl-drag now starts a marquee; moving an existing selection uses left drag.
     send(
         canvas,
         QtCore.QEvent.Type.MouseButtonPress,
         (150, 150),
-        modifiers=QtCore.Qt.KeyboardModifier.ControlModifier,
     )
     paints.clear()
     for step in range(1, 5):

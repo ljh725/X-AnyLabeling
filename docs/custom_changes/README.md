@@ -14,17 +14,22 @@
 
 ## 索引
 
-总入口：[截至2026-10-30的功能分类台账](CATALOG-20261030.md) · [实施前备份与恢复](BACKUP-20261030.md) · [相对上游的逐文件清单](inventory/source-files.json)。历史功能按“原功能增强/新增能力”归类，文件是否新增另行记录。
+当前总览：[2026-11-06 项目改动核对](2026-11-06-project-change-audit.md) · [当前相对上游的逐文件清单](inventory/source-files-20261106.tsv)。
+
+历史入口：[截至2026-10-30的功能分类台账](CATALOG-20261030.md) · [实施前备份与恢复](BACKUP-20261030.md) · [历史逐文件清单](inventory/source-files.json)。历史功能按“原功能增强/新增能力”归类，文件是否新增另行记录。历史记录中“未提交”等表述有其当时含义，当前保存状态以最新核对及 Git 为准。
 
 | 编号 | 功能 | 状态 | 记录 |
 | --- | --- | --- | --- |
 | CUSTOM-001 | 统计总览、标签管理器后台扫描与进度反馈 | 方案，未实施；11-02 已完成真实共享盘诊断 | [修改方案](2026-10-29-dataset-scan-progress.md) · [实测与代码分类](../../reports/tool_scan_diagnosis_20261102/REPORT.md) |
 | CUSTOM-002 | 分阶段标注加载、搜索与审核一致性 | 已有实现，历史验证见报告 | [实现归档](2026-10-30-staged-loading.md) |
 | CUSTOM-003 | 大数据集拖动响应优化 | 已实施，历史回归与用户体验确认见修复记录 | [修复记录](2026-10-30-canvas-dragging.md) |
-| CUSTOM-109 | Inspector 检查与复核工作流 | 11-05 代码/自动化 52/55；人工验收 3 项待做 | [实施记录](2026-11-02-inspector-workflow.md) · [操作说明](../zh_cn/inspector.md) · [验证](../../openspec/changes/refactor-data-inspector-workflow/verification.md) |
-| CUSTOM-110 | 密集标注复核工作流 | 已保存，含 P2 UI；11-03 目录测试 87 通过，人工/性能/导出验收待做 | [实施记录](2026-11-02-dense-annotation-review-workflow.md) · [验证](../../openspec/changes/add-dense-annotation-review-workflow/verification.md) · [开发基线](../version-management/2026-11-03-development-baseline.md) |
+| CUSTOM-109 | Inspector 检查与复核工作流 | 11-05 已提交保存；代码/自动化 52/55，人工验收 3 项待做 | [实施记录](2026-11-02-inspector-workflow.md) · [操作说明](../zh_cn/inspector.md) · [验证](../../openspec/changes/refactor-data-inspector-workflow/verification.md) |
+| CUSTOM-110 | 密集标注复核工作流 | 11-05 已提交保存；功能/性能专项有通过证据，人工试用与完整组合回归仍待验收 | [最新实施结果](../../openspec/changes/add-dense-annotation-review-workflow/implementation-20261105.md) · [实施记录](2026-11-02-dense-annotation-review-workflow.md) · [任务](../../openspec/changes/add-dense-annotation-review-workflow/tasks.md) |
 | CUSTOM-111 | 修正成本统计 | 部分实现已保存，工作区尚待接入；当前入口显示开发状态 | [状态记录](2026-11-03-correction-cost-statistics.md) · [任务](../../openspec/changes/add-annotation-correction-cost-statistics/tasks.md) |
-| CUSTOM-112～116 | v4.3.0 五项画布能力恢复（工具栏、滚轮导航、三态审核、仅填充透明度、显示参数保持） | 已实现待验证；专项 51 通过，性能/人工/配置联测待做 | [恢复记录](2026-11-04-canvas-controls-restore.md) · [验证](../../openspec/changes/restore-v430-canvas-controls/verification.md) |
+| CUSTOM-112～116 | v4.3.0 五项画布能力恢复（工具栏、滚轮导航、三态审核、仅填充透明度、显示参数保持） | 11-05 已提交保存；专项与配置自动联测通过，性能/真实屏幕等验收未全部完成 | [恢复记录](2026-11-04-canvas-controls-restore.md) · [最新实施结果](../../openspec/changes/restore-v430-canvas-controls/implementation-20261105.md) · [验证](../../openspec/changes/restore-v430-canvas-controls/verification.md) |
+| CUSTOM-117 | Ctrl + 左键拖拽多选（部分覆盖即选中） | 已验收并纳入 Git 交付；41 项交付专项通过，历史 225 项相关回归通过；11-06 用户实测确认 | [实现、修复与交付记录](2026-11-06-marquee-selection.md) |
+| 配置持久化修复 | 配置按字段保存、冲突处理、数字绑定/设置/显示保持同步、重启恢复 | 11-05 已提交保存；用户原启动方式的可见交互验收仍待做 | [任务与状态](../../openspec/changes/fix-user-settings-persistence/tasks.md) · [验证](../../openspec/changes/fix-user-settings-persistence/verification.md) |
+| 数字矩形标签保存修复 | 弹窗关闭且预选其他类别时数字绑定优先级 | 仅登记任务，尚未实施；不能作为已修复功能 | [任务](../../openspec/changes/fix-digit-rectangle-label-save/tasks.md) |
 | CUSTOM-101/103-显示 | 矩形创建与单点拟合预览的共边显示修复 | 11-06 单点拟合按键刷新与小框防跳修复用户验收通过，132 项隔离 Qt 回归通过；原创建/共边完整屏幕验收另见记录 | [方案与实施记录](2026-11-02-rectangle-preview-overlap-plan.md) · [操作说明](../zh_cn/rectangle_point_fit.md) · [验证](../../openspec/changes/fix-rectangle-preview-overlap/verification.md) |
 | CUSTOM-010～014、101～108 | 4.2.1上的既有增强/迁移功能 | 已含于历史混合快照，非本轮新增实施 | [完整分类台账](CATALOG-20261030.md) |
 

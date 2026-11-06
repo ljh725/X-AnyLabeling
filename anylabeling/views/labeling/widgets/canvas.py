@@ -178,6 +178,11 @@ class Canvas(
         self.current = None
         self.selected_shapes = []  # save the selected shapes here
         self.selected_shapes_copy = []
+        self._marquee_start = None
+        self._marquee_end = None
+        self._marquee_press_pos = None
+        self._marquee_dragging = False
+        self._marquee_cancelled = False
         self._point_fit_pressed = False
         self._point_fit_corner = None
         self._point_fit_hover_corner = None
@@ -431,6 +436,8 @@ class Canvas(
 
     def set_loading(self, is_loading: bool, loading_text: str = None):
         """Set loading state"""
+        if is_loading:
+            self._cancel_marquee_selection()
         self.is_loading = is_loading
         if loading_text:
             self.loading_text = loading_text
@@ -767,6 +774,7 @@ class Canvas(
 
     def focusOutEvent(self, _):
         """Window out of focus event"""
+        self._cancel_marquee_selection()
         self._clear_crosshair_cursor()
         self._rectangle_edge_cancel()
         self._clear_point_fit()
@@ -2082,6 +2090,7 @@ class Canvas(
 
     def set_editing(self, value=True):
         """Set editing mode. Editing is set to False, user is drawing"""
+        self._cancel_marquee_selection()
         self._rectangle_edge_cancel()
         self._clear_point_fit()
         self.mode = self.EDIT if value else self.CREATE
@@ -2510,10 +2519,102 @@ class Canvas(
         self.pan_request.emit(delta)
         return True
 
+    def _clear_marquee_selection(self):
+        was_visible = self._marquee_dragging
+        self._marquee_start = None
+        self._marquee_end = None
+        self._marquee_press_pos = None
+        self._marquee_dragging = False
+        self._marquee_cancelled = False
+        if was_visible:
+            self.update()
+
+    def _cancel_marquee_selection(self):
+        if self._marquee_start is not None:
+            self._clear_marquee_selection()
+            # Consume the rest of this gesture so it cannot move a shape.
+            self._marquee_cancelled = True
+            self.override_cursor(CURSOR_DEFAULT)
+
+    def _update_marquee_selection(self, widget_pos):
+        self._marquee_end = self.transform_pos(widget_pos)
+        if (
+            not self._marquee_dragging
+            and (widget_pos - self._marquee_press_pos).manhattanLength()
+            >= QtWidgets.QApplication.startDragDistance()
+        ):
+            self._marquee_dragging = True
+            self._clear_space_pan_hover_state()
+        if self._marquee_dragging:
+            self.override_cursor(CURSOR_DRAW)
+            self.update()
+
+    def _finish_marquee_selection(self, ev):
+        """Commit an additive selection, or let a Ctrl-click toggle normally."""
+        self._update_marquee_selection(ev.position())
+        start = self._marquee_start
+        dragging = self._marquee_dragging
+        rect = QtCore.QRectF(start, self._marquee_end).normalized()
+        self._clear_marquee_selection()
+        if not dragging:
+            self.select_shape_point(start, multiple_selection_mode=True)
+            self.prev_point = start
+            return False
+
+        selected = list(self.selected_shapes)
+        selected_ids = {id(shape) for shape in selected}
+        if not rect.isEmpty():
+            for shape in self.shapes:
+                if (
+                    id(shape) not in selected_ids
+                    and shape.visible
+                    and self.is_visible(shape)
+                    and shape.points
+                ):
+                    if (
+                        rect.contains(shape.points[0])
+                        if shape.shape_type == "point"
+                        else shape.make_path().intersects(rect)
+                    ):
+                        selected.append(shape)
+                        selected_ids.add(id(shape))
+        self.select_shapes(selected)
+        self.override_cursor(CURSOR_DEFAULT)
+        ev.accept()
+        return True
+
+    def _paint_marquee_selection(self, painter):
+        if not self._marquee_dragging:
+            return
+        painter.save()
+        painter.setOpacity(1.0)
+        pen = QtGui.QPen(QtGui.QColor("#3399ff"))
+        pen.setCosmetic(True)
+        pen.setWidthF(1.5)
+        pen.setStyle(QtCore.Qt.PenStyle.DashLine)
+        painter.setPen(pen)
+        painter.setBrush(QtGui.QColor(51, 153, 255, 35))
+        painter.drawRect(
+            QtCore.QRectF(self._marquee_start, self._marquee_end).normalized()
+        )
+        painter.restore()
+
     # QT Overload
     def mouseMoveEvent(self, ev):  # noqa: C901
         """Update line with last point and current coordinates"""
         if self.is_loading:
+            return
+        if self._marquee_cancelled:
+            if ev.buttons() & QtCore.Qt.MouseButton.LeftButton:
+                ev.accept()
+                return
+            self._clear_marquee_selection()
+        if self._marquee_start is not None:
+            if ev.buttons() & QtCore.Qt.MouseButton.LeftButton:
+                self._update_marquee_selection(ev.position())
+            # Keep capture until release/cancellation. Synthesized hover moves
+            # can report no buttons immediately before the release arrives.
+            ev.accept()
             return
         if self._right_pan_start is not None:
             if ev.buttons() & QtCore.Qt.MouseButton.RightButton:
@@ -3182,6 +3283,7 @@ class Canvas(
             return
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             self._pointer_down = True
+            self._clear_marquee_selection()
         self.interaction_started.emit()
         self._pending_edge_point = None
         if self._is_pan_gesture(ev) and self._start_space_pan(
@@ -3221,6 +3323,21 @@ class Canvas(
             if self._space_pressed and self._start_space_pan(
                 ev.globalPosition()
             ):
+                ev.accept()
+                return
+            if (
+                self.editing()
+                and ev.modifiers()
+                == QtCore.Qt.KeyboardModifier.ControlModifier
+                and not self.is_brush_mode
+                and self._has_valid_pixmap()
+            ):
+                self._rectangle_edge_cancel()
+                self._clear_point_fit()
+                self.is_move_editing = False
+                self._marquee_start = QtCore.QPointF(pos)
+                self._marquee_end = QtCore.QPointF(pos)
+                self._marquee_press_pos = QtCore.QPointF(ev.position())
                 ev.accept()
                 return
             if self._point_fit_press(pos, ev.modifiers()):
@@ -3454,6 +3571,14 @@ class Canvas(
     def mouseReleaseEvent(self, ev):
         """Mouse release event"""
         self._pointer_down = False
+        if ev.button() == QtCore.Qt.MouseButton.LeftButton:
+            if self._marquee_cancelled:
+                self._clear_marquee_selection()
+                ev.accept()
+                return
+            if self._marquee_start is not None:
+                if self._finish_marquee_selection(ev):
+                    return
         if (
             self.is_loading
             or self._point_fit_handle_release_event(ev)
@@ -3579,6 +3704,14 @@ class Canvas(
         if (
             ev.button() == QtCore.Qt.MouseButton.RightButton
             or self._is_pan_gesture(ev)
+            or (
+                ev.button() == QtCore.Qt.MouseButton.LeftButton
+                and self.editing()
+                and ev.modifiers()
+                == QtCore.Qt.KeyboardModifier.ControlModifier
+                and not self.is_brush_mode
+                and self._has_valid_pixmap()
+            )
         ):
             self.mousePressEvent(ev)
             return
@@ -5382,6 +5515,7 @@ class Canvas(
         self._paint_point_fit(p)
         self._paint_rectangle_edge(p)
         self._paint_rectangle_size(p)
+        self._paint_marquee_selection(p)
 
         self._point_fit_preview = None
         p.end()
@@ -5665,6 +5799,7 @@ class Canvas(
             or self._space_panning
             or self._point_fit_pressed
             or self._rectangle_edge_drag is not None
+            or self._marquee_start is not None
             or self._vertex_erasing
             or self._magic_wand_active
             or self._brush_drawing
@@ -5675,6 +5810,9 @@ class Canvas(
     # QT Overload
     def wheelEvent(self, ev: QWheelEvent):
         """Mouse wheel event"""
+        if self._marquee_start is not None or self._marquee_cancelled:
+            ev.accept()
+            return
         mods = ev.modifiers()
         delta = ev.angleDelta()
         if delta.isNull():
@@ -5925,6 +6063,11 @@ class Canvas(
         """Key press event"""
         modifiers = ev.modifiers()
         key = ev.key()
+        if self._marquee_start is not None:
+            if key == Qt.Key.Key_Escape:
+                self._cancel_marquee_selection()
+            ev.accept()
+            return
         if key == Qt.Key.Key_Escape and self._rectangle_edge_drag is not None:
             self._rectangle_edge_cancel()
             ev.accept()
@@ -6166,6 +6309,7 @@ class Canvas(
 
     def load_shapes(self, shapes, replace=True, record_history=True):
         """Load shapes"""
+        self._cancel_marquee_selection()
         shapes = self._normalize_incoming_shape_ids(shapes, replace)
         self.cancel_brush_mode()
         self._clear_magic_wand_preview()
@@ -6302,6 +6446,7 @@ class Canvas(
 
     def reset_state(self) -> None:
         """Clear shapes and pixmap"""
+        self._cancel_marquee_selection()
         self.inspection_candidates = []
         self._rectangle_edge_cancel()
         self._clear_point_fit()
