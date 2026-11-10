@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from statistics import median
 
+from .core import DISCLOSURE_ISSUES
+
 
 IMAGE_COLUMNS = (
     "schema_version", "dataset_id", "image_path", "label_path", "image_digest",
@@ -81,7 +83,9 @@ def exclusion_reasons(row):
     if not row.get("completed"):
         reasons.add("unfinished")
     if not row.get("comparable"):
-        reasons.update(row.get("issues") or ["incomplete"])
+        blocking = [issue for issue in (row.get("issues") or ())
+                    if issue not in DISCLOSURE_ISSUES]
+        reasons.update(blocking or ["incomplete"])
     return sorted(reasons)
 
 

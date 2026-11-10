@@ -63,6 +63,7 @@ class MetricsStore:
         self._state_lock = threading.RLock()
         self._fault_lock = threading.Lock()
         self._faults = {}
+        self._target_faults = {}
         self._live = weakref.WeakValueDictionary()
         self._closed = False
         self._thread = None
@@ -104,14 +105,23 @@ class MetricsStore:
             check_same_thread=False,
         )
 
-    def _fault(self, round_id, error):
+    def _fault(self, round_id, error, *, target=None, kind="storage-gap"):
         with self._fault_lock:
             self.error = str(error)
-            self._faults.setdefault(round_id, set()).add("storage-gap")
+            self._faults.setdefault(round_id, set()).add(kind)
+            if target:
+                key = (path_identity(target[0]), path_identity(target[1]))
+                self._target_faults.setdefault(key, set()).add(kind)
 
     def gaps(self, round_id):
         with self._fault_lock:
             return set(self._faults.get(round_id, ()))
+
+    def gaps_for(self, image_path, label_path):
+        """Gaps recorded for one image/label pair, whatever the round."""
+        key = (path_identity(image_path), path_identity(label_path))
+        with self._fault_lock:
+            return set(self._target_faults.get(key, ()))
 
     def _enqueue(self, state, operations):
         key = state["round_id"]
@@ -334,7 +344,10 @@ class MetricsStore:
                 return run
             except queue.Full:
                 pass
-        self._fault("", "prediction record unavailable")
+        # A lost prediction record must stay visible on the affected image:
+        # an unattributed gap would never be shown to the user.
+        self._fault("", "prediction record unavailable",
+                    target=(image_path, label_path), kind="prediction-gap")
         return None
 
     def iter_rows(self, limit=None, offset=0):
@@ -357,7 +370,8 @@ class MetricsStore:
                 for payload, current in cursor:
                     row = json.loads(payload)
                     row["current"] = bool(current)
-                    faults = self.gaps(row["round_id"])
+                    faults = (self.gaps(row["round_id"])
+                              | self.gaps_for(row["image_path"], row["label_path"]))
                     if faults:
                         row["issues"] = sorted(set(row["issues"]) | faults)
                         row["comparable"] = False

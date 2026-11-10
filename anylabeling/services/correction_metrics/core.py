@@ -23,6 +23,12 @@ ORIGIN_FIELDS = {
 }
 SHAPE_ID = "xanylabeling_shape_id"
 
+# ``unknown-origin`` only discloses that the starting labels predate
+# the statistics.  Events spec lets scope, identity, storage and timing
+# gaps invalidate a full comparison, but not an unknown provenance, so
+# every other issue stays blocking (fail closed).
+DISCLOSURE_ISSUES = frozenset({"unknown-origin"})
+
 
 def uid():
     return uuid.uuid4().hex
@@ -173,9 +179,11 @@ def differences(baseline, final, aliases=None, class_comparable=True):
         "scope_changes": len(converted),
         "classes": [
             {"kind": kind, "initial_class": old, "final_class": new,
-             "count": n, "denominator": counts[("initial", old, "")]
-             if kind in ("initial", "geometry", "deleted", "class_changed")
-             else len(b)}
+             "count": n,
+             "denominator": (counts[("initial", old, "")]
+                              if kind in ("initial", "geometry", "deleted",
+                                          "class_changed")
+                              else len(b)) or None}
             for (kind, old, new), n in sorted(counts.items())
         ],
     }
@@ -254,7 +262,8 @@ def report_row(state, draft=False):
                             ("review-confirm", "review-undo", "taxonomy", "discard", "undo")),
         "undo_count": counts.get("undo", 0), "operation_counts": dict(counts),
         "touches": state["touches"], "unique_objects": len(state["touched"]),
-        "time": dict(totals), "issues": sorted(issues), "comparable": not issues,
+        "time": dict(totals), "issues": sorted(issues),
+        "comparable": not (issues - DISCLOSURE_ISSUES),
         "is_draft": draft and selected != state["saved"],
     }
 
@@ -295,8 +304,11 @@ class CorrectionRound:
     def row(self, draft=False):
         with self._lock:
             state = self._state.copy()
-            state["issues"] = sorted(set(state["issues"]) |
-                                     self.store.gaps(self.round_id))
+            gaps = set(self.store.gaps(self.round_id))
+            target = getattr(self.store, "gaps_for", None)
+            if target is not None:
+                gaps |= set(target(self.image_path, self.label_path))
+            state["issues"] = sorted(set(state["issues"]) | gaps)
             return report_row(state, draft)
 
     def _persist(self, **operations):
