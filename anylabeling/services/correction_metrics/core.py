@@ -19,7 +19,7 @@ ORIGIN_FIELDS = {
     "run_id", "model", "model_name", "model_type", "model_version",
     "weight_version", "config_digest", "prompt", "thresholds",
     "category_version", "elapsed_s", "inference_seconds", "status",
-    "started_at", "ended_at",
+    "started_at", "ended_at", "mode", "replace",
 }
 SHAPE_ID = "xanylabeling_shape_id"
 
@@ -259,8 +259,9 @@ def report_row(state, draft=False):
                         base["objects"].get(k, {}).get("kind") == "rectangle")
         if state["origin"] != "unknown-existing" else None,
         "transactions": sum(v for k, v in counts.items() if k not in
-                            ("review-confirm", "review-undo", "taxonomy", "discard", "undo")),
-        "undo_count": counts.get("undo", 0), "operation_counts": dict(counts),
+                            ("review-confirm", "review-undo", "taxonomy",
+                             "discard", "undo", "redo")),
+        "undo_count": counts.get("undo", 0), "redo_count": counts.get("redo", 0), "operation_counts": dict(counts),
         "touches": state["touches"], "unique_objects": len(state["touched"]),
         "time": dict(totals), "issues": sorted(issues),
         "comparable": not (issues - DISCLOSURE_ISSUES),

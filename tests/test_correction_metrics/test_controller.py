@@ -58,6 +58,74 @@ def started(tmp_path, shapes=()):
     return controller, host
 
 
+def test_prediction_saved_records_a_batch_image_without_touching_the_open_round(
+    tmp_path,
+):
+    """批量预标注逐图入库：不触碰当前打开的轮次，也不启动计时。"""
+    controller, host = started(tmp_path, [rect("r1")])
+    controller.enter_image()
+    open_round = controller.current_row()["round_id"]
+    other_image = tmp_path / "images" / "batch.jpg"
+    other_image.write_bytes(b"batch-image")
+    other_label = tmp_path / "labels" / "batch.json"
+
+    assert controller.prediction_saved(
+        str(other_image),
+        str(other_label),
+        {"mode": "additive", "run_id": "run-batch", "model": "yolo"},
+        [rect("a1"), rect("a2")],
+        "applied",
+    ) is True
+
+    # The open round is untouched.
+    assert controller.current_row()["round_id"] == open_round
+    assert controller.current_row()["origin"] == "unknown-existing"
+    rows = {row["image_path"]: row for row in controller.rows()}
+    # The batch image has its own saved round with the AI baseline.
+    assert rows, "batch round was not persisted"
+    batch = [row for row in controller.rows()
+             if row["run_id"] == "run-batch"]
+    assert len(batch) == 1
+    assert batch[0]["origin"] == "additive"
+    assert batch[0]["ai_count"] == 2
+    assert batch[0]["baseline_count"] == 2
+
+
+def test_prediction_saved_failed_status_records_no_baseline(tmp_path):
+    """批量失败的图片只记状态，不建立起点。"""
+    controller, _host = started(tmp_path, [rect("r1")])
+    controller.enter_image()
+    before = controller.count()
+
+    assert controller.prediction_saved(
+        str(tmp_path / "images" / "broken.jpg"),
+        str(tmp_path / "labels" / "broken.json"),
+        {"run_id": "run-fail"},
+        [],
+        "failed",
+    ) is True
+
+    assert controller.count() == before  # no new round for a failed image
+
+
+def test_edit_links_an_undo_to_the_previous_transaction(tmp_path):
+    """撤销事件可以携带 undo_of，指向被撤销的事务。"""
+    controller, host = started(tmp_path, [rect("r1")])
+    controller.enter_image()
+    host.canvas.shapes = [rect("r1", box=(20, 20, 60, 80))]
+    assert controller.edit("geometry", changed=host.canvas.shapes,
+                           transaction_id="tx-move") is True
+
+    host.canvas.shapes = [rect("r1")]
+    assert controller.edit("undo", changed=host.canvas.shapes,
+                           transaction_id="tx-undo",
+                           undo_of="tx-move") is True
+
+    row = controller.current_row()
+    assert row["undo_count"] == 1
+    assert row["geometry_changed"] == 0  # net result back to the baseline
+
+
 def test_disabled_controller_is_inert(tmp_path):
     """功能未启动时所有操作都是无副作用的空操作。"""
     host = make_host(tmp_path)

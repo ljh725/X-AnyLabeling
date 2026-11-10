@@ -14,6 +14,7 @@ from anylabeling.services.dense_review.models import (
     CoverageSettings,
 )
 
+from ..correction_metrics.hooks import notify_metrics
 from ..utils.qt import themed_icon
 from ..utils.style import blend_hex, get_dialog_style, get_workbench_qss
 from ..utils.theme import get_theme
@@ -2175,6 +2176,12 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             self._status(self.tr("本批没有可确认对象；请先处理排除项。"))
             self.refresh_all(force_cards=True)
             return
+        notify_metrics(
+            self.host,
+            "review_event",
+            "review-confirm",
+            affected_ids=list(result.confirmed_ids),
+        )
         self.host.dense_review_after_progress_change()
         if result.next_object_id:
             self._navigate_to(result.next_batch_id, result.next_object_id)
@@ -2194,6 +2201,12 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         if not shape_id:
             return
         if session.confirm_object(shape_id, self._dimensions()):
+            notify_metrics(
+                self.host,
+                "review_event",
+                "review-confirm",
+                affected_ids=[shape_id],
+            )
             self._advance_object(shape_id)
             self.host.dense_review_after_progress_change()
             self._status(self.tr("当前对象已完成并前进。"))

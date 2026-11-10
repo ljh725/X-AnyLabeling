@@ -29,6 +29,7 @@ from anylabeling.services.auto_labeling import (
     _BATCH_PROCESSING_VIDEO_MODELS,
     _SKIP_DET_MODELS,
 )
+from anylabeling.views.labeling.correction_metrics.hooks import notify_metrics
 from anylabeling.views.labeling.logger import logger
 from anylabeling.views.labeling.schema import IMAGE_TAGS_FIELD
 from anylabeling.views.labeling.shape import Shape
@@ -359,18 +360,35 @@ def _reset_auto_labeling_tracker(self):
     model_manager.set_auto_labeling_reset_tracker()
 
 
+def batch_label_path(self, image_file):
+    """Return the label file one batch prediction writes for ``image_file``."""
+    label_file = osp.splitext(image_file)[0] + ".json"
+    output_dir = getattr(self, "output_dir", "")
+    if output_dir:
+        label_file = osp.join(output_dir, osp.basename(label_file))
+    return label_file
+
+
 def save_auto_labeling_result(self, image_file, auto_labeling_result):
-    """Save one prediction, publish its baseline only after the atomic replace."""
+    """Save one prediction, publish its baseline only after the atomic replace.
+
+    Statistics are updated per image through ``notify_metrics``: ``applied``
+    only after the atomic write succeeded, ``failed`` for a write error and
+    ``skipped`` when the model produced no result.  The observer is told the
+    image and label path explicitly because a batch has no current canvas
+    round, and it is never asked to start timing or finish anything here.
+    """
+    label_file = batch_label_path(self, image_file)
     if auto_labeling_result is None:
+        notify_metrics(
+            self, "prediction_saved", str(image_file), str(label_file), {},
+            (), status="skipped",
+        )
         return False
     manager = getattr(getattr(self, "auto_labeling_widget", None), "model_manager", None)
     collect = getattr(manager, "collect_prediction_provenance", False) is True
     source = getattr(auto_labeling_result, "provenance", None)
     try:
-        label_file = osp.splitext(image_file)[0] + ".json"
-        if self.output_dir:
-            label_file = osp.join(self.output_dir, osp.basename(label_file))
-
         new_shapes = [shape.to_dict() for shape in auto_labeling_result.shapes]
         new_description = auto_labeling_result.description
         new_tags = getattr(auto_labeling_result, "tags", None)
@@ -442,6 +460,12 @@ def save_auto_labeling_result(self, image_file, auto_labeling_result):
 
         atomic_write_json(label_file, data)
 
+        notify_metrics(
+            self, "prediction_saved", str(image_file), str(label_file),
+            dict(source or {}), list(data.get("shapes") or ()),
+            status="applied",
+        )
+
     except Exception as e:
         logger.error(
             f"Failed to save auto labeling result for image file '{image_file}': {str(e)}"
@@ -450,6 +474,10 @@ def save_auto_labeling_result(self, image_file, auto_labeling_result):
             manager.prediction_unapplied.emit(
                 str(image_file), {**(source or {}), "status": "save-failed"}
             )
+        notify_metrics(
+            self, "prediction_saved", str(image_file), str(label_file),
+            dict(source or {}), (), status="failed",
+        )
         return False
     if collect:
         predicted_ids = [shape.get("xanylabeling_shape_id") for shape in new_shapes]

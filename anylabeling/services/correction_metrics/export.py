@@ -65,6 +65,7 @@ DEFINITIONS = {
     "touches": "Sum of affected object counts across transactions.",
     "unique_objects": "Distinct object identities touched across transactions.",
     "undo_count": "Number of observed undo actions.",
+    "redo_count": "Number of observed redo actions.",
     "operation_counts": "Counts by recorded operation type.",
     "time": "Recorded timing counters in seconds, including all contributing sessions.",
     "inference_seconds": "Elapsed model runtime; may overlap foreground work.",

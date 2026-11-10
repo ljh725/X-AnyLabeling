@@ -3977,7 +3977,7 @@ class LabelingWidget(LabelDialog):
         session = self.dense_review_session
         if session is not None and session.next_undo_kind() == "progress":
             if session.undo_progress():
-                notify_metrics(self, "review_event", "undo-review")
+                notify_metrics(self, "review_event", "review-undo")
                 self.dense_review_after_progress_change()
                 self._update_history_actions()
                 return
@@ -4007,7 +4007,7 @@ class LabelingWidget(LabelDialog):
         kind = session.next_redo_kind() if session is not None else "canvas"
         if kind == "progress" and session is not None:
             if session.redo_progress():
-                notify_metrics(self, "review_event", "redo-review")
+                notify_metrics(self, "review_event", "review-confirm")
                 self.dense_review_after_progress_change()
                 self._update_history_actions()
                 return
@@ -4020,7 +4020,7 @@ class LabelingWidget(LabelDialog):
             # matching marker so redo can move on to the next transaction.
             session.drop_stale_canvas_redo()
             if session.next_redo_kind() == "progress" and session.redo_progress():
-                notify_metrics(self, "review_event", "redo-review")
+                notify_metrics(self, "review_event", "review-confirm")
                 self.dense_review_after_progress_change()
                 self._update_history_actions()
                 return
@@ -6610,6 +6610,7 @@ class LabelingWidget(LabelDialog):
         shape = item.shape()
         if shape is None:
             return
+        original_label = shape.label
         (
             text,
             flags,
@@ -6674,6 +6675,16 @@ class LabelingWidget(LabelDialog):
             item.setBackground(QtGui.QColor(*color, LABEL_OPACITY))
         else:
             item.setText(_format_label_list_text(shape.label, shape.group_id))
+        # The single-object field dialog edits the shape in place; record it
+        # like the multi-selection path so the most frequent "change one box"
+        # action is not silently free.
+        notify_metrics(
+            self,
+            "edit",
+            "relabel" if shape.label != original_label else "attributes",
+            "manual",
+            changed=[shape],
+        )
         self.set_dirty()
         self._refresh_shape_filters()
 

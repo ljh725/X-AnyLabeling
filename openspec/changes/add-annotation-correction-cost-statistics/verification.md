@@ -56,6 +56,18 @@
 `test_wiring.py` +2（Qt 时钟适配器接管与绝对快照写入）。
 详见 [implementation-batch2b-20261110.md](implementation-batch2b-20261110.md)。
 
+## 2.4 第 2 批 C 段（预标注/批量/复核）验证
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| 统计测试全量 | `pytest tests/test_correction_metrics -q -p no:cacheprovider` | **188 passed**（0 failed），3.4 s |
+| 批量相邻回归 | `pytest tests/test_auto_labeling/test_batch_range.py -q` | 2 passed + 6 subtests |
+
+新增用例：`test_prediction_provenance.py` 13、`test_batch_prediction.py` 5、`test_review_wiring.py` 8、
+`test_controller.py` +3（批量入口与 undo_of 关联）。覆盖：来源白名单与 mode 推导、旧式结果兼容、
+批量逐图 applied/failed/skipped 与部分失败、复核不计框修改、redo 不计修正事务、撤销关联。
+详见 [implementation-batch2c-20261110.md](implementation-batch2c-20261110.md)。
+
 ## 3. 需求到证据
 
 四份 spec 共 33 Requirement / 69 Scenario，逐条映射见 [scenario-coverage.md](scenario-coverage.md)。第 1 批后：

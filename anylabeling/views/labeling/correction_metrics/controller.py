@@ -23,7 +23,11 @@ import os
 from pathlib import Path
 
 from anylabeling.services.correction_metrics import export, reporting
-from anylabeling.services.correction_metrics.core import SHAPE_ID, path_identity
+from anylabeling.services.correction_metrics.core import (
+    SHAPE_ID,
+    path_identity,
+    safe_provenance,
+)
 from anylabeling.services.correction_metrics.storage import MetricsStore
 from anylabeling.services.correction_metrics.timing import WorkClock
 
@@ -94,6 +98,7 @@ class CorrectionMetricsController:
         self._degraded = {}
         self._closed = False
         self._last_second = None
+        self._saved_batches = set()
 
     # ---------------------------------------------------------- capability
     @property
@@ -153,6 +158,7 @@ class CorrectionMetricsController:
             return False
         self._scope = scope
         self._enabled = True
+        self._set_prediction_collection(True)
         if self._heartbeat is not None:
             try:
                 self._heartbeat(self.tick)
@@ -170,6 +176,21 @@ class CorrectionMetricsController:
         image_root = os.path.dirname(os.fspath(image_path))
         label_root = getattr(self.host, "output_dir", None) or image_root
         return self.start_scope(image_root, label_root)
+
+    def _set_prediction_collection(self, enabled):
+        """Collect prediction provenance only while statistics are enabled."""
+        try:
+            from anylabeling.services.auto_labeling.model_manager import (
+                enable_prediction_provenance,
+            )
+        except Exception as error:  # noqa: BLE001
+            self.degrade("prediction_provenance", error)
+            return False
+        widget = getattr(self.host, "auto_labeling_widget", None)
+        manager = getattr(widget, "model_manager", None)
+        if manager is None:
+            return False
+        return enable_prediction_provenance(manager, enabled)
 
     def taxonomy_saved(self, image_path, label_path=None, shapes=None,
                        mapping=None, comparable=True):
@@ -238,6 +259,7 @@ class CorrectionMetricsController:
                 timer.stop()
             except Exception as error:  # noqa: BLE001
                 self.degrade("stop", error)
+        self._set_prediction_collection(False)
         self._closed = True
         self._enabled = False
 
@@ -288,7 +310,7 @@ class CorrectionMetricsController:
 
     # ------------------------------------------------------- edit observers
     def edit(self, kind, source="manual", changed=None, removed=None,
-             transaction_id=None):
+             transaction_id=None, undo_of=None):
         if not self.enabled:
             return False
         try:
@@ -298,6 +320,7 @@ class CorrectionMetricsController:
                 kind=kind,
                 source=source,
                 transaction_id=transaction_id,
+                undo_of=undo_of,
             )
         except Exception as error:  # noqa: BLE001
             self.degrade("edit", error)
@@ -370,7 +393,13 @@ class CorrectionMetricsController:
         provenance = dict(getattr(result, "provenance", None) or {})
         mode = provenance.get("mode") or "replacement"
         origin = "additive" if mode == "additive" else "replacement"
-        predicted = shape_ids(self._shapes())
+        # Only the objects this run predicted become AI objects.  The canvas
+        # holds retained manual boxes too, so using it would count 5 manual
+        # boxes as predicted (8 instead of 3 in the "5+3" scenario).
+        predicted_shapes = getattr(result, "shapes", None)
+        predicted = shape_ids(
+            predicted_shapes if predicted_shapes is not None else self._shapes()
+        )
         try:
             self._round = self._store.open_round(
                 path,
@@ -403,6 +432,50 @@ class CorrectionMetricsController:
             return True
         except Exception as error:  # noqa: BLE001
             self.degrade("prediction_unapplied", error)
+            return False
+
+    def prediction_saved(self, image_path, label_path=None, provenance=None,
+                         shapes=None, status="applied"):
+        """Batch predictions write JSON directly: record one image at a time.
+
+        Unlike ``prediction_applied`` this never touches the round of the
+        currently open image, never starts human timing and never completes the
+        image.  Only an actually saved file becomes a baseline.
+        """
+        if self._store is None or not image_path:
+            return False
+        source = safe_provenance(dict(provenance or {}))
+        label = label_path or self._label_path(image_path)
+        # Batch calls come from a worker thread and may be retried: remember
+        # the (image, label, run) keys so a repeated call cannot open a second
+        # round for the same saved file.
+        key = (path_identity(image_path), path_identity(label), source.get("run_id"))
+        if key[2] and key in self._saved_batches:
+            return True
+        try:
+            if status == "applied":
+                mode = source.get("mode") or "replacement"
+                self._store.open_round(
+                    image_path,
+                    label,
+                    content_digest(image_path),
+                    list(shapes or ()),
+                    origin="additive" if mode == "additive" else "replacement",
+                    provenance=source,
+                    predicted_ids=shape_ids(shapes),
+                    saved=True,
+                    force_new=True,
+                )
+                if key[2]:
+                    if len(self._saved_batches) > 4096:
+                        self._saved_batches.clear()
+                    self._saved_batches.add(key)
+            self._store.record_prediction(image_path, label, source, status)
+            # No flush here: this runs on the batch worker thread and the queue
+            # drains later; the report flushes before reading.
+            return True
+        except Exception as error:  # noqa: BLE001
+            self.degrade("prediction_saved", error)
             return False
 
     # --------------------------------------------------------------- timing

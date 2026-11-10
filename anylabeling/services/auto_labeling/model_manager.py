@@ -106,6 +106,46 @@ def _prediction_source(config, prompt):
     return source
 
 
+def _finalise_source(source, result, started):
+    """Attach this run's outcome and replacement mode to a whitelisted source.
+
+    ``mode`` comes from the adapter's own ``replace`` flag, so an additive run
+    is never recorded as a replacement.  The dict is returned as-is (the
+    allow-list already ran) because ``mode`` is a control field for the
+    statistics round, not per-object prediction metadata.
+    """
+    if not source:
+        return source
+    source.update(
+        status="success",
+        ended_at=time.time(),
+        mode=(
+            "additive"
+            if getattr(result, "replace", True) is False
+            else "replacement"
+        ),
+    )
+    if started is not None:
+        elapsed = time.monotonic() - started
+        if elapsed >= 0:
+            source["inference_seconds"] = elapsed
+            source["elapsed_s"] = elapsed
+    return source
+
+
+def enable_prediction_provenance(manager, enabled=True):
+    """Turn per-run source collection on or off for one model manager.
+
+    Collection stays off by default so a session without statistics pays
+    nothing; the statistics controller switches it on with a dataset scope.
+    """
+    try:
+        manager.collect_prediction_provenance = bool(enabled)
+        return True
+    except (AttributeError, TypeError):
+        return False
+
+
 def _get_model_class(model_type):  # noqa: C901
     if model_type == "yolov5":
         from .yolov5 import YOLOv5
@@ -1208,9 +1248,9 @@ class ModelManager(QObject):
             if isinstance(auto_labeling_result, AutoLabelingResult):
                 auto_labeling_result.image_path = filename
                 if source:
-                    source.update(status="success", ended_at=time.time(),
-                                  inference_seconds=time.monotonic() - started)
-                    auto_labeling_result.provenance = source
+                    auto_labeling_result.provenance = _finalise_source(
+                        source, auto_labeling_result, started
+                    )
             elif source:
                 source.update(status="failed", ended_at=time.time(),
                               inference_seconds=time.monotonic() - started)
