@@ -166,6 +166,23 @@ class CorrectionMetricsController:
         identity = dataset_identity(image_root, label_root)
         return self.storage_root / ("%s.sqlite3" % identity)
 
+    def _start_scope_for(self, image_path):
+        image_root = os.path.dirname(os.fspath(image_path))
+        label_root = getattr(self.host, "output_dir", None) or image_root
+        return self.start_scope(image_root, label_root)
+
+    def taxonomy_saved(self, mapping, comparable=True, shapes=None):
+        """A confirmed global class migration is not a personal relabel."""
+        if not self.enabled:
+            return False
+        try:
+            return self._round.taxonomy(
+                dict(mapping or {}), comparable=comparable, shapes=shapes
+            )
+        except Exception as error:  # noqa: BLE001
+            self.degrade("taxonomy_saved", error)
+            return False
+
     def stop(self):
         """Flush timing and close the database; safe to call twice."""
         if self._closed:
@@ -185,16 +202,24 @@ class CorrectionMetricsController:
                 self._clock_adapter.stop()
             except Exception as error:  # noqa: BLE001
                 self.degrade("stop", error)
+        timer = getattr(self, "heartbeat_timer", None)
+        if timer is not None:
+            try:
+                timer.stop()
+            except Exception as error:  # noqa: BLE001
+                self.degrade("stop", error)
         self._closed = True
         self._enabled = False
 
     # ------------------------------------------------------- current image
     def enter_image(self):
         """Freeze the starting point of the image now shown, on first entry."""
-        if self._closed or self._store is None:
+        if self._closed:
             return False
         path = self._image_path()
         if not path:
+            return False
+        if self._store is None and not self._start_scope_for(path):
             return False
         label = self._label_path(path)
         shapes = self._shapes()
@@ -438,9 +463,10 @@ class CorrectionMetricsController:
             self.degrade("count", error)
             return 0
 
-    def export(self, kind, path, cancelled=None, progress=None):
-        rows = self.rows()
-        return export.export_csv(path, rows, kind, cancelled=cancelled,
+    def export(self, kind, path, cancelled=None, progress=None, rows=None):
+        """Export a CSV; ``rows`` freezes the caller's on-screen snapshot."""
+        selected = self.rows() if rows is None else list(rows)
+        return export.export_csv(path, selected, kind, cancelled=cancelled,
                                  progress=progress)
 
     # ---------------------------------------------------------- host bridge
@@ -476,3 +502,113 @@ class CorrectionMetricsController:
         if not os.path.isabs(raw):
             raw = os.path.join(os.path.dirname(default), os.path.basename(raw))
         return raw
+
+    # ------------------------------------------------------------ panel glue
+    def show_panel(self):
+        """Create or raise the compact panel; never block annotation work."""
+        panel = getattr(self, "panel", None)
+        if panel is None:
+            panel = self._build_panel()
+            self.panel = panel
+        if panel is None:
+            return False
+        try:
+            panel.refresh_with(self.current_row(draft=True), self.state())
+            panel.set_collapsed(False)
+            panel.show()
+            panel.raise_()
+            return True
+        except Exception as error:  # noqa: BLE001 - UI failure must not crash
+            self.degrade("show_panel", error)
+            return False
+
+    def show_summary(self):
+        dialog = getattr(self, "report_dialog", None)
+        if dialog is None:
+            dialog = self._build_report_dialog()
+            self.report_dialog = dialog
+        if dialog is None:
+            return False
+        try:
+            dialog.refresh()
+            dialog.show()
+            dialog.raise_()
+            return True
+        except Exception as error:  # noqa: BLE001
+            self.degrade("show_summary", error)
+            return False
+
+    def _build_panel(self):
+        try:
+            from .panel import CorrectionMetricsPanel
+
+            panel = CorrectionMetricsPanel(self, parent=self.host)
+            panel.pause_requested.connect(self.pause)
+            panel.finish_requested.connect(self.finish_round)
+            panel.summary_requested.connect(self.show_summary)
+            return panel
+        except Exception as error:  # noqa: BLE001
+            self.degrade("panel", error)
+            return None
+
+    def _build_report_dialog(self):
+        try:
+            from .report_dialog import ReportDialog
+
+            return ReportDialog(self, parent=self.host)
+        except Exception as error:  # noqa: BLE001
+            self.degrade("report_dialog", error)
+            return None
+
+    def refresh_panel(self):
+        panel = getattr(self, "panel", None)
+        if panel is None:
+            return False
+        try:
+            panel.refresh_with(self.current_row(draft=True), self.state())
+            return True
+        except Exception as error:  # noqa: BLE001
+            self.degrade("refresh_panel", error)
+            return False
+
+
+def start_metrics(host):
+    """Entry point used by the labeling menu: create and enable the session."""
+    controller = getattr(host, "correction_metrics", None)
+    if controller is None:
+        controller = CorrectionMetricsController(
+            host, language=getattr(host, "_config", {}).get("language", "en_US")
+        )
+        host.correction_metrics = controller
+    image_path = getattr(host, "filename", None)
+    if image_path and not controller.enabled:
+        controller.start_scope(
+            os.path.dirname(os.fspath(image_path)),
+            getattr(host, "output_dir", None)
+            or os.path.dirname(os.fspath(image_path)),
+        )
+        controller.enter_image()
+    _install_heartbeat(host, controller)
+    controller.show_panel()
+    return controller
+
+
+def _install_heartbeat(host, controller):
+    """Drive the work clock once per second; harmless without Qt."""
+    timer = getattr(controller, "heartbeat_timer", None)
+    if timer is not None:
+        if not timer.isActive():
+            timer.start()
+        return timer
+    try:
+        from PyQt6.QtCore import QTimer
+
+        timer = QTimer(host)
+        timer.setInterval(1000)
+        timer.timeout.connect(controller.tick)
+        timer.start()
+        controller.heartbeat_timer = timer
+        return timer
+    except Exception as error:  # noqa: BLE001 - head-less / non-Qt host
+        controller.degrade("heartbeat", error)
+        return None

@@ -32,6 +32,19 @@
 - 结果：**64 passed in 0.96 s**；连续第二次重跑 `exit code 0`。
 - 说明：该复跑发生在所有实现改动之后，用于确认提交内容与验证结果一致。
 
+## 2.2 第 2 批 A 段（适配层）验证
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| 统计测试全量 | `pytest tests/test_correction_metrics -q -p no:cacheprovider` | **113 passed**（0 failed），约 2 s |
+| 相邻设置 schema | `pytest tests/test_settings/test_schema.py -q` | 7 passed |
+
+新增用例：`test_controller.py` 15、`test_wiring.py` 5、`test_panel.py` 13、`test_report_dialog.py` 16。
+覆盖：会话启用/禁用、起点冻结与重开复用、事务幂等、保存检查点仅成功推进、丢弃回到已保存版本、
+来源未知仅披露、无 ID 几何信号按不完整披露、预测新一轮、观察者故障不抛异常、面板 N/A 与"未保存"
+标记、汇总分页与排除原因、CSV BOM/原子发布/取消不留文件。
+详见 [implementation-batch2a-20261110.md](implementation-batch2a-20261110.md)。
+
 ## 3. 需求到证据
 
 四份 spec 共 33 Requirement / 69 Scenario，逐条映射见 [scenario-coverage.md](scenario-coverage.md)。第 1 批后：

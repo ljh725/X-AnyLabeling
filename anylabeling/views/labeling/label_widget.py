@@ -7182,6 +7182,9 @@ class LabelingWidget(LabelDialog):
             flag = item.checkState() == Qt.CheckState.Checked
             flags[key] = flag
         self.other_data[CHECKED_FIELD] = self._annotation_checked()
+        # The observer token must exist even when an early step raises, so the
+        # failure path reports the right error instead of UnboundLocalError.
+        metrics_token = None
         try:
             image_path = osp.relpath(self.image_path, osp.dirname(filename))
             image_data = (
@@ -7668,6 +7671,9 @@ class LabelingWidget(LabelDialog):
             flag = item.checkState() == Qt.CheckState.Checked
             flags[key] = flag
         self.other_data[CHECKED_FIELD] = self._annotation_checked()
+        # The observer token must exist even when an early step raises, so the
+        # failure path reports the right error instead of UnboundLocalError.
+        metrics_token = None
         try:
             image_path = osp.relpath(self.image_path, osp.dirname(filename))
             image_data = (

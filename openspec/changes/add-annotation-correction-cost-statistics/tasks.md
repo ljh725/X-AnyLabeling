@@ -98,3 +98,16 @@
 - **2.5** 类别版本：一对一映射、合并传播 N/A、方向与分母已实现并有 7 个用例；**缺显式类别版本对象**（当前为 `alias` 字典 + `provenance.category_version`）。审计提出的"幻影改类"经复核与 spec 场景不符，未改实现，理由见实施记录 §3。
 - **3.3** 故障降级：队列饱和、关闭后写入、缺口可见均有实现与用例，并修复 M3；**缺重试/恢复入口**，只读与磁盘满仅有 SQLite 异常透传。
 - **4.x–10.x** 未开始。功能对用户仍不可用：`views/labeling/correction_metrics/` 缺 controller/panel/report_dialog，`metrics_available()` 恒假，记录点空转。
+
+## 第 2 批 A 段进展（2026-11-10）：适配层已接通
+
+`views/labeling/correction_metrics/` 已补齐 `controller.py` / `panel.py` / `report_dialog.py`，
+`metrics_available()` 由恒假变为可用，`label_widget` 的 26 处观察点现在真正落到 controller
+（切图、编辑、保存检查点、丢弃、复核、预测应用、退出）。新增 44 个用例，测试总数 **113 passed**。
+同时修复 `save_labels()` 失败路径的 `UnboundLocalError`（会掩盖真实保存错误）。
+
+**本轮没有勾选 4.x / 5.x / 6.x 中的任何任务**：适配层存在不等于逐入口接入完成。最关键的剩余项是
+4.5（拖动/拖边/单点拟合/键盘微调仍只走无对象 ID 的 `geometry()`）、4.6（全局类别改名未通知
+`taxonomy_saved`）、4.3（批量预标注直写 JSON 未接入）、4.7（密集复核与 `undo_of` 关联）、
+6.x（计时状态机无单元测试、前后台适配器未接线）。逐条原因见
+[implementation-batch2a-20261110.md](implementation-batch2a-20261110.md) §4。
