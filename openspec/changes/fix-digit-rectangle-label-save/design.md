@@ -1,3 +1,7 @@
+# 设计
+
+> 状态（2026-11-10）：用户要求完成剩余任务，本变更已按 `tasks.md` 实施并验证，结果见 `verification.md` 与 `evidence/`。下文保留规划阶段的原文与取舍记录。
+
 ## Context
 
 问题与证据见 `proposal.md` 及 `reports/digit_rectangle_save_20261104/REVIEW.md`。当前链路为 `create_digit_mode()` 设置 `digit_to_label` → Canvas 完成几何 → `new_shape()` 确定类别并加入标签列表 → `set_dirty()` 自动保存或等待 Ctrl+S。

@@ -64,7 +64,7 @@ $env:PYTHONPATH='D:\X-AnyLabeling-4.2.1\.local\restore-v430-20261104'
 
 本机 JUnit：`.tmp/canvas-apply-regressions-20261105.xml`、`.tmp/canvas-apply-final2-20261105.xml`。单轮 Qt 回调退出不能当成完整通过，旧 `.tmp/canvas-apply-final-20261105` 没有最终 XML，不作为通过证据。
 
-## 性能实测（8.3 保留未完成）
+## 性能实测（8.3 于 2026-11-09 复测完成）
 
 使用同一 `.local/canvas-implementation-20261105/benchmark_controls.py`、同一 Python/Qt 和固定 30/300 矩形样本，对备份重建副本与当前源码分别测量。每个规模 20 次拖动预热后统计 100 次完整 press/move/release+事件循环，切图预热两次后统计 20 次；均为 offscreen、关闭自动保存、未进入密集工作区。原始结果为同目录 `performance-before.json`、`performance-after.json`。
 
@@ -93,3 +93,7 @@ $env:PYTHONPATH='D:\X-AnyLabeling-4.2.1\.local\restore-v430-20261104'
 - Black 检查本轮工具栏及三个测试文件通过，新成组方法单独检查格式，避免重排既有大文件；三个产品文件语法检查通过。
 - OpenSpec strict、任务编号/链接/空白检查及本轮差异检查通过。
 - 当前任务 29/31 完成，8.3 与 8.4 保留限制；未归档任何变更，未修改真实用户配置、标注或 Windows 系统缩放。
+
+## 后续状态更新（2026-11-09）
+
+性能项 8.3 已用匹配基线复测关闭：A/B 两树只差本轮 3 个产品文件，另加同代码 A/A2 对照与恢复代码微基准；拖框/切图差异落在同代码噪声带内，恢复代码新增成本 <1 µs/切图、拖框帧默认 0 次填充。详见 [performance-acceptance-20261109.md](performance-acceptance-20261109.md)。8.4 也已于同日完成真实系统缩放验收（100%/125%/150% 与双屏混合 DPI，12 组通过），详见 [acceptance-20261109.md](acceptance-20261109.md)，任务清单 31/31。

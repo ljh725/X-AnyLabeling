@@ -1,6 +1,8 @@
 # Inspector 工作流实施与验证
 
-> 最新验证：2026-11-05，代码与自动化任务 52/55 完成，仅 10.3–10.5 人工验收待办。最新范围、命令与原始证据见本页末尾及 [任务记录第 14 节](tasks.md#14-2026-11-05-代码实施与验收范围)；下方 2026-11-02/04 数字属于历史记录。
+> 2026-11-10 归档决定：用户要求全部勾选并归档，任务状态已更新为 55/55。10.3–10.5 按用户决定关闭，本次未新增双人试用、独立质量复核或间隔后可用性验证证据；不宣称人工验收通过。见 [归档决定](archive-decision-20261110.md)。
+
+> 历史验证（任务状态由 2026-11-10 归档决定更新）：2026-11-05，代码与自动化任务 52/55 完成，仅 10.3–10.5 人工验收待办。最新范围、命令与原始证据见本页末尾及 [任务记录第 14 节](tasks.md#14-2026-11-05-代码实施与验收范围)；下方 2026-11-02/04 数字属于历史记录。
 
 2026-11-02，实施分支 `codex/refactor-data-inspector-workflow`，基线 `9a37c547`。核心服务、Inspector UI 与主窗口入口已实现；任务清单中未勾选项仍视为未完成，未归档。
 
@@ -19,11 +21,11 @@ C:/Users/20441/.conda/envs/x-anylabeling-cu12/python.exe -m pytest tests/test_in
 
 相关回归：定向 labeling 25 passed；canvas 543 passed / 1 既有失败；widgets 29 passed / 3 既有失败；labeling 全量 192 passed / 8 既有失败；staged 32 passed；settings 20 passed；utils/config 85 passed / 8 skipped。既有失败已在基线 worktree `9a37c547` 复跑确认相同。
 
-重复框核心与 beta4 对照：160 个矩形、38,160 对指标，指标最大差 0.0、分级不一致 0、候选对集合不一致 0；证据见 [duplicate_core_comparison.json](../../../reports/inspector_workflow_20261102/duplicate_core_comparison.json)。
+重复框核心与 beta4 对照：160 个矩形、38,160 对指标，指标最大差 0.0、分级不一致 0、候选对集合不一致 0；证据见 [duplicate_core_comparison.json](../../../../reports/inspector_workflow_20261102/duplicate_core_comparison.json)。
 
 `openspec validate refactor-data-inspector-workflow --strict` 通过。版本化运行/问题/证据/覆盖/反馈模型、当前图内存快照与批量磁盘快照、缺失/重复身份临时快照、四角点例外、L2-13、取消/部分完成终态、feedback/session revision 冲突、TSV/JSON 导入导出与 GUI 复查路径已有自动化。
 
-未验证：方案改名/编辑/停用、批量删除与按类别重标预览、i18n/快捷键、逐次编辑增量结果、候选覆盖层/批量接受/撤销关联、密集复核交接、性能时延、两位使用者试用和人工验收。实施尚未提交 Git；回退与限制见 [实施报告](../../../reports/inspector_workflow_20261102/REPORT.md)。
+未验证：方案改名/编辑/停用、批量删除与按类别重标预览、i18n/快捷键、逐次编辑增量结果、候选覆盖层/批量接受/撤销关联、密集复核交接、性能时延、两位使用者试用和人工验收。实施尚未提交 Git；回退与限制见 [实施报告](../../../../reports/inspector_workflow_20261102/REPORT.md)。
 
 # 2026-11-04 复核修复轮
 
@@ -49,7 +51,7 @@ C:/Users/20441/.conda/envs/x-anylabeling-cu12/python.exe -B -m pytest tests/test
 
 ## 2026-11-05：剩余代码接入与交付验证
 
-当前进度 **52/55**；10.3、10.4、10.5 按用户“暂无记录，保留人工验收待办”的明确答复保持未勾选。新 [操作说明](../../../docs/zh_cn/inspector.md) 已提供，不能据此替代真实使用者的间隔后验证。
+当前进度 **52/55**；10.3、10.4、10.5 按用户“暂无记录，保留人工验收待办”的明确答复保持未勾选。新 [操作说明](../../../../docs/zh_cn/inspector.md) 已提供，不能据此替代真实使用者的间隔后验证。
 
 变更覆盖：图片内容/EXIF/微坐标摘要；方案导入只读保护；差分编辑与删除同步；有界候选和运行问题缓存；不可覆盖、分批写入与分页报告；另存与打开报告位置；候选先调整后接受、持久意图、保存/撤销/重做和损坏恢复；跨文件覆盖层守卫；跨页队列恢复、部分复查 manifest 合并与实际密集复核交接；可配置快捷键和四语资源。对应任务与逐条证据见 [tasks.md 第 14 节](tasks.md#14-2026-11-05-代码实施与验收范围)。
 
