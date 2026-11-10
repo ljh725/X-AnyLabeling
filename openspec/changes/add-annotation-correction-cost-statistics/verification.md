@@ -36,10 +36,10 @@
 
 | 检查 | 命令 | 结果 |
 | --- | --- | --- |
-| 统计测试全量 | `pytest tests/test_correction_metrics -q -p no:cacheprovider` | **113 passed**（0 failed），约 2 s |
+| 统计测试全量 | `pytest tests/test_correction_metrics -q -p no:cacheprovider` | **114 passed**（0 failed），约 2 s |
 | 相邻设置 schema | `pytest tests/test_settings/test_schema.py -q` | 7 passed |
 
-新增用例：`test_controller.py` 15、`test_wiring.py` 5、`test_panel.py` 13、`test_report_dialog.py` 16。
+新增用例：`test_controller.py` 15、`test_wiring.py` 5、`test_panel.py` 14、`test_report_dialog.py` 16。
 覆盖：会话启用/禁用、起点冻结与重开复用、事务幂等、保存检查点仅成功推进、丢弃回到已保存版本、
 来源未知仅披露、无 ID 几何信号按不完整披露、预测新一轮、观察者故障不抛异常、面板 N/A 与"未保存"
 标记、汇总分页与排除原因、CSV BOM/原子发布/取消不留文件。

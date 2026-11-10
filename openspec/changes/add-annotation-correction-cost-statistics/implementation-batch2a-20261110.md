@@ -32,7 +32,7 @@ $env:QT_QPA_PLATFORM='offscreen'; $env:PYTHONPATH='D:/X-AnyLabeling-4.2.1'
 & C:/Users/20441/.conda/envs/x-anylabeling-cu12/python.exe -m pytest tests/test_correction_metrics -q --tb=short -p no:cacheprovider
 ```
 
-结果：**113 passed / 0 failed**（原 64 + controller 15 + wiring 5 + panel 13 + report 16）。
+结果：**114 passed / 0 failed**（原 64 + controller 15 + wiring 5 + panel 14 + report 16）。
 另有相邻回归 `test_settings/test_schema.py` 7 passed；`test_correction_metrics_gate.py` 的 MainWindow 用例在本沙箱离屏构造会挂起（既有环境限制），其"未完成工作区禁用入口"分支通过 monkeypatch 保持稳定。
 
 ## 4. 仍未完成的 4.x–6.x（不勾选，逐条原因）
