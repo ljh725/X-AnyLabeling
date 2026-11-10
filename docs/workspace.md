@@ -1,6 +1,6 @@
 # 工作区目录说明
 
-整理日期：2026-11-05。
+整理日期：2026-11-05；2026-11-10 追加一次完整数据整理。
 
 | 目录 | 用途 |
 | --- | --- |
@@ -34,3 +34,18 @@
 
 后续临时实验优先放入 `.tmp/`，本机工具和归档放入 `.local/`；
 需要保留的性能与验收结果继续放在各自报告目录。
+
+## 2026-11-10 数据整理
+
+本次按同一套约定做了一次完整整理，详细清单见
+[工作区数据整理](../reports/workspace_organization_20261110/REPORT.md) 与
+[版本管理记录](version-management/2026-11-10-workspace-organization.md)。
+
+- 无关材料与过期本机工作副本归档到 `.local/workspace-archive/20261110/`（14 项，约 1.61 GB），
+  逐项原路径、理由与校验值见该目录 `manifest.json`，恢复时按 `original` 移回。
+- `.tmp/` 清空，`pytest-of-JJH/`、pytest 缓存与 `__pycache__` 删除，共回收约 647.6 MB；
+  本沙箱跑测试所需的临时目录插件保留在 `.tooling/pytest_tmp777.py`。
+- `dsh_selection_20261109/` 与根目录两个 `dsh*.md` 移入 `docs/development/dsh/`。
+- 未跟踪的 OpenSpec 归档、主规格、变更证据与验收文档全部纳入版本控制。
+- `.gitignore` 增加 `/pytest-of-*/`、`/.pytest-bt/`。
+- 未做：`.git` 未 `gc`；`.installers/deva-test` 因文件占用未移动。

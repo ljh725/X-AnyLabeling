@@ -23,7 +23,7 @@
 | CUSTOM-001 | 统计总览、标签管理器后台扫描与进度反馈 | 方案，未实施；11-02 已完成真实共享盘诊断 | [修改方案](2026-10-29-dataset-scan-progress.md) · [实测与代码分类](../../reports/tool_scan_diagnosis_20261102/REPORT.md) |
 | CUSTOM-002 | 分阶段标注加载、搜索与审核一致性 | 已有实现，历史验证见报告 | [实现归档](2026-10-30-staged-loading.md) |
 | CUSTOM-003 | 大数据集拖动响应优化 | 已实施，历史回归与用户体验确认见修复记录 | [修复记录](2026-10-30-canvas-dragging.md) |
-| CUSTOM-109 | Inspector 检查与复核工作流 | 11-05 已提交保存；代码/自动化 52/55，人工验收 3 项待做 | [实施记录](2026-11-02-inspector-workflow.md) · [操作说明](../zh_cn/inspector.md) · [验证](../../openspec/changes/refactor-data-inspector-workflow/verification.md) |
+| CUSTOM-109 | Inspector 检查与复核工作流 | 11-05 已提交保存；代码/自动化 52/55，人工验收 3 项待做 | [实施记录](2026-11-02-inspector-workflow.md) · [操作说明](../zh_cn/inspector.md) · [验证](../../openspec/changes/archive/2026-11-10-refactor-data-inspector-workflow/verification.md) |
 | CUSTOM-110 | 密集标注复核工作流 | 11-05 已提交保存；功能/性能专项有通过证据，人工试用与完整组合回归仍待验收 | [最新实施结果](../../openspec/changes/add-dense-annotation-review-workflow/implementation-20261105.md) · [实施记录](2026-11-02-dense-annotation-review-workflow.md) · [任务](../../openspec/changes/add-dense-annotation-review-workflow/tasks.md) |
 | CUSTOM-111 | 修正成本统计 | 部分实现已保存，工作区尚待接入；当前入口显示开发状态 | [状态记录](2026-11-03-correction-cost-statistics.md) · [任务](../../openspec/changes/add-annotation-correction-cost-statistics/tasks.md) |
 | CUSTOM-112～116 | v4.3.0 五项画布能力恢复（工具栏、滚轮导航、三态审核、仅填充透明度、显示参数保持） | 11-05 已提交保存；专项与配置自动联测通过，性能/真实屏幕等验收未全部完成 | [恢复记录](2026-11-04-canvas-controls-restore.md) · [最新实施结果](../../openspec/changes/restore-v430-canvas-controls/implementation-20261105.md) · [验证](../../openspec/changes/restore-v430-canvas-controls/verification.md) |

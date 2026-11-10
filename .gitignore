@@ -215,5 +215,9 @@ calibration_*.npy
 /.installers/
 /acl-repair/
 
+# pytest 运行产生的工作区（2026-11-10 整理：此前未被覆盖，会污染 git status）
+/pytest-of-*/
+/.pytest-bt/
+
 # Editor recovery files (keep real source files visible)
 *~RF*.TMP

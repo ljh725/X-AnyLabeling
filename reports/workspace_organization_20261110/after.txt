@@ -1,0 +1,17 @@
+time=2026-11-10 14:42:56
+head=cd26f5f825ffdea5ec8804e9c0bde1f033163fea
+status_lines=110
+556020	.git
+0	.tmp
+1730264	.local
+30840	.installers
+704712	backups
+20748	reports
+1288	docs
+356	samples
+324	perf_reports
+22956	anylabeling
+2164	tests
+3992	openspec
+--- total ---
+1943148	.

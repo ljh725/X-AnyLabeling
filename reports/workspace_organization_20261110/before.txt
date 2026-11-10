@@ -1,0 +1,20 @@
+time=2026-11-10 14:41:16
+head=cd26f5f825ffdea5ec8804e9c0bde1f033163fea
+branch=codex/4.2.1-baseline-organization
+status_lines=143
+556020	.git
+639736	.tmp
+1720964	.local
+30840	.installers
+8336	.p2-render
+12	.dsh-asar-out
+704712	backups
+21056	reports
+948	docs
+356	samples
+324	perf_reports
+42044	anylabeling
+6556	tests
+3992	openspec
+--- total ---
+2606256	.

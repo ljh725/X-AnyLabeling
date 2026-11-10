@@ -39,7 +39,7 @@
 | CUSTOM-106 | 组合对象筛选、聚焦、反选、保留手动隐藏 | `shape_filter.py`、`label_widget.py` | 已有代码；[历史台账](CATALOG-20261030.md) |
 | CUSTOM-107 | 矩形实时尺寸、最小尺寸规则与提示布局 | `rectangle_size/`、`widgets/rectangle_size_overlay.py`、规则窗口 | 已有代码；[历史台账](CATALOG-20261030.md) |
 | CUSTOM-108 | 同尺寸图片共享缩放和中心点、重置入口 | `shared_view_state.py`、`label_widget.py` | 已有代码；[历史台账](CATALOG-20261030.md) |
-| CUSTOM-109 | Inspector：方案/规则、扫描进度、重复框与质量检查、问题队列、定位/复查/会话恢复 | `anylabeling/services/inspection/`、`inspector/`、`label_widget.py` | 已提交，代码/自动化 52/55，3 项人工验收保留；[最新验证](../../openspec/changes/refactor-data-inspector-workflow/verification.md) |
+| CUSTOM-109 | Inspector：方案/规则、扫描进度、重复框与质量检查、问题队列、定位/复查/会话恢复 | `anylabeling/services/inspection/`、`inspector/`、`label_widget.py` | 已提交，代码/自动化 52/55，3 项人工验收保留；[最新验证](../../openspec/changes/archive/2026-11-10-refactor-data-inspector-workflow/verification.md) |
 | CUSTOM-110 | Dense Review：批次/逐框复核、比较卡片、空间查漏、确认与保存恢复、虚拟化及后台缩略图 | `anylabeling/services/dense_review/`、`dense_review/`、画布集成 | 已提交，专项功能/性能有证据，真实人工试用和完整组合回归未全完成；[11-05 实施](../../openspec/changes/add-dense-annotation-review-workflow/implementation-20261105.md) |
 | CUSTOM-112～116 | 可视化工具栏、滚轮导航、三态审核、仅填充透明度、透明度/亮度/对比度跨图保持 | `widgets/canvas.py`、`canvas_adjustment.py`、`toolbar.py`、`shape.py`、`label_widget.py`、settings | 已提交，专项和配置自动联测通过；[最新实施](../../openspec/changes/restore-v430-canvas-controls/implementation-20261105.md)，性能与真实屏幕验收未全完成 |
 | CUSTOM-117 | Ctrl + 左键框选多目标，部分覆盖即选中，连续操作状态保护 | `widgets/canvas.py`，两份新测试及既有拖动测试调整 | 已验收，`c58e16b6` 已提交并同步；交付专项 41 项通过，历史相关回归 225 项及 6 个子测试通过、1 项旧窗口测试排除；[实现与交付记录](2026-11-06-marquee-selection.md) |
