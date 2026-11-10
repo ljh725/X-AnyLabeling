@@ -118,3 +118,12 @@ $env:PYTHONPATH = '.tmp/harness'
 ```
 
 结果：**53 passed in 86.07s**。与 `fix-digit-rectangle-label-save/verification.md` 记录的 53 项通过一致。
+
+## 10. 备份节点与推送核对
+
+整理完成后把工作区提交为本节点，并推送到 `ljh725/X-AnyLabeling`：
+
+- 节点提交：`e40c537c56fcca7ff4db8c3702b02dd9c333d9f6`
+- 分支 / 标签：`backup/4.2.1-20261110-organized-baseline`（同名）
+- 远端核对与本地 bundle 校验：见 [verification.md](verification.md)
+- 相对整理前保存点 `cd26f5f8`：103 files changed, 41309 insertions(+), 34683 deletions(-)
