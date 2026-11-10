@@ -25,6 +25,13 @@
 
 测试包：`tests/test_correction_metrics/`（Qt-free，64 用例），覆盖 2.3 净差异、2.4 计数与幂等、2.5 类别映射、2.6 范围与完整性、3.1–3.3 存储与降级、3.4–3.5 检查点与恢复，以及本批 M1/M3/M4 修复的回归。
 
+## 2.1 提交后复跑（green gate）
+
+- 提交：`e5748a9c`（第 1 批实现与文档），工作区 0 项待提交。
+- 命令：`pytest tests/test_correction_metrics -q --tb=short --color=no -p no:cacheprovider`
+- 结果：**64 passed in 0.96 s**；连续第二次重跑 `exit code 0`。
+- 说明：该复跑发生在所有实现改动之后，用于确认提交内容与验证结果一致。
+
 ## 3. 需求到证据
 
 四份 spec 共 33 Requirement / 69 Scenario，逐条映射见 [scenario-coverage.md](scenario-coverage.md)。第 1 批后：
