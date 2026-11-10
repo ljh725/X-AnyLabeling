@@ -23,7 +23,7 @@ import os
 from pathlib import Path
 
 from anylabeling.services.correction_metrics import export, reporting
-from anylabeling.services.correction_metrics.core import SHAPE_ID
+from anylabeling.services.correction_metrics.core import SHAPE_ID, path_identity
 from anylabeling.services.correction_metrics.storage import MetricsStore
 from anylabeling.services.correction_metrics.timing import WorkClock
 
@@ -171,16 +171,46 @@ class CorrectionMetricsController:
         label_root = getattr(self.host, "output_dir", None) or image_root
         return self.start_scope(image_root, label_root)
 
-    def taxonomy_saved(self, mapping, comparable=True, shapes=None):
-        """A confirmed global class migration is not a personal relabel."""
-        if not self.enabled:
+    def taxonomy_saved(self, image_path, label_path=None, shapes=None,
+                       mapping=None, comparable=True):
+        """Record a confirmed global class migration for one saved label file.
+
+        Called by ``LabelModifyDialog.modify_label`` after it rewrote a label
+        file.  Only images that already take part in the statistics are
+        touched: an image without a round is skipped, never given a new round,
+        so a bulk rename cannot pollute the report with historical files.
+        """
+        mapping = dict(mapping or {})
+        image = os.fspath(image_path) if image_path else None
+        label = os.fspath(label_path) if label_path else None
+        if not image or not label:
+            return False
+        target = self._round if self._matches_current(image, label) else None
+        if target is None and self._store is not None:
+            try:
+                target = self._store.latest(image, label)
+            except Exception as error:  # noqa: BLE001
+                self.degrade("taxonomy_saved", error)
+                return False
+        if target is None:
             return False
         try:
-            return self._round.taxonomy(
-                dict(mapping or {}), comparable=comparable, shapes=shapes
+            return target.taxonomy(
+                mapping, comparable=comparable, shapes=shapes
             )
         except Exception as error:  # noqa: BLE001
             self.degrade("taxonomy_saved", error)
+            return False
+
+    def _matches_current(self, image_path, label_path):
+        if self._round is None:
+            return False
+        try:
+            return (
+                path_identity(image_path) == self._round.image_path
+                and path_identity(label_path) == self._round.label_path
+            )
+        except Exception:  # noqa: BLE001
             return False
 
     def stop(self):
@@ -392,6 +422,35 @@ class CorrectionMetricsController:
         self._save_time()
         return self.state()
 
+    def use_clock_adapter(self, adapter):
+        """Let the Qt adapter own the work clock (foreground, suspend, idle)."""
+        self._clock_adapter = adapter
+        self._clock = adapter.work
+        timer = getattr(self, "heartbeat_timer", None)
+        if timer is not None:
+            try:
+                timer.stop()
+            except Exception as error:  # noqa: BLE001
+                self.degrade("clock_adapter", error)
+
+    def time_checkpoint(self, round_id, session_id, totals, closed):
+        """Adapter callback: an absolute snapshot, never an increment."""
+        if self._round is None or self._round.round_id != round_id:
+            return False
+        try:
+            audit = (
+                self._clock_adapter.audit
+                if self._clock_adapter is not None
+                else self._clock.audit
+            )
+            self._round.set_time(
+                session_id, totals, closed=closed, audit=audit
+            )
+            return True
+        except Exception as error:  # noqa: BLE001
+            self.degrade("set_time", error)
+            return False
+
     def confirm_idle(self, exclude=True):
         self._clock.confirm_idle(bool(exclude))
         self._save_time()
@@ -580,6 +639,7 @@ def start_metrics(host):
             host, language=getattr(host, "_config", {}).get("language", "en_US")
         )
         host.correction_metrics = controller
+    _install_clock_adapter(host, controller)
     image_path = getattr(host, "filename", None)
     if image_path and not controller.enabled:
         controller.start_scope(
@@ -593,8 +653,27 @@ def start_metrics(host):
     return controller
 
 
+def _install_clock_adapter(host, controller):
+    """Prefer the Qt clock: it knows foreground, idle and session changes."""
+    if getattr(controller, "_clock_adapter", None) is not None:
+        return controller._clock_adapter
+    try:
+        from .clock_adapter import QtClockAdapter
+
+        adapter = QtClockAdapter(
+            host, controller.time_checkpoint, idle_seconds=120
+        )
+        controller.use_clock_adapter(adapter)
+        return adapter
+    except Exception as error:  # noqa: BLE001 - head-less hosts keep the plain clock
+        controller.degrade("clock_adapter", error)
+        return None
+
+
 def _install_heartbeat(host, controller):
     """Drive the work clock once per second; harmless without Qt."""
+    if getattr(controller, "_clock_adapter", None) is not None:
+        return None  # the Qt adapter already runs its own precise heartbeat
     timer = getattr(controller, "heartbeat_timer", None)
     if timer is not None:
         if not timer.isActive():

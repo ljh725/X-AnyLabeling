@@ -4369,7 +4369,13 @@ class LabelingWidget(LabelDialog):
             self.inspector_dialog.show()
 
     def _on_geometry_committed(self):
-        notify_metrics(self, "geometry")
+        # The canvas only says "a geometry edit finished"; hand it its shapes
+        # so the round can diff them against the draft.  Only objects whose
+        # geometry actually changed are recorded, and the drag frame itself
+        # stays free of bookkeeping.
+        notify_metrics(
+            self, "edit", "geometry", changed=list(self.canvas.shapes)
+        )
         self.set_dirty()
 
     def open_correction_metrics(self):

@@ -122,3 +122,39 @@ def test_disabled_controller_reports_no_row_and_no_panel(qt_app, tmp_path):
     finally:
         controller.stop()
         host.deleteLater()
+
+
+def test_start_metrics_installs_the_qt_clock_adapter(qt_app, tmp_path):
+    """有 Qt 时应由适配器接管计时：单一时钟、快照式写入、无额外秒表。"""
+    host = make_host(tmp_path)
+    controller = controller_module.start_metrics(host)
+    try:
+        adapter = getattr(controller, "_clock_adapter", None)
+        assert adapter is not None
+        # The adapter owns the one work clock the controller reads.
+        assert controller._clock is adapter.work
+        assert getattr(controller, "heartbeat_timer", None) is None
+        assert controller.state()["state"] in {"working", "not_ready", "inactive"}
+    finally:
+        controller.stop()
+        host.deleteLater()
+
+
+def test_time_checkpoint_writes_absolute_totals(qt_app, tmp_path):
+    """适配器回调写入绝对值：同一快照重复写入不会把时长翻倍。"""
+    host = make_host(tmp_path)
+    controller = controller_module.start_metrics(host)
+    try:
+        round_id = controller.current_row()["round_id"]
+        totals = {"working": 12.5, "paused": 3.0}
+        assert controller.time_checkpoint(round_id, "s1", totals, False) is True
+        assert controller.time_checkpoint(round_id, "s1", totals, False) is True
+        seconds = controller.current_row()["time"]["working"]
+        # Absolute snapshots: the repeated heartbeat must not double the time.
+        # A tiny adapter heartbeat may add a fraction of a second.
+        assert 12.5 <= seconds < 20.0
+        # A foreign round id must be ignored, not written anywhere.
+        assert controller.time_checkpoint("other-round", "s1", totals, False) is False
+    finally:
+        controller.stop()
+        host.deleteLater()

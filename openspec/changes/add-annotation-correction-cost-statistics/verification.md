@@ -45,6 +45,17 @@
 标记、汇总分页与排除原因、CSV BOM/原子发布/取消不留文件。
 详见 [implementation-batch2a-20261110.md](implementation-batch2a-20261110.md)。
 
+## 2.3 第 2 批 B 段（几何/改名/计时）验证
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| 统计测试全量 | `pytest tests/test_correction_metrics -q -p no:cacheprovider` | **159 passed**（0 failed），3.06 s |
+
+新增用例：`test_geometry_wiring.py` 8（几何完成边界与单事务归属）、`test_taxonomy_wiring.py` 5
+（全局改名只影响已有轮次、合并传播 N/A）、`test_timing.py` 30（WorkClock 假时钟状态机与绝对快照）、
+`test_wiring.py` +2（Qt 时钟适配器接管与绝对快照写入）。
+详见 [implementation-batch2b-20261110.md](implementation-batch2b-20261110.md)。
+
 ## 3. 需求到证据
 
 四份 spec 共 33 Requirement / 69 Scenario，逐条映射见 [scenario-coverage.md](scenario-coverage.md)。第 1 批后：
