@@ -127,3 +127,17 @@ $env:PYTHONPATH = '.tmp/harness'
 - 分支 / 标签：`backup/4.2.1-20261110-organized-baseline`（同名）
 - 远端核对与本地 bundle 校验：见 [verification.md](verification.md)
 - 相对整理前保存点 `cd26f5f8`：103 files changed, 41309 insertions(+), 34683 deletions(-)
+
+## 11. 最终占用（推送后实测）
+
+| 目录 | 占用 | 说明 |
+| --- | ---: | --- |
+| `.git` | 463 MB | 提交与推送过程中自动重新打包，由整理前的 543 MB 降到 463 MB |
+| `.local` | 1.7 GB | 其中 `.local/workspace-archive/20261110/` 1.7 GB（归档内容 1.61 GB + 簇开销）；确认无误后可整目录删除 |
+| `backups` | 922 MB | 5 个整史 bundle，含本节点 `4.2.1-20261110-organized-baseline.bundle`（245 MB）及收据 |
+| `.installers` | 31 MB | `deva-test` 被占用未能移动，已被忽略规则覆盖 |
+| `reports` + `docs` + `openspec` | 18 MB | 证据、文档与变更记录 |
+| `anylabeling` + `tests` | 25 MB | 源码与测试（`__pycache__` 已清理） |
+| 合计（工作区） | 约 3.2 GB | 其中可立即回收的是 `.local` 归档区 1.7 GB |
+
+受版本控制文件由 2019 项增至 2071 项：新增入库的 OpenSpec 主规格、归档变更、双屏导航变更、DSH 开发文档、整理报告与测试文件。
