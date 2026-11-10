@@ -88,14 +88,13 @@ def test_rules_visible_and_preview_cannot_save_builtin(window, tmp_path):
     widget.load_file(_prepare_image(tmp_path))
     widget.open_inspector()
     dialog = widget.inspector_dialog
-    assert dialog.info_frame.isVisibleTo(dialog)
+    assert not dialog.info_frame.isVisibleTo(dialog)
     assert dialog.rule_summary.text()
-    for button in (
-        dialog.view_rules_button,
-        dialog.copy_profile_button,
-        dialog.edit_profile_button,
-    ):
-        assert button.isVisibleTo(dialog)
+    assert dialog.view_rules_button.isVisibleTo(dialog)
+    details_action = next(action for action in dialog.more_button.menu().actions()
+                          if action.text() == '详细处理操作')
+    details_action.setChecked(True)
+    assert dialog.info_frame.isVisibleTo(dialog)
     dialog._toggle_notes()
     dialog._toggle_notes()
     assert dialog.info_frame.isVisibleTo(dialog)

@@ -224,6 +224,14 @@ class InspectorDialog(QtWidgets.QDialog):
         self._disabled_profiles: set[str] = set()
         self._duplicate_tracker = None
         self._handoff_family_key = ""
+        self._active_issue_key = ""
+        self._navigation_order = []
+        self._navigating = False
+        self._navigation_serial = 0
+        self._session_open = False
+        self._save_recheck_context = None
+        self._click_timer = QtCore.QElapsedTimer()
+        self._click_key = ""
         self._issue_page = 0
         self._issue_page_size = 200
         self.setObjectName("annotationInspector")
@@ -249,6 +257,7 @@ class InspectorDialog(QtWidgets.QDialog):
         # clipping Chinese labels; the splitter keeps both panels usable.
         self.setMinimumSize(880, 560)
         self.setWindowModality(QtCore.Qt.WindowModality.NonModal)
+        self._restore_window_preferences()
 
     def _build_ui(self) -> None:
         layout = QtWidgets.QVBoxLayout(self)
@@ -292,6 +301,9 @@ class InspectorDialog(QtWidgets.QDialog):
             caption.setObjectName("fieldLabel")
             toolbar_layout.addWidget(caption)
             toolbar_layout.addWidget(combo)
+            if combo is self.stage_combo:
+                caption.hide()
+                combo.hide()
 
         toolbar_layout = QtWidgets.QHBoxLayout()
         toolbar_layout.setSpacing(8)
@@ -343,6 +355,18 @@ class InspectorDialog(QtWidgets.QDialog):
         menu.addSeparator()
         menu.addAction(self.tr("导入旧问题"), self.import_issues_button.click)
         menu.addAction(self.tr("导出报告"), self.export_button.click)
+        menu.addAction(self.tr("重试保存检查记录"), self._retry_records)
+        stage_action = QtWidgets.QWidgetAction(menu)
+        stage_action.setDefaultWidget(self.stage_combo)
+        menu.addAction(stage_action)
+        self.stage_combo.show()
+        history_panel = QtWidgets.QWidget()
+        history_layout = QtWidgets.QHBoxLayout(history_panel)
+        history_layout.addWidget(self.history_combo)
+        history_layout.addWidget(self.load_history_button)
+        history_action = QtWidgets.QWidgetAction(menu)
+        history_action.setDefaultWidget(history_panel)
+        menu.addAction(history_action)
         self.more_button.setMenu(menu)
         toolbar_layout.addWidget(self.more_button)
         toolbar_layout.addStretch(1)
@@ -409,16 +433,16 @@ class InspectorDialog(QtWidgets.QDialog):
         rule_actions = QtWidgets.QHBoxLayout()
         self.view_rules_button = _variant_button(self.tr("查看规则与参数"))
         self.view_rules_button.clicked.connect(self._view_rules)
-        rule_actions.addWidget(self.view_rules_button)
+        toolbar_layout.insertWidget(1, self.view_rules_button)
         for button in (self.copy_profile_button, self.edit_profile_button):
             rule_actions.addWidget(button)
-            button.setVisible(True)
+            button.setVisible(False)
         rule_actions.addStretch(1)
         info_layout.addLayout(rule_actions)
-        self.info_frame.setVisible(True)
+        self.info_frame.setVisible(False)
         layout.addWidget(self.info_frame)
 
-        splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
         splitter.setChildrenCollapsible(False)
 
         queue_panel = QtWidgets.QWidget()
@@ -429,6 +453,9 @@ class InspectorDialog(QtWidgets.QDialog):
         filter_row = QtWidgets.QHBoxLayout()
         filter_row.setSpacing(6)
         self.filter_combo = QtWidgets.QComboBox()
+        self.filter_combo.addItem(self.tr("待处理"), "review_pending")
+        self.filter_combo.addItem(self.tr("已解决"), "review_resolved")
+        self.filter_combo.addItem(self.tr("已忽略"), "review_ignored")
         self.filter_combo.addItem(self.tr("全部"), "all")
         self.filter_combo.addItem(self.tr("待处理"), "pending")
         self.filter_combo.addItem(self.tr("已处理"), "handled")
@@ -462,8 +489,6 @@ class InspectorDialog(QtWidgets.QDialog):
             filter_row.addWidget(widget)
         filter_row.addWidget(self.issue_count_label)
         filter_row.addStretch(1)
-        filter_row.addWidget(self.prev_issue_button)
-        filter_row.addWidget(self.next_issue_button)
         queue_layout.addLayout(filter_row)
         page_row = QtWidgets.QHBoxLayout()
         self.prev_page_button = _variant_button(self.tr("上一页"), "quiet")
@@ -479,6 +504,12 @@ class InspectorDialog(QtWidgets.QDialog):
             self.tr("打开报告保存位置")
         )
         page_row.addWidget(self.open_report_location_button)
+        self.save_report_button.hide()
+        self.open_report_location_button.hide()
+        menu.addAction(self.tr("另存检查报告"), self.save_report_button.click)
+        menu.addAction(
+            self.tr("打开报告保存位置"), self.open_report_location_button.click
+        )
         queue_layout.addLayout(page_row)
 
         self.issue_stack = QtWidgets.QStackedWidget()
@@ -527,6 +558,8 @@ class InspectorDialog(QtWidgets.QDialog):
             if width:
                 self.issue_table.setColumnWidth(column, width)
         self.issue_stack.addWidget(self.issue_table)
+        for column in (3, 4):
+            self.issue_table.setColumnHidden(column, True)
 
         empty_page = QtWidgets.QWidget()
         empty_layout = QtWidgets.QVBoxLayout(empty_page)
@@ -547,6 +580,10 @@ class InspectorDialog(QtWidgets.QDialog):
         self.issue_stack.addWidget(empty_page)
         self.issue_stack.setCurrentIndex(1)
         queue_layout.addWidget(self.issue_stack, 1)
+        navigation_row = QtWidgets.QHBoxLayout()
+        navigation_row.addWidget(self.prev_issue_button)
+        navigation_row.addWidget(self.next_issue_button)
+        queue_layout.addLayout(navigation_row)
         splitter.addWidget(queue_panel)
 
         detail_panel = QtWidgets.QWidget()
@@ -610,8 +647,48 @@ class InspectorDialog(QtWidgets.QDialog):
             self.batch_relabel_button,
             self.undo_button,
         )
-        for index, button in enumerate(actions):
-            action_grid.addWidget(button, index // 3, index % 3)
+        self.acceptable_button.setText(self.tr("忽略此问题"))
+        self.save_recheck_button = _variant_button(
+            self.tr("保存并复查"), "primary"
+        )
+        self.save_recheck_button.clicked.connect(self._save_and_recheck)
+        self.auto_advance = QtWidgets.QCheckBox(
+            self.tr("通过后进入下一个问题")
+        )
+        self.auto_advance.setChecked(
+            bool(self.host._config.get("inspector_auto_advance", True))
+        )
+        self.auto_advance.toggled.connect(self._save_window_preferences)
+        self.object_combo = QtWidgets.QComboBox()
+        self.object_combo.activated.connect(self._select_problem_object)
+        detail_page_layout.addWidget(self.object_combo)
+        action_grid.addWidget(self.acceptable_button, 0, 0)
+        action_grid.addWidget(self.save_recheck_button, 0, 1)
+        detail_page_layout.addWidget(self.auto_advance)
+        self.advanced_actions = QtWidgets.QWidget()
+        advanced_layout = QtWidgets.QGridLayout(self.advanced_actions)
+        for index, button in enumerate(
+            b for b in actions if b is not self.acceptable_button
+        ):
+            advanced_layout.addWidget(button, index // 3, index % 3)
+        self.advanced_actions.hide()
+        detail_page_layout.addWidget(self.advanced_actions)
+        advanced_action = menu.addAction(self.tr("详细处理操作"))
+        advanced_action.setCheckable(True)
+        advanced_action.toggled.connect(self.advanced_actions.setVisible)
+        advanced_action.toggled.connect(self.info_frame.setVisible)
+        for combo in (self.source_filter_combo, self.risk_filter_combo):
+            combo.hide()
+            advanced_action.toggled.connect(combo.setVisible)
+        advanced_action.toggled.connect(
+            lambda _: self._show_selected_details()
+        )
+        advanced_action.toggled.connect(
+            lambda shown: self.issue_table.setColumnHidden(3, not shown)
+        )
+        advanced_action.toggled.connect(
+            lambda shown: self.issue_table.setColumnHidden(4, not shown)
+        )
         detail_page_layout.addLayout(action_grid)
         self.detail_tabs.addTab(detail_page, self.tr("详情"))
 
@@ -676,12 +753,18 @@ class InspectorDialog(QtWidgets.QDialog):
         candidate_layout.addWidget(self.candidate_table, 1)
         candidate_layout.addLayout(candidate_buttons)
         self.detail_tabs.addTab(candidate_panel, self.tr("外部候选"))
+        self.detail_tabs.setTabVisible(1, False)
+        candidate_action = menu.addAction(self.tr("外部候选"))
+        candidate_action.setCheckable(True)
+        candidate_action.toggled.connect(
+            lambda shown: self.detail_tabs.setTabVisible(1, shown)
+        )
 
         detail_layout.addWidget(self.detail_tabs, 1)
         splitter.addWidget(detail_panel)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 0)
-        splitter.setSizes([740, 380])
+        splitter.setSizes([400, 180])
         layout.addWidget(splitter, 1)
 
         self.note_label = QtWidgets.QLabel()
@@ -717,6 +800,15 @@ class InspectorDialog(QtWidgets.QDialog):
             self.formal_label,
         ):
             footer_layout.addWidget(label)
+        for chip in (
+            self.execution_label,
+            self.issue_handling_label,
+            self.object_review_label,
+            self.spatial_label,
+            self.formal_label,
+        ):
+            chip.hide()
+            advanced_action.toggled.connect(chip.setVisible)
         footer_layout.addStretch(1)
         self.note_toggle_button = _variant_button(self.tr("说明"), "quiet")
         self.close_button = _variant_button(self.tr("关闭"), "quiet")
@@ -772,9 +864,10 @@ class InspectorDialog(QtWidgets.QDialog):
         self.issue_table.itemSelectionChanged.connect(
             self._show_selected_details
         )
-        self.issue_table.cellDoubleClicked.connect(
-            lambda *_: self._locate_selected()
-        )
+        self.issue_table.installEventFilter(self)
+        self.issue_table.cellClicked.connect(self._click_issue)
+        self.issue_table.cellDoubleClicked.connect(self._double_click_issue)
+
         self.locate_button.clicked.connect(self._locate_selected)
         self.false_positive_button.clicked.connect(
             lambda: self._set_decision(Decision.FALSE_POSITIVE)
@@ -905,6 +998,7 @@ class InspectorDialog(QtWidgets.QDialog):
     def _view_rules(self) -> None:
         profile = self._selected_profile()
         if profile is not None:
+            profile = replace(profile, stage=self.stage_combo.currentData())
             ProfileRuleEditor(
                 profile, self.catalog, self, read_only=True
             ).exec()
@@ -1093,27 +1187,171 @@ class InspectorDialog(QtWidgets.QDialog):
             return
         self._set_status(f"已导出方案 {path}。")
 
-    def _select_issue(self, offset: int) -> None:
-        if not self._row_issues:
-            return
-        row = self.issue_table.currentRow()
-        if row < 0:
-            row = 0 if offset > 0 else len(self._row_issues) - 1
-        elif (
-            row + offset >= len(self._row_issues)
-            and self.next_page_button.isEnabled()
+    def _navigation_allowed(self):
+        if QtWidgets.QApplication.activeWindow() not in (self, self.host.window()):
+            return False
+        if (
+            not self._session_open
+            or self._navigating
+            or self.controller.is_running()
+            or QtWidgets.QApplication.activeModalWidget() is not None
+            or self.host.canvas.interaction_in_progress()
         ):
-            self._change_issue_page(1)
-            row = 0
-        elif row + offset < 0 and self._issue_page > 0:
-            self._change_issue_page(-1)
-            row = len(self._row_issues) - 1
+            return False
+        if self.report is None:
+            return False
+        return output_identity(self.report.dataset_root) == output_identity(
+            self.host.inspection_dataset_root()
+        ) and output_identity(self.report.output_root) == output_identity(
+            self.host.inspection_output_dir()
+        )
+
+    def _neighbor(self, offset):
+        queue = self._filtered_issues()
+        keys = [issue.family_key for issue in queue]
+        if not keys:
+            return None
+        if self._active_issue_key in keys:
+            index = keys.index(self._active_issue_key) + offset
+            return queue[index] if 0 <= index < len(queue) else None
+        if self._active_issue_key in self._navigation_order:
+            index = self._navigation_order.index(self._active_issue_key)
+            candidates = (
+                self._navigation_order[index + 1 :]
+                if offset > 0
+                else reversed(self._navigation_order[:index])
+            )
+            for key in candidates:
+                if key in keys:
+                    return queue[keys.index(key)]
+            return None
+        return queue[0 if offset > 0 else -1]
+
+    def _select_issue(self, offset: int) -> None:
+        issue = self._neighbor(offset)
+        if issue is not None:
+            self._navigate_issue(issue)
+
+    def _restore_issue_cursor(self):
+        queue = self._filtered_issues()
+        keys = [issue.family_key for issue in queue]
+        if self._active_issue_key in keys:
+            index = keys.index(self._active_issue_key)
+            self._issue_page = index // self._issue_page_size
+            self._populate_table()
+            self.issue_table.selectRow(index % self._issue_page_size)
         else:
-            row = max(0, min(len(self._row_issues) - 1, row + offset))
-        self.issue_table.selectRow(row)
-        item = self.issue_table.item(row, 0)
-        if item is not None:
-            self.issue_table.scrollToItem(item)
+            self.issue_table.clearSelection()
+            self.issue_table.setCurrentCell(-1, -1)
+
+    def _navigate_issue(self, issue, object_ids=None):
+        if not self._navigation_allowed():
+            self._restore_issue_cursor()
+            return False
+        ids = tuple(
+            object_ids
+            if object_ids is not None
+            else issue.location.object_ids[:1]
+        )
+        if (
+            issue.family_key == self._active_issue_key
+            and object_ids is None
+            and self.host.inspection_current_relative_path()
+            == issue.location.relative_path
+            and not self._target_guard_reason(issue)
+        ):
+            return True
+        self._navigating = True
+        try:
+            ok = self.host.inspection_navigate_to(
+                issue.location.relative_path,
+                ids,
+                issue.location.region,
+                image_path=issue.location.image_path,
+            )
+            if ok:
+                self._active_issue_key = issue.family_key
+                self._navigation_order = [
+                    item.family_key for item in self._filtered_issues()
+                ]
+                self._navigation_serial += 1
+                self._restore_issue_cursor()
+                self.object_combo.clear()
+                self.object_combo.addItems(list(issue.location.object_ids))
+                self._set_status(issue.message)
+            else:
+                self._restore_issue_cursor()
+                self._set_status(
+                    self.tr(
+                        "无法定位：切换被取消、文件或对象身份失效，请复查。"
+                    )
+                )
+            return ok
+        finally:
+            self._navigating = False
+            self._update_navigation_buttons()
+            self._update_action_buttons()
+
+    def _select_problem_object(self, index):
+        issue = (
+            next(
+                (
+                    item
+                    for item in self.report.issues
+                    if item.family_key == self._active_issue_key
+                ),
+                None,
+            )
+            if self.report
+            else None
+        )
+        if issue and 0 <= index < len(issue.location.object_ids):
+            self._navigate_issue(issue, (issue.location.object_ids[index],))
+
+    def _update_navigation_buttons(self):
+        self.prev_issue_button.setEnabled(self._neighbor(-1) is not None)
+        self.next_issue_button.setEnabled(self._neighbor(1) is not None)
+        keys = [issue.family_key for issue in self._filtered_issues()]
+        position = (
+            str(keys.index(self._active_issue_key) + 1)
+            if self._active_issue_key in keys
+            else "–"
+        )
+        self.page_label.setText(f"{position} / {len(keys)}")
+
+    def _click_issue(self, *args):
+        issue = self._selected_issue()
+        self._click_key = issue.family_key if issue else ""
+        self._click_timer.start()
+        self._locate_selected()
+
+    def _double_click_issue(self, *args):
+        issue = self._selected_issue()
+        if (
+            issue
+            and self._click_key == issue.family_key
+            and self._click_timer.isValid()
+            and self._click_timer.elapsed()
+            <= QtWidgets.QApplication.doubleClickInterval()
+        ):
+            return
+        self._locate_selected()
+
+    def eventFilter(self, watched, event):
+        if (
+            watched is self.issue_table
+            and event.type() == QtCore.QEvent.Type.KeyRelease
+        ):
+            if event.key() in (
+                QtCore.Qt.Key.Key_Up,
+                QtCore.Qt.Key.Key_Down,
+                QtCore.Qt.Key.Key_Home,
+                QtCore.Qt.Key.Key_End,
+                QtCore.Qt.Key.Key_PageUp,
+                QtCore.Qt.Key.Key_PageDown,
+            ):
+                self._locate_selected()
+        return super().eventFilter(watched, event)
 
     def _on_canvas_edit(self, *args) -> None:
         self._edit_serial += 1
@@ -1731,6 +1969,7 @@ class InspectorDialog(QtWidgets.QDialog):
         if self._run_token and token and token != self._run_token:
             return
         self._recheck_issue = None
+        self._save_recheck_context = None
         self.start_button.setEnabled(True)
         self.cancel_button.setEnabled(False)
         self.progress.setRange(0, 100)
@@ -1744,6 +1983,16 @@ class InspectorDialog(QtWidgets.QDialog):
             return "运行令牌不匹配，旧运行结果不覆盖当前队列"
         if int(report.generation) != int(self._generation):
             return "运行代际不匹配，旧运行结果不覆盖当前队列"
+        saved_context = self._save_recheck_context
+        if saved_context is not None:
+            serial, edits, key, path = saved_context
+            if (
+                serial != self._navigation_serial
+                or edits != self._edit_serial
+                or key != self._active_issue_key
+                or path != self.host.inspection_current_relative_path()
+            ):
+                return self.tr("保存复查期间文档或问题已变化，结果仅作历史")
         context = self._run_context
         if context is not None:
             current_dataset = self.host.inspection_dataset_root()
@@ -1812,6 +2061,9 @@ class InspectorDialog(QtWidgets.QDialog):
             self.manifest = manifest
             self._load_feedback()
             self.report = self._apply_feedback_to_report(report)
+        self._active_issue_key = ""
+        self._navigation_order = []
+        self._navigation_serial += 1
         self._save_run(self.report, self.manifest)
         self._populate_table()
         self._update_status()
@@ -1832,6 +2084,7 @@ class InspectorDialog(QtWidgets.QDialog):
         if self._recheck_issue is not None:
             self._recheck_issue = None
             reason = reason + "；复查结果未应用，原队列保持不变"
+        self._save_recheck_context = None
         self._run_notes = self._run_notes + (reason,)
         try:
             archive = InspectionStorage.open(
@@ -1843,11 +2096,11 @@ class InspectorDialog(QtWidgets.QDialog):
             saved = f"旧报告未能归档: {error}。"
         self._set_status(f"{reason}；{saved}")
 
-    def _save_run(self, report=None, manifest=None) -> None:
+    def _save_run(self, report=None, manifest=None) -> bool:
         report = report if report is not None else self.report
         manifest = manifest if manifest is not None else self.manifest
         if report is None:
-            return
+            return False
         try:
             store = self.storage
             if store is None or output_identity(
@@ -1874,11 +2127,14 @@ class InspectorDialog(QtWidgets.QDialog):
                     ),
                 )
                 self._save_session()
+            return True
         except (OSError, StorageError) as error:
             self._show_error(
                 self.tr("报告保存失败"),
                 f"{error}\n结果仍保留在当前窗口中，可选择导出。",
             )
+
+            return False
 
     def _apply_feedback_to_report(self, report: RunReport) -> RunReport:
         dataset_key = self.storage.dataset_key if self.storage else ""
@@ -2074,8 +2330,8 @@ class InspectorDialog(QtWidgets.QDialog):
             if issue.family_key == selected_key:
                 self.issue_table.selectRow(row)
         if not self._row_issues:
-            self._show_details_placeholder()
-        elif self.issue_table.currentRow() < 0:
+            self._show_selected_details()
+        elif self.issue_table.currentRow() < 0 and not self._active_issue_key:
             self.issue_table.selectRow(0)
         self.issue_stack.setCurrentIndex(0 if self._row_issues else 1)
         total = len(self.report.issues) if self.report is not None else 0
@@ -2113,6 +2369,19 @@ class InspectorDialog(QtWidgets.QDialog):
             )
         )
         self._update_action_buttons()
+        counts = {
+            state: sum(
+                self._review_state(item) == state
+                for item in self.report.issues
+            )
+            for state in ("pending", "resolved", "ignored")
+        }
+        self.issue_count_label.setText(
+            self.tr(
+                "待处理 {pending} · 已解决 {resolved} · 已忽略 {ignored}"
+            ).format(**counts)
+        )
+        self._update_navigation_buttons()
 
     def _change_issue_page(self, offset: int) -> None:
         self._issue_page = max(0, self._issue_page + offset)
@@ -2184,7 +2453,23 @@ class InspectorDialog(QtWidgets.QDialog):
         self._refresh_history_combo()
         self._load_report(str(entries[0]["run_id"]))
 
+    @staticmethod
+    def _review_state(issue):
+        if issue.verification in (
+            VerificationState.STALE,
+            VerificationState.PENDING_RECHECK,
+            VerificationState.UNVERIFIABLE,
+        ):
+            return "pending"
+        if issue.verification is VerificationState.NOT_DETECTED:
+            return "resolved"
+        if issue.decision in (Decision.ACCEPTABLE, Decision.FALSE_POSITIVE):
+            return "ignored"
+        return "pending"
+
     def _matches_filter(self, issue: InspectionIssue, value: str) -> bool:
+        if value.startswith("review_"):
+            return self._review_state(issue) == value[7:]
         if value == "all":
             return True
         if value == "pending":
@@ -2238,6 +2523,26 @@ class InspectorDialog(QtWidgets.QDialog):
         ]
 
     def _update_action_buttons(self, *args) -> None:
+        bound = (
+            next(
+                (
+                    item
+                    for item in self.report.issues
+                    if item.family_key == self._active_issue_key
+                ),
+                None,
+            )
+            if self.report
+            else None
+        )
+        self.save_recheck_button.setEnabled(
+            bool(
+                bound
+                and self._navigation_allowed()
+                and bound.location.relative_path
+                == self.host.inspection_current_relative_path()
+            )
+        )
         issue = self._selected_issue()
         target_ids = self._selected_target_ids(issue)
         guard = self._target_guard_reason(issue) if issue is not None else ""
@@ -2333,6 +2638,15 @@ class InspectorDialog(QtWidgets.QDialog):
 
     def _show_selected_details(self) -> None:
         issue = self._selected_issue()
+        if issue is None and self.report is not None:
+            issue = next(
+                (
+                    item
+                    for item in self.report.issues
+                    if item.family_key == self._active_issue_key
+                ),
+                None,
+            )
         if issue is None:
             self._show_details_placeholder()
             self._update_action_buttons()
@@ -2455,6 +2769,11 @@ class InspectorDialog(QtWidgets.QDialog):
             html.escape(issue.message),
             "".join(sections),
         )
+        self._detail_body = body
+        if not self.advanced_actions.isVisible():
+            body = "<h3>{}</h3><p>{}</p>".format(
+                html.escape(issue.title), html.escape(issue.message)
+            )
         self.details.setHtml(body)
         self._update_action_buttons()
 
@@ -2472,6 +2791,19 @@ class InspectorDialog(QtWidgets.QDialog):
             QtCore.Qt.ShortcutContext.WidgetShortcut
         )
         self.locate_shortcut.activated.connect(self._locate_selected)
+        self._issue_shortcuts = []
+        for owner in (self, self.host):
+            for key, default, offset, button in (
+                ("inspector_previous_issue", "F1", -1, self.prev_issue_button),
+                ("inspector_next_issue", "F2", 1, self.next_issue_button),
+            ):
+                shortcut = QtGui.QShortcut(owner)
+                shortcut.setContext(QtCore.Qt.ShortcutContext.WindowShortcut)
+                shortcut.setAutoRepeat(False)
+                shortcut.activated.connect(
+                    lambda step=offset: self._select_issue(step)
+                )
+                self._issue_shortcuts.append((key, default, shortcut, button))
         self._refresh_shortcuts()
 
     def _refresh_shortcuts(self) -> None:
@@ -2507,8 +2839,45 @@ class InspectorDialog(QtWidgets.QDialog):
             )
         self.shortcut_hint.setText(hint)
         self.start_button.setToolTip(hint)
+        for key, default, shortcut, button in self._issue_shortcuts:
+            value = config.get(key, default)
+            if isinstance(value, (list, tuple)):
+                value = value[0] if value else ""
+            sequence = QtGui.QKeySequence(value or "")
+            text = sequence.toString()
+            other_key = (
+                "inspector_next_issue"
+                if key == "inspector_previous_issue"
+                else "inspector_previous_issue"
+            )
+            other_default = (
+                "F2" if other_key == "inspector_next_issue" else "F1"
+            )
+            other_value = config.get(other_key, other_default)
+            if isinstance(other_value, (list, tuple)):
+                other_value = other_value[0] if other_value else ""
+            other_text = QtGui.QKeySequence(other_value or "").toString()
+            allowed = bool(
+                text
+                and text not in existing
+                and text not in assigned
+                and text != other_text
+            )
+            shortcut.setKey(sequence)
+            shortcut.setEnabled(allowed and self._session_open)
+            label = (
+                self.tr("上一个问题")
+                if key == "inspector_previous_issue"
+                else self.tr("下一个问题")
+            )
+            button.setText(label + (" (" + text + ")" if allowed else ""))
+            button.setToolTip(label + (" (" + text + ")" if allowed else ""))
+        self.shortcut_hint.setToolTip(
+            self.tr("问题导航在主窗口和 Inspector 内生效。")
+        )
 
     def showEvent(self, event) -> None:
+        self._session_open = True
         self._refresh_shortcuts()
         super().showEvent(event)
 
@@ -2529,21 +2898,8 @@ class InspectorDialog(QtWidgets.QDialog):
 
     def _locate_selected(self) -> None:
         issue = self._selected_issue()
-        if issue is None:
-            return
-        ok = self.host.inspection_navigate_to(
-            issue.location.relative_path,
-            issue.location.object_ids,
-            issue.location.region,
-            image_path=issue.location.image_path,
-        )
-        if not ok:
-            self._set_status(
-                self.tr(
-                    "无法定位：文件未加载/切换被取消，或对象已删除、"
-                    "身份待重检；画布选择未改变。"
-                )
-            )
+        if issue is not None:
+            self._navigate_issue(issue)
 
     def _set_decision(self, decision: Decision) -> None:
         issue = self._selected_issue()
@@ -2696,11 +3052,71 @@ class InspectorDialog(QtWidgets.QDialog):
         self._update_status()
         self._save_session()
 
-    def _recheck_selected(self) -> None:
-        issue = self._selected_issue()
+    def _retry_records(self):
+        feedback_saved = (
+            not self._pending_feedback
+            or self._save_feedback_records(self._pending_feedback)
+        )
+        if feedback_saved and self._save_run():
+            self._set_status(self.tr("检查记录已保存。"))
+
+    def _save_and_recheck(self):
+        if not self._navigation_allowed():
+            return
+        issue = next(
+            (
+                item
+                for item in self.report.issues
+                if item.family_key == self._active_issue_key
+            ),
+            None,
+        )
+        if (
+            issue is None
+            or issue.location.relative_path
+            != self.host.inspection_current_relative_path()
+        ):
+            self._set_status(self.tr("请先定位当前问题，再保存并复查。"))
+            return
+        context = (
+            self._navigation_serial,
+            self._edit_serial,
+            issue.family_key,
+            issue.location.relative_path,
+        )
+        self._navigating = True
+        try:
+            # Use the same guarded save transaction as ordinary saving;
+            # its Boolean result includes cancellation and write failure.
+            if not self.host._save_file(self.host.get_label_file()):
+                self._set_status(self.tr("保存未成功，未执行复查。"))
+                return
+        finally:
+            self._navigating = False
+        if context[:2] != (self._navigation_serial, self._edit_serial):
+            return
+        self._save_recheck_context = context
+        self._recheck_selected(issue)
+
+    def _recheck_selected(self, issue=None) -> None:
+        issue = (
+            issue
+            if isinstance(issue, InspectionIssue)
+            else self._selected_issue()
+        )
         if issue is None:
             return
         if self.controller.is_running():
+            return
+        if (
+            self.report is None
+            or issue.location.relative_path
+            != self.host.inspection_current_relative_path()
+            or output_identity(self.report.output_root)
+            != output_identity(self.host.inspection_output_dir())
+        ):
+            self._set_status(self.tr("请先定位当前问题，再保存并复查。"))
+            self._save_recheck_context = None
             return
         manifest = self.host.inspection_current_manifest()
         if manifest is None:
@@ -2742,6 +3158,7 @@ class InspectorDialog(QtWidgets.QDialog):
                 self.tr("报告数据集与当前数据集不一致，请重新检查。"),
             )
             return
+        self._run_edit_serial = self._edit_serial
         self._recheck_issue = issue
         self._recheck_relative_path = issue.location.relative_path
         self.start_button.setEnabled(False)
@@ -2781,7 +3198,9 @@ class InspectorDialog(QtWidgets.QDialog):
             relative_path,
             selected_family_key=previous.family_key,
         )
-        self._persist_recheck_feedback(result, report, relative_path)
+        feedback_saved = self._persist_recheck_feedback(
+            result, report, relative_path
+        )
         self.report = result.report
         if manifest is not None:
             if (
@@ -2816,7 +3235,7 @@ class InspectorDialog(QtWidgets.QDialog):
             self.report = replace(
                 self.report, manifest_fingerprint=self.manifest.fingerprint()
             )
-        self._save_run(self.report, self.manifest)
+        report_saved = self._save_run(self.report, self.manifest)
         self._populate_table()
         self._update_status()
         outcome_labels = {
@@ -2836,12 +3255,25 @@ class InspectorDialog(QtWidgets.QDialog):
             )
         )
 
+        context = self._save_recheck_context
+        self._save_recheck_context = None
+        if (
+            context is not None
+            and context[0] == self._navigation_serial
+            and context[1] == self._edit_serial
+            and feedback_saved
+            and report_saved
+            and self.auto_advance.isChecked()
+            and result.outcome == "not_detected"
+        ):
+            self._select_issue(1)
+
     def _persist_recheck_feedback(
         self, result, report: RunReport, relative_path: str
-    ) -> None:
+    ) -> bool:
         """Persist per-source verification outcomes for the rechecked file."""
         if self.storage is None:
-            return
+            return False
         updates: dict[str, FeedbackRecord] = {}
         for issue in result.report.issues:
             if issue.location.relative_path != relative_path:
@@ -2889,7 +3321,8 @@ class InspectorDialog(QtWidgets.QDialog):
                 rule_versions=self._report_rule_versions(result.report),
             )
         if updates:
-            self._save_feedback_records(updates)
+            return self._save_feedback_records(updates)
+        return True
 
     @staticmethod
     def _report_rule_versions(report: RunReport) -> dict[str, str]:
@@ -4151,13 +4584,60 @@ class InspectorDialog(QtWidgets.QDialog):
         self.status_label.setText(str(message))
         self.status_label.setToolTip(str(message))
 
+    @staticmethod
+    def _visible_geometry(rect, screens):
+        if not screens:
+            return rect
+        screen = max(
+            screens,
+            key=lambda area: area.intersected(rect).width()
+            * area.intersected(rect).height(),
+        )
+        width, height = min(rect.width(), screen.width()), min(
+            rect.height(), screen.height()
+        )
+        return QtCore.QRect(
+            max(screen.left(), min(rect.left(), screen.right() - width + 1)),
+            max(screen.top(), min(rect.top(), screen.bottom() - height + 1)),
+            width,
+            height,
+        )
+
+    def _restore_window_preferences(self):
+        value = self.host._config.get("inspector_window_geometry")
+        if isinstance(value, (list, tuple)) and len(value) == 4:
+            rect = QtCore.QRect(*map(int, value))
+        else:
+            rect = self.geometry()
+        if rect.width() <= 0 or rect.height() <= 0:
+            return
+        areas = [
+            screen.availableGeometry()
+            for screen in QtWidgets.QApplication.screens()
+        ]
+        rect = self._visible_geometry(rect, areas)
+        self.setMinimumSize(min(880, rect.width()), min(560, rect.height()))
+        self.setGeometry(rect)
+
+    def _save_window_preferences(self, *args):
+        rect = (
+            self.normalGeometry()
+            if self.isMaximized() or self.isMinimized()
+            else self.geometry()
+        )
+        self.host.persist_user_preferences(
+            {
+                "inspector_window_geometry": [
+                    rect.x(),
+                    rect.y(),
+                    rect.width(),
+                    rect.height(),
+                ],
+                "inspector_auto_advance": self.auto_advance.isChecked(),
+            }
+        )
+
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        try:
-            self.candidate_table.itemSelectionChanged.disconnect(
-                self._sync_candidate_overlay
-            )
-        except (TypeError, RuntimeError):
-            pass
         try:
             self.host.clear_inspection_candidates()
         except (AttributeError, RuntimeError):
@@ -4174,6 +4654,10 @@ class InspectorDialog(QtWidgets.QDialog):
                 event.ignore()
                 return
             self.controller.cancel()
+        self._save_window_preferences()
+        self._session_open = False
+        self._navigation_serial += 1
+        self._refresh_shortcuts()
         super().closeEvent(event)
 
 

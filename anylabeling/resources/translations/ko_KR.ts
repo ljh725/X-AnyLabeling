@@ -5236,6 +5236,22 @@ Original images backed up to:
         <source>正在查找图片，已找到 {count} 个: {path}</source>
         <translation>이미지 검색 중, {count}개 발견: {path}</translation>
     </message>
+<message><source>忽略此问题</source><translation>이 문제 무시</translation></message>
+<message><source>保存并复查</source><translation>저장 후 재검사</translation></message>
+<message><source>通过后进入下一个问题</source><translation>통과 후 다음 문제로 이동</translation></message>
+<message><source>已解决</source><translation>해결됨</translation></message>
+<message><source>已忽略</source><translation>무시됨</translation></message>
+<message><source>详细处理操作</source><translation>상세 처리 작업</translation></message>
+<message><source>上一个问题</source><translation>이전 문제</translation></message>
+<message><source>下一个问题</source><translation>다음 문제</translation></message>
+<message><source>无法定位：切换被取消、文件或对象身份失效，请复查。</source><translation>이동이 취소되었거나 파일 또는 객체 식별 정보가 유효하지 않습니다. 재검사하세요.</translation></message>
+<message><source>问题导航在主窗口和 Inspector 内生效。</source><translation>주 창과 Inspector에서 문제를 탐색할 수 있습니다.</translation></message>
+<message><source>请先定位当前问题，再保存并复查。</source><translation>현재 문제로 이동한 후 저장하고 재검사하세요.</translation></message>
+<message><source>保存未成功，未执行复查。</source><translation>저장에 실패하여 재검사를 시작하지 않았습니다.</translation></message>
+<message><source>待处理 {pending} · 已解决 {resolved} · 已忽略 {ignored}</source><translation>대기 {pending} · 해결 {resolved} · 무시 {ignored}</translation></message>
+<message><source>重试保存检查记录</source><translation>검사 기록 저장 재시도</translation></message>
+<message><source>检查记录已保存。</source><translation>검사 기록을 저장했습니다.</translation></message>
+<message><source>保存复查期间文档或问题已变化，结果仅作历史</source><translation>재검사 중 문서 또는 문제가 변경되어 결과를 기록으로만 보관합니다.</translation></message>
 </context><context>
     <name>LabelDialog</name>
     <message>
@@ -11948,6 +11964,8 @@ Changes will not be saved until you click Save.</source>
         <source>Inspector: Locate Selected Issue</source>
         <translation>Inspector: 선택한 문제로 이동</translation>
     </message>
+<message><source>Inspector: Previous Issue</source><translation>Inspector: 이전 문제</translation></message>
+<message><source>Inspector: Next Issue</source><translation>Inspector: 다음 문제</translation></message>
 </context><context>
     <name>SettingsRuntimeApplier</name>
     <message>

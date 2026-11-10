@@ -24,18 +24,18 @@ except Exception:
 class TestSettingsSchema(unittest.TestCase):
 
     def test_field_count(self):
-        # 149 = 57 non-shortcut fields + 92 shortcut fields. The shortcut set
+        # 151 = 57 non-shortcut fields + 94 shortcut fields. The shortcut set
         # gained ``shortcuts.redo`` with the dense-review redo stack and
         # ``shortcuts.open_correction_metrics`` with the correction-metrics
         # workflow entry. The canvas group also includes wheel navigation mode.
-        # Inspector run/locate are configurable local-window shortcuts.
-        self.assertEqual(len(SETTING_FIELDS), 149)
+        # Inspector also has configurable previous/next issue shortcuts.
+        self.assertEqual(len(SETTING_FIELDS), 151)
 
     def test_shortcut_and_non_shortcut_count(self):
         shortcut_fields = [
             field for field in SETTING_FIELDS if field.primary == "Shortcuts"
         ]
-        self.assertEqual(len(shortcut_fields), 92)
+        self.assertEqual(len(shortcut_fields), 94)
         self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 57)
 
     def test_defaults_cover_all_keys(self):
@@ -116,7 +116,7 @@ class TestSettingsSchema(unittest.TestCase):
         self.assertIn("shape.line_width", shape_keys)
         self.assertEqual(
             len(shortcut_fields),
-            92,
+            94,
         )
         for key in SETTINGS_SHORTCUT_KEYS_CORE:
             self.assertIn(key, [field.key for field in shortcut_fields])

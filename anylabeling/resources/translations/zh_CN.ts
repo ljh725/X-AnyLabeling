@@ -5246,6 +5246,22 @@ Original images backed up to:
         <source>正在查找图片，已找到 {count} 个: {path}</source>
         <translation>正在查找图片，已找到 {count} 个: {path}</translation>
     </message>
+<message><source>忽略此问题</source><translation>忽略此问题</translation></message>
+<message><source>保存并复查</source><translation>保存并复查</translation></message>
+<message><source>通过后进入下一个问题</source><translation>通过后进入下一个问题</translation></message>
+<message><source>已解决</source><translation>已解决</translation></message>
+<message><source>已忽略</source><translation>已忽略</translation></message>
+<message><source>详细处理操作</source><translation>详细处理操作</translation></message>
+<message><source>上一个问题</source><translation>上一个问题</translation></message>
+<message><source>下一个问题</source><translation>下一个问题</translation></message>
+<message><source>无法定位：切换被取消、文件或对象身份失效，请复查。</source><translation>无法定位：切换被取消、文件或对象身份失效，请复查。</translation></message>
+<message><source>问题导航在主窗口和 Inspector 内生效。</source><translation>问题导航在主窗口和 Inspector 内生效。</translation></message>
+<message><source>请先定位当前问题，再保存并复查。</source><translation>请先定位当前问题，再保存并复查。</translation></message>
+<message><source>保存未成功，未执行复查。</source><translation>保存未成功，未执行复查。</translation></message>
+<message><source>待处理 {pending} · 已解决 {resolved} · 已忽略 {ignored}</source><translation>待处理 {pending} · 已解决 {resolved} · 已忽略 {ignored}</translation></message>
+<message><source>重试保存检查记录</source><translation>重试保存检查记录</translation></message>
+<message><source>检查记录已保存。</source><translation>检查记录已保存。</translation></message>
+<message><source>保存复查期间文档或问题已变化，结果仅作历史</source><translation>保存复查期间文档或问题已变化，结果仅作历史</translation></message>
 </context><context>
     <name>LabelDialog</name>
     <message>
@@ -11957,6 +11973,8 @@ Changes will not be saved until you click Save.</source>
         <source>Inspector: Locate Selected Issue</source>
         <translation>Inspector：定位选中问题</translation>
     </message>
+<message><source>Inspector: Previous Issue</source><translation>Inspector：上一个问题</translation></message>
+<message><source>Inspector: Next Issue</source><translation>Inspector：下一个问题</translation></message>
 </context><context>
     <name>SettingsRuntimeApplier</name>
     <message>

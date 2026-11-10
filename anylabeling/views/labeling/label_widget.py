@@ -4360,6 +4360,8 @@ class LabelingWidget(LabelDialog):
             self.inspector_dialog.setAttribute(
                 Qt.WidgetAttribute.WA_DeleteOnClose, False
             )
+        if self.inspector_dialog.isMinimized():
+            self.inspector_dialog.showNormal()
         if self.inspector_dialog.isVisible():
             self.inspector_dialog.raise_()
             self.inspector_dialog.activateWindow()
@@ -4883,6 +4885,8 @@ class LabelingWidget(LabelDialog):
         dense_keys = {
             "inspector_run",
             "inspector_locate",
+            "inspector_previous_issue",
+            "inspector_next_issue",
             "dense_review_complete_batch",
             "dense_review_complete_object",
             "dense_review_skip",
@@ -5156,18 +5160,85 @@ class LabelingWidget(LabelDialog):
                 self.tr("Cannot resolve inspection target: %s") % relative_path
             )
             return False
+        ids = {str(item) for item in object_ids if str(item)}
+        if region and (
+            len(region) != 4
+            or not all(
+                isinstance(value, (int, float)) and math.isfinite(value)
+                for value in region
+            )
+            or region[2] <= region[0]
+            or region[3] <= region[1]
+        ):
+            return False
         if self.filename != target:
+            if QtGui.QImage(target).isNull():
+                return False
+            if ids:
+                import json
+
+                annotation = osp.splitext(target)[0] + ".json"
+                if self.output_dir:
+                    annotation = osp.join(
+                        self.output_dir, osp.basename(annotation)
+                    )
+                try:
+                    with open(annotation, encoding="utf-8") as stream:
+                        payload = json.load(stream)
+                    available = {
+                        str(shape.get("xanylabeling_shape_id", ""))
+                        for shape in payload.get("shapes", [])
+                    }
+                except (OSError, ValueError, TypeError):
+                    return False
+                if not ids.issubset(available):
+                    return False
             if not self.may_continue():
                 return False
             # Move the file-list cursor without re-entering the selection
             # handler (that would prompt for unsaved changes twice).
+            previous_row = self.file_list_widget.currentRow()
             row = self.fn_to_index.get(str(target))
             if row is not None:
                 with QtCore.QSignalBlocker(self.file_list_widget):
                     if self.file_list_widget.currentRow() != row:
                         self.file_list_widget.setCurrentRow(row)
-            self.load_file(target)
-            if osp.abspath(str(self.filename or "")) != osp.abspath(target):
+            previous_file = self.filename
+            previous_shapes = list(self.canvas.shapes)
+            previous_selected = list(self.canvas.selected_shapes)
+            previous_backups = list(self.canvas.shapes_backups)
+            previous_redo = list(self.canvas.shapes_redo)
+            previous_other_data = copy.deepcopy(self.other_data)
+            previous_flags = {
+                self.flag_widget.item(i)
+                .text(): self.flag_widget.item(i)
+                .checkState()
+                == Qt.CheckState.Checked
+                for i in range(self.flag_widget.count())
+            }
+            previous_dirty = self.dirty
+            loaded = self.load_file(target)
+            actual_ids = {
+                getattr(shape, "xanylabeling_shape_id", "")
+                for shape in self.canvas.shapes
+            }
+            if (
+                not loaded
+                or osp.abspath(str(self.filename or "")) != osp.abspath(target)
+                or not ids.issubset(actual_ids)
+            ):
+                if previous_file and self.filename != previous_file:
+                    self.load_file(previous_file)
+                    self.load_shapes(previous_shapes)
+                    self.canvas.shapes_backups = previous_backups
+                    self.canvas.shapes_redo = previous_redo
+                    self.other_data = previous_other_data
+                    self.load_flags(previous_flags)
+                    self.canvas.select_shapes(previous_selected)
+                    if previous_dirty:
+                        self.set_dirty()
+                with QtCore.QSignalBlocker(self.file_list_widget):
+                    self.file_list_widget.setCurrentRow(previous_row)
                 self.status(
                     self.tr("Failed to load inspection target: %s") % target
                 )
@@ -5178,7 +5249,7 @@ class LabelingWidget(LabelDialog):
             for shape in self.canvas.shapes
             if getattr(shape, "xanylabeling_shape_id", "") in ids
         ]
-        if ids and not shapes:
+        if ids and len(shapes) != len(ids):
             self.status(
                 self.tr(
                     "The inspected objects no longer exist; the issue "
@@ -5198,11 +5269,11 @@ class LabelingWidget(LabelDialog):
                     )
                     % len(hidden)
                 )
+        else:
+            self.canvas.select_shapes([])
         if region:
             if not self.inspection_focus_region(region):
-                self.status(
-                    self.tr("The inspected region cannot be located.")
-                )
+                self.status(self.tr("The inspected region cannot be located."))
                 return False
         return True
 
@@ -7789,6 +7860,16 @@ class LabelingWidget(LabelDialog):
             AutoLabelingMode.REMOVE,
         ]:
             text = self.canvas.shapes[-1].label
+        elif self.digit_to_label is not None:
+            # A digit shortcut owns the shape being finished: the binding wins
+            # over the preselected class, the reused last label and the label
+            # dialog, so a disabled popup cannot silently replace it.
+            text = self.digit_to_label
+            self.digit_to_label = None
+            if self._config["auto_use_last_gid"]:
+                last_gid = self.find_last_gid()
+                if last_gid is not None:
+                    group_id = last_gid
         elif (
             self._config["display_label_popup"]
             or not text
@@ -7800,12 +7881,7 @@ class LabelingWidget(LabelDialog):
                 if self._config["auto_use_last_gid"]
                 else None
             )
-            if self.digit_to_label is not None:
-                text = self.digit_to_label
-                self.digit_to_label = None
-                if last_gid is not None:
-                    group_id = last_gid
-            elif self._config["auto_use_last_label"] and last_label:
+            if self._config["auto_use_last_label"] and last_label:
                 text = last_label
                 if last_gid is not None:
                     group_id = last_gid

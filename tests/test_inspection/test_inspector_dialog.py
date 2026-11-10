@@ -171,12 +171,14 @@ def test_feedback_and_navigation_keep_states_separate(window, tmp_path):
     )
     assert dialog._session is not None
 
+    dialog.filter_combo.setCurrentIndex(dialog.filter_combo.findData("review_ignored"))
+    dialog.issue_table.selectRow(0)
     dialog._locate_selected()
     app.processEvents()
     selected_ids = {
         shape.xanylabeling_shape_id for shape in widget.canvas.selected_shapes
     }
-    assert selected_ids == {"id1", "id2"}
+    assert selected_ids == {"id1"}
     widget.canvas.shape_moved.emit()
     app.processEvents()
     assert all(
@@ -430,6 +432,8 @@ def test_detail_sections_follow_theme(window, tmp_path, monkeypatch):
     assert dialog.issue_table.rowCount() >= 1
     dialog.issue_table.selectRow(0)
     app.processEvents()
+    dialog.advanced_actions.show()
+    dialog._show_selected_details()
     text = dialog.details.toPlainText()
     for title in ("规则命中", "位置", "建议", "状态", "备注"):
         assert title in text
@@ -533,6 +537,8 @@ def test_keep_both_and_defer_do_not_modify_shapes(window, tmp_path):
     assert {shape.xanylabeling_shape_id for shape in widget.canvas.shapes} == before
     dialog.issue_table.selectRow(0)
     app.processEvents()
+    dialog.filter_combo.setCurrentIndex(dialog.filter_combo.findData("review_ignored"))
+    dialog.issue_table.selectRow(0)
     dialog._defer_issue()
     app.processEvents()
     assert dialog.report.issues[0].decision.value == "needs_discussion"

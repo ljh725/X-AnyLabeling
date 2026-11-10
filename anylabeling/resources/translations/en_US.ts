@@ -5303,6 +5303,22 @@ Each adds a formal object and can be undone.</translation>
         <source>正在查找图片，已找到 {count} 个: {path}</source>
         <translation>Finding images, {count} found: {path}</translation>
     </message>
+<message><source>忽略此问题</source><translation>Ignore this issue</translation></message>
+<message><source>保存并复查</source><translation>Save and recheck</translation></message>
+<message><source>通过后进入下一个问题</source><translation>Continue to the next issue after passing</translation></message>
+<message><source>已解决</source><translation>Resolved</translation></message>
+<message><source>已忽略</source><translation>Ignored</translation></message>
+<message><source>详细处理操作</source><translation>Detailed review actions</translation></message>
+<message><source>上一个问题</source><translation>Previous issue</translation></message>
+<message><source>下一个问题</source><translation>Next issue</translation></message>
+<message><source>无法定位：切换被取消、文件或对象身份失效，请复查。</source><translation>Cannot locate: navigation was cancelled or file/object identity is invalid. Please recheck.</translation></message>
+<message><source>问题导航在主窗口和 Inspector 内生效。</source><translation>Issue navigation works in the main window and Inspector.</translation></message>
+<message><source>请先定位当前问题，再保存并复查。</source><translation>Locate the current issue before saving and rechecking.</translation></message>
+<message><source>保存未成功，未执行复查。</source><translation>Saving did not succeed; recheck was not started.</translation></message>
+<message><source>待处理 {pending} · 已解决 {resolved} · 已忽略 {ignored}</source><translation>Pending {pending} · Resolved {resolved} · Ignored {ignored}</translation></message>
+<message><source>重试保存检查记录</source><translation>Retry saving inspection records</translation></message>
+<message><source>检查记录已保存。</source><translation>Inspection records saved.</translation></message>
+<message><source>保存复查期间文档或问题已变化，结果仅作历史</source><translation>The document or issue changed during recheck; results are retained as history only.</translation></message>
 </context><context>
     <name>LabelDialog</name>
     <message>
@@ -12015,6 +12031,8 @@ Changes will not be saved until you click Save.</translation>
         <source>Inspector: Locate Selected Issue</source>
         <translation>Inspector: Locate Selected Issue</translation>
     </message>
+<message><source>Inspector: Previous Issue</source><translation>Inspector: Previous Issue</translation></message>
+<message><source>Inspector: Next Issue</source><translation>Inspector: Next Issue</translation></message>
 </context><context>
     <name>SettingsRuntimeApplier</name>
     <message>

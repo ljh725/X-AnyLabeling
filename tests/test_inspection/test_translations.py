@@ -95,14 +95,14 @@ def test_small_window_with_long_chinese_labels_stays_usable(
     for button in (
         dialog.start_button,
         dialog.cancel_button,
-        dialog.delete_button,
-        dialog.batch_delete_button,
-        dialog.batch_relabel_button,
-        dialog.undo_button,
-        dialog.handoff_button,
+        dialog.prev_issue_button,
+        dialog.next_issue_button,
+        dialog.save_recheck_button,
+        dialog.acceptable_button,
     ):
         assert not button.text().strip() == ""
         assert button.isVisibleTo(dialog)
+    assert not dialog.advanced_actions.isVisibleTo(dialog)
     # Long Chinese labels must elide instead of forcing the table wider.
     long_label = "极长中文类别名称示例用于验证省略显示不会撑破小窗口布局"
     assert len(long_label) > 20

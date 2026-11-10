@@ -550,6 +550,12 @@ def _shortcut_label(short_key: str) -> str:
         "inspector_run": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Inspector: Run Inspection"
         ),
+        "inspector_previous_issue": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Inspector: Previous Issue"
+        ),
+        "inspector_next_issue": QT_TRANSLATE_NOOP(
+            SETTINGS_TRANSLATION_CONTEXT, "Inspector: Next Issue"
+        ),
         "inspector_locate": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Inspector: Locate Selected Issue"
         ),
