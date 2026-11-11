@@ -91,6 +91,21 @@
 CSV 快照一致、无 accuracy 类列）。详见
 [implementation-batch3-7x-20261111.md](implementation-batch3-7x-20261111.md)。
 
+## 2.7 第 3 批 8.x/9.x（自动化）验证
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| 统计测试全量 | `pytest tests/test_correction_metrics -q -p no:cacheprovider` | **299 passed** |
+| 设置 schema | `pytest tests/test_settings/test_schema.py -q` | 7 passed（字段数随新设置更新） |
+| 批量相邻 | `pytest tests/test_auto_labeling/test_batch_range.py -q` | 2 passed + 6 subtests |
+| 数字矩形 | `pytest tests/test_labeling/test_digit_rectangle_save.py test_digit_label_actions.py -q` | 48 passed |
+| 静态检查 | `flake8` 新增代码零告警；`black --check` 三个新建文件通过 | 3 处既有代码风格告警未改（避免无关 diff） |
+| 结构校验 | `openspec validate add-annotation-correction-cost-statistics --strict` | valid |
+
+新增用例：`test_csv_contract.py`（17+7 参数化）、`test_fault_matrix.py` 18、`test_export_snapshot.py` 5。
+性能基准：`benchmarks/correction_metrics_20261111/`（服务层实测，GUI p95 未测）。
+详见 [implementation-batch3-8x-9x-20261111.md](implementation-batch3-8x-9x-20261111.md)。
+
 ## 3. 需求到证据
 
 四份 spec 共 33 Requirement / 69 Scenario，逐条映射见 [scenario-coverage.md](scenario-coverage.md)。第 1 批后：

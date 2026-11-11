@@ -46,7 +46,6 @@ from PyQt6.QtWidgets import (
 from .hooks import metrics_pending_message
 from .i18n import LANGUAGES, tr, tr_issue
 
-
 N_A = "N/A"
 
 #: ``controller.state()["state"]`` value -> message key.
@@ -111,7 +110,9 @@ class _ElidedLabel(QLabel):
         self._full = ""
         if alignment is not None:
             self.setAlignment(alignment)
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
+        )
         self.setMinimumWidth(0)
 
     def full_text(self):
@@ -145,7 +146,9 @@ class _WrappedLabel(QLabel):
     def __init__(self, parent=None):
         super().__init__("", parent)
         self.setWordWrap(True)
-        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
+        )
         self.setMinimumWidth(0)
 
     def minimumSizeHint(self):  # noqa: N802 - Qt naming
@@ -198,7 +201,9 @@ class CorrectionMetricsPanel(QWidget):
         for child in self.findChildren(QWidget):
             child.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setObjectName("CorrectionMetricsPanel")
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
+        )
         if controller is not None:
             self.attach(controller)
         else:
@@ -312,7 +317,9 @@ class CorrectionMetricsPanel(QWidget):
         self._add_row(integrity_grid, "comparable", "comparable", 3)
         self._add_row(integrity_grid, "issues", "issues", 4)
         self._add_row(integrity_grid, "checked_marker", "checked_marker", 5)
-        self._add_row(integrity_grid, "completion_record", "completion_record", 6)
+        self._add_row(
+            integrity_grid, "completion_record", "completion_record", 6
+        )
         self.degraded_label = _ElidedLabel()
         self.degraded_label.setObjectName("metrics_degraded")
         self.degraded_label.hide()
@@ -456,7 +463,11 @@ class CorrectionMetricsPanel(QWidget):
         self._row = dict(row) if isinstance(row, dict) else None
         self._state = dict(state) if isinstance(state, dict) else None
         if saved is _UNSET:
-            saved = self._call("current_row", False) if self._compute_ready() else None
+            saved = (
+                self._call("current_row", False)
+                if self._compute_ready()
+                else None
+            )
         self._saved = dict(saved) if isinstance(saved, dict) else None
         self._render()
 
@@ -526,11 +537,12 @@ class CorrectionMetricsPanel(QWidget):
         if not visible:
             return
         self.idle_question.setText(tr("idle_question", language=language))
-        self.idle_include_button.setText(tr("idle_include_button", language=language))
-        self.idle_exclude_button.setText(tr("idle_exclude_button", language=language))
-
-    def _on_summary_clicked(self):
-        self.summary_requested.emit()
+        self.idle_include_button.setText(
+            tr("idle_include_button", language=language)
+        )
+        self.idle_exclude_button.setText(
+            tr("idle_exclude_button", language=language)
+        )
 
     # -------------------------------------------------------------- helpers
     def _ui_language(self):
@@ -555,7 +567,9 @@ class CorrectionMetricsPanel(QWidget):
 
     def _call(self, name, *args):
         controller = self._controller
-        method = getattr(controller, name, None) if controller is not None else None
+        method = (
+            getattr(controller, name, None) if controller is not None else None
+        )
         if not callable(method):
             return None
         try:
@@ -589,7 +603,9 @@ class CorrectionMetricsPanel(QWidget):
         language = self._ui_language()
         self.body.setVisible(not self._collapsed)
         self.toggle_button.setText("\u25b8" if self._collapsed else "\u25be")
-        label = tr("expand" if self._collapsed else "collapse", language=language)
+        label = tr(
+            "expand" if self._collapsed else "collapse", language=language
+        )
         self.toggle_button.setToolTip(label)
         self.toggle_button.setAccessibleName(label)
 
@@ -613,7 +629,10 @@ class CorrectionMetricsPanel(QWidget):
         if review:
             self.phase_tag.setText(tr("review_tag", language=language))
         self._row_labels["time"].setText(
-            tr("frozen_time" if row.get("completed") else "time", language=language)
+            tr(
+                "frozen_time" if row.get("completed") else "time",
+                language=language,
+            )
         )
         self._render_idle()
         self._render_identity(row, language)
@@ -627,7 +646,9 @@ class CorrectionMetricsPanel(QWidget):
 
     def _dataset(self):
         controller = self._controller
-        value = getattr(controller, "scope_label", None) if controller else None
+        value = (
+            getattr(controller, "scope_label", None) if controller else None
+        )
         return N_A if not value else str(value)
 
     def _render_identity(self, row, language):
@@ -700,7 +721,11 @@ class CorrectionMetricsPanel(QWidget):
             key = STATE_KEYS.get(code)
             self._set(
                 "timer_state",
-                tr(key, language=language) if key else (N_A if not code else str(code)),
+                (
+                    tr(key, language=language)
+                    if key
+                    else (N_A if not code else str(code))
+                ),
             )
             seconds = self._working_seconds()
             if seconds is None:
@@ -709,7 +734,9 @@ class CorrectionMetricsPanel(QWidget):
                 self._set("time", N_A)
             else:
                 text = tr(
-                    "seconds", language=language, seconds=int(round(float(seconds)))
+                    "seconds",
+                    language=language,
+                    seconds=int(round(float(seconds))),
                 )
                 totals = (self._row or {}).get("time") or {}
                 excluded = totals.get("excluded_idle")
@@ -735,11 +762,14 @@ class CorrectionMetricsPanel(QWidget):
     def _render_net(self, prefix, row, language):
         data = row or {}
         for field, _ in NET_FIELDS:
-            formatter = format_rate if field == "modified_rate" else format_count
+            formatter = (
+                format_rate if field == "modified_rate" else format_count
+            )
             self._set("%s_%s" % (prefix, field), formatter(data.get(field)))
         if prefix == "draft":
             unsaved = bool(data) and (
-                bool(data.get("is_draft")) or not str(data.get("revision") or "")
+                bool(data.get("is_draft"))
+                or not str(data.get("revision") or "")
             )
             self.unsaved_badge.setVisible(unsaved)
 
@@ -755,22 +785,30 @@ class CorrectionMetricsPanel(QWidget):
         else:
             self._set(
                 "completed",
-                tr("completed" if row.get("completed") else "unfinished", language=language),
+                tr(
+                    "completed" if row.get("completed") else "unfinished",
+                    language=language,
+                ),
             )
             comparable = row.get("comparable")
             if comparable is None:
                 self._set("comparable", N_A)
             else:
                 self._set(
-                    "comparable", tr("yes" if comparable else "no", language=language)
+                    "comparable",
+                    tr("yes" if comparable else "no", language=language),
                 )
-            issues = [str(code) for code in (row.get("issues") or ()) if str(code)]
+            issues = [
+                str(code) for code in (row.get("issues") or ()) if str(code)
+            ]
             if not issues:
                 self._set("issues", tr("clean", language=language))
             else:
                 self._set(
                     "issues",
-                    " \u00b7 ".join(tr_issue(code, language=language) for code in issues),
+                    " \u00b7 ".join(
+                        tr_issue(code, language=language) for code in issues
+                    ),
                 )
 
             quality = row.get("quality")
@@ -797,7 +835,9 @@ class CorrectionMetricsPanel(QWidget):
                 self._set("completion_record", N_A)
             else:
                 self._set(
-                    "completion_record", str(completion)[:8], tooltip=str(completion)
+                    "completion_record",
+                    str(completion)[:8],
+                    tooltip=str(completion),
                 )
 
         reason = self._degraded_reason()
@@ -821,7 +861,9 @@ class CorrectionMetricsPanel(QWidget):
         pending = metrics_pending_message(language)
 
         can_pause = ready and callable(getattr(controller, "pause", None))
-        can_finish = ready and callable(getattr(controller, "finish_round", None))
+        can_finish = ready and callable(
+            getattr(controller, "finish_round", None)
+        )
 
         if code == "paused":
             key = "resume"
@@ -845,11 +887,21 @@ class CorrectionMetricsPanel(QWidget):
         elif unsaved:
             reason = tr("save_before_complete", language=language)
         self.finish_button.setText(
-            tr("finish_review" if row and row.get("phase") == "review" else "complete",
-               language=language)
+            tr(
+                (
+                    "finish_review"
+                    if row and row.get("phase") == "review"
+                    else "complete"
+                ),
+                language=language,
+            )
         )
-        self.finish_button.setEnabled(can_finish and bool(row) and not finished and not unsaved)
-        self.finish_button.setToolTip(reason or tr("complete", language=language))
+        self.finish_button.setEnabled(
+            can_finish and bool(row) and not finished and not unsaved
+        )
+        self.finish_button.setToolTip(
+            reason or tr("complete", language=language)
+        )
 
         can_review = callable(getattr(controller, "start_review", None))
         reviewing = bool(row) and row.get("phase") == "review"
@@ -877,4 +929,6 @@ class CorrectionMetricsPanel(QWidget):
 
         self.summary_button.setText(tr("report", language=language))
         self.summary_button.setEnabled(ready)
-        self.summary_button.setToolTip(tr("report", language=language) if ready else pending)
+        self.summary_button.setToolTip(
+            tr("report", language=language) if ready else pending
+        )

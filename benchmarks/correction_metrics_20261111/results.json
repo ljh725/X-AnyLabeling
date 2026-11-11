@@ -1,0 +1,179 @@
+{
+  "schema": "correction_metrics.bench/1",
+  "task": "9.4 service-layer performance",
+  "seed": 20261111,
+  "machine": {
+    "platform": "Windows-10-10.0.19045-SP0",
+    "system": "Windows",
+    "release": "10",
+    "machine": "AMD64",
+    "processor": "Intel64 Family 6 Model 165 Stepping 3, GenuineIntel",
+    "python": "3.12.12",
+    "cpu_count": 12,
+    "timestamp": "2026-11-11T09:49:46+08:00"
+  },
+  "caveat": "GUI 主线程拖动 p95 ≤ 5 ms 未测（无 GUI 事件循环），本表为服务层采集耗时。",
+  "arguments": {
+    "quick": false,
+    "rounds": 10000,
+    "build_budget": 60.0,
+    "capture_n": 200,
+    "export_rows": 5000,
+    "export_repeats": 5,
+    "cold_hot": 5,
+    "out_dir": "."
+  },
+  "capture_overhead": {
+    "30": {
+      "scene_rectangles": 30,
+      "iterations": 200,
+      "observer_path": "controller.edit",
+      "with_statistics": {
+        "n": 200,
+        "p50_ms": 0.03490003291517496,
+        "p95_ms": 0.0950999092310667,
+        "p99_ms": 0.21349999587982893,
+        "min_ms": 0.031000003218650818,
+        "max_ms": 0.2957000397145748,
+        "mean_ms": 0.048115000827237964
+      },
+      "without_statistics_baseline": {
+        "n": 200,
+        "p50_ms": 0.002700020559132099,
+        "p95_ms": 0.004100031219422817,
+        "p99_ms": 0.004699919372797012,
+        "min_ms": 0.002400018274784088,
+        "max_ms": 0.007200054824352264,
+        "mean_ms": 0.002855001948773861
+      },
+      "delta_p50_ms": 0.03220001235604286,
+      "delta_p95_ms": 0.09099987801164389,
+      "degraded_reason": null
+    },
+    "300": {
+      "scene_rectangles": 300,
+      "iterations": 200,
+      "observer_path": "controller.edit",
+      "with_statistics": {
+        "n": 200,
+        "p50_ms": 0.049600028432905674,
+        "p95_ms": 0.07329997606575489,
+        "p99_ms": 0.23010000586509705,
+        "min_ms": 0.03170000854879618,
+        "max_ms": 0.5714999279007316,
+        "mean_ms": 0.055619002087041736
+      },
+      "without_statistics_baseline": {
+        "n": 200,
+        "p50_ms": 0.002600019797682762,
+        "p95_ms": 0.0028999056667089462,
+        "p99_ms": 0.003300025127828121,
+        "min_ms": 0.002400018274784088,
+        "max_ms": 0.006600050255656242,
+        "mean_ms": 0.0026624975726008415
+      },
+      "delta_p50_ms": 0.04700000863522291,
+      "delta_p95_ms": 0.07040007039904594,
+      "degraded_reason": null
+    }
+  },
+  "first_screen": {
+    "database_rounds": 2000,
+    "database_target_rounds": 10000,
+    "build_seconds": 62.94488670001738,
+    "build_hit_time_budget": true,
+    "budget_seconds": 60.0,
+    "samples_per_condition": 5,
+    "rows_limit_50_hot": {
+      "n": 5,
+      "p50_ms": 5.125299911014736,
+      "p95_ms": 5.6833999697119,
+      "p99_ms": 5.6833999697119,
+      "min_ms": 4.070900031365454,
+      "max_ms": 5.6833999697119,
+      "mean_ms": 4.824319970794022
+    },
+    "rows_limit_50_cold": {
+      "n": 5,
+      "p50_ms": 3.9914000080898404,
+      "p95_ms": 4.286399926058948,
+      "p99_ms": 4.286399926058948,
+      "min_ms": 3.936599940061569,
+      "max_ms": 4.286399926058948,
+      "mean_ms": 4.055759985931218
+    },
+    "count_hot": {
+      "n": 5,
+      "p50_ms": 1.4773999573662877,
+      "p95_ms": 2.73349997587502,
+      "p99_ms": 2.73349997587502,
+      "min_ms": 1.244800048880279,
+      "max_ms": 2.73349997587502,
+      "mean_ms": 1.6751999966800213
+    },
+    "count_cold": {
+      "n": 5,
+      "p50_ms": 1.2782999547198415,
+      "p95_ms": 1.4850000152364373,
+      "p99_ms": 1.4850000152364373,
+      "min_ms": 1.1491000186651945,
+      "max_ms": 1.4850000152364373,
+      "mean_ms": 1.304679992608726
+    },
+    "saved_row_50_rows": {
+      "n": 5,
+      "p50_ms": 0.2992999507114291,
+      "p95_ms": 0.3602000651881099,
+      "p99_ms": 0.3602000651881099,
+      "min_ms": 0.24580000899732113,
+      "max_ms": 0.3602000651881099,
+      "mean_ms": 0.2956000156700611
+    },
+    "database_rows_after_build": 2000,
+    "database_bytes": 33550336
+  },
+  "export_cancelled": {
+    "rows_in_source": 2200,
+    "cancel_at_row": 100,
+    "cancel_check_calls": 201,
+    "repeats": 5,
+    "exception_types": [
+      "ExportCancelled"
+    ],
+    "elapsed_ms": {
+      "n": 5,
+      "p50_ms": 5.415899911895394,
+      "p95_ms": 6.294999970123172,
+      "p99_ms": 6.294999970123172,
+      "min_ms": 5.356900044716895,
+      "max_ms": 6.294999970123172,
+      "mean_ms": 5.6489599868655205
+    },
+    "target_ms": 1000.0,
+    "destination_file_left": false,
+    "leftover_files": []
+  },
+  "heartbeat": {
+    "iterations": 200,
+    "tick_ms": {
+      "n": 200,
+      "p50_ms": 0.00209989957511425,
+      "p95_ms": 0.002900022082030773,
+      "p99_ms": 0.01179997343569994,
+      "min_ms": 0.001900014467537403,
+      "max_ms": 0.01759990118443966,
+      "mean_ms": 0.002377001801505685
+    },
+    "time_checkpoint_ms": {
+      "n": 200,
+      "p50_ms": 0.015700003132224083,
+      "p95_ms": 0.02220005262643099,
+      "p99_ms": 0.059300102293491364,
+      "min_ms": 0.01479999627918005,
+      "max_ms": 0.06059999577701092,
+      "mean_ms": 0.01768000249285251
+    },
+    "target_ms": 100.0
+  },
+  "elapsed_seconds": 151.37156690005213
+}

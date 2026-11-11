@@ -108,7 +108,9 @@ class CorrectionMetricsController:
     @property
     def enabled(self):
         return bool(
-            self._enabled and self._store is not None and self._round is not None
+            self._enabled
+            and self._store is not None
+            and self._round is not None
         )
 
     @property
@@ -180,7 +182,9 @@ class CorrectionMetricsController:
         return True
 
     def _database_path(self, image_root, label_root):
-        from anylabeling.services.correction_metrics.core import dataset_identity
+        from anylabeling.services.correction_metrics.core import (
+            dataset_identity,
+        )
 
         identity = dataset_identity(image_root, label_root)
         return self.storage_root / ("%s.sqlite3" % identity)
@@ -205,8 +209,14 @@ class CorrectionMetricsController:
             return False
         return enable_prediction_provenance(manager, enabled)
 
-    def taxonomy_saved(self, image_path, label_path=None, shapes=None,
-                       mapping=None, comparable=True):
+    def taxonomy_saved(
+        self,
+        image_path,
+        label_path=None,
+        shapes=None,
+        mapping=None,
+        comparable=True,
+    ):
         """Record a confirmed global class migration for one saved label file.
 
         Called by ``LabelModifyDialog.modify_label`` after it rewrote a label
@@ -326,8 +336,15 @@ class CorrectionMetricsController:
         return True
 
     # ------------------------------------------------------- edit observers
-    def edit(self, kind, source="manual", changed=None, removed=None,
-             transaction_id=None, undo_of=None):
+    def edit(
+        self,
+        kind,
+        source="manual",
+        changed=None,
+        removed=None,
+        transaction_id=None,
+        undo_of=None,
+    ):
         if not self.enabled:
             return False
         try:
@@ -415,7 +432,9 @@ class CorrectionMetricsController:
         # boxes as predicted (8 instead of 3 in the "5+3" scenario).
         predicted_shapes = getattr(result, "shapes", None)
         predicted = shape_ids(
-            predicted_shapes if predicted_shapes is not None else self._shapes()
+            predicted_shapes
+            if predicted_shapes is not None
+            else self._shapes()
         )
         try:
             self._round = self._store.open_round(
@@ -451,8 +470,14 @@ class CorrectionMetricsController:
             self.degrade("prediction_unapplied", error)
             return False
 
-    def prediction_saved(self, image_path, label_path=None, provenance=None,
-                         shapes=None, status="applied"):
+    def prediction_saved(
+        self,
+        image_path,
+        label_path=None,
+        provenance=None,
+        shapes=None,
+        status="applied",
+    ):
         """Batch predictions write JSON directly: record one image at a time.
 
         Unlike ``prediction_applied`` this never touches the round of the
@@ -466,7 +491,11 @@ class CorrectionMetricsController:
         # Batch calls come from a worker thread and may be retried: remember
         # the (image, label, run) keys so a repeated call cannot open a second
         # round for the same saved file.
-        key = (path_identity(image_path), path_identity(label), source.get("run_id"))
+        key = (
+            path_identity(image_path),
+            path_identity(label),
+            source.get("run_id"),
+        )
         if key[2] and key in self._saved_batches:
             return True
         try:
@@ -713,8 +742,9 @@ class CorrectionMetricsController:
     def export(self, kind, path, cancelled=None, progress=None, rows=None):
         """Export a CSV; ``rows`` freezes the caller's on-screen snapshot."""
         selected = self.rows() if rows is None else list(rows)
-        return export.export_csv(path, selected, kind, cancelled=cancelled,
-                                 progress=progress)
+        return export.export_csv(
+            path, selected, kind, cancelled=cancelled, progress=progress
+        )
 
     # ---------------------------------------------------------- host bridge
     def _image_path(self):
@@ -833,7 +863,8 @@ def start_metrics(host):
     controller = getattr(host, "correction_metrics", None)
     if controller is None:
         controller = CorrectionMetricsController(
-            host, language=getattr(host, "_config", {}).get("language", "en_US")
+            host,
+            language=getattr(host, "_config", {}).get("language", "en_US"),
         )
         host.correction_metrics = controller
     _install_clock_adapter(host, controller)
@@ -862,7 +893,9 @@ def _install_clock_adapter(host, controller):
         )
         controller.use_clock_adapter(adapter)
         return adapter
-    except Exception as error:  # noqa: BLE001 - head-less hosts keep the plain clock
+    except (
+        Exception
+    ) as error:  # noqa: BLE001 - head-less hosts keep the plain clock
         controller.degrade("clock_adapter", error)
         return None
 

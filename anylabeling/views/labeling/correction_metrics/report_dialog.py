@@ -513,11 +513,21 @@ _SECONDS_KEYS = frozenset(
 )
 _RATE_KEYS = frozenset({"modified_rate", "unchanged_rate"})
 _IMAGE_NUMERIC = frozenset(key for key, _ in IMAGE_TABLE_COLUMNS) - {
-    "image_path", "round_id", "phase", "origin", "quality", "issues",
+    "image_path",
+    "round_id",
+    "phase",
+    "origin",
+    "quality",
+    "issues",
 }
 _CLASS_NUMERIC = frozenset({"count", "denominator", "rounds"})
 _GROUP_NUMERIC = frozenset(key for key, _ in GROUP_TABLE_COLUMNS) - {
-    "density", "phase", "origin", "model", "model_version", "category_version",
+    "density",
+    "phase",
+    "origin",
+    "model",
+    "model_version",
+    "category_version",
     "range",
 }
 
@@ -541,7 +551,9 @@ def _catalog_messages():
         from . import i18n
 
         return getattr(i18n, "MESSAGES", None) or {}
-    except Exception:  # noqa: BLE001 - a broken catalog must not hide the report
+    except (
+        Exception
+    ):  # noqa: BLE001 - a broken catalog must not hide the report
         return {}
 
 
@@ -579,11 +591,7 @@ def _tr(key, language=None, **values):
 
 def known_key(key):
     """Whether ``key`` has a display string in any available catalog."""
-    return (
-        key in _STRINGS
-        or key in _FALLBACK
-        or key in _catalog_messages()
-    )
+    return key in _STRINGS or key in _FALLBACK or key in _catalog_messages()
 
 
 class _ExportThread(QThread):
@@ -600,8 +608,9 @@ class _ExportThread(QThread):
     cancelled = pyqtSignal()
     failed = pyqtSignal(str)
 
-    def __init__(self, controller, kind, path, cancel_event, parent=None,
-                 rows=None):
+    def __init__(
+        self, controller, kind, path, cancel_event, parent=None, rows=None
+    ):
         super().__init__(parent)
         self.controller = controller
         self.kind = kind
@@ -622,7 +631,9 @@ class _ExportThread(QThread):
             )
         except export_module.ExportCancelled:
             self.cancelled.emit()
-        except Exception as error:  # noqa: BLE001 - report, never crash the GUI
+        except (
+            Exception
+        ) as error:  # noqa: BLE001 - report, never crash the GUI
             self.failed.emit("%s: %s" % (type(error).__name__, error))
         else:
             if result is False:
@@ -808,7 +819,9 @@ class ReportDialog(QDialog):
 
     def _new_table(self, columns):
         table = QTableWidget(0, len(columns), self)
-        table.setHorizontalHeaderLabels([self._text(key) for _, key in columns])
+        table.setHorizontalHeaderLabels(
+            [self._text(key) for _, key in columns]
+        )
         table.verticalHeader().setVisible(False)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(
@@ -882,7 +895,9 @@ class ReportDialog(QDialog):
         self.group_note = QLabel(self._text("group_note"), page)
         self.group_note.setWordWrap(True)
         box.addWidget(self.group_note)
-        self.model_version_note = QLabel(self._text("model_version_note"), page)
+        self.model_version_note = QLabel(
+            self._text("model_version_note"), page
+        )
         self.model_version_note.setWordWrap(True)
         box.addWidget(self.model_version_note)
         self.group_table = self._new_table(GROUP_TABLE_COLUMNS)
@@ -1150,7 +1165,7 @@ class ReportDialog(QDialog):
 
     def page_rows(self):
         start = self._page * PAGE_SIZE
-        return self._rows[start:start + PAGE_SIZE]
+        return self._rows[start : start + PAGE_SIZE]
 
     def go_to_page(self, index):
         index = max(0, min(int(index), self.page_count - 1))
@@ -1568,7 +1583,11 @@ class ReportDialog(QDialog):
             return False
         self._cancel.clear()
         thread = _ExportThread(
-            self.controller, kind, str(destination), self._cancel, self,
+            self.controller,
+            kind,
+            str(destination),
+            self._cancel,
+            self,
             rows=self._rows,
         )
         thread.progressed.connect(self._on_export_progress)

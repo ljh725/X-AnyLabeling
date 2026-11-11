@@ -155,6 +155,7 @@ def differences(baseline, final, aliases=None, class_comparable=True):
          != f[k]["label"]} if class_comparable else None
     modified = len(deleted | g | c) if c is not None else None
     unchanged = len(common - g - c) if c is not None else None
+    class_kinds = ("initial", "geometry", "deleted", "class_changed")
     counts = Counter()
     for k, v in b.items():
         counts[("initial", v["label"], "")] += 1
@@ -178,12 +179,18 @@ def differences(baseline, final, aliases=None, class_comparable=True):
         "unsupported_count": len(final["objects"]) - len(f),
         "scope_changes": len(converted),
         "classes": [
-            {"kind": kind, "initial_class": old, "final_class": new,
-             "count": n,
-             "denominator": (counts[("initial", old, "")]
-                              if kind in ("initial", "geometry", "deleted",
-                                          "class_changed")
-                              else len(b)) or None}
+            {
+                "kind": kind,
+                "initial_class": old,
+                "final_class": new,
+                "count": n,
+                "denominator": (
+                    counts[("initial", old, "")]
+                    if kind in class_kinds
+                    else len(b)
+                )
+                or None,
+            }
             for (kind, old, new), n in sorted(counts.items())
         ],
     }
