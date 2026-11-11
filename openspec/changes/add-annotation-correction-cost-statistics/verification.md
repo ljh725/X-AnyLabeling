@@ -1,16 +1,24 @@
 # 修正成本统计：验证记录
 
 - 变更：`add-annotation-correction-cost-statistics`
-- 当前状态：**第 1 批（实施基线 / 数据契约与纯逻辑 / 本地存储）已完成并验证**；业务 UI、Qt 接入、汇总与导出界面未实施，功能对用户仍不可用。
-- 更新日期：2026-11-10（Asia/Shanghai）
+- 当前状态：**第一版代码实现完成、自动化验证通过（任务 37/54）；真实屏幕人工验收与 GUI 性能未完成，变更未归档。**
+- 更新日期：2026-11-11（Asia/Shanghai）
+
+## 0. 交付状态
+
+- **代码**：第一版实现完成；`tasks.md` 37/54 已勾选，其余为真实屏幕/GUI 性能/人工试用与 3 项遗留契约增强。
+- **自动测试**：`tests/test_correction_metrics` **299 passed**；另 `test_settings/test_schema.py` 7、批量相邻 2+6 subtests、数字矩形 48。
+- **可用路径**：设置启用 → 菜单打开 → 面板记录/暂停/完成/复核 → 汇总筛选 → 两种 CSV 导出；开关默认关闭，关闭时零负担。
+- **未完成**：9.2 GUI 定向回归、9.4 GUI 主线程 p95 与 10,000 图/5,000 行规模、9.5 两位使用者试用、10.4 的 GUI 打开/保存部分、`.ts/.qm` 重编译；5.3/5.5 待 9.x 回归后统一评估；2.2/2.5/3.3 为批次 1 遗留增强。
+- **结论**：自动化通过不等于功能验收通过。未完成 [人工验收清单](manual-acceptance-checklist.md) 前不得归档，也不得宣称质量或提速结论。
 
 ## 1. 批次总览
 
 | 批次 | 范围 | 状态 | 证据 |
 | --- | --- | --- | --- |
-| 第 1 批 | tasks.md 1.2–1.4、2.1–2.6、3.1–3.5 | 已完成，含 3 条缺陷修复；少量子项保留 | [implementation-batch1-20261110.md](implementation-batch1-20261110.md) |
-| 第 2 批 | 4.x 预标注与编辑接入、5.x 保存/完成状态、6.x 计时 | 未开始 | — |
-| 第 3 批 | 7.x 界面、8.x 导出、9.x 回归与性能、10.x 交付 | 未开始 | — |
+| 第 1 批 | 1.2–1.4、2.1–2.6、3.1–3.5（数据契约、纯逻辑、存储） | 完成（3 条缺陷修复；2.2/2.5/3.3 部分保留） | [implementation-batch1-20261110.md](implementation-batch1-20261110.md) |
+| 第 2 批 | 4.x 预标注与编辑接入、5.x 保存/完成状态、6.x 计时 | 完成 4.1/4.2/4.3/4.5/4.6/4.7、5.1/5.2/5.4/5.6、6.1–6.4 | [batch2a](implementation-batch2a-20261110.md) · [2b](implementation-batch2b-20261110.md) · [2c](implementation-batch2c-20261110.md) · [2d](implementation-batch2d-20261111.md) |
+| 第 3 批 | 7.x 界面、8.x 导出、9.x 自动化、10.x 交付 | 7.1–7.4 与 8.x/9.1/9.3/9.6 完成；7.5 尾项、9.2/9.4/9.5 未完成 | [7x](implementation-batch3-7x-20261111.md) · [8x/9x](implementation-batch3-8x-9x-20261111.md) |
 
 ## 2. 自动化验证（第 1 批）
 
@@ -106,6 +114,17 @@ CSV 快照一致、无 accuracy 类列）。详见
 性能基准：`benchmarks/correction_metrics_20261111/`（服务层实测，GUI p95 未测）。
 详见 [implementation-batch3-8x-9x-20261111.md](implementation-batch3-8x-9x-20261111.md)。
 
+## 2.8 第 3 批 10.x（交付与回退）验证
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| 统计测试全量 | `pytest tests/test_correction_metrics -q -p no:cacheprovider` | **311 passed**（含回退 12 用例） |
+| 用户说明 | `docs/zh_cn/correction_cost_statistics.md`、`docs/en/correction_cost_statistics.md` | 13 节，事实逐项对照代码 |
+| 回退验证 | `tests/test_correction_metrics/test_rollback.py` | 12 passed：关闭零副作用、stop 安全降级、统计库保留/备份/删除、标注 JSON 字节不变、训练导出键集不变 |
+| 人工验收清单 | [manual-acceptance-checklist.md](manual-acceptance-checklist.md) | 26 项，全部待执行 |
+
+详见 [implementation-batch3-10x-20261111.md](implementation-batch3-10x-20261111.md)。
+
 ## 3. 需求到证据
 
 四份 spec 共 33 Requirement / 69 Scenario，逐条映射见 [scenario-coverage.md](scenario-coverage.md)。第 1 批后：
@@ -138,3 +157,13 @@ openspec validate add-annotation-correction-cost-statistics --strict
 第 1 批交付的是**可测试的数据契约与本地存储**：净差异、计数、类别映射、范围与完整性判定、版本化 SQLite、有界写入队列、保存检查点与恢复。三条与 spec 冲突的缺陷（来源未知被误判为不可比、预测来源静默丢失、空基线分母为 0）已修复并有回归用例。
 
 本变更**尚未交付可用功能**：UI 接入、计时界面、汇总与导出、性能与人工验收均未完成，`tasks.md` 中未勾选项保持未完成状态，不将本记录视为功能验收通过。
+
+## 7. 人工验收（未完成）
+
+必须在真实桌面执行的验收项已整理为 [人工验收清单](manual-acceptance-checklist.md)：GUI 各矩形入口回归（9.2）、关闭统计后的 GUI 回归（10.4）、GUI 性能与 10,000 图规模（9.4）、计时语义人工确认、两位使用者对照试用（9.5）、四语资源重编译与分发检查（7.5 尾项）。
+
+在这些项目完成并回填证据之前：
+
+- 不勾选 `tasks.md` 的 9.2、9.4、9.5、10.4 与 7.5；
+- 不宣称"功能已验收""能减少工作量"或任何质量/绩效结论；
+- 不归档本变更。
