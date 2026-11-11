@@ -16,6 +16,11 @@ the same segment.  A completed round shows its frozen time and completion
 record, offers "continue correction", and reports its quality on a separate
 row so completion is never presented as a quality approval.
 
+The panel is a read-only tool window: it never takes keyboard focus and never
+activates itself, so opening it cannot change the canvas selection or the
+shortcut target.  It also shows the dataset scope and offers the separate
+"start review" round.
+
 Design reference: D7 -- source / round / stage, timer state and seconds,
 starting and current rectangle counts, transactions, unique objects and
 touches, the draft net result next to the saved one (the draft is explicitly
@@ -164,6 +169,7 @@ class CorrectionMetricsPanel(QWidget):
     summary_requested = pyqtSignal()
     resume_requested = pyqtSignal()
     idle_decision_requested = pyqtSignal(bool)
+    review_requested = pyqtSignal()
 
     def __init__(self, controller=None, parent=None, *, language=None):
         super().__init__(parent)
@@ -177,7 +183,20 @@ class CorrectionMetricsPanel(QWidget):
         self._fields = {}
         self._row_labels = {}
         self._idle_handled = False
+        # 7.5: a read-only side panel must never take focus or activate.
+        # ``Qt.Tool`` is only applied when the panel is a top-level window: on a
+        # child widget it would turn the panel into a floating window, drop it
+        # out of the host layout and deactivate the canvas window on show().
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+        if parent is None:
+            try:
+                self.setWindowFlags(self.windowFlags() | Qt.WindowType.Tool)
+            except Exception:  # noqa: BLE001 - flags are best effort
+                pass
         self._build()
+        for child in self.findChildren(QWidget):
+            child.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setObjectName("CorrectionMetricsPanel")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         if controller is not None:
@@ -212,6 +231,11 @@ class CorrectionMetricsPanel(QWidget):
         self.banner.setObjectName("metrics_pending_banner")
         self.banner.setWordWrap(True)
         root.addWidget(self.banner)
+
+        self.phase_tag = _ElidedLabel()
+        self.phase_tag.setObjectName("metrics_phase_tag")
+        self.phase_tag.hide()
+        root.addWidget(self.phase_tag)
 
         self.body = QWidget()
         self.body.setObjectName("metrics_body")
@@ -250,11 +274,12 @@ class CorrectionMetricsPanel(QWidget):
         body.addWidget(self.idle_bar)
 
         identity, identity_grid = self._section("current_image")
-        self._add_row(identity_grid, "origin", "origin", 0)
-        self._add_row(identity_grid, "round", "round", 1)
-        self._add_row(identity_grid, "phase", "phase", 2)
-        self._add_row(identity_grid, "baseline_count", "baseline_count", 3)
-        self._add_row(identity_grid, "current_count", "current", 4)
+        self._add_row(identity_grid, "dataset", "dataset", 0)
+        self._add_row(identity_grid, "origin", "origin", 1)
+        self._add_row(identity_grid, "round", "round", 2)
+        self._add_row(identity_grid, "phase", "phase", 3)
+        self._add_row(identity_grid, "baseline_count", "baseline_count", 4)
+        self._add_row(identity_grid, "current_count", "current", 5)
 
         timing, timing_grid = self._section("timing")
         self._add_row(timing_grid, "timer_state", "processing", 0)
@@ -309,6 +334,9 @@ class CorrectionMetricsPanel(QWidget):
         self.resume_button.setObjectName("metrics_resume_button")
         self.resume_button.clicked.connect(self._on_resume_clicked)
         self.resume_button.hide()
+        self.review_button = _Button()
+        self.review_button.setObjectName("metrics_review_button")
+        self.review_button.clicked.connect(self._on_review_clicked)
         self.summary_button = _Button()
         self.summary_button.setObjectName("metrics_summary_button")
         self.summary_button.clicked.connect(self._on_summary_clicked)
@@ -316,6 +344,7 @@ class CorrectionMetricsPanel(QWidget):
             self.pause_button,
             self.finish_button,
             self.resume_button,
+            self.review_button,
             self.summary_button,
         ):
             button.setSizePolicy(
@@ -451,6 +480,9 @@ class CorrectionMetricsPanel(QWidget):
     def _on_resume_clicked(self):
         self._emit_or_call(self.resume_requested, "resume_round")
 
+    def _on_review_clicked(self):
+        self._emit_or_call(self.review_requested, "start_review")
+
     def _on_summary_clicked(self):
         self.summary_requested.emit()
 
@@ -576,6 +608,10 @@ class CorrectionMetricsPanel(QWidget):
             self.banner.show()
 
         row = self._row or {}
+        review = row.get("phase") == "review"
+        self.phase_tag.setVisible(review)
+        if review:
+            self.phase_tag.setText(tr("review_tag", language=language))
         self._row_labels["time"].setText(
             tr("frozen_time" if row.get("completed") else "time", language=language)
         )
@@ -589,7 +625,13 @@ class CorrectionMetricsPanel(QWidget):
         self._render_actions(language)
         self._apply_collapsed()
 
+    def _dataset(self):
+        controller = self._controller
+        value = getattr(controller, "scope_label", None) if controller else None
+        return N_A if not value else str(value)
+
     def _render_identity(self, row, language):
+        self._set("dataset", self._dataset())
         origin = row.get("origin")
         key = ORIGIN_KEYS.get(origin)
         if key is not None:
@@ -619,8 +661,29 @@ class CorrectionMetricsPanel(QWidget):
         self._set("touches", format_count(row.get("touches")))
 
     def _working_seconds(self):
-        """Adjusted application time: excludes idle the user explicitly removed."""
+        """Application time to show: frozen when completed, adjusted for the live row.
+
+        ``state()["seconds"]`` is the live raw working counter and is the
+        freshest value for a running round, but it does not shrink when idle
+        time is excluded.  ``row["time"]`` carries ``adjusted_working`` /
+        ``excluded_idle``; when an exclusion exists (or the round is complete)
+        that persisted value is the truthful one.
+        """
         totals = (self._row or {}).get("time") or {}
+        completed = bool((self._row or {}).get("completed"))
+        excluded = totals.get("excluded_idle") or 0
+        if completed or excluded:
+            for key in ("adjusted_working", "working"):
+                value = totals.get(key)
+                if value is not None:
+                    return float(value)
+        state = self._state or {}
+        if "seconds" in state:
+            live = state.get("seconds")
+            # An explicit None means "not measured": show N/A, never 0 s.
+            return None if live is None else float(live)
+        if self._state is not None:
+            return None
         for key in ("adjusted_working", "working"):
             value = totals.get(key)
             if value is not None:
@@ -781,9 +844,24 @@ class CorrectionMetricsPanel(QWidget):
             reason = tr("already_completed", language=language)
         elif unsaved:
             reason = tr("save_before_complete", language=language)
-        self.finish_button.setText(tr("complete", language=language))
+        self.finish_button.setText(
+            tr("finish_review" if row and row.get("phase") == "review" else "complete",
+               language=language)
+        )
         self.finish_button.setEnabled(can_finish and bool(row) and not finished and not unsaved)
         self.finish_button.setToolTip(reason or tr("complete", language=language))
+
+        can_review = callable(getattr(controller, "start_review", None))
+        reviewing = bool(row) and row.get("phase") == "review"
+        self.review_button.setText(tr("review", language=language))
+        self.review_button.setEnabled(ready and can_review and not reviewing)
+        if not ready:
+            review_hint = pending
+        elif reviewing:
+            review_hint = tr("already_in_review", language=language)
+        else:
+            review_hint = tr("review", language=language)
+        self.review_button.setToolTip(review_hint)
 
         can_resume = callable(getattr(controller, "resume_round", None))
         self.resume_button.setText(tr("continue", language=language))

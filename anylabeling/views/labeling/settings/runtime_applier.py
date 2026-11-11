@@ -217,6 +217,25 @@ class SettingsRuntimeApplier:
             )
         )
 
+    def apply_correction_metrics(self, enabled: bool) -> None:
+        """Allow the statistics session, or stop it and drop the reference.
+
+        Enabling only makes the workflow entry usable; nothing is recorded
+        until the operator starts a session, so a settings toggle can never
+        create a database or a timer behind their back.
+        """
+        host = self._widget
+        controller = getattr(host, "correction_metrics", None)
+        if enabled:
+            return
+        if controller is None:
+            return
+        try:
+            controller.stop()
+        except Exception as error:  # noqa: BLE001 - settings must not fail
+            logger.warning("Could not stop correction statistics: %s", error)
+        host.correction_metrics = None
+
     def apply_change(self, key: str, value: Any) -> None:
         if key == "digit_shortcuts":
             self._widget.drawing_digit_shortcuts = copy.deepcopy(value or {})
@@ -253,6 +272,9 @@ class SettingsRuntimeApplier:
             return
         if key == "font_family":
             apply_application_font(value)
+            return
+        if key == "correction_metrics_enabled":
+            self.apply_correction_metrics(bool(value))
             return
         if key in {
             "canvas.label_font_size",

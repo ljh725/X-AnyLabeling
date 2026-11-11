@@ -346,7 +346,13 @@ def test_excluded_idle_lowers_the_displayed_work_time(build_panel):
         time={"working": 130.0, "pending_idle": 0.0, "excluded_idle": 0.0,
               "adjusted_working": 130.0}
     )
-    widget = build_panel(FakeController(row=kept, saved=make_row()))
+    widget = build_panel(
+        FakeController(
+            row=kept,
+            saved=make_row(),
+            state={"state": "working", "seconds": 130.0, "idle_waiting": False},
+        )
+    )
     assert widget.field_text("time") == i18n.tr("seconds", seconds=130)
 
 

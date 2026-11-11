@@ -379,6 +379,7 @@ SETTINGS_GENERAL_KEYS = (
     "model_hub",
     "logger_level",
     "qt_image_allocation_limit",
+    "correction_metrics_enabled",
 )
 
 SETTINGS_SHAPE_KEYS = (
@@ -642,6 +643,23 @@ def _non_shortcut_fields() -> list[SettingField]:
             "General",
             "Behavior",
             "Basic",
+        ),
+        SettingField(
+            "correction_metrics_enabled",
+            QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Enable Correction Cost Statistics",
+            ),
+            "bool",
+            "General",
+            "Behavior",
+            "Basic",
+            description=QT_TRANSLATE_NOOP(
+                SETTINGS_TRANSLATION_CONTEXT,
+                "Record correction cost only after a statistics session is started "
+                "from the workflow menu. Off by default: when off, no database, "
+                "timer or event is produced.",
+            ),
         ),
         SettingField(
             "auto_highlight_shape",

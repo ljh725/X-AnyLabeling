@@ -112,6 +112,19 @@ class CorrectionMetricsController:
         )
 
     @property
+    def scope_roots(self):
+        """The image/label roots the current scope covers, when enabled."""
+        return self._scope
+
+    @property
+    def scope_label(self):
+        """Short, human readable name of the active dataset scope."""
+        if not self._scope:
+            return None
+        image_root = os.path.normpath(self._scope[0])
+        return os.path.basename(image_root) or image_root
+
+    @property
     def degraded_reason(self):
         if not self._degraded:
             return None
@@ -786,6 +799,9 @@ class CorrectionMetricsController:
             idle = getattr(panel, "idle_decision_requested", None)
             if idle is not None:
                 idle.connect(self.confirm_idle)
+            review = getattr(panel, "review_requested", None)
+            if review is not None:
+                review.connect(self.start_review)
             return panel
         except Exception as error:  # noqa: BLE001
             self.degrade("panel", error)

@@ -178,6 +178,24 @@ MESSAGES = {
         "CorrectionCost", "Unidentified geometry edit"
     ),
     "issue_prediction_gap": QT_TRANSLATE_NOOP("CorrectionCost", "Prediction record gap"),
+    "scope_label": QT_TRANSLATE_NOOP("CorrectionCost", "Scope"),
+    "scope_current": QT_TRANSLATE_NOOP("CorrectionCost", "Current completed"),
+    "scope_history": QT_TRANSLATE_NOOP("CorrectionCost", "History"),
+    "scope_all": QT_TRANSLATE_NOOP("CorrectionCost", "All rounds"),
+    "version_all": QT_TRANSLATE_NOOP("CorrectionCost", "All model versions"),
+    "finish_eligible": QT_TRANSLATE_NOOP("CorrectionCost", "Finish eligible rounds…"),
+    "complete_result": QT_TRANSLATE_NOOP("CorrectionCost", "Completed {completed} round(s) · skipped {skipped}"),
+    "complete_skipped": QT_TRANSLATE_NOOP("CorrectionCost", "Skipped reasons: {reasons}"),
+    "complete_nothing": QT_TRANSLATE_NOOP("CorrectionCost", "Nothing to complete."),
+    "complete_unavailable": QT_TRANSLATE_NOOP("CorrectionCost", "Completion is unavailable."),
+    "complete_failed": QT_TRANSLATE_NOOP("CorrectionCost", "Completion failed: {error}"),
+    "class_note": QT_TRANSLATE_NOOP("CorrectionCost", "Denominator is the sample size of this direction; N/A means no applicable sample."),
+    "group_range": QT_TRANSLATE_NOOP("CorrectionCost", "Final boxes range"),
+    "model_version_note": QT_TRANSLATE_NOOP("CorrectionCost", "Repeated predictions of the same image are not an independent comparison."),
+    "filter_summary": QT_TRANSLATE_NOOP("CorrectionCost", "{scope} · {version} · {shown}/{total} rounds"),
+    "reason_unsaved_draft": QT_TRANSLATE_NOOP("CorrectionCost", "Unsaved draft"),
+    "reason_not_ready": QT_TRANSLATE_NOOP("CorrectionCost", "Not ready"),
+    "reason_unavailable": QT_TRANSLATE_NOOP("CorrectionCost", "Round unavailable"),
     # Correction cost report dialog (merged from report_dialog.py).
     "rounds_phases": QT_TRANSLATE_NOOP(
         "CorrectionCost",
@@ -268,6 +286,13 @@ MESSAGES = {
     "completion_record": QT_TRANSLATE_NOOP("CorrectionCost", "Completion record"),
     "frozen_time": QT_TRANSLATE_NOOP(
         "CorrectionCost", "Frozen time at completion"
+    ),
+    # Dataset scope and the separate review phase (7.1 / 7.2 / 5.5).
+    "dataset": QT_TRANSLATE_NOOP("CorrectionCost", "Dataset"),
+    "review_tag": QT_TRANSLATE_NOOP("CorrectionCost", "Review round"),
+    "finish_review": QT_TRANSLATE_NOOP("CorrectionCost", "Finish review"),
+    "already_in_review": QT_TRANSLATE_NOOP(
+        "CorrectionCost", "This round is a review round."
     ),
 }
 
@@ -650,6 +675,138 @@ TRANSLATIONS = {
         "zh_CN": "完成时冻结时间",
         "ja_JP": "完了時の固定時間",
         "ko_KR": "완료 시 고정 시간",
+    },
+    "dataset": {
+        "en_US": "Dataset",
+        "zh_CN": "数据集",
+        "ja_JP": "データセット",
+        "ko_KR": "데이터셋",
+    },
+    "review_tag": {
+        "en_US": "Review round",
+        "zh_CN": "复核轮次",
+        "ja_JP": "レビューラウンド",
+        "ko_KR": "검토 라운드",
+    },
+    "finish_review": {
+        "en_US": "Finish review",
+        "zh_CN": "完成复核",
+        "ja_JP": "レビュー完了",
+        "ko_KR": "검토 완료",
+    },
+    "already_in_review": {
+        "en_US": "This round is a review round.",
+        "zh_CN": "本轮已是复核轮次。",
+        "ja_JP": "このラウンドはレビューです。",
+        "ko_KR": "이 라운드는 검토 라운드입니다.",
+    },
+    "scope_label": {
+        "en_US": "Scope",
+        "zh_CN": "范围",
+        "ja_JP": "範囲",
+        "ko_KR": "범위",
+    },
+    "scope_current": {
+        "en_US": "Current completed",
+        "zh_CN": "当前有效完成",
+        "ja_JP": "現在の完了分",
+        "ko_KR": "현재 완료",
+    },
+    "scope_history": {
+        "en_US": "History",
+        "zh_CN": "全部历史",
+        "ja_JP": "履歴",
+        "ko_KR": "이력",
+    },
+    "scope_all": {
+        "en_US": "All rounds",
+        "zh_CN": "全部",
+        "ja_JP": "すべて",
+        "ko_KR": "전체",
+    },
+    "version_all": {
+        "en_US": "All model versions",
+        "zh_CN": "全部模型版本",
+        "ja_JP": "すべてのモデルバージョン",
+        "ko_KR": "모든 모델 버전",
+    },
+    "finish_eligible": {
+        "en_US": "Finish eligible rounds…",
+        "zh_CN": "完成可完成项…",
+        "ja_JP": "完了可能なラウンドを完了…",
+        "ko_KR": "완료 가능한 라운드 완료…",
+    },
+    "complete_result": {
+        "en_US": "Completed {completed} round(s) · skipped {skipped}",
+        "zh_CN": "已完成 {completed} 轮 · 跳过 {skipped}",
+        "ja_JP": "完了 {completed} ラウンド · スキップ {skipped}",
+        "ko_KR": "완료 {completed} 라운드 · 건너뛀 {skipped}",
+    },
+    "complete_skipped": {
+        "en_US": "Skipped reasons: {reasons}",
+        "zh_CN": "跳过原因：{reasons}",
+        "ja_JP": "スキップ理由：{reasons}",
+        "ko_KR": "건너륜 이유: {reasons}",
+    },
+    "complete_nothing": {
+        "en_US": "Nothing to complete.",
+        "zh_CN": "没有可完成项。",
+        "ja_JP": "完了できる項目はありません。",
+        "ko_KR": "완료할 항목이 없습니다.",
+    },
+    "complete_unavailable": {
+        "en_US": "Completion is unavailable.",
+        "zh_CN": "批量完成不可用。",
+        "ja_JP": "まとめて完了できません。",
+        "ko_KR": "일괄 완료를 사용할 수 없습니다.",
+    },
+    "complete_failed": {
+        "en_US": "Completion failed: {error}",
+        "zh_CN": "完成失败：{error}",
+        "ja_JP": "完了に失敗しました：{error}",
+        "ko_KR": "완료 실패: {error}",
+    },
+    "class_note": {
+        "en_US": "Denominator is the sample size of this direction; N/A means no applicable sample.",
+        "zh_CN": "分母为该方向的适用样本量；N/A 表示无适用样本。",
+        "ja_JP": "分母はこの方向のサンプル数です。N/A は適用サンプルなしを意味します。",
+        "ko_KR": "분모는 이 방향의 적용 표본 수입니다. N/A는 적용 표본이 없음을 의미합니다.",
+    },
+    "group_range": {
+        "en_US": "Final boxes range",
+        "zh_CN": "最终框数范围",
+        "ja_JP": "最終ボックスの範囲",
+        "ko_KR": "최종 박스 범위",
+    },
+    "model_version_note": {
+        "en_US": "Repeated predictions of the same image are not an independent comparison.",
+        "zh_CN": "同一图片的重复预测不是独立对照。",
+        "ja_JP": "同じ画像の繰り返し予測は独立した比較ではありません。",
+        "ko_KR": "같은 이미지의 반복 예측은 독립적인 비교가 아닙니다.",
+    },
+    "filter_summary": {
+        "en_US": "{scope} · {version} · {shown}/{total} rounds",
+        "zh_CN": "{scope} · {version} · {shown}/{total} 轮",
+        "ja_JP": "{scope} · {version} · {shown}/{total} ラウンド",
+        "ko_KR": "{scope} · {version} · {shown}/{total} 라운드",
+    },
+    "reason_unsaved_draft": {
+        "en_US": "Unsaved draft",
+        "zh_CN": "未保存草稿",
+        "ja_JP": "未保存の下書き",
+        "ko_KR": "저장되지 않은 초안",
+    },
+    "reason_not_ready": {
+        "en_US": "Not ready",
+        "zh_CN": "未就绪",
+        "ja_JP": "準備不足",
+        "ko_KR": "준비 되지 않음",
+    },
+    "reason_unavailable": {
+        "en_US": "Round unavailable",
+        "zh_CN": "轮次不可用",
+        "ja_JP": "ラウンドを利用できません",
+        "ko_KR": "라운드 사용 불가",
     },
 }
 

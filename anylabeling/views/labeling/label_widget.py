@@ -4384,12 +4384,37 @@ class LabelingWidget(LabelDialog):
                 metrics_pending_message(self._config.get("language")), 5000
             )
             return
+        if not self._config.get("correction_metrics_enabled", False):
+            # Off by default: the entry explains where to enable it and
+            # creates no controller, database, timer or event.
+            language = self._config.get("language")
+            self.status(
+                {
+                    "zh_CN": "统计未启用，可在设置中开启。",
+                    "ja_JP": "統計は無効です。設定で有効にできます。",
+                    "ko_KR": "통계가 비활성화되어 있습니다. 설정에서 활성화할 수 있습니다.",
+                }.get(
+                    language,
+                    "Statistics are disabled. Enable them in the settings.",
+                ),
+                5000,
+            )
+            return
         if self.correction_metrics is not None:
             self.correction_metrics.show_panel()
             return
         from .correction_metrics.controller import start_metrics
 
-        start_metrics(self)
+        controller = start_metrics(self)
+        scope = getattr(controller, "_scope", None) if controller else None
+        if scope:
+            # Make the started range visible instead of silent.
+            self.status(
+                self.tr("Statistics scope — images: {0}; labels: {1}").format(
+                    scope[0], scope[1]
+                ),
+                5000,
+            )
 
     def open_dense_review(self):
         if self.filename is None or self.image.isNull():

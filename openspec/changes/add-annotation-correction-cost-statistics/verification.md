@@ -79,6 +79,18 @@
 质量需来源且随内容变化失效、取消导航不改轮次、批量完成 skipped 原因、review 阶段新轮次、
 空闲确认不自动扣时、模态对话框计时。详见 [implementation-batch2d-20261111.md](implementation-batch2d-20261111.md)。
 
+## 2.6 第 3 批 7.x（界面入口/面板/汇总）验证
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| 统计测试全量 | `pytest tests/test_correction_metrics -q -p no:cacheprovider` | **253 passed**（0 failed），6.6 s |
+
+新增用例：`test_settings_gate.py` 9（默认关闭零负担、启用/停用）、
+`test_panel_review.py` 11（字段齐备、复核入口、焦点不被抢、窄窗口）、
+`test_report_dialog.py` +8（范围/版本筛选、排除计数、批量完成按钮、跳过原因、
+CSV 快照一致、无 accuracy 类列）。详见
+[implementation-batch3-7x-20261111.md](implementation-batch3-7x-20261111.md)。
+
 ## 3. 需求到证据
 
 四份 spec 共 33 Requirement / 69 Scenario，逐条映射见 [scenario-coverage.md](scenario-coverage.md)。第 1 批后：

@@ -103,7 +103,8 @@ class FakeController:
 
     language = "en_US"
 
-    def __init__(self, rows=(), *, fail=False, gate=None, cancel_after=None):
+    def __init__(self, rows=(), *, fail=False, gate=None, cancel_after=None,
+                 complete_report=None):
         self._rows = list(rows)
         self.export_kinds = []
         self.export_rows = None
@@ -111,17 +112,32 @@ class FakeController:
         self.gate = gate
         self.cancel_after = cancel_after
         self.entered = threading.Event()
+        self.rows_calls = 0
+        self.complete_calls = []
+        self.complete_report = complete_report or {
+            "completed": [],
+            "skipped": [],
+        }
 
     def add_row(self, row):
         self._rows.append(row)
 
     def rows(self, limit=None, offset=0):
+        self.rows_calls += 1
         if limit is None:
             return list(self._rows)
         return list(self._rows[offset:offset + limit])
 
     def count(self):
         return len(self._rows)
+
+    def complete_scope(self, limit=None):
+        self.complete_calls.append(limit)
+        return {
+            "completed": list(self.complete_report.get("completed") or ()),
+            "skipped": [dict(item) for item
+                        in self.complete_report.get("skipped") or ()],
+        }
 
     def export(self, kind, path, cancelled=None, progress=None, rows=None):
         self.export_kinds.append(kind)
@@ -692,5 +708,247 @@ def test_narrow_window_keeps_paging_and_export_reachable():
             dialog.tabs.setCurrentIndex(index)
             app.processEvents()
             assert dialog.tabs.widget(index).isVisible()
+    finally:
+        dialog.close()
+
+
+# ---------------------------------------------------------------------------
+# 7.3 / 7.4 / 5.3 -- scope, model version, completion entry point
+# ---------------------------------------------------------------------------
+def test_scope_switch_filters_only_the_frozen_snapshot():
+    rows = [
+        make_row(0),                                # current + completed
+        make_row(1, current=False),                 # historical
+        make_row(2, completed=False),               # current, unfinished
+        make_row(3, current=False, completed=False),
+    ]
+    controller = FakeController(rows)
+    dialog = ReportDialog(controller)
+    try:
+        assert dialog.total_rows == 4  # default shows every round
+        reads = controller.rows_calls
+
+        dialog.set_filters(scope="current")
+        assert dialog.total_rows == 1
+        assert [row["image_path"] for row in dialog.snapshot] == [
+            rows[0]["image_path"]
+        ]
+        assert controller.rows_calls == reads  # filtering never re-reads the DB
+
+        dialog.set_filters(scope="history")
+        assert dialog.total_rows == 2
+        assert all(row["current"] is False for row in dialog.snapshot)
+
+        dialog.set_filters(scope="all")
+        assert dialog.total_rows == 4
+        assert controller.rows_calls == reads
+    finally:
+        dialog.close()
+
+
+def test_version_dropdown_lists_versions_and_filters_rows():
+    rows = [
+        make_row(0, model_version="v1"),
+        make_row(1, model_version="v2"),
+        make_row(2, model_version="v1"),
+        make_row(3, model_version=None),
+    ]
+    controller = FakeController(rows)
+    dialog = ReportDialog(controller)
+    try:
+        versions = [
+            dialog.version_combo.itemData(index)
+            for index in range(dialog.version_combo.count())
+        ]
+        assert versions[0] == ""
+        assert set(versions[1:]) == {"v1", "v2"}
+
+        dialog.set_filters(scope="all", version="v1")
+        assert dialog.total_rows == 2
+        assert all(row["model_version"] == "v1" for row in dialog.snapshot)
+
+        dialog.set_filters(version="v2")
+        assert [row["model_version"] for row in dialog.snapshot] == ["v2"]
+
+        dialog.set_filters(version="")
+        assert dialog.total_rows == 4
+    finally:
+        dialog.close()
+
+
+def test_exclusion_counts_follow_the_selected_scope():
+    rows = [
+        make_row(0),
+        make_row(1, completed=False),
+        make_row(2, current=False),
+    ]
+    dialog = _dialog(rows)
+    try:
+        assert dialog.exclusion_counts == {"unfinished": 1}
+        assert dialog.excluded_rows == 1
+
+        dialog.set_filters(scope="current")
+        assert dialog.exclusion_counts == {}
+        assert dialog.excluded_rows == 0
+        assert dialog.excluded_summary.text() == dialog._text("excluded_none")
+
+        dialog.set_filters(scope="history")
+        assert dialog.exclusion_counts == {}
+        assert dialog.total_rows == 1
+    finally:
+        dialog.close()
+
+
+def test_complete_button_calls_controller_reports_and_refreshes():
+    report = {
+        "completed": ["/data/img-000.png"],
+        "skipped": [
+            {"path": "/data/img-001.png", "reason": "unsaved"},
+            {"path": "/data/img-002.png", "reason": "not-ready"},
+        ],
+    }
+    controller = FakeController(
+        [make_row(0), make_row(1), make_row(2)], complete_report=report
+    )
+    dialog = ReportDialog(controller)
+    try:
+        reads = controller.rows_calls
+        result = dialog.complete_available_rounds()
+        assert controller.rows_calls == reads + 1  # refreshed after completing
+        assert controller.complete_calls == [None]
+        assert result["completed"] == report["completed"]
+        assert len(result["skipped"]) == 2
+        text = dialog.complete_result.text()
+        expected = dialog._text(
+            "complete_result", completed=1, skipped=2
+        )
+        assert expected in text
+        assert dialog.complete_result.isHidden() is False
+        assert dialog.isModal() is False  # non-modal result, not a dialog box
+        assert "unsaved" in text.casefold()
+    finally:
+        dialog.close()
+
+
+def test_skipped_reasons_are_counted_without_faking_completion():
+    report = {
+        "completed": [],
+        "skipped": [
+            {"path": "/a.png", "reason": "unsaved-draft"},
+            {"path": "/b.png", "reason": "unsaved-draft"},
+            {"path": "/c.png", "reason": "unavailable"},
+        ],
+    }
+    controller = FakeController([make_row(0)], complete_report=report)
+    dialog = ReportDialog(controller)
+    try:
+        result = dialog.complete_available_rounds()
+        assert result["completed"] == []
+        text = dialog.complete_result.text()
+        assert dialog._text(
+            "complete_result", completed=0, skipped=3
+        ) in text
+        assert dialog._text("reason_unsaved_draft") in text
+        assert "\u00d72" in text  # counted twice, not silently dropped
+        # the dialog never marks a row completed on its own
+        assert all(row.get("completed") for row in dialog.snapshot)
+    finally:
+        dialog.close()
+
+
+def test_csv_export_uses_the_filtered_frozen_snapshot(tmp_path):
+    rows = [
+        make_row(0, model_version="v1"),
+        make_row(1, model_version="v2"),
+        make_row(2, model_version="v1"),
+    ]
+    controller = FakeController(rows)
+    dialog = ReportDialog(controller)
+    target = tmp_path / "filtered.csv"
+    try:
+        dialog.set_filters(scope="all", version="v1")
+        assert dialog.total_rows == 2
+        assert dialog.export_images(target) is True
+        assert dialog.wait_for_export(20000) is True
+        parsed = list(
+            csv.reader(io.StringIO(target.read_bytes().decode("utf-8-sig")))
+        )
+        assert len(parsed) == 1 + 2
+        exported = [row[parsed[0].index("image_path")] for row in parsed[1:]]
+        assert len(exported) == dialog.total_rows
+        assert all(
+            path.casefold() in {row["image_path"].casefold()
+                                for row in dialog.snapshot}
+            for path in exported
+        )
+        assert controller.export_rows is not None
+        assert len(controller.export_rows) == 2
+    finally:
+        dialog.close()
+
+
+def test_tables_expose_no_accuracy_or_per_class_time_columns():
+    forbidden = ("accuracy", "precision", "recall", "speedup", "per_class")
+    for columns in (IMAGE_TABLE_COLUMNS, CLASS_TABLE_COLUMNS,
+                    GROUP_TABLE_COLUMNS):
+        for key, header in columns:
+            for word in forbidden:
+                assert word not in key.casefold()
+                assert word not in header.casefold()
+
+    dialog = _dialog([make_row(0)])
+    try:
+        for table_name in ("image_table", "class_table", "group_table"):
+            table = getattr(dialog, table_name)
+            headers = [
+                table.horizontalHeaderItem(index).text().casefold()
+                for index in range(table.columnCount())
+            ]
+            assert headers
+            for word in forbidden:
+                assert not any(word in header for header in headers)
+    finally:
+        dialog.close()
+
+
+def test_class_sample_and_density_range_are_disclosed():
+    change = {
+        "kind": "class_changed",
+        "initial_class": "cat",
+        "final_class": "dog",
+        "count": 3,
+        "denominator": 10,
+    }
+    rows = [
+        make_row(0, classes=(change,), final_count=0, baseline_count=0),
+        make_row(1, classes=(change,), final_count=25, baseline_count=25),
+    ]
+    dialog = _dialog(rows)
+    try:
+        assert dialog.class_note.text() == dialog._text("class_note")
+        assert dialog.model_version_note.text() == dialog._text(
+            "model_version_note"
+        )
+        assert "denominator" in [key for key, _ in CLASS_TABLE_COLUMNS]
+        assert "rounds" in [key for key, _ in CLASS_TABLE_COLUMNS]
+
+        range_index = _column(GROUP_TABLE_COLUMNS, "range")
+        zero_row = next(
+            row
+            for row in range(dialog.group_table.rowCount())
+            if _cell(dialog, dialog.group_table, row,
+                     GROUP_TABLE_COLUMNS, "density") == "0"
+        )
+        assert dialog.group_table.item(zero_row, range_index).text() == "0\u20130"
+        assert _cell(dialog, dialog.group_table, zero_row,
+                     GROUP_TABLE_COLUMNS, "seconds_per_100") == NA
+        wide_row = next(
+            row
+            for row in range(dialog.group_table.rowCount())
+            if _cell(dialog, dialog.group_table, row,
+                     GROUP_TABLE_COLUMNS, "density") == "11\u201330"
+        )
+        assert dialog.group_table.item(wide_row, range_index).text() == "25\u201325"
+        assert dialog.group_table.item(wide_row, 1).text() == "1"  # rounds sample
     finally:
         dialog.close()

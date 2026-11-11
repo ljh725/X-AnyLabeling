@@ -30,6 +30,7 @@ from PyQt6.QtCore import QEventLoop, QThread, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QComboBox,
     QDialog,
     QFileDialog,
     QGridLayout,
@@ -318,6 +319,114 @@ _FALLBACK = {
     "replacement": "Replacement prediction",
     "additive": "Appended prediction",
     "unknown-existing": "Existing annotations, unknown source",
+    "scope_label": {
+        "en_US": "Scope",
+        "zh_CN": "\u8303\u56f4",
+        "ja_JP": "\u7bc4\u56f2",
+        "ko_KR": "\ubc94\uc704",
+    },
+    "scope_current": {
+        "en_US": "Current completed",
+        "zh_CN": "\u5f53\u524d\u6709\u6548\u5b8c\u6210",
+        "ja_JP": "\u73fe\u5728\u306e\u5b8c\u4e86\u5206",
+        "ko_KR": "\ud604\uc7ac \uc644\ub8cc",
+    },
+    "scope_history": {
+        "en_US": "History",
+        "zh_CN": "\u5168\u90e8\u5386\u53f2",
+        "ja_JP": "\u5c65\u6b74",
+        "ko_KR": "\uc774\ub825",
+    },
+    "scope_all": {
+        "en_US": "All rounds",
+        "zh_CN": "\u5168\u90e8",
+        "ja_JP": "\u3059\u3079\u3066",
+        "ko_KR": "\uc804\uccb4",
+    },
+    "version_all": {
+        "en_US": "All model versions",
+        "zh_CN": "\u5168\u90e8\u6a21\u578b\u7248\u672c",
+        "ja_JP": "\u3059\u3079\u3066\u306e\u30e2\u30c7\u30eb\u30d0\u30fc\u30b8\u30e7\u30f3",
+        "ko_KR": "\ubaa8\ub4e0 \ubaa8\ub378 \ubc84\uc804",
+    },
+    "finish_eligible": {
+        "en_US": "Finish eligible rounds\u2026",
+        "zh_CN": "\u5b8c\u6210\u53ef\u5b8c\u6210\u9879\u2026",
+        "ja_JP": "\u5b8c\u4e86\u53ef\u80fd\u306a\u30e9\u30a6\u30f3\u30c9\u3092\u5b8c\u4e86\u2026",
+        "ko_KR": "\uc644\ub8cc \uac00\ub2a5\ud55c \ub77c\uc6b4\ub4dc \uc644\ub8cc\u2026",
+    },
+    "complete_result": {
+        "en_US": "Completed {completed} round(s) \u00b7 skipped {skipped}",
+        "zh_CN": "\u5df2\u5b8c\u6210 {completed} \u8f6e \u00b7 \u8df3\u8fc7 {skipped}",
+        "ja_JP": "\u5b8c\u4e86 {completed} \u30e9\u30a6\u30f3\u30c9 \u00b7 \u30b9\u30ad\u30c3\u30d7 {skipped}",
+        "ko_KR": "\uc644\ub8cc {completed} \ub77c\uc6b4\ub4dc \u00b7 \uac74\ub108\ub6c0 {skipped}",
+    },
+    "complete_skipped": {
+        "en_US": "Skipped reasons: {reasons}",
+        "zh_CN": "\u8df3\u8fc7\u539f\u56e0\uff1a{reasons}",
+        "ja_JP": "\u30b9\u30ad\u30c3\u30d7\u7406\u7531\uff1a{reasons}",
+        "ko_KR": "\uac74\ub108\ub95c \uc774\uc720: {reasons}",
+    },
+    "complete_nothing": {
+        "en_US": "Nothing to complete.",
+        "zh_CN": "\u6ca1\u6709\u53ef\u5b8c\u6210\u9879\u3002",
+        "ja_JP": "\u5b8c\u4e86\u3067\u304d\u308b\u9805\u76ee\u306f\u3042\u308a\u307e\u305b\u3093\u3002",
+        "ko_KR": "\uc644\ub8cc\ud560 \ud56d\ubaa9\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.",
+    },
+    "complete_unavailable": {
+        "en_US": "Completion is unavailable.",
+        "zh_CN": "\u6279\u91cf\u5b8c\u6210\u4e0d\u53ef\u7528\u3002",
+        "ja_JP": "\u307e\u3068\u3081\u3066\u5b8c\u4e86\u3067\u304d\u307e\u305b\u3093\u3002",
+        "ko_KR": "\uc77c\uad04 \uc644\ub8cc\ub97c \uc0ac\uc6a9\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
+    },
+    "complete_failed": {
+        "en_US": "Completion failed: {error}",
+        "zh_CN": "\u5b8c\u6210\u5931\u8d25\uff1a{error}",
+        "ja_JP": "\u5b8c\u4e86\u306b\u5931\u6557\u3057\u307e\u3057\u305f\uff1a{error}",
+        "ko_KR": "\uc644\ub8cc \uc2e4\ud328: {error}",
+    },
+    "class_note": {
+        "en_US": "Denominator is the sample size of this direction; N/A means no applicable sample.",
+        "zh_CN": "\u5206\u6bcd\u4e3a\u8be5\u65b9\u5411\u7684\u9002\u7528\u6837\u672c\u91cf\uff1bN/A \u8868\u793a\u65e0\u9002\u7528\u6837\u672c\u3002",
+        "ja_JP": "\u5206\u6bcd\u306f\u3053\u306e\u65b9\u5411\u306e\u30b5\u30f3\u30d7\u30eb\u6570\u3067\u3059\u3002N/A \u306f\u9069\u7528\u30b5\u30f3\u30d7\u30eb\u306a\u3057\u3092\u610f\u5473\u3057\u307e\u3059\u3002",
+        "ko_KR": "\ubd84\ubaa8\ub294 \uc774 \ubc29\ud5a5\uc758 \uc801\uc6a9 \ud45c\ubcf8 \uc218\uc785\ub2c8\ub2e4. N/A\ub294 \uc801\uc6a9 \ud45c\ubcf8\uc774 \uc5c6\uc74c\uc744 \uc758\ubbf8\ud569\ub2c8\ub2e4.",
+    },
+    "group_range": {
+        "en_US": "Final boxes range",
+        "zh_CN": "\u6700\u7ec8\u6846\u6570\u8303\u56f4",
+        "ja_JP": "\u6700\u7d42\u30dc\u30c3\u30af\u30b9\u306e\u7bc4\u56f2",
+        "ko_KR": "\ucd5c\uc885 \ubc15\uc2a4 \ubc94\uc704",
+    },
+    "model_version_note": {
+        "en_US": "Repeated predictions of the same image are not an independent comparison.",
+        "zh_CN": "\u540c\u4e00\u56fe\u7247\u7684\u91cd\u590d\u9884\u6d4b\u4e0d\u662f\u72ec\u7acb\u5bf9\u7167\u3002",
+        "ja_JP": "\u540c\u3058\u753b\u50cf\u306e\u7e70\u308a\u8fd4\u3057\u4e88\u6e2c\u306f\u72ec\u7acb\u3057\u305f\u6bd4\u8f03\u3067\u306f\u3042\u308a\u307e\u305b\u3093\u3002",
+        "ko_KR": "같은 이미지의 반복 예측은 독립적인 비교가 아닙니다.",
+    },
+    "filter_summary": {
+        "en_US": "{scope} \u00b7 {version} \u00b7 {shown}/{total} rounds",
+        "zh_CN": "{scope} \u00b7 {version} \u00b7 {shown}/{total} \u8f6e",
+        "ja_JP": "{scope} \u00b7 {version} \u00b7 {shown}/{total} \u30e9\u30a6\u30f3\u30c9",
+        "ko_KR": "{scope} \u00b7 {version} \u00b7 {shown}/{total} \ub77c\uc6b4\ub4dc",
+    },
+    "reason_unsaved_draft": {
+        "en_US": "Unsaved draft",
+        "zh_CN": "\u672a\u4fdd\u5b58\u8349\u7a3f",
+        "ja_JP": "\u672a\u4fdd\u5b58\u306e\u4e0b\u66f8\u304d",
+        "ko_KR": "\uc800\uc7a5\ub418\uc9c0 \uc54a\uc740 \ucd08\uc548",
+    },
+    "reason_not_ready": {
+        "en_US": "Not ready",
+        "zh_CN": "\u672a\u5c31\u7eea",
+        "ja_JP": "\u6e96\u5099\u4e0d\u8db3",
+        "ko_KR": "\uc900\ube44 \ub418\uc9c0 \uc54a\uc74c",
+    },
+    "reason_unavailable": {
+        "en_US": "Round unavailable",
+        "zh_CN": "\u8f6e\u6b21\u4e0d\u53ef\u7528",
+        "ja_JP": "\u30e9\u30a6\u30f3\u30c9\u3092\u5229\u7528\u3067\u304d\u307e\u305b\u3093",
+        "ko_KR": "\ub77c\uc6b4\ub4dc \uc0ac\uc6a9 \ubd88\uac00",
+    },
 }
 
 #: Exclusion reason / limitation codes mapped to a catalog key.  Codes that
@@ -384,6 +493,7 @@ GROUP_TABLE_COLUMNS = (
     ("density", "density"),
     ("rounds", "rounds"),
     ("images", "image_count"),
+    ("range", "group_range"),
     ("final_count", "final_count"),
     ("baseline_count", "baseline_count"),
     ("modified_original", "modified_original"),
@@ -408,6 +518,20 @@ _IMAGE_NUMERIC = frozenset(key for key, _ in IMAGE_TABLE_COLUMNS) - {
 _CLASS_NUMERIC = frozenset({"count", "denominator", "rounds"})
 _GROUP_NUMERIC = frozenset(key for key, _ in GROUP_TABLE_COLUMNS) - {
     "density", "phase", "origin", "model", "model_version", "category_version",
+    "range",
+}
+
+#: Scope presets; ``filter_rounds`` does the actual filtering.
+SCOPE_CURRENT = "current"
+SCOPE_HISTORY = "history"
+SCOPE_ALL = "all"
+
+#: ``complete_scope`` skip reasons mapped to a catalog key.
+_COMPLETE_REASON_KEYS = {
+    "unsaved": "unsaved",
+    "unsaved-draft": "reason_unsaved_draft",
+    "not-ready": "reason_not_ready",
+    "unavailable": "reason_unavailable",
 }
 
 
@@ -438,7 +562,13 @@ def _tr(key, language=None, **values):
     if entry:
         text = entry.get(language) or entry.get("en_US")
     if text is None:
-        text = _FALLBACK.get(key, key)
+        fallback = _FALLBACK.get(key)
+        if isinstance(fallback, dict):
+            # Four-language entries added after ``_STRINGS`` was frozen live in
+            # the fallback table as language mappings, not plain strings.
+            text = fallback.get(language) or fallback.get("en_US")
+            fallback = text
+        text = fallback if fallback is not None else key
     if values:
         try:
             text = text.format(**values)
@@ -512,7 +642,10 @@ class ReportDialog(QDialog):
         self.controller = controller
         self.language = str(getattr(controller, "language", None) or "en_US")
         self._rows = ()
+        self._source_rows = ()
         self._page = 0
+        self._group_ranges = {}
+        self._last_completion = None
         self._outcome = (0, 0, Counter())
         self._exclusion_counts = {}
         self._excluded_rows = 0
@@ -562,7 +695,23 @@ class ReportDialog(QDialog):
         toolbar.addWidget(self.refresh_button)
         self.snapshot_label = QLabel("", self)
         toolbar.addWidget(self.snapshot_label)
+        self.scope_label = QLabel(self._text("scope_label"), self)
+        toolbar.addWidget(self.scope_label)
+        self.scope_combo = QComboBox(self)
+        self.scope_combo.addItem(self._text("scope_all"), SCOPE_ALL)
+        self.scope_combo.addItem(self._text("scope_current"), SCOPE_CURRENT)
+        self.scope_combo.addItem(self._text("scope_history"), SCOPE_HISTORY)
+        self.scope_combo.currentIndexChanged.connect(self._on_scope_changed)
+        toolbar.addWidget(self.scope_combo)
+        self.version_label = QLabel(self._text("model_version"), self)
+        toolbar.addWidget(self.version_label)
+        self.version_combo = QComboBox(self)
+        self.version_combo.currentIndexChanged.connect(self._on_scope_changed)
+        toolbar.addWidget(self.version_combo)
         toolbar.addStretch(1)
+        self.complete_button = QPushButton(self._text("finish_eligible"), self)
+        self.complete_button.clicked.connect(self.complete_available_rounds)
+        toolbar.addWidget(self.complete_button)
         self.export_button = QToolButton(self)
         self.export_button.setText(self._text("export"))
         self.export_button.setPopupMode(
@@ -596,6 +745,8 @@ class ReportDialog(QDialog):
         self.stats_label = QLabel("", self)
         self.stats_label.setWordWrap(True)
         self.excluded_label = QLabel("", self)
+        self.filter_label = QLabel("", self)
+        self.filter_label.setWordWrap(True)
         self.excluded_summary = QLabel("", self)
         self.excluded_summary.setWordWrap(True)
         self.details_button = QToolButton(self)
@@ -613,6 +764,7 @@ class ReportDialog(QDialog):
         stats.addWidget(self.excluded_header, 2, 0)
         stats.addWidget(self.excluded_summary, 2, 1)
         stats.addWidget(self.details_button, 2, 2)
+        stats.addWidget(self.filter_label, 3, 0, 1, 3)
         layout.addLayout(stats)
 
         self.exclusion_tree = QTreeWidget(self)
@@ -622,6 +774,11 @@ class ReportDialog(QDialog):
         self.exclusion_tree.setVisible(False)
         self.exclusion_tree.setMaximumHeight(150)
         layout.addWidget(self.exclusion_tree)
+
+        self.complete_result = QLabel("", self)
+        self.complete_result.setWordWrap(True)
+        self.complete_result.setVisible(False)
+        layout.addWidget(self.complete_result)
 
         self.tabs = QTabWidget(self)
         self.tabs.addTab(self._build_images_tab(), self._text("images"))
@@ -702,6 +859,9 @@ class ReportDialog(QDialog):
         self.class_search.setClearButtonEnabled(True)
         self.class_search.textChanged.connect(self._reload_classes)
         box.addWidget(self.class_search)
+        self.class_note = QLabel(self._text("class_note"), page)
+        self.class_note.setWordWrap(True)
+        box.addWidget(self.class_note)
         self.class_table = self._new_table(CLASS_TABLE_COLUMNS)
         self.class_table.horizontalHeader().sectionClicked.connect(
             self._class_header_clicked
@@ -719,9 +879,12 @@ class ReportDialog(QDialog):
         self.group_search.setClearButtonEnabled(True)
         self.group_search.textChanged.connect(self._reload_groups)
         box.addWidget(self.group_search)
-        note = QLabel(self._text("group_note"), page)
-        note.setWordWrap(True)
-        box.addWidget(note)
+        self.group_note = QLabel(self._text("group_note"), page)
+        self.group_note.setWordWrap(True)
+        box.addWidget(self.group_note)
+        self.model_version_note = QLabel(self._text("model_version_note"), page)
+        self.model_version_note.setWordWrap(True)
+        box.addWidget(self.model_version_note)
         self.group_table = self._new_table(GROUP_TABLE_COLUMNS)
         self.group_table.horizontalHeader().sectionClicked.connect(
             self._group_header_clicked
@@ -733,25 +896,180 @@ class ReportDialog(QDialog):
     def refresh(self):
         """Freeze a new snapshot from the controller and rebuild every view."""
         rows = self.controller.rows() if self.controller is not None else ()
-        self._rows = tuple(rows or ())
+        self._source_rows = tuple(rows or ())
         try:
             self._reported_total = int(self.controller.count())
         except Exception:  # noqa: BLE001 - count is informative only
             self._reported_total = None
-        self._page = 0
         self.snapshot_label.setText(
             self._text(
                 "snapshot",
                 stamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             )
         )
+        self._refresh_versions()
+        self._apply_filters()
+        if not self._rows:
+            self._set_status(self._text("no_data"))
+        return self._rows
+
+    # -------------------------------------------------------------- filters
+    def _refresh_versions(self):
+        """Refill the model-version choice from the frozen snapshot."""
+        selected = self.version_combo.currentData() or ""
+        values = sorted(
+            {
+                str(row.get("model_version"))
+                for row in self._source_rows
+                if row.get("model_version")
+            }
+        )
+        blocked = self.version_combo.blockSignals(True)
+        try:
+            self.version_combo.clear()
+            self.version_combo.addItem(self._text("version_all"), "")
+            for value in values:
+                self.version_combo.addItem(value, value)
+            index = self.version_combo.findData(selected)
+            self.version_combo.setCurrentIndex(max(index, 0))
+        finally:
+            self.version_combo.blockSignals(blocked)
+
+    def _on_scope_changed(self, *_args):
+        self._apply_filters()
+
+    def set_filters(self, scope=None, version=None):
+        """Change the frozen-snapshot filters; never re-reads the database."""
+        widgets = (self.scope_combo, self.version_combo)
+        blocked = [(widget, widget.blockSignals(True)) for widget in widgets]
+        try:
+            if scope is not None:
+                index = self.scope_combo.findData(scope)
+                if index >= 0:
+                    self.scope_combo.setCurrentIndex(index)
+            if version is not None:
+                index = self.version_combo.findData(str(version))
+                if index >= 0:
+                    self.version_combo.setCurrentIndex(index)
+        finally:
+            for widget, state in blocked:
+                widget.blockSignals(state)
+        self._apply_filters()
+        return self._rows
+
+    @property
+    def scope(self):
+        return self.scope_combo.currentData() or SCOPE_ALL
+
+    @property
+    def version(self):
+        return self.version_combo.currentData() or ""
+
+    def filtered_rows(self):
+        """Rows of the frozen snapshot selected by scope + model version."""
+        rows = self._source_rows
+        version = self.version
+        if self.scope == SCOPE_CURRENT:
+            rows = reporting.filter_rounds(
+                rows, "", version, current_only=True
+            )
+            rows = tuple(row for row in rows if row.get("completed"))
+        elif self.scope == SCOPE_HISTORY:
+            rows = tuple(row for row in rows if not row.get("current"))
+            rows = reporting.filter_rounds(rows, "", version)
+        else:
+            rows = reporting.filter_rounds(rows, "", version)
+        return tuple(rows)
+
+    def _apply_filters(self):
+        self._rows = self.filtered_rows()
+        self._page = 0
         self._refresh_stats()
         self._render_page()
         self._reload_classes()
         self._reload_groups()
-        if not self._rows:
-            self._set_status(self._text("no_data"))
-        return self._rows
+
+    def _filter_summary(self):
+        scope_text = {
+            SCOPE_CURRENT: self._text("scope_current"),
+            SCOPE_HISTORY: self._text("scope_history"),
+            SCOPE_ALL: self._text("scope_all"),
+        }.get(self.scope, self.scope)
+        version_text = self.version or self._text("version_all")
+        return self._text(
+            "filter_summary",
+            scope=scope_text,
+            version=version_text,
+            shown=len(self._rows),
+            total=len(self._source_rows),
+        )
+
+    # ----------------------------------------------------------- completion
+    def _complete_reason_text(self, code):
+        key = _COMPLETE_REASON_KEYS.get(str(code))
+        if key is not None:
+            return self._text(key)
+        return self._reason_text(code)
+
+    def _completion_text(self, completed, skipped):
+        counts = Counter(
+            str(item.get("reason") or "unavailable") for item in skipped
+        )
+        text = self._text(
+            "complete_result",
+            completed=len(completed),
+            skipped=len(skipped),
+        )
+        if counts:
+            reasons = " \u00b7 ".join(
+                "%s \u00d7%d" % (self._complete_reason_text(reason), count)
+                for reason, count in sorted(
+                    counts.items(), key=lambda item: (-item[1], item[0])
+                )
+            )
+            text = "%s\n%s" % (
+                text,
+                self._text("complete_skipped", reasons=reasons),
+            )
+        elif not completed:
+            text = "%s\n%s" % (text, self._text("complete_nothing"))
+        return text
+
+    def complete_available_rounds(self):
+        """Complete eligible rounds through the controller, then refresh.
+
+        The controller decides what is eligible; the dialog only displays the
+        outcome as a non-modal text and never marks a skipped row completed.
+        """
+        complete = getattr(self.controller, "complete_scope", None)
+        if not callable(complete):
+            self._set_status(self._text("complete_unavailable"))
+            return {"completed": [], "skipped": []}
+        try:
+            report = complete(limit=None) or {}
+        except Exception as error:  # noqa: BLE001 - the report stays usable
+            self._set_status(self._text("complete_failed", error=str(error)))
+            return {"completed": [], "skipped": [], "error": str(error)}
+        completed = [str(path) for path in report.get("completed") or ()]
+        skipped = [
+            {
+                "path": str(item.get("path") or ""),
+                "reason": str(item.get("reason") or "unavailable"),
+            }
+            for item in report.get("skipped") or ()
+            if isinstance(item, dict)
+        ]
+        self._last_completion = {"completed": completed, "skipped": skipped}
+        text = self._completion_text(completed, skipped)
+        self.complete_result.setText(text)
+        self.complete_result.setVisible(True)
+        self._set_status(text.replace("\n", " \u00b7 "))
+        self.refresh()
+        return dict(self._last_completion)
+
+    @property
+    def last_completion(self):
+        return dict(self._last_completion) if self._last_completion else None
 
     def export_images(self, path):
         """Export the frozen snapshot's image rounds to ``path`` (async)."""
@@ -898,6 +1216,7 @@ class ReportDialog(QDialog):
         self.excluded_label.setText(
             self._text("excluded_total", count=excluded_rows)
         )
+        self.filter_label.setText(self._filter_summary())
         if counts:
             self.excluded_summary.setText(
                 " \u00b7 ".join(
@@ -1112,6 +1431,7 @@ class ReportDialog(QDialog):
             descending,
         )
         self._group_records = tuple(records)
+        self._group_ranges = self._build_group_ranges(records)
         self._render_table(
             self.group_table,
             GROUP_TABLE_COLUMNS,
@@ -1123,7 +1443,42 @@ class ReportDialog(QDialog):
             self.group_table, GROUP_TABLE_COLUMNS, sort_key, descending
         )
 
+    def _build_group_ranges(self, records):
+        """Min/max saved box count per density bucket (display detail only)."""
+        density_of = getattr(reporting, "_density", None)
+        if density_of is None:  # pragma: no cover - reporting defines it
+            return {}
+        keys = reporting.GROUP_KEYS
+        buckets = {}
+        for row in self._rows:
+            value = row.get("final_count")
+            if not isinstance(value, int):
+                continue
+            bucket_key = (
+                tuple(row.get(key) for key in keys),
+                density_of(value),
+            )
+            buckets.setdefault(bucket_key, []).append(value)
+        ranges = {}
+        for record in records:
+            bucket_key = (
+                tuple(record.get(key) for key in keys),
+                record.get("density"),
+            )
+            values = buckets.get(bucket_key) or []
+            if values:
+                ranges[bucket_key] = (min(values), max(values))
+        return ranges
+
     def _group_cell(self, record, key):
+        if key == "range":
+            values = self._group_ranges.get(
+                (
+                    tuple(record.get(item) for item in reporting.GROUP_KEYS),
+                    record.get("density"),
+                )
+            )
+            return NA if not values else "%d\u2013%d" % values
         if key == "phase":
             phase = record.get("phase")
             if phase == "review":
