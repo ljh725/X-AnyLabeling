@@ -210,7 +210,7 @@ def initialise_state(dataset, image, label, content, data, origin, provenance,
         "counts": {}, "touched": [], "touches": 0, "alias": {},
         "comparable_classes": True, "sessions": {}, "completed": False,
         "completion": None, "current": True, "active": True,
-        "undo_stack": [], "quality": "not-assessed",
+        "undo_stack": [], "quality": "not-assessed", "quality_source": None,
         "saved_alias": {}, "saved_classes": True,
     }
 
@@ -248,8 +248,9 @@ def report_row(state, draft=False):
         **{key: state[key] for key in (
             "schema_version", "dataset_id", "image_path", "label_path",
             "image_digest", "round_id", "phase", "origin", "revision",
-            "completed", "current", "quality",
+            "completed", "current", "quality", "quality_source",
         )}, **net, "session_ids": list(state["sessions"]),
+        "completion": state["completion"],
         "run_id": prov.get("run_id"), "model": prov.get("model") or prov.get("model_name"),
         "model_version": prov.get("model_version") or prov.get("weight_version"),
         "config_digest": prov.get("config_digest"), "prompt": prov.get("prompt"),
@@ -382,6 +383,12 @@ class CorrectionRound:
             return False
         s["draft"] = new
         s["completed"] = False
+        if s.get("quality", "not-assessed") != "not-assessed":
+            # A quality conclusion belongs to the revision it was made on; a
+            # real content change invalidates it instead of silently carrying
+            # an old verdict onto new content.
+            s["quality"] = "not-assessed"
+            s["quality_source"] = None
         issues = set(s["issues"]) | set(new["issues"])
         if any(k in b and b[k]["kind"] != "rectangle" for k in changed):
             issues.add("partial-scope")
@@ -551,6 +558,26 @@ class CorrectionRound:
             if not self.completed:
                 return False
             self._state["completed"] = False
+            self._persist()
+            return True
+
+    def set_quality(self, value, source=None):
+        """Record an explicit, sourced quality conclusion.
+
+        Completion and "everything left unchanged" are not quality evidence, so
+        this is only called by an explicit quality action; the source records
+        where the conclusion came from so the report can check it.
+        """
+        with self._lock:
+            s = self._state
+            value = str(value or "").strip() or "not-assessed"
+            if value != "not-assessed" and not source:
+                # Only an explicit, sourced conclusion may stand in for quality.
+                return False
+            s["quality"] = value
+            s["quality_source"] = (
+                copy.deepcopy(source) if value != "not-assessed" else None
+            )
             self._persist()
             return True
 

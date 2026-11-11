@@ -16,7 +16,8 @@ IMAGE_COLUMNS = (
     "baseline_count", "ai_count", "final_count", "unsupported_count",
     "added", "deleted", "geometry_changed", "class_changed", "modified_original",
     "unchanged", "modified_rate", "unchanged_rate", "transactions", "touches",
-    "unique_objects", "undo_count", "redo_count", "operation_counts", "time", "inference_seconds",
+    "unique_objects", "undo_count", "redo_count", "completion", "operation_counts",
+    "time", "inference_seconds",
 )
 CLASS_COLUMNS = (
     "dataset_id", "image_path", "round_id", "run_id", "revision", "model",

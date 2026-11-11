@@ -247,6 +247,28 @@ MESSAGES = {
     "reason_pending_checkpoint": QT_TRANSLATE_NOOP(
         "CorrectionCost", "Save checkpoint pending"
     ),
+    # Idle confirmation, completion and quality (tasks 6.4 / 5.5 / 5.6).
+    "idle_question": QT_TRANSLATE_NOOP(
+        "CorrectionCost", "Was this period spent reviewing?"
+    ),
+    "idle_include_button": QT_TRANSLATE_NOOP(
+        "CorrectionCost", "Count as work"
+    ),
+    "idle_exclude_button": QT_TRANSLATE_NOOP("CorrectionCost", "Exclude idle"),
+    "idle_excluded_note": QT_TRANSLATE_NOOP(
+        "CorrectionCost", "{seconds} s of idle time excluded"
+    ),
+    "browse_only": QT_TRANSLATE_NOOP(
+        "CorrectionCost", "Completed already; browsing only, not timed."
+    ),
+    "quality_note": QT_TRANSLATE_NOOP(
+        "CorrectionCost", "Finishing a round is not a quality approval."
+    ),
+    "checked_marker": QT_TRANSLATE_NOOP("CorrectionCost", "Existing review mark"),
+    "completion_record": QT_TRANSLATE_NOOP("CorrectionCost", "Completion record"),
+    "frozen_time": QT_TRANSLATE_NOOP(
+        "CorrectionCost", "Frozen time at completion"
+    ),
 }
 
 
@@ -574,6 +596,60 @@ TRANSLATIONS = {
         "zh_CN": "保存检查点待确认",
         "ja_JP": "保存チェックポイント待ち",
         "ko_KR": "저장 체크포인트 대기",
+    },
+    "idle_question": {
+        "en_US": "Was this period spent reviewing?",
+        "zh_CN": "这段时间是否在审图？",
+        "ja_JP": "この時間は確認作業でしたか？",
+        "ko_KR": "이 시간 동안 검토하셨나요?",
+    },
+    "idle_include_button": {
+        "en_US": "Count as work",
+        "zh_CN": "是，计入作业",
+        "ja_JP": "作業として計上",
+        "ko_KR": "작업으로 계산",
+    },
+    "idle_exclude_button": {
+        "en_US": "Exclude idle",
+        "zh_CN": "排除空闲",
+        "ja_JP": "待機を除外",
+        "ko_KR": "대기 제외",
+    },
+    "idle_excluded_note": {
+        "en_US": "{seconds} s of idle time excluded",
+        "zh_CN": "已排除空闲 {seconds} 秒",
+        "ja_JP": "待機時間 {seconds} 秒を除外",
+        "ko_KR": "{seconds}초 대기 시간 제외됨",
+    },
+    "browse_only": {
+        "en_US": "Completed already; browsing only, not timed.",
+        "zh_CN": "本轮已完成，仅浏览，不计时。",
+        "ja_JP": "完了済みのため閲覧のみで、計時しません。",
+        "ko_KR": "이미 완료되어 보기만 하며 시간을 재지 않습니다.",
+    },
+    "quality_note": {
+        "en_US": "Finishing a round is not a quality approval.",
+        "zh_CN": "完成本轮不等于质量通过。",
+        "ja_JP": "ラウンド完了は品質合格を意味しません。",
+        "ko_KR": "라운드 완료는 품질 승인을 의미하지 않습니다.",
+    },
+    "checked_marker": {
+        "en_US": "Existing review mark",
+        "zh_CN": "既有复核标记",
+        "ja_JP": "既存のレビュー印",
+        "ko_KR": "기존 검토 표시",
+    },
+    "completion_record": {
+        "en_US": "Completion record",
+        "zh_CN": "完成记录",
+        "ja_JP": "完了記録",
+        "ko_KR": "완료 기록",
+    },
+    "frozen_time": {
+        "en_US": "Frozen time at completion",
+        "zh_CN": "完成时冻结时间",
+        "ja_JP": "完了時の固定時間",
+        "ko_KR": "완료 시 고정 시간",
     },
 }
 

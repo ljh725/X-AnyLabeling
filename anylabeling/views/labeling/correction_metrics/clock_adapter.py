@@ -103,10 +103,26 @@ class QtClockAdapter(QObject):
         related = active is not None and (
             active == self.host.window() or self.host.window().isAncestorOf(active)
         )
+        # A modal dialog belonging to this window (label dialog, save prompt,
+        # error message) is still annotation work: Qt's static dialog helpers
+        # create a separate top-level window, so comparing activeWindow() alone
+        # would stop the clock in the middle of a correction.
+        modal = self.app.activeModalWidget()
+        modal_work = False
+        if modal is not None:
+            try:
+                owner = modal.parentWidget()
+                modal_work = (
+                    owner is None
+                    or owner is self.host
+                    or owner.window() is self.host.window()
+                )
+            except (AttributeError, RuntimeError):
+                modal_work = False
         self.work.change(
             foreground=(
                 self.app.applicationState() == Qt.ApplicationState.ApplicationActive
-                and related
+                and (related or modal_work)
             )
         )
 

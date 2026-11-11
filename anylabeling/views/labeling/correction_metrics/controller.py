@@ -291,7 +291,11 @@ class CorrectionMetricsController:
             self.degrade("enter_image", error)
             self._round = None
             return False
-        self._clock.attach(self._round.round_id, ready=True)
+        self._clock.attach(
+            self._round.round_id,
+            ready=True,
+            completed=self._round.completed,
+        )
         self._last_second = None
         self.tick()
         return True
@@ -556,9 +560,107 @@ class CorrectionMetricsController:
         if not self.enabled:
             return False
         try:
-            return self._round.resume()
+            resumed = self._round.resume()
+            if resumed:
+                # "Continue correcting" returns to the same round and resumes
+                # timing; earlier browsing time is not back-filled.
+                self._clock.attach(
+                    self._round.round_id, ready=True, completed=False
+                )
+                self._last_second = None
+            return resumed
         except Exception as error:  # noqa: BLE001
             self.degrade("resume_round", error)
+            return False
+
+    def navigation_cancelled(self):
+        """A blocked image switch keeps the current round and its timing.
+
+        The hook exists so a cancelled switch is observable instead of looking
+        like "nothing happened"; it must never move the current round.
+        """
+        if self._round is None:
+            return False
+        # Force a checkpoint so the cancelled attempt is visible in the record.
+        self._save_time()
+        return self.enabled
+
+    def complete_scope(self, limit=None):
+        """Complete every round that can be completed; report why others fail.
+
+        Batch completion is explicit: an image without a successful saved
+        revision, or with an unsaved draft, is listed as skipped with a reason
+        instead of being silently completed.
+        """
+        report = {"completed": [], "skipped": []}
+        if self._store is None:
+            return report
+        try:
+            self._store.flush()
+            for row in self._store.iter_rows(limit):
+                path = row["image_path"]
+                if row.get("completed"):
+                    report["completed"].append(path)
+                    continue
+                round_obj = self._store.open_existing(row["round_id"])
+                if round_obj is None:
+                    report["skipped"].append(
+                        {"path": path, "reason": "unavailable"}
+                    )
+                    continue
+                if round_obj.finish():
+                    report["completed"].append(path)
+                    continue
+                if not row.get("revision"):
+                    reason = "unsaved"
+                elif round_obj.dirty:
+                    reason = "unsaved-draft"
+                elif row.get("is_draft"):
+                    reason = "unsaved-draft"
+                else:
+                    reason = "not-ready"
+                report["skipped"].append({"path": path, "reason": reason})
+            self._store.flush()
+            return report
+        except Exception as error:  # noqa: BLE001
+            self.degrade("complete_scope", error)
+            return report
+
+    def start_review(self):
+        """Open a separate review-phase round for the image now shown."""
+        if self._closed:
+            return False
+        path = self._image_path()
+        if not path:
+            return False
+        if self._store is None and not self._start_scope_for(path):
+            return False
+        try:
+            self._round = self._store.open_round(
+                path,
+                self._label_path(path),
+                content_digest(path),
+                self._shapes(),
+                origin="unknown-existing",
+                saved=True,
+                force_new=True,
+                phase="review",
+            )
+        except Exception as error:  # noqa: BLE001
+            self.degrade("start_review", error)
+            return False
+        self._clock.attach(self._round.round_id, ready=True, completed=False)
+        self._last_second = None
+        return True
+
+    def set_quality(self, value, source=None):
+        """Only an explicit, sourced quality conclusion may be recorded."""
+        if not self.enabled:
+            return False
+        try:
+            return self._round.set_quality(value, source)
+        except Exception as error:  # noqa: BLE001
+            self.degrade("set_quality", error)
             return False
 
     # -------------------------------------------------------------- queries
@@ -678,6 +780,12 @@ class CorrectionMetricsController:
             panel.pause_requested.connect(self.pause)
             panel.finish_requested.connect(self.finish_round)
             panel.summary_requested.connect(self.show_summary)
+            resume = getattr(panel, "resume_requested", None)
+            if resume is not None:
+                resume.connect(self.resume_round)
+            idle = getattr(panel, "idle_decision_requested", None)
+            if idle is not None:
+                idle.connect(self.confirm_idle)
             return panel
         except Exception as error:  # noqa: BLE001
             self.degrade("panel", error)

@@ -68,6 +68,17 @@
 批量逐图 applied/failed/skipped 与部分失败、复核不计框修改、redo 不计修正事务、撤销关联。
 详见 [implementation-batch2c-20261110.md](implementation-batch2c-20261110.md)。
 
+## 2.5 第 2 批 D 段（完成/质量/导航/空闲）验证
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| 统计测试全量 | `pytest tests/test_correction_metrics -q -p no:cacheprovider` | **227 passed**（0 failed），5.0 s |
+
+新增用例：`test_completion.py` 13、`test_navigation.py` 10、`test_panel_completion.py` 10、
+`test_completion_extra.py` 5。覆盖：完成只绑定保存版本、完成失效、幂等、resume 新 id、
+质量需来源且随内容变化失效、取消导航不改轮次、批量完成 skipped 原因、review 阶段新轮次、
+空闲确认不自动扣时、模态对话框计时。详见 [implementation-batch2d-20261111.md](implementation-batch2d-20261111.md)。
+
 ## 3. 需求到证据
 
 四份 spec 共 33 Requirement / 69 Scenario，逐条映射见 [scenario-coverage.md](scenario-coverage.md)。第 1 批后：

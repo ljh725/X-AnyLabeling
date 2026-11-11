@@ -9931,6 +9931,9 @@ class LabelingWidget(LabelDialog):
             self.save_file()
             return not self.dirty
         # answer == mb.Cancel
+        metrics = getattr(self, "correction_metrics", None)
+        if metrics is not None and hasattr(metrics, "navigation_cancelled"):
+            notify_metrics(self, "navigation_cancelled")
         return False
 
     def error_message(self, title, message):

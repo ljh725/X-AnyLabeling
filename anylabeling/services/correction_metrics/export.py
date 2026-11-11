@@ -46,6 +46,7 @@ DEFINITIONS = {
     "revision": "Last confirmed saved annotation revision; draft excluded.",
     "current": "Whether the round represents the current result.",
     "completed": "Explicit processing completion for the saved revision.",
+    "completion": "Identifier of the explicit completion record for the saved revision.",
     "quality": "Quality assessment status, independent of processing completion.",
     "comparable": "Whether complete comparison is supported for this round.",
     "issues": "Scope, provenance, timing or recording limitations.",
