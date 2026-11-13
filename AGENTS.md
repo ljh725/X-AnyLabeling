@@ -133,3 +133,23 @@ samples/ images/ assets/ examples/    样本/截图/资源/示例（保留现有
   + `configs/auto_labeling/<model>.yaml` + 在 `configs/models.yaml` 注册。
 - 单测大量依赖 Qt：跑测试前确认用的是 conda `x-anylabeling-cu12` 环境，否则会因缺 PyQt6 直接失败。
 - 提 PR / 交付前至少跑一遍受影响的测试目录，并说明是否跑了被 CI 排除的那两项。
+
+---
+
+## 7. 版本管理与提交（约束）
+
+- **不直接改 `versions/4.2.1`**（版本入口分支）。功能在本工作自己的分支上做；
+  仓库没有长期 develop 分支，`main` 只是目录首页，不要往 `main` 合程序代码。
+- 工作区存在未提交改动时**先停下来报告**，不要自行 `stash` / 切分支 / 建分支 /
+  重排历史；等确认后再动。
+- 按**可独立验证的最小批次**提交，一个提交只说清一件事。
+  历史里的混合快照提交（如 `chore(snapshot)`）**不要用 `git revert` 单笔撤销**，
+  会连带撤掉无关功能。
+- 提交信息沿用 `feat|fix|docs|test|chore|perf(scope): 中文说明`。
+- 每个功能的"说明"写 `docs/custom_changes/`（CUSTOM-xxx），仓库级操作登记
+  `docs/version-management/操作记录.md`。两者都要写，不要另起一套台账。
+- 分支/标签沿用现有习惯：`codex/4.2.1/<功能名>`、
+  `backup/4.2.1-YYYYMMDD-<用途>`（日期用北京时间）。
+- **推送、开 PR、合入版本入口由人执行**；代理只负责本地提交，
+  并报告提交号、验证范围、未覆盖项。
+- 人看的完整流程见 `GitHub操作说明.md`，这里不复述。
