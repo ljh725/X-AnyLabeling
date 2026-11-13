@@ -64,6 +64,9 @@ def saved_row(raw):
         row.update(dict.fromkeys(NET_COLUMNS))
         row.update(completed=False, comparable=False, classes=())
     row["working_seconds"] = work_seconds(row)
+    # Flattened for the report table only; the CSV derives its own time
+    # columns from ``time`` so both projections stay identical.
+    row["blocking_wait_seconds"] = (row.get("time") or {}).get("blocking_wait")
     return row
 
 

@@ -123,6 +123,40 @@ class MetricsStore:
         with self._fault_lock:
             return set(self._target_faults.get(key, ()))
 
+    def retry(self):
+        """Recover recording without discarding what was already verified.
+
+        A retry never invents or removes history: gaps stay visible, and only
+        the sticky ``error`` is cleared once the database accepts writes again.
+        If the writer thread died (fatal SQLite error, database recreated, a
+        read-only file made writable), a fresh writer is started over the same
+        file so later rounds are recorded again.
+        """
+        with self._state_lock:
+            if self._closed:
+                return False
+            alive = self._thread is not None and self._thread.is_alive()
+            if alive:
+                if not self.flush(timeout=1.0):
+                    return False
+                self.error = None
+                return True
+            try:
+                db = sqlite3.connect(self.path, timeout=0.25)
+                try:
+                    db.execute("SELECT id FROM rounds LIMIT 0")
+                finally:
+                    db.close()
+            except (OSError, sqlite3.Error) as exc:
+                self.error = str(exc)
+                return False
+            self._thread = threading.Thread(
+                target=self._writer, name="Correction metrics writer", daemon=True
+            )
+            self._thread.start()
+            self.error = None
+            return True
+
     def _enqueue(self, state, operations):
         key = state["round_id"]
         if self._closed or self._thread is None or not self._thread.is_alive():

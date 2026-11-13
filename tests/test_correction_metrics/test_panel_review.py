@@ -118,6 +118,8 @@ def test_panel_shows_every_required_field(controller, host):
         "phase",
         "timer_state",
         "time",
+        "model_runtime",
+        "blocking_time",
         "baseline_count",
         "current_count",
         "transactions",
@@ -419,3 +421,40 @@ def test_review_keys_exist_in_all_four_languages():
         english = i18n.tr(key, language="en_US")
         for language in ("zh_CN", "ja_JP", "ko_KR"):
             assert i18n.tr(key, language=language) != english, (language, key)
+
+
+# ---------------------------------------------------------------------------
+# Tasks 6.5 / 3.3 -- model runtime apart from work time; recovery entry
+# ---------------------------------------------------------------------------
+def test_model_runtime_and_blocking_wait_are_shown_apart_from_work_time(
+    controller,
+):
+    """6.5：面板并列显示模型运行与阻塞等待，处理时间不被相加。"""
+    panel = panel_of(controller)
+    row = dict(controller.current_row(draft=True))
+    row["inference_seconds"] = 20.0
+    row["time"] = dict(row.get("time") or {}, working=20.0, blocking_wait=7.0)
+    panel.refresh_with(row, controller.state())
+
+    assert "20" in panel.field_text("model_runtime")
+    assert "7" in panel.field_text("blocking_time")
+    assert panel.field_text("time") != panel.field_text("model_runtime")
+    for field in ("model_runtime", "blocking_time"):
+        assert field in panel._fields
+        assert panel.field_text(field) != ""
+
+
+def test_retry_button_appears_only_for_a_recording_problem(controller):
+    """3.3：记录异常时提供重试入口；正常状态不占用动作区。"""
+    panel = panel_of(controller)
+    assert panel.retry_button.isHidden() is True
+
+    panel.refresh_with(
+        controller.current_row(draft=True),
+        {**controller.state(), "degraded": "storage: disk full"},
+    )
+    assert panel.retry_button.isHidden() is False
+    assert panel.retry_button.text() != ""
+
+    panel.refresh_with(controller.current_row(draft=True), controller.state())
+    assert panel.retry_button.isHidden() is True

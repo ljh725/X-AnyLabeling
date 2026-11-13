@@ -18,13 +18,14 @@ Responsibilities, in the order the workflow uses them:
 
 from __future__ import annotations
 
-import hashlib
 import os
 from pathlib import Path
 
 from anylabeling.services.correction_metrics import export, reporting
 from anylabeling.services.correction_metrics.core import (
+    IMAGE_DIGEST_LIMIT,
     SHAPE_ID,
+    image_content_digest,
     path_identity,
     safe_provenance,
 )
@@ -43,19 +44,9 @@ def default_storage_root():
     return base / "correction_metrics"
 
 
-def content_digest(path, limit=64 * 1024 * 1024):
-    """Stable content identity for one image file, independent of its path."""
-    try:
-        stat = os.stat(path)
-        if stat.st_size > limit:
-            return "size:%d:mtime:%d" % (stat.st_size, int(stat.st_mtime))
-        digest = hashlib.sha256()
-        with open(path, "rb") as stream:
-            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-                digest.update(chunk)
-        return digest.hexdigest()
-    except OSError:
-        return ""
+def content_digest(path, limit=IMAGE_DIGEST_LIMIT):
+    """Backwards-compatible alias for the service-layer image digest."""
+    return image_content_digest(path, limit)
 
 
 def shape_ids(shapes):
@@ -128,6 +119,10 @@ class CorrectionMetricsController:
 
     @property
     def degraded_reason(self):
+        if self._store is not None and getattr(self._store, "error", None):
+            # A storage fault must stay visible even when no observer call has
+            # failed yet; the panel shows it until a retry succeeds.
+            return "storage: %s" % self._store.error
         if not self._degraded:
             return None
         operation = sorted(self._degraded)[-1]
@@ -141,6 +136,25 @@ class CorrectionMetricsController:
 
     def pending_message(self):
         return metrics_pending_message(self.language)
+
+    def retry_storage(self):
+        """Retry recording after a storage fault, keeping verified history.
+
+        Only the live session's writer is reopened; earlier gaps and rounds
+        stay in place, so a recovered database cannot look as if nothing had
+        ever been lost.
+        """
+        if self._store is None:
+            return False
+        try:
+            recovered = self._store.retry()
+        except Exception as error:  # noqa: BLE001 - a retry must never crash
+            self.degrade("retry_storage", error)
+            return False
+        if recovered:
+            self._degraded.pop("storage", None)
+            self._degraded.pop("retry_storage", None)
+        return bool(recovered)
 
     def state(self):
         totals = self._clock.totals
@@ -261,6 +275,12 @@ class CorrectionMetricsController:
         """Flush timing and close the database; safe to call twice."""
         if self._closed:
             return
+        for name in ("panel", "report_dialog"):
+            widget = getattr(self, name, None)
+            if widget is not None:
+                widget.hide()
+                widget.deleteLater()
+                setattr(self, name, None)
         if self._round is not None:
             self._save_time(closed=True)
             self._round = None
@@ -593,10 +613,31 @@ class CorrectionMetricsController:
         if not self.enabled:
             return False
         try:
-            return self._round.finish()
+            finished = self._round.finish()
         except Exception as error:  # noqa: BLE001
             self.degrade("finish_round", error)
             return False
+        if finished:
+            self._freeze_clock()
+        return finished
+
+    def _freeze_clock(self):
+        """Close the current time segment when a round is explicitly complete.
+
+        Browsing a completed round must not keep adding processing time; the
+        completion record freezes the cost that was valid at that moment.
+        """
+        adapter = self._clock_adapter
+        try:
+            if adapter is not None:
+                adapter.set_completed(True)
+            else:
+                self._clock.change(completed=True)
+        except Exception as error:  # noqa: BLE001
+            self.degrade("finish_round", error)
+            return
+        self._save_time(closed=True)
+        self._last_second = None
 
     def resume_round(self):
         if not self.enabled:
@@ -783,10 +824,8 @@ class CorrectionMetricsController:
     # ------------------------------------------------------------ panel glue
     def show_panel(self):
         """Create or raise the compact panel; never block annotation work."""
-        panel = getattr(self, "panel", None)
-        if panel is None:
-            panel = self._build_panel()
-            self.panel = panel
+        existing = getattr(self, "panel", None)
+        panel = existing if existing is not None else self._build_panel()
         if panel is None:
             return False
         try:
@@ -794,8 +833,12 @@ class CorrectionMetricsController:
             panel.set_collapsed(False)
             panel.show()
             panel.raise_()
+            self.panel = panel
             return True
         except Exception as error:  # noqa: BLE001 - UI failure must not crash
+            if existing is None:
+                panel.hide()
+                panel.deleteLater()
             self.degrade("show_panel", error)
             return False
 
@@ -819,7 +862,13 @@ class CorrectionMetricsController:
         try:
             from .panel import CorrectionMetricsPanel
 
-            panel = CorrectionMetricsPanel(self, parent=self.host)
+            sidebar = getattr(self.host, "right_sidebar", None)
+            layout = sidebar.layout() if sidebar is not None else None
+            panel = CorrectionMetricsPanel(
+                self,
+                parent=sidebar if layout is not None else self.host,
+                scrollable=layout is not None,
+            )
             panel.pause_requested.connect(self.pause)
             panel.finish_requested.connect(self.finish_round)
             panel.summary_requested.connect(self.show_summary)
@@ -832,6 +881,12 @@ class CorrectionMetricsController:
             review = getattr(panel, "review_requested", None)
             if review is not None:
                 review.connect(self.start_review)
+            retry = getattr(panel, "retry_requested", None)
+            if retry is not None:
+                retry.connect(self.retry_storage)
+            if layout is not None:
+                panel.hide()
+                layout.insertWidget(0, panel)
             return panel
         except Exception as error:  # noqa: BLE001
             self.degrade("panel", error)
@@ -859,25 +914,21 @@ class CorrectionMetricsController:
 
 
 def start_metrics(host):
-    """Entry point used by the labeling menu: create and enable the session."""
+    """Show the panel before starting a statistics session for this window."""
     controller = getattr(host, "correction_metrics", None)
     if controller is None:
         controller = CorrectionMetricsController(
             host,
             language=getattr(host, "_config", {}).get("language", "en_US"),
         )
-        host.correction_metrics = controller
+    if not controller.show_panel():
+        raise RuntimeError(controller.degraded_reason or "Panel unavailable")
+    host.correction_metrics = controller
     _install_clock_adapter(host, controller)
-    image_path = getattr(host, "filename", None)
-    if image_path and not controller.enabled:
-        controller.start_scope(
-            os.path.dirname(os.fspath(image_path)),
-            getattr(host, "output_dir", None)
-            or os.path.dirname(os.fspath(image_path)),
-        )
+    if not controller.enabled:
         controller.enter_image()
     _install_heartbeat(host, controller)
-    controller.show_panel()
+    controller.refresh_panel()
     return controller
 
 

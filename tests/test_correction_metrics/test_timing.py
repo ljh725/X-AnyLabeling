@@ -603,3 +603,68 @@ def test_time_checkpoint_without_an_open_round_is_refused(tmp_path):
     assert controller.start_scope(str(tmp_path / "images"), str(tmp_path / "labels"))
 
     assert controller.time_checkpoint("round-x", "session-A", {"working": 1.0}, False) is False
+
+
+# ---------------------------------------------------------------------------
+# Task 6.6 -- one-second persistence boundary and crash-tail handling
+# ---------------------------------------------------------------------------
+def test_each_second_is_checkpointed_and_only_verified_time_survives_a_crash(
+    tmp_path,
+):
+    """6.6：每秒落盘；异常退出后只恢复已验证秒数，停机时长不计入且标记缺口。"""
+    from anylabeling.services.correction_metrics.timing import WorkClock as _Work
+    from anylabeling.views.labeling.correction_metrics.controller import (
+        CorrectionMetricsController,
+    )
+
+    clock = FakeClock()
+    image = tmp_path / "images" / "scene.jpg"
+    image.parent.mkdir(parents=True, exist_ok=True)
+    image.write_bytes(b"fake-image-bytes")
+    labels = tmp_path / "labels"
+    labels.mkdir(exist_ok=True)
+    host = types.SimpleNamespace(
+        filename=str(image),
+        output_dir=str(labels),
+        canvas=types.SimpleNamespace(shapes=[rect()]),
+    )
+    controller = CorrectionMetricsController(
+        host,
+        language="zh_CN",
+        storage_root=str(tmp_path / "metrics"),
+        clock=_Work(clock=clock),
+    )
+    assert controller.start_scope(
+        str(tmp_path / "images"), str(tmp_path / "labels")
+    )
+    assert controller.enter_image() is True
+    for _ in range(5):
+        clock.advance(1)
+        controller.tick()
+    assert controller.current_row()["time"]["working"] == 5.0
+
+    # Simulate an abnormal exit: the writer stops without ``close()`` and the
+    # process "dies" for one hour before the same image is reopened.
+    store = controller._store
+    assert store.flush() is True
+    store._queue.put(None)
+    store._thread.join(2.0)
+    clock.advance(3600)
+
+    reopened = CorrectionMetricsController(
+        host,
+        language="zh_CN",
+        storage_root=str(tmp_path / "metrics"),
+        clock=_Work(clock=clock),
+    )
+    assert reopened.start_scope(
+        str(tmp_path / "images"), str(tmp_path / "labels")
+    )
+    assert reopened.enter_image() is True
+    row = reopened.current_row()
+    assert row["time"]["working"] == 5.0
+    assert "interrupted-time" in row["issues"]
+
+    clock.advance(1)
+    reopened.tick()
+    assert reopened.current_row()["time"]["working"] == 6.0

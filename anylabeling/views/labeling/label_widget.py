@@ -1401,7 +1401,6 @@ class LabelingWidget(LabelDialog):
             icon="list-checks",
         )
         if not metrics_available():
-            open_correction_metrics.setEnabled(False)
             open_correction_metrics.setToolTip(
                 metrics_pending_message(self._config.get("language"))
             )
@@ -4437,15 +4436,17 @@ class LabelingWidget(LabelDialog):
         self.set_dirty()
 
     def open_correction_metrics(self):
+        """Open the opt-in setting or show the current statistics panel."""
+        from .correction_metrics.i18n import tr as metrics_text
+
+        language = self._config.get("language")
         if not metrics_available():
-            self.status(
-                metrics_pending_message(self._config.get("language")), 5000
+            self.error_message(
+                metrics_text("title", language),
+                metrics_pending_message(language),
             )
             return
         if not self._config.get("correction_metrics_enabled", False):
-            # Off by default: the entry explains where to enable it and
-            # creates no controller, database, timer or event.
-            language = self._config.get("language")
             self.status(
                 {
                     "zh_CN": "统计未启用，可在设置中开启。",
@@ -4457,14 +4458,23 @@ class LabelingWidget(LabelDialog):
                 ),
                 5000,
             )
+            self.open_settings_dialog(field_key="correction_metrics_enabled")
             return
-        if self.correction_metrics is not None:
-            self.correction_metrics.show_panel()
-            return
-        from .correction_metrics.controller import start_metrics
+        try:
+            from .correction_metrics.controller import start_metrics
 
-        controller = start_metrics(self)
-        scope = getattr(controller, "_scope", None) if controller else None
+            controller = start_metrics(self)
+        except Exception:
+            logger.exception("Could not open correction cost statistics")
+            self.error_message(
+                metrics_text("title", language),
+                metrics_text("panel_open_failed", language),
+            )
+            return
+
+        if self.right_sidebar.isHidden():
+            self.toggle_right_sidebar()
+        scope = controller.scope_roots
         if scope:
             # Make the started range visible instead of silent.
             self.status(
@@ -4473,6 +4483,8 @@ class LabelingWidget(LabelDialog):
                 ),
                 5000,
             )
+        elif not self.filename:
+            self.status(metrics_text("need_image", language), 5000)
 
     def open_dense_review(self):
         if self.filename is None or self.image.isNull():
@@ -10030,6 +10042,9 @@ class LabelingWidget(LabelDialog):
             self.save_file()
             return not self.dirty
         # answer == mb.Cancel
+        # Cancelling keeps the current round and its working time: no
+        # leave_image/enter_image runs here, so the target image is never
+        # charged.  The observer only discloses the abandoned attempt.
         metrics = getattr(self, "correction_metrics", None)
         if metrics is not None and hasattr(metrics, "navigation_cancelled"):
             notify_metrics(self, "navigation_cancelled")

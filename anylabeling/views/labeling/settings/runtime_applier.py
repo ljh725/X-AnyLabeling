@@ -249,6 +249,9 @@ class SettingsRuntimeApplier:
                 action.setChecked(bool(value))
             self._widget.digit_shortcut_bar.setVisible(bool(value))
             return
+        if key == "correction_metrics_enabled":
+            self.apply_correction_metrics(bool(value))
+            return
         if key in {
             "keep_prev",
             "keep_prev_scale",
@@ -281,9 +284,6 @@ class SettingsRuntimeApplier:
             return
         if key == "font_family":
             apply_application_font(value)
-            return
-        if key == "correction_metrics_enabled":
-            self.apply_correction_metrics(bool(value))
             return
         if key in {
             "canvas.label_font_size",

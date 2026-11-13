@@ -60,6 +60,7 @@ def _host(work, shapes=(), language="zh_CN", output_dir=None):
         _config={"language": language, "correction_metrics_enabled": False},
         correction_metrics=None,
         status=lambda text, timeout=0: statuses.append(text),
+        open_settings_dialog=lambda **kwargs: None,
         tr=lambda text: text,
         _statuses=statuses,
     )

@@ -27,17 +27,22 @@ KEY = "correction_metrics_enabled"
 
 def _host(config=None, **extra):
     statuses = []
+    settings_fields = []
 
     host = SimpleNamespace(
         _config={KEY: False, "language": "en_US"},
         correction_metrics=None,
         actions=SimpleNamespace(),
         status=lambda text, timeout=0: statuses.append(text),
+        open_settings_dialog=lambda *, field_key: settings_fields.append(
+            field_key
+        ),
         tr=lambda text: text,
         filename=None,
         output_dir=None,
         canvas=SimpleNamespace(shapes=[]),
         _statuses=statuses,
+        _settings_fields=settings_fields,
     )
     if config:
         host._config.update(config)
@@ -86,7 +91,7 @@ def test_disabled_entry_creates_nothing(tmp_path, monkeypatch):
     monkeypatch.setenv("XANYLABELING_METRICS_DIR", str(metrics_dir))
     host = _host()
 
-    assert _entry()(host) is None       # returns quietly
+    assert _entry()(host) is None
 
     assert started == []
     assert host.correction_metrics is None
@@ -94,6 +99,7 @@ def test_disabled_entry_creates_nothing(tmp_path, monkeypatch):
     assert host._statuses, "the operator must be told how to enable it"
     text = host._statuses[-1]
     assert "未启用" in text or "disabled" in text.lower()
+    assert host._settings_fields == [KEY]
     assert not metrics_dir.exists() or not list(metrics_dir.iterdir())
 
 
@@ -112,8 +118,7 @@ def test_enabled_entry_starts_the_session_once(monkeypatch):
     """启用后按现有流程 start_metrics(host)，并显示启动范围。"""
     calls = []
     controller = SimpleNamespace(
-        _scope=("D:/data/images", "D:/data/labels"),
-        show_panel=lambda: calls.append("panel"),
+        scope_roots=("D:/data/images", "D:/data/labels"),
     )
 
     def fake_start(host):
@@ -124,7 +129,9 @@ def test_enabled_entry_starts_the_session_once(monkeypatch):
         "anylabeling.views.labeling.correction_metrics.controller.start_metrics",
         fake_start,
     )
-    host = _host(config={KEY: True})
+    host = _host(
+        config={KEY: True}, right_sidebar=SimpleNamespace(isHidden=lambda: False)
+    )
 
     _entry()(host)
 

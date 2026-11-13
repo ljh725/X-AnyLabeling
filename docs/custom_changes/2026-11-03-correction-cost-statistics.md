@@ -2,8 +2,8 @@
 
 - 状态：**代码实施完成，自动化验证通过；真实屏幕人工验收未完成，变更未归档。**
 - 分类：新增本地能力（可选工作流，默认关闭）。
-- 创建日期：2026-11-03；最后更新：2026-11-11（Asia/Shanghai）。
-- OpenSpec 变更：[add-annotation-correction-cost-statistics](../../openspec/changes/add-annotation-correction-cost-statistics/proposal.md) · [任务台账](../../openspec/changes/add-annotation-correction-cost-statistics/tasks.md)（37/54）· [验证记录](../../openspec/changes/add-annotation-correction-cost-statistics/verification.md)
+- 创建日期：2026-11-03；最后更新：2026-11-12（Asia/Shanghai）。
+- OpenSpec 变更：[add-annotation-correction-cost-statistics](../../openspec/changes/add-annotation-correction-cost-statistics/proposal.md) · [任务台账](../../openspec/changes/add-annotation-correction-cost-statistics/tasks.md)（49/54）· [验证记录](../../openspec/changes/add-annotation-correction-cost-statistics/verification.md)
 - 原始版本与基线提交：`cd26f5f8`（官方 `v4.2.1` 之上）；实施提交见下"实施提交"。
 - 工作区已有修改、前置依赖：依赖已完成并提交的 Inspector/密集复核、配置持久化、数字键改类修复；本功能不改这些既有业务语义，只消费其完成/编辑事件。
 
@@ -68,3 +68,5 @@
 | 日期 | 原因 | 实际改动 / 提交 | 验证结果 |
 | --- | --- | --- | --- |
 | 2026-11-11 | 实施第一版（批次 1–3） | 见上方"实施提交" | 自动化 299+ 用例通过；人工与性能 GUI 验收待做 |
+| 2026-11-11 | 遗留代码项收尾（批次 4） | 图片摘要下沉服务层、显式类别版本、存储重试入口、矩形入口用例、连续自动保存用例、完成时关闭计时器（真缺陷修复）、模型运行/阻塞等待分列展示、崩溃尾段用例；`tasks.md` 49/54 | `tests/test_correction_metrics` **334 passed**；`openspec validate --strict` valid；真实屏幕与 GUI 性能仍待人工 |
+| 2026-11-12 | 点击工作流菜单缺少可见反馈，统计面板未接入布局 | 关闭时打开设置中的启用项；启用后在右侧栏顶部显示可滚动面板，重新打开时恢复隐藏侧栏；面板创建失败显示错误，模块可用性使用 Python 导入器检测 | [菜单入口回归](../../openspec/changes/add-annotation-correction-cost-statistics/verification.md#菜单入口回归) |

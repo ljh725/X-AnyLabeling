@@ -39,7 +39,9 @@ def test_exclusive_lock_never_raises_into_the_annotation_path(tmp_path):
     """9.3 独占锁：另一连接 BEGIN EXCLUSIVE 时编辑不抛异常、返回值稳定。"""
     controller, host = started(tmp_path, [rect("r1")])
     controller.enter_image()
-    db_path = str(store_of(controller).path)
+    store = store_of(controller)
+    assert store.flush()
+    db_path = str(store.path)
 
     locker = sqlite3.connect(db_path, timeout=0.5, isolation_level=None)
     locker.execute("PRAGMA busy_timeout=100")
@@ -60,6 +62,7 @@ def test_locked_write_is_disclosed_as_a_storage_gap(tmp_path):
     controller.enter_image()
     round_id_ = round_id(controller)
     store = store_of(controller)
+    assert store.flush()
     db_path = str(store.path)
 
     locker = sqlite3.connect(db_path, timeout=0.5, isolation_level=None)
@@ -393,3 +396,58 @@ def test_s91_mixed_scope_makes_the_round_incomplete(tmp_path):
     row = controller.current_row()
     assert "partial-scope" in row["issues"]
     assert row["comparable"] is False
+
+
+# --------------------------------------------------------------------------
+# 3.3 recovery entry: retry after a transient storage fault
+# --------------------------------------------------------------------------
+def test_retry_reopens_a_dead_writer_and_keeps_recording(tmp_path):
+    """3.3 恢复入口：写入线程退出后 retry 重新起线程，后续事务仍能落库。"""
+    controller, _host = started(tmp_path, [rect("r1")])
+    controller.enter_image()
+    store = store_of(controller)
+    # Simulate a crashed writer: the thread ends without closing the store.
+    store._queue.put(None)
+    store._thread.join(2.0)
+    assert not store._thread.is_alive()
+
+    assert store.retry() is True
+    assert store.error is None
+
+    assert controller.edit(
+        "geometry", changed=[rect("r1", box=(31, 31, 71, 91))]
+    ) is True
+    assert store.flush(timeout=2.0) is True
+    assert controller.current_row()["geometry_changed"] == 1
+
+
+def test_retry_never_hides_a_recorded_gap(tmp_path):
+    """3.3 恢复：重试只清除粘性错误，已记录的缺口仍然可见。"""
+    controller, _host = started(tmp_path, [rect("r1")])
+    controller.enter_image()
+    round_id_ = round_id(controller)
+    store = store_of(controller)
+    store._queue.put(None)
+    store._thread.join(2.0)
+    store._fault(round_id_, RuntimeError("disk I/O error"))
+    assert store.error is not None
+
+    assert store.retry() is True
+
+    assert store.error is None
+    assert "storage-gap" in store.gaps(round_id_)
+    assert "storage-gap" in controller.current_row()["issues"]
+
+
+def test_controller_retry_clears_the_degraded_banner(tmp_path):
+    """3.3 恢复入口：controller.retry_storage 成功后不再显示记录异常。"""
+    controller, _host = started(tmp_path, [rect("r1")])
+    controller.enter_image()
+    store = store_of(controller)
+    store._queue.put(None)
+    store._thread.join(2.0)
+    store.error = "disk I/O error"
+
+    assert controller.degraded_reason.startswith("storage:")
+    assert controller.retry_storage() is True
+    assert controller.degraded_reason is None

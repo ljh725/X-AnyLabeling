@@ -25,7 +25,7 @@ In short: **process = how much work you did; net = how much the result changed.*
 
 1. Open **Settings → General → Behavior** (Basic section) and tick **Enable Correction Cost Statistics** (`correction_metrics_enabled`, `false` in the default configuration).
 2. It is **off by default**. While off, no database is created, no timer runs and no event is recorded; annotation and saving are unaffected.
-3. If you click the menu entry while it is off, the status bar says "Statistics are disabled. Enable them in the settings." and nothing is recorded.
+3. While the feature is off, **Workflow → Correction Cost Statistics** opens Settings at the opt-in checkbox. Check it and click **Save**, then open the workflow again to start recording.
 4. Once enabled, open the workflow from the menu. The first open creates the statistics scope for the **dataset of the current image** and freezes that image's baseline.
 
 **Scope = current image root + label root:**
@@ -40,7 +40,7 @@ In short: **process = how much work you did; net = how much the result changed.*
 
 ## 3. The panel: live cost for the current image
 
-When opened, the panel appears as a collapsible overlay inside the labeling window (**it is not a docked right-sidebar panel**). It is read-only about the current round and never changes your annotations. Opening it **does not steal canvas focus** and does not change the current selection or shortcuts.
+The panel appears at the top of the right sidebar and shows data for the current image and round. The menu opens the sidebar and expands the panel while preserving canvas focus and selection.
 
 ### 3.1 What it shows
 
@@ -51,13 +51,15 @@ When opened, the panel appears as a collapsible overlay inside the labeling wind
 | Round | First 8 characters of the round id (hover for the full id). |
 | Stage | Correction or review; a review round also shows a "Review round" tag. |
 | Timer | State (Processing / Paused / Inactive / Loading / Stopped / Waiting) plus seconds. |
+| Model runtime | Inference seconds recorded for this prediction run; blocking wait is listed separately. Both may overlap processing time and are **never added to it**. |
+| Blocking wait | Seconds during which the image could not be edited (for example batch pre-labeling); not counted as processing time. |
 | Counts | Initial boxes (baseline), current boxes. |
 | Operations | Transactions, unique objects, touches. |
 | Current draft | Added / deleted / geometry edits / class edits / modified originals / modified rate, with an **Unsaved** badge. |
 | Saved result | The same six values for the last successfully saved version. |
 | Completion | Completion state; once complete the time row becomes "frozen time at completion" and a completion record id is shown. |
 | Quality | Quality assessment (default: **Not assessed**) with the note "Finishing a round is not a quality approval"; an existing review mark is shown on its own row. |
-| Record integrity | Comparable (yes/no), limitations (`issues`), and recording problems (for example a failed statistics write). |
+| Record integrity | Comparable (yes/no), limitations (`issues`), and recording problems (for example a failed statistics write); a problem also shows the **Retry recording** button. |
 
 ### 3.2 Buttons
 
@@ -68,6 +70,7 @@ When opened, the panel appears as a collapsible overlay inside the labeling wind
 | Continue correction | Appears once the round is complete; revokes completion and resumes timing. |
 | Start review | Opens a **separate review round** for the same image, counted apart from correction; inside it the finish button reads "Finish review". |
 | Report | Opens the summary dialog (section 10). |
+| Retry recording | Appears only with a recording problem; retries writing to the statistics database. Verified records are never deleted and recorded gaps stay visible. |
 
 ### 3.3 Idle confirmation (never blocks, never auto-deducts)
 
@@ -209,7 +212,7 @@ If this round is **not saved yet**: the draft view still shows the values above 
 ## 12. Known limitations
 
 - **Finishing a round is not a quality approval**: quality defaults to "not assessed"; only an explicitly sourced quality conclusion is recorded.
-- The panel is a **collapsible overlay** inside the labeling window, not a separate window, and it does not dock into the right sidebar; with a lot of data it gets tall, so collapse it if needed (only the title row remains).
+- Scroll inside the panel to see more fields, or use the arrow next to the title to collapse the panel body.
 - **UI languages**: the feature ships built-in copy in Chinese, English, Japanese and Korean, but the compiled `.ts/.qm` catalogues have not been rebuilt yet, so some builds may still show the Chinese source strings or English.
 - **Only plain axis-aligned rectangles** are compared; rotated boxes, polygons, masks and points are excluded.
 - No mouse trails, typing frequency or employee identity are collected; no ranking, accuracy or "money saved" estimates are produced.

@@ -287,3 +287,54 @@ def test_saved_rejects_a_foreign_or_stale_token(tmp_path):
     assert round_obj.saved(token) is True
     assert round_obj.dirty is False
     store.close()
+
+
+# ---------------------------------------------------------------------------
+# Task 5.1 -- repeated autosaves confirm one revision, never double-count
+# ---------------------------------------------------------------------------
+def test_repeated_autosaves_keep_one_transaction_and_the_process_cost():
+    """5.1：连续自动保存只确认最新快照，不重复计数、不清空过程成本。"""
+    baseline = synthetic.dense_30()
+    round_obj = synthetic.make_round(baseline)
+    moved = synthetic.moved(synthetic.by_id(baseline)["p-001"], 5, 5)
+    current = [moved if shape["xanylabeling_shape_id"] == "p-001" else shape
+               for shape in baseline]
+
+    assert round_obj.patch(shapes=[moved], transaction_id="T1") is True
+    round_obj.set_time("session-1", {"working": 12.0})
+
+    revisions = []
+    for _ in range(3):
+        token = round_obj.prepare_save(current)
+        assert round_obj.saved(token) is True
+        revisions.append(round_obj.row()["revision"])
+        row = round_obj.row()
+        assert row["transactions"] == 1
+        assert row["touches"] == 1
+        assert row["geometry_changed"] == 1
+        assert row["time"]["working"] == 12.0
+
+    assert len(set(revisions)) == 1
+    assert round_obj.row(draft=True)["is_draft"] is False
+
+
+def test_an_autosave_that_fails_keeps_the_previous_saved_revision():
+    """5.1：保存失败保持草稿与上一次成功 revision，不推进已保存结果。"""
+    baseline = synthetic.dense_30()
+    round_obj = synthetic.make_round(baseline)
+    first = round_obj.prepare_save(baseline)
+    assert round_obj.saved(first) is True
+    saved_revision = round_obj.row()["revision"]
+
+    moved = synthetic.moved(synthetic.by_id(baseline)["p-002"], 9, 9)
+    assert round_obj.patch(shapes=[moved], transaction_id="T2") is True
+    failing = round_obj.prepare_save(
+        [moved if shape["xanylabeling_shape_id"] == "p-002" else shape
+         for shape in baseline]
+    )
+    round_obj.save_failed(failing)
+
+    row = round_obj.row(draft=True)
+    assert row["revision"] == saved_revision
+    assert row["is_draft"] is True
+    assert row["transactions"] == 1

@@ -224,3 +224,60 @@ def test_class_changed_counts_only_relabelled_common_objects():
     assert net["geometry_changed"] == 0
     assert rows == [{"kind": "class_changed", "initial_class": "cat",
                      "final_class": "dog", "count": 1, "denominator": 5}]
+
+
+# ---------------------------------------------------------------------------
+# Task 4.4 -- create / delete / duplicate / paste transaction identities
+# ---------------------------------------------------------------------------
+def test_a_duplicated_object_with_a_new_identity_is_an_addition():
+    """4.4：复制/粘贴得到新身份 → 1 事务、1 个新增对象。"""
+    baseline = synthetic.dense_30()
+    round_obj = synthetic.make_round(baseline)
+    source = synthetic.by_id(baseline)["p-001"]
+    clone = synthetic.rect("copy-100", source["label"], synthetic.bbox_of(source))
+
+    assert round_obj.patch(shapes=[clone], kind="duplicate",
+                           transaction_id="dup-1") is True
+
+    row = round_obj.row(draft=True)
+    assert row["added"] == 1
+    assert row["deleted"] == 0
+    assert row["transactions"] == 1
+    assert row["touches"] == 1
+    assert row["unique_objects"] == 1
+
+
+def test_reusing_an_existing_identity_without_a_change_is_not_touched():
+    """4.4：同身份、同内容（含锁定标记）不产生事务或受影响对象。"""
+    baseline = synthetic.locked_partial()
+    round_obj = synthetic.make_round(baseline)
+    toggled = [dict(shape, locked=not shape["locked"]) for shape in baseline]
+
+    assert round_obj.patch(shapes=toggled, kind="duplicate",
+                           transaction_id="locked-only") is False
+
+    row = round_obj.row(draft=True)
+    assert row["transactions"] == 0
+    assert row["touches"] == 0
+    assert row["unique_objects"] == 0
+    assert row["unchanged"] == 10
+
+
+def test_batch_paste_counts_one_transaction_and_every_new_object():
+    """4.4：一次批量粘贴 = 1 事务 + N 个新增对象 + N 次触达。"""
+    baseline = synthetic.dense_30()
+    round_obj = synthetic.make_round(baseline)
+    pasted = [
+        synthetic.rect("copy-%d" % index, "cat", (10, 10 + index * 30, 70, 40 + index * 30))
+        for index in range(3)
+    ]
+
+    assert round_obj.patch(shapes=pasted, kind="paste",
+                           transaction_id="paste-1") is True
+
+    row = round_obj.row(draft=True)
+    assert row["added"] == 3
+    assert row["transactions"] == 1
+    assert row["touches"] == 3
+    assert row["unique_objects"] == 3
+    assert row["modified_original"] == 0

@@ -12,6 +12,10 @@ LANGUAGES = ("en_US", "zh_CN", "ja_JP", "ko_KR")
 
 MESSAGES = {
     "title": QT_TRANSLATE_NOOP("CorrectionCost", "Correction Cost Statistics"),
+    "panel_open_failed": QT_TRANSLATE_NOOP(
+        "CorrectionCost",
+        "Could not open the statistics panel. See the log for details.",
+    ),
     "need_image": QT_TRANSLATE_NOOP("CorrectionCost", "Open an image first."),
     "save_before_complete": QT_TRANSLATE_NOOP("CorrectionCost", "Save the current version before marking it complete."),
     "incomplete": QT_TRANSLATE_NOOP("CorrectionCost", "Correction cost records are incomplete."),
@@ -139,6 +143,23 @@ MESSAGES = {
     "touches": QT_TRANSLATE_NOOP("CorrectionCost", "Touches"),
     "comparable": QT_TRANSLATE_NOOP("CorrectionCost", "Comparable"),
     "degraded": QT_TRANSLATE_NOOP("CorrectionCost", "Recording problem"),
+    "retry": QT_TRANSLATE_NOOP("CorrectionCost", "Retry recording"),
+    "retry_hint": QT_TRANSLATE_NOOP(
+        "CorrectionCost",
+        "Try to record again without discarding verified history.",
+    ),
+    "model_runtime_seconds": QT_TRANSLATE_NOOP("CorrectionCost", "Model runtime"),
+    "blocking_wait_seconds": QT_TRANSLATE_NOOP(
+        "CorrectionCost", "Blocking wait"
+    ),
+    "model_runtime_note": QT_TRANSLATE_NOOP(
+        "CorrectionCost",
+        "Elapsed model runtime; it may overlap processing and is not added to it.",
+    ),
+    "blocking_note": QT_TRANSLATE_NOOP(
+        "CorrectionCost",
+        "Time the image could not be edited; it is not processing time.",
+    ),
     "idle_pending": QT_TRANSLATE_NOOP(
         "CorrectionCost", "Idle time awaiting confirmation"
     ),
@@ -322,6 +343,11 @@ ISSUE_KEYS = {
 #: it translated in the meantime so a new panel never falls back to English.
 #: An entry can be deleted once its .qm translation has been generated.
 TRANSLATIONS = {
+    "panel_open_failed": {
+        "zh_CN": "无法打开统计面板。详情请查看日志。",
+        "ja_JP": "統計パネルを開けませんでした。詳細はログを確認してください。",
+        "ko_KR": "통계 패널을 열 수 없습니다. 자세한 내용은 로그를 확인하세요.",
+    },
     "collapse": {
         "en_US": "Collapse",
         "zh_CN": "收起",
@@ -363,6 +389,42 @@ TRANSLATIONS = {
         "zh_CN": "记录异常",
         "ja_JP": "記録エラー",
         "ko_KR": "기록 오류",
+    },
+    "retry": {
+        "en_US": "Retry recording",
+        "zh_CN": "重试记录",
+        "ja_JP": "記録を再試行",
+        "ko_KR": "기록 재시도",
+    },
+    "retry_hint": {
+        "en_US": "Try to record again without discarding verified history.",
+        "zh_CN": "重试写入记录，已核实的记录不会被丢弃。",
+        "ja_JP": "検証済みの記録を破棄せずに再試行します。",
+        "ko_KR": "검증된 기록을 버리지 않고 다시 시도합니다.",
+    },
+    "model_runtime_seconds": {
+        "en_US": "Model runtime",
+        "zh_CN": "模型运行",
+        "ja_JP": "モデル実行",
+        "ko_KR": "모델 실행",
+    },
+    "blocking_wait_seconds": {
+        "en_US": "Blocking wait",
+        "zh_CN": "阻塞等待",
+        "ja_JP": "ブロック待機",
+        "ko_KR": "차단 대기",
+    },
+    "model_runtime_note": {
+        "en_US": "Elapsed model runtime; it may overlap processing and is not added to it.",
+        "zh_CN": "模型推理耗时，可与处理时间重叠，不与处理时间相加。",
+        "ja_JP": "モデル推論の所要時間です。処理時間と重複し得ますが加算されません。",
+        "ko_KR": "모델 추론 소요 시간이며 처리 시간과 겹칠 수 있으나 합산되지 않습니다.",
+    },
+    "blocking_note": {
+        "en_US": "Time the image could not be edited; it is not processing time.",
+        "zh_CN": "图片不可编辑的等待时间，不计入处理时间。",
+        "ja_JP": "画像を編集できなかった時間で、処理時間には含まれません。",
+        "ko_KR": "이미지를 편집할 수 없던 시간이며 처리 시간에 포함되지 않습니다.",
     },
     "idle_pending": {
         "en_US": "Idle time awaiting confirmation",

@@ -271,6 +271,8 @@ _FALLBACK = {
     "geometry": "Geometry",
     "transactions": "Operations",
     "working_seconds": "Processing (s)",
+    "inference_seconds": "Model runtime (s)",
+    "blocking_wait_seconds": "Blocking wait (s)",
     "median_seconds": "Median seconds/round",
     "seconds_per_100": "Seconds / 100 boxes",
     "completed": "Completed",
@@ -469,6 +471,8 @@ IMAGE_TABLE_COLUMNS = (
     ("touches", "touches"),
     ("unique_objects", "unique_objects"),
     ("working_seconds", "working_seconds"),
+    ("inference_seconds", "inference_seconds"),
+    ("blocking_wait_seconds", "blocking_wait_seconds"),
     ("completed", "completed"),
     ("quality", "quality"),
     ("issues", "issues"),
@@ -509,7 +513,13 @@ GROUP_TABLE_COLUMNS = (
 )
 
 _SECONDS_KEYS = frozenset(
-    {"working_seconds", "median_seconds", "seconds_per_100"}
+    {
+        "working_seconds",
+        "inference_seconds",
+        "blocking_wait_seconds",
+        "median_seconds",
+        "seconds_per_100",
+    }
 )
 _RATE_KEYS = frozenset({"modified_rate", "unchanged_rate"})
 _IMAGE_NUMERIC = frozenset(key for key, _ in IMAGE_TABLE_COLUMNS) - {
@@ -1369,6 +1379,8 @@ class ReportDialog(QDialog):
         if key == "origin":
             return self._known_text(row.get("origin"))
         if key == "working_seconds":
+            return self._format_value(row.get(key), seconds=True)
+        if key in _SECONDS_KEYS:
             return self._format_value(row.get(key), seconds=True)
         if key in ("image_path", "round_id"):
             value = row.get(key)

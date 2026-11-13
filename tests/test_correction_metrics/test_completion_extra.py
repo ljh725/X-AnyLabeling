@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from tests.test_correction_metrics import synthetic
 from tests.test_correction_metrics.test_controller import rect, started
 
 
@@ -108,3 +109,93 @@ def test_start_review_opens_a_separate_phase_round(tmp_path):
     assert row["phase"] == "review"
     rows = controller.rows()
     assert {item["round_id"] for item in rows} >= {correction_id, row["round_id"]}
+
+
+# ---------------------------------------------------------------------------
+# Task 5.5 -- finishing closes the time segment; resume keeps the cost
+# ---------------------------------------------------------------------------
+class _Clock:
+    """Deterministic monotonic clock for the controller-level timing cases."""
+
+    def __init__(self, start=500.0):
+        self.value = float(start)
+
+    def __call__(self):
+        return self.value
+
+    def advance(self, seconds=1.0):
+        self.value += float(seconds)
+
+
+def _timed_controller(scratch, shapes):
+    """Controller with an injectable work clock, already entered on one image."""
+    from anylabeling.services.correction_metrics.timing import WorkClock
+    from anylabeling.views.labeling.correction_metrics.controller import (
+        CorrectionMetricsController,
+    )
+    from tests.test_correction_metrics.test_controller import make_host
+
+    host = make_host(scratch, shapes)
+    clock = _Clock()
+    controller = CorrectionMetricsController(
+        host,
+        language="zh_CN",
+        storage_root=str(scratch / "metrics"),
+        clock=WorkClock(clock=clock),
+    )
+    assert controller.start_scope(
+        str(scratch / "images"), str(scratch / "labels")
+    )
+    assert controller.enter_image() is True
+    return controller, host, clock
+
+
+def _run(controller, clock, seconds):
+    for _ in range(int(seconds)):
+        clock.advance(1)
+        controller.tick()
+
+
+def test_finishing_freezes_the_timer_and_resume_starts_a_new_session(tmp_path):
+    """5.5：完成后计时关闭（浏览不再累加），继续修正从实际编辑起另计新片段。"""
+    controller, host, clock = _timed_controller(tmp_path, [rect("r1")])
+    _run(controller, clock, 20)
+    assert controller.current_row()["time"]["working"] == 20.0
+
+    token = controller.prepare_save("scene.json", host.canvas.shapes)
+    assert controller.save_result(token, True) is True
+    assert controller.finish_round() is True
+    frozen = controller.current_row()["time"]["working"]
+    assert frozen == 20.0
+    assert controller.state()["state"] == "closed"
+
+    # Browsing a completed round must not add processing time.
+    _run(controller, clock, 30)
+    assert controller.current_row()["time"]["working"] == frozen
+
+    assert controller.resume_round() is True
+    assert controller.state()["state"] == "working"
+    _run(controller, clock, 5)
+
+    row = controller.current_row()
+    assert len(row["session_ids"]) == 2
+    assert row["time"]["working"] == 25.0
+
+
+def test_model_runtime_and_processing_time_are_reported_separately():
+    """6.5：20 秒后台推理 + 20 秒审图并列记录，不相加为 40 秒人工处理。"""
+    round_obj = synthetic.make_round(
+        synthetic.dense_30(),
+        provenance={"inference_seconds": 20.0, "model": "yolo"},
+    )
+    round_obj.set_time(
+        "session-1", {"working": 20.0, "blocking_wait": 4.0}
+    )
+
+    row = round_obj.row()
+    assert row["inference_seconds"] == 20.0
+    assert row["time"]["working"] == 20.0
+    assert row["time"]["blocking_wait"] == 4.0
+    # There is no derived "elapsed" that could be mistaken for 40 s of work.
+    assert "elapsed_total" not in row
+    assert row["time"]["working"] != row["inference_seconds"] + 20.0

@@ -1,15 +1,15 @@
-"""Optional statistics observer and availability of its unfinished workspace."""
+"""Optional statistics observer and workspace availability."""
 
-from pathlib import Path
+from importlib.util import find_spec
 
 from ..logger import logger
 
 
 def metrics_available():
-    directory = Path(__file__).parent
+    """Detect modules in both source installations and frozen builds."""
     return all(
-        (directory / name).is_file()
-        for name in ("controller.py", "panel.py", "report_dialog.py")
+        find_spec(f"{__package__}.{name}") is not None
+        for name in ("controller", "panel", "report_dialog")
     )
 
 

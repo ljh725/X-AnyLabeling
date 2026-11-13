@@ -140,3 +140,71 @@ def test_rename_does_not_change_the_class_counts_rows():
                for row in net["classes"] if row["kind"] == "initial"}
     assert initial == {"cat": 5, "dog": 5, "person": 5,
                        "car": 5, "tree": 5, "sign": 5}
+
+
+# ---------------------------------------------------------------------------
+# Task 2.5 -- explicit, versioned class-vocabulary mappings
+# ---------------------------------------------------------------------------
+def test_a_confirmed_rename_appends_one_versioned_mapping():
+    """2.5：确认的一对一改名生成新的类别体系版本并保留映射内容。"""
+    round_obj = synthetic.make_round(synthetic.dense_30())
+    assert round_obj.row(draft=True)["class_version"] == 1
+    assert round_obj.row(draft=True)["category_version"] is None
+
+    assert round_obj.taxonomy(RENAME) is True
+
+    row = round_obj.row(draft=True)
+    assert row["class_version"] == 2
+    assert row["category_version"] == "local-v2"
+    assert len(row["class_migrations"]) == 1
+    record = row["class_migrations"][0]
+    assert record["previous"] == 1
+    assert record["version"] == 2
+    assert record["mapping"] == RENAME
+    assert record["comparable"] is True
+
+    # Repeating the identical declaration is idempotent: no phantom v3.
+    assert round_obj.taxonomy(RENAME) is False
+    assert round_obj.row(draft=True)["class_version"] == 2
+
+
+def test_an_identity_declaration_does_not_create_a_class_version():
+    """2.5：未实际改名的映射不算体系迁移，不消耗版本号。"""
+    round_obj = synthetic.make_round(synthetic.dense_30())
+
+    assert round_obj.taxonomy({"cat": "cat", "dog": "dog"}) is False
+
+    row = round_obj.row(draft=True)
+    assert row["class_version"] == 1
+    assert row["class_migrations"] == []
+    assert row["category_version"] is None
+
+
+def test_a_merge_is_versions_recorded_as_incomparable():
+    """2.5：合并声明仍生成可追溯版本，但该版本标注为不可比。"""
+    merge = {"cat": "animal", "dog": "animal", "person": "animal"}
+    round_obj = synthetic.make_round(synthetic.dense_30())
+
+    assert round_obj.taxonomy(merge) is True
+
+    row = round_obj.row(draft=True)
+    assert row["class_version"] == 2
+    assert row["category_version"] == "local-v2"
+    record = row["class_migrations"][-1]
+    assert record["mapping"] == merge
+    assert record["comparable"] is False
+    assert "class-incomparable" in row["issues"]
+
+
+def test_the_provenance_category_version_wins_over_the_local_label():
+    """2.5：预测来源自带类别版本时保留它，不覆盖为本地 vN。"""
+    round_obj = synthetic.make_round(
+        synthetic.dense_30(),
+        provenance={"category_version": "model-classes-42"},
+    )
+
+    assert round_obj.taxonomy({"cat": "feline"}) is True
+
+    row = round_obj.row(draft=True)
+    assert row["category_version"] == "model-classes-42"
+    assert row["class_version"] == 2

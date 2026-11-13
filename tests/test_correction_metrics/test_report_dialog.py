@@ -952,3 +952,28 @@ def test_class_sample_and_density_range_are_disclosed():
         assert dialog.group_table.item(wide_row, 1).text() == "1"  # rounds sample
     finally:
         dialog.close()
+
+
+# ---------------------------------------------------------------------------
+# Task 6.5 -- model runtime and blocking wait stay separate columns
+# ---------------------------------------------------------------------------
+def test_the_report_lists_model_runtime_and_blocking_wait_separately():
+    """6.5：汇总表并列展示推理耗时与阻塞等待，不把两者相加为处理时间。"""
+    row = make_row(
+        0,
+        inference_seconds=20.0,
+        time={"working": 20.0, "adjusted_working": 20.0, "blocking_wait": 4.0},
+    )
+    assert row["blocking_wait_seconds"] == 4.0
+
+    dialog = _dialog([row])
+    try:
+        table = dialog.image_table
+        assert _cell(dialog, table, 0, IMAGE_TABLE_COLUMNS,
+                     "inference_seconds") == "20.0"
+        assert _cell(dialog, table, 0, IMAGE_TABLE_COLUMNS,
+                     "blocking_wait_seconds") == "4.0"
+        assert _cell(dialog, table, 0, IMAGE_TABLE_COLUMNS,
+                     "working_seconds") == "20.0"
+    finally:
+        dialog.close()

@@ -22,6 +22,7 @@ ORIGIN_FIELDS = {
     "started_at", "ended_at", "mode", "replace",
 }
 SHAPE_ID = "xanylabeling_shape_id"
+IMAGE_DIGEST_LIMIT = 64 * 1024 * 1024
 
 # ``unknown-origin`` only discloses that the starting labels predate
 # the statistics.  Events spec lets scope, identity, storage and timing
@@ -47,6 +48,28 @@ def digest(value):
 
 def path_identity(path):
     return os.path.normcase(os.path.abspath(os.fspath(path)))
+
+
+def image_content_digest(path, limit=IMAGE_DIGEST_LIMIT):
+    """Stable content identity for one image file, independent of its path.
+
+    The digest belongs to the service layer so callers (the labeling window,
+    batch prediction) cannot disagree about what "the same image version"
+    means.  A very large file falls back to size/mtime so opening a huge
+    dataset never blocks on hashing; an unreadable file is unknown (``""``)
+    rather than silently identical to another unreadable file.
+    """
+    try:
+        stat = os.stat(path)
+        if stat.st_size > limit:
+            return "size:%d:mtime:%d" % (stat.st_size, int(stat.st_mtime))
+        hasher = hashlib.sha256()
+        with open(path, "rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                hasher.update(chunk)
+        return hasher.hexdigest()
+    except OSError:
+        return ""
 
 
 def dataset_identity(image_root, label_root=None):
@@ -215,6 +238,10 @@ def initialise_state(dataset, image, label, content, data, origin, provenance,
         "saved": data if saved else None, "revision": digest(data) if saved else "",
         "pending": None, "seq": 0, "saved_seq": 0, "issues": sorted(issues),
         "counts": {}, "touched": [], "touches": 0, "alias": {},
+        # Explicit class-vocabulary version: 1 is the starting vocabulary;
+        # every confirmed one-to-one (or declared) migration appends a new
+        # versioned mapping so a later report can cite a stable identity.
+        "category_version": 1, "class_migrations": [],
         "comparable_classes": True, "sessions": {}, "completed": False,
         "completion": None, "current": True, "active": True,
         "undo_stack": [], "quality": "not-assessed", "quality_source": None,
@@ -251,6 +278,14 @@ def report_row(state, draft=False):
     totals = Counter()
     for record in state["sessions"].values():
         totals.update(record["totals"])
+    # A provenance category version describes the predicted vocabulary; a
+    # locally declared migration has its own stable version.  Both answer
+    # "which class vocabulary does this comparison use?" without inventing a
+    # model origin for a hand-annotated round.
+    class_version = state.get("category_version", 1)
+    category_version = prov.get("category_version")
+    if not category_version and state.get("class_migrations"):
+        category_version = "local-v%d" % class_version
     return {
         **{key: state[key] for key in (
             "schema_version", "dataset_id", "image_path", "label_path",
@@ -258,10 +293,12 @@ def report_row(state, draft=False):
             "completed", "current", "quality", "quality_source",
         )}, **net, "session_ids": list(state["sessions"]),
         "completion": state["completion"],
+        "class_version": class_version,
+        "class_migrations": copy.deepcopy(state.get("class_migrations", [])),
         "run_id": prov.get("run_id"), "model": prov.get("model") or prov.get("model_name"),
         "model_version": prov.get("model_version") or prov.get("weight_version"),
         "config_digest": prov.get("config_digest"), "prompt": prov.get("prompt"),
-        "thresholds": prov.get("thresholds"), "category_version": prov.get("category_version"),
+        "thresholds": prov.get("thresholds"), "category_version": category_version,
         "inference_seconds": prov.get("inference_seconds", prov.get("elapsed_s")),
         "ai_count": sum(1 for k in state["predicted_ids"] if
                         base["objects"].get(k, {}).get("kind") == "rectangle")
@@ -478,7 +515,40 @@ class CorrectionRound:
                                     "taxonomy", "taxonomy_change", None, None)
             if not changed:
                 self._persist()
+            self._record_class_migration(mapping)
             return changed
+
+    def _record_class_migration(self, mapping):
+        """Append a versioned mapping for a confirmed class-system migration.
+
+        Only a real declaration is versioned: an identity mapping (or the same
+        mapping repeated) adds no version.  The mapping is kept next to the
+        vocabulary version it produced, so a report can cite
+        ``local-v<version>`` instead of guessing from the current labels.
+        """
+        with self._lock:
+            s = self._state
+            normalized = {
+                str(old): new for old, new in mapping.items()
+                if isinstance(new, str)
+            }
+            if not any(old != new for old, new in normalized.items()):
+                return False
+            history = s.get("class_migrations") or []
+            if history and history[-1].get("mapping") == normalized:
+                return False
+            version = int(s.get("category_version") or 1) + 1
+            record = {
+                "version": version,
+                "previous": int(s.get("category_version") or 1),
+                "mapping": normalized,
+                "comparable": bool(s.get("comparable_classes", True)),
+                "seq": s["seq"],
+            }
+            s["category_version"] = version
+            s["class_migrations"] = [*history[-31:], record]
+            self._persist()
+            return True
 
     def prepare_save(self, shapes, label_path=None):
         with self._lock:

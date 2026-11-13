@@ -1,16 +1,22 @@
 # 修正成本统计：验证记录
 
 - 变更：`add-annotation-correction-cost-statistics`
-- 当前状态：**第一版代码实现完成、自动化验证通过（任务 37/54）；真实屏幕人工验收与 GUI 性能未完成，变更未归档。**
-- 更新日期：2026-11-11（Asia/Shanghai）
+- 当前状态：**代码实施完成、自动化验证通过（任务 49/54）；真实屏幕人工验收与 GUI 性能未完成，变更未归档。**
+- 更新日期：2026-11-12（Asia/Shanghai）
 
 ## 0. 交付状态
 
-- **代码**：第一版实现完成；`tasks.md` 37/54 已勾选，其余为真实屏幕/GUI 性能/人工试用与 3 项遗留契约增强。
-- **自动测试**：`tests/test_correction_metrics` **299 passed**；另 `test_settings/test_schema.py` 7、批量相邻 2+6 subtests、数字矩形 48。
-- **可用路径**：设置启用 → 菜单打开 → 面板记录/暂停/完成/复核 → 汇总筛选 → 两种 CSV 导出；开关默认关闭，关闭时零负担。
-- **未完成**：9.2 GUI 定向回归、9.4 GUI 主线程 p95 与 10,000 图/5,000 行规模、9.5 两位使用者试用、10.4 的 GUI 打开/保存部分、`.ts/.qm` 重编译；5.3/5.5 待 9.x 回归后统一评估；2.2/2.5/3.3 为批次 1 遗留增强。
+- **代码**：第 1–4 批实施完成；`tasks.md` 49/54 已勾选，剩余 5 项全部需要真实桌面/人工。
+- **自动测试**：`tests/test_correction_metrics` **334 passed**；另 `test_settings/test_schema.py` 7、批量相邻 2+6 subtests、数字矩形 48。
+- **可用路径**：工作流菜单定位启用设置 → 保存 → 再次打开菜单 → 右侧栏记录/暂停/完成/复核 → 汇总筛选 → 两种 CSV 导出。开关默认关闭。
+- **未完成**：7.5 尾项（`.ts/.qm` 重编译与真实屏幕焦点核对）、9.2 GUI 定向回归、9.4 GUI 主线程 p95 与 10,000 图规模、9.5 两位使用者试用、10.4 的 GUI 打开/保存部分。
 - **结论**：自动化通过不等于功能验收通过。未完成 [人工验收清单](manual-acceptance-checklist.md) 前不得归档，也不得宣称质量或提速结论。
+
+## 菜单入口回归
+
+2026-11-12，Windows、`x-anylabeling-cu12`、PyQt6 离屏主窗口。通过实际工作流菜单动作验证默认关闭时定位启用开关、保存设置前后都未自动启动统计、已启用时显示可滚动的右侧栏面板、重新打开时展开面板、关闭统计时隐藏面板，以及面板初始化失败时显示错误且不启动统计。两项 SQLite 独占锁用例在施加故障前等待初始化写入结束，以便稳定触发预期的锁故障。
+
+`python -m pytest tests/test_labeling/test_correction_metrics_gate.py tests/test_settings/test_schema.py tests/test_correction_metrics -q -p no:cacheprovider --basetemp=.tmp/pytest-metrics-menu-20261112-e` 共 **345 passed**。`openspec validate add-annotation-correction-cost-statistics --strict` 通过。真实屏幕、打包程序、工具栏布局和点云测试未运行。
 
 ## 1. 批次总览
 
@@ -19,6 +25,7 @@
 | 第 1 批 | 1.2–1.4、2.1–2.6、3.1–3.5（数据契约、纯逻辑、存储） | 完成（3 条缺陷修复；2.2/2.5/3.3 部分保留） | [implementation-batch1-20261110.md](implementation-batch1-20261110.md) |
 | 第 2 批 | 4.x 预标注与编辑接入、5.x 保存/完成状态、6.x 计时 | 完成 4.1/4.2/4.3/4.5/4.6/4.7、5.1/5.2/5.4/5.6、6.1–6.4 | [batch2a](implementation-batch2a-20261110.md) · [2b](implementation-batch2b-20261110.md) · [2c](implementation-batch2c-20261110.md) · [2d](implementation-batch2d-20261111.md) |
 | 第 3 批 | 7.x 界面、8.x 导出、9.x 自动化、10.x 交付 | 7.1–7.4 与 8.x/9.1/9.3/9.6 完成；7.5 尾项、9.2/9.4/9.5 未完成 | [7x](implementation-batch3-7x-20261111.md) · [8x/9x](implementation-batch3-8x-9x-20261111.md) |
+| 第 4 批 | 遗留代码项：2.2、2.5、3.3、4.4、5.1、5.3、5.5、6.5、6.6 | 完成；修复完成不关计时器的真缺陷 | [batch4](implementation-batch4-20261111.md) |
 
 ## 2. 自动化验证（第 1 批）
 
@@ -125,25 +132,42 @@ CSV 快照一致、无 accuracy 类列）。详见
 
 详见 [implementation-batch3-10x-20261111.md](implementation-batch3-10x-20261111.md)。
 
+## 2.9 第 4 批（遗留代码项）验证
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| 统计测试全量 | `pytest tests/test_correction_metrics -q -p no:cacheprovider` | **334 passed**（新增 23 用例） |
+| 设置/组件回归 | `pytest tests/test_settings tests/test_widgets -q --tb=no -rf` | 142 passed / 1 skipped / 4 failed（画布调整、工具栏几何，本功能未触及） |
+| 标注回归（抽样） | `pytest tests/test_labeling/test_edit_mode_shortcut.py tests/test_labeling/test_label_widget_brush_mode.py` | 8 passed / 1 failed（沙箱 `config.yaml` 写保护，非功能失败） |
+| 静态检查 | `flake8`（7 个改动文件） | 新增代码零告警；仅 3 条既有告警（W504 / E129） |
+| 结构校验 | `openspec validate add-annotation-correction-cost-statistics --strict` | valid |
+
+新增用例：`test_identity_digest.py` 5（2.2）、`test_taxonomy.py` +4（2.5）、
+`test_fault_matrix.py` +3（3.3）、`test_net_diff.py` +3（4.4）、`test_checkpoint.py` +2（5.1）、
+`test_completion_extra.py` +2（5.5 / 6.5）、`test_timing.py` +1（6.6）、
+`test_panel_review.py` +2、`test_report_dialog.py` +1。
+详见 [implementation-batch4-20261111.md](implementation-batch4-20261111.md)。
+
 ## 3. 需求到证据
 
-四份 spec 共 33 Requirement / 69 Scenario，逐条映射见 [scenario-coverage.md](scenario-coverage.md)。第 1 批后：
+四份 spec 共 33 Requirement / 69 Scenario。逐条映射与实现状态的当前快照见
+[scenario-coverage.md](scenario-coverage.md)；本文件只汇总可执行证据，**不据 spec 数量推断
+全部 Scenario 已覆盖**。自动化证据集中在 `tests/test_correction_metrics/`（334 用例），
+真实屏幕语义（计时、焦点、快捷键、拖动体验）仍依赖 §7 的人工验收。
 
-| spec 目录 | Requirement | Scenario | 本批后自动化覆盖 |
-| --- | ---: | ---: | --- |
-| `annotation-correction-events` | 8 | 17 | 净差异、计数、撤销、类别映射等核心 Scenario 有用例 |
-| `annotation-correction-baseline` | 8 | 16 | 身份、起点来源、保存检查点、恢复与外部修改有用例 |
-| `annotation-correction-reporting` | 8 | 17 | 仅 `exclusion_reasons`/`outcome`/`density_groups` 逻辑层有用例；界面与 CSV 未实施 |
-| `annotation-work-timing` | 9 | 19 | `WorkClock` 存在但**本批未新增测试**；界面计时未接入 |
+## 4. 当前未完成、未运行与既有失败
 
-`scenario-coverage.md` 中的逐条覆盖状态是第 1 批开始前的快照，本批补齐后未逐条回填，不得据此宣称已覆盖。
-
-## 4. 未完成、未运行与既有失败
-
-- **功能仍不可用**：`views/labeling/correction_metrics/` 缺 `controller.py`/`panel.py`/`report_dialog.py`，`metrics_available()` 恒为假，22 处 `notify_metrics` 记录点空转。因此"能采集成本"目前不成立，本批只证明服务层数据契约与存储可用。
-- 未运行全项目测试；只运行上述三组命令。
-- 未做：GUI 场景回归（快捷输入、拖动、撤销、自动保存、切图）、保存/数据库/队列/崩溃故障矩阵的 GUI 级注入、性能门槛（30/300 矩形 p95 ≤ 5 ms、10,000 图库首屏 p95 ≤ 2 s、导出取消 ≤ 1 s）、CSV 逐项核对、人工试用与两位使用者对照。
-- `tests/test_labeling/test_correction_metrics_gate.py::test_actual_workflow_menu_disables_unfinished_statistics` 在本沙箱 `ERROR at setup`：pytest 以 `0o700` 建临时目录被 ACL 拒绝（`PermissionError: [WinError 5]`）。带 `pytest_tmp777` 插件时会在离屏 `MainWindow` 构造阶段挂起（既有环境问题，见 `openspec/PENDING_TASKS.md` 与 `fix-digit-rectangle-label-save/verification.md`）。这些属于**既有失败**，与本批改动无关，也未计入通过数。
+- **未完成（必须真实桌面/人工）**：7.5 的 `.ts/.qm` 重编译与真实屏幕焦点/快捷键核对、
+  9.2 GUI 逐入口回归、9.4 GUI 主线程 p95 与 10,000 图规模、9.5 两位使用者对照试用、
+  10.4 的 GUI 关闭/回退验证。
+- **未运行**：全项目测试（`pytest tests`）。`tests/test_labeling` 在沙箱内运行极慢并出现
+  配置写保护失败，本次只抽样运行；`tests/test_pointcloud` 按项目约定在 Windows 上不运行。
+- **既有失败（与本功能无关，未计入通过数）**：
+  - `tests/test_widgets/test_canvas_adjustment.py` 2 例（调整节流与 tooltip 文案）、
+    `tests/test_widgets/test_toolbar_layout.py` 2 例（工具栏几何；CI 亦排除该文件）；
+  - `tests/test_labeling/test_edit_mode_shortcut.py::test_ctrl_j_returns_from_rectangle_creation`
+    在沙箱内把 `config.yaml` 写到 `tests/conftest.py` 隔离区之外，触发写保护断言。
+  未放宽任何写保护断言。
 
 ## 5. OpenSpec 结构校验
 
@@ -154,9 +178,14 @@ openspec validate add-annotation-correction-cost-statistics --strict
 
 ## 6. 结论
 
-第 1 批交付的是**可测试的数据契约与本地存储**：净差异、计数、类别映射、范围与完整性判定、版本化 SQLite、有界写入队列、保存检查点与恢复。三条与 spec 冲突的缺陷（来源未知被误判为不可比、预测来源静默丢失、空基线分母为 0）已修复并有回归用例。
+第 1–4 批完成了从纯数据契约、版本化本地存储、编辑/预标注/保存/完成/计时接入，到面板、汇总、
+CSV 与交付文档的代码实施；自动化测试 334 通过，服务层故障矩阵与性能基准已有记录。第 4 批修复了
+"完成本轮后计时器未关闭"的真实缺陷，并补齐身份摘要、类别版本、存储重试、模型运行/阻塞等待展示
+与崩溃尾段处理。
 
-本变更**尚未交付可用功能**：UI 接入、计时界面、汇总与导出、性能与人工验收均未完成，`tasks.md` 中未勾选项保持未完成状态，不将本记录视为功能验收通过。
+**仍然不能宣称功能验收通过**：真实屏幕 GUI 回归、GUI 性能与 10,000 图规模、两位使用者试用、
+以及 `.ts/.qm` 重编译尚未完成。在这些项目完成并回填证据前，`tasks.md` 的 7.5/9.2/9.4/9.5/10.4
+保持未勾选，本变更不归档。
 
 ## 7. 人工验收（未完成）
 

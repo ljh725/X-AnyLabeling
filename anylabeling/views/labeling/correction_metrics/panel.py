@@ -37,6 +37,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QToolButton,
     QVBoxLayout,
@@ -173,8 +174,11 @@ class CorrectionMetricsPanel(QWidget):
     resume_requested = pyqtSignal()
     idle_decision_requested = pyqtSignal(bool)
     review_requested = pyqtSignal()
+    retry_requested = pyqtSignal()
 
-    def __init__(self, controller=None, parent=None, *, language=None):
+    def __init__(
+        self, controller=None, parent=None, *, language=None, scrollable=False
+    ):
         super().__init__(parent)
         self._controller = None
         self._row = None
@@ -197,7 +201,7 @@ class CorrectionMetricsPanel(QWidget):
                 self.setWindowFlags(self.windowFlags() | Qt.WindowType.Tool)
             except Exception:  # noqa: BLE001 - flags are best effort
                 pass
-        self._build()
+        self._build(scrollable)
         for child in self.findChildren(QWidget):
             child.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setObjectName("CorrectionMetricsPanel")
@@ -210,7 +214,7 @@ class CorrectionMetricsPanel(QWidget):
             self._render()
 
     # ------------------------------------------------------------- assembly
-    def _build(self):
+    def _build(self, scrollable):
         root = QVBoxLayout(self)
         root.setContentsMargins(4, 4, 4, 4)
         root.setSpacing(3)
@@ -293,6 +297,12 @@ class CorrectionMetricsPanel(QWidget):
         self.browse_label.setObjectName("metrics_browse_only")
         self.browse_label.hide()
         timing_grid.addWidget(self.browse_label, 2, 0, 1, 2)
+        # Model runtime and blocking wait are separate facts: they may overlap
+        # foreground work and must never be added to processing time.
+        self._add_row(timing_grid, "model_runtime", "model_runtime_seconds", 3)
+        self._add_row(
+            timing_grid, "blocking_time", "blocking_wait_seconds", 4
+        )
 
         counters, counters_grid = self._section("operations")
         self._add_row(counters_grid, "transactions", "transactions", 0)
@@ -347,12 +357,17 @@ class CorrectionMetricsPanel(QWidget):
         self.summary_button = _Button()
         self.summary_button.setObjectName("metrics_summary_button")
         self.summary_button.clicked.connect(self._on_summary_clicked)
+        self.retry_button = _Button()
+        self.retry_button.setObjectName("metrics_retry_button")
+        self.retry_button.clicked.connect(self._on_retry_clicked)
+        self.retry_button.hide()
         for button in (
             self.pause_button,
             self.finish_button,
             self.resume_button,
             self.review_button,
             self.summary_button,
+            self.retry_button,
         ):
             button.setSizePolicy(
                 QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
@@ -360,7 +375,18 @@ class CorrectionMetricsPanel(QWidget):
             actions.addWidget(button)
         body.addLayout(actions)
 
-        root.addWidget(self.body)
+        self._body_container = self.body
+        if scrollable:
+            scroll = QScrollArea(self)
+            scroll.setFrameShape(QFrame.Shape.NoFrame)
+            scroll.setWidgetResizable(True)
+            scroll.setHorizontalScrollBarPolicy(
+                Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+            )
+            scroll.setMaximumHeight(320)
+            scroll.setWidget(self.body)
+            self._body_container = scroll
+        root.addWidget(self._body_container)
 
     def _section(self, message_key, badge=False):
         """Return a titled frame and its two-column grid, registered for i18n."""
@@ -497,6 +523,9 @@ class CorrectionMetricsPanel(QWidget):
     def _on_summary_clicked(self):
         self.summary_requested.emit()
 
+    def _on_retry_clicked(self):
+        self._emit_or_call(self.retry_requested, "retry_storage")
+
     def _emit_or_call(self, signal, method_name, *args):
         """Emit the action; call the controller only when nobody listens.
 
@@ -601,7 +630,7 @@ class CorrectionMetricsPanel(QWidget):
 
     def _apply_collapsed(self):
         language = self._ui_language()
-        self.body.setVisible(not self._collapsed)
+        self._body_container.setVisible(not self._collapsed)
         self.toggle_button.setText("\u25b8" if self._collapsed else "\u25be")
         label = tr(
             "expand" if self._collapsed else "collapse", language=language
@@ -638,6 +667,7 @@ class CorrectionMetricsPanel(QWidget):
         self._render_identity(row, language)
         self._render_counters(row)
         self._render_timing(language)
+        self._render_model_time(language)
         self._render_net("draft", self._row, language)
         self._render_net("saved", self._saved, language)
         self._render_integrity(language)
@@ -759,6 +789,39 @@ class CorrectionMetricsPanel(QWidget):
         if browsing:
             self.browse_label.setText(tr("browse_only", language=language))
 
+    def _render_model_time(self, language):
+        """Model runtime and blocking wait, shown beside (never added to) work time."""
+        row = self._row or {}
+        inference = row.get("inference_seconds")
+        self._set(
+            "model_runtime",
+            self._seconds_text(inference, language),
+            tooltip=tr("model_runtime_note", language=language)
+            if inference is not None
+            else None,
+        )
+        totals = row.get("time") or {}
+        blocking = totals.get("blocking_wait")
+        self._set(
+            "blocking_time",
+            self._seconds_text(blocking, language),
+            tooltip=tr("blocking_note", language=language)
+            if blocking is not None
+            else None,
+        )
+
+    def _seconds_text(self, value, language):
+        if value is None:
+            return N_A
+        try:
+            return tr(
+                "seconds",
+                language=language,
+                seconds=int(round(float(value))),
+            )
+        except (TypeError, ValueError):
+            return N_A
+
     def _render_net(self, prefix, row, language):
         data = row or {}
         for field, _ in NET_FIELDS:
@@ -842,6 +905,12 @@ class CorrectionMetricsPanel(QWidget):
 
         reason = self._degraded_reason()
         self.degraded_label.setVisible(bool(reason))
+        self.retry_button.setVisible(bool(reason))
+        self.retry_button.setEnabled(bool(reason) and self._compute_ready())
+        self.retry_button.setText(tr("retry", language=language))
+        self.retry_button.setToolTip(
+            tr("retry_hint", language=language) if reason else reason
+        )
         if reason:
             self.degraded_label.setText(
                 tr("degraded", language=language) + ": " + reason
