@@ -25,12 +25,17 @@
 
 ### Requirement: Completed binding is consumed once
 
-系统 SHALL 在成功完成本次数字键矩形创建并赋予类别后消费该次绑定；后续没有重新触发数字绑定的普通绘制 SHALL 遵循原有类别选择规则，不继承已完成绘制遗留的绑定。
+系统 SHALL 在成功完成本次数字键矩形创建并赋予类别后消费该次绑定。放弃本次绘制时，系统 SHALL 清除待用的数字键绑定。后续没有重新触发数字绑定的普通绘制 SHALL 遵循原有类别选择规则。
 
 #### Scenario: Ordinary drawing after digit rectangle completion
 
 - **WHEN** 用户完成数字键绑定为“车辆”的矩形，随后未按数字键而通过普通矩形工具按原有规则选择“其他类别”并完成下一矩形
 - **THEN** 第一矩形保持“车辆”，第二矩形为“其他类别”
+
+#### Scenario: Ordinary drawing after abandoning digit creation
+
+- **WHEN** 用户按下已绑定类别的数字键，随后在完成矩形前按 Esc、切换绘制工具或切换图片
+- **THEN** 下一次普通矩形绘制和保存采用普通类别选择规则
 
 ### Requirement: Saving and reopening preserve the completed rectangle
 

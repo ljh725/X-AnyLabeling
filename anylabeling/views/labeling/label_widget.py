@@ -111,6 +111,10 @@ from .utils.qt import new_icon_path
 from .utils.theme import get_theme
 from .pointcloud.icons import get_icon
 from .widgets.description_editor import DescriptionEditor
+from .widgets.digit_shortcut_bar import (
+    DigitShortcutBar,
+    resolve_digit_mapping,
+)
 from .widgets.panel import (
     PanelCheckBox,
     HoverControl,
@@ -718,6 +722,14 @@ class LabelingWidget(LabelDialog):
         self.image_tags_widget.status_message.connect(self.status)
         self.image_tags_widget.set_interactions_enabled(False)
         self.image_tags_widget.hide()
+
+        self.digit_shortcut_bar = DigitShortcutBar(self)
+        self.digit_shortcut_bar.set_mappings(self.drawing_digit_shortcuts)
+        self.digit_shortcut_bar.digit_activated.connect(self.create_digit_mode)
+        self.canvas.new_shape.connect(self._sync_digit_shortcut_bar)
+        self.digit_shortcut_bar.setVisible(
+            self._config.get("show_digit_shortcuts", False)
+        )
 
         features = QtWidgets.QDockWidget.DockWidgetFeature(0)
         for dock in [
@@ -2134,6 +2146,13 @@ class LabelingWidget(LabelDialog):
             icon="tags",
         )
 
+        show_digit_shortcuts = action(
+            self.tr("Digit Key Hints"),
+            self.toggle_digit_shortcuts_visibility,
+            checkable=True,
+            checked=self._config.get("show_digit_shortcuts", False),
+        )
+
         # AI Actions
         toggle_auto_labeling_widget = action(
             self.tr("Auto Labeling"),
@@ -2271,6 +2290,7 @@ class LabelingWidget(LabelDialog):
             show_linking=show_linking,
             show_navigator=show_navigator,
             show_image_tags=show_image_tags,
+            show_digit_shortcuts=show_digit_shortcuts,
             zoom_actions=zoom_actions,
             jump_next_images=jump_next_images,
             jump_prev_images=jump_prev_images,
@@ -2627,6 +2647,7 @@ class LabelingWidget(LabelDialog):
             self.canvas.set_rectangle_edge_enabled
         )
         self.menus.view.addAction(self.rectangle_edge_action)
+        self.menus.view.addAction(show_digit_shortcuts)
 
         self._view_menu_filter = utils.StayOpenMenuFilter(self.menus.view)
         self.menus.view.installEventFilter(self._view_menu_filter)
@@ -2864,6 +2885,7 @@ class LabelingWidget(LabelDialog):
         canvas_panel_layout.addWidget(scroll_area)
         central_layout.addWidget(canvas_panel, 1)
         central_layout.addWidget(self.compare_view_slider)
+        central_layout.addWidget(self.digit_shortcut_bar)
         central_layout.addWidget(self.image_tags_widget)
         central_widget = QWidget()
         central_widget.setLayout(central_layout)
@@ -3675,6 +3697,30 @@ class LabelingWidget(LabelDialog):
         )
         self.image_tags_widget.setVisible(checked)
 
+    def toggle_digit_shortcuts_visibility(self, checked):
+        if not self.update_user_preference(
+            "show_digit_shortcuts", bool(checked)
+        ):
+            checked = self._config.get("show_digit_shortcuts", False)
+            with QtCore.QSignalBlocker(self.actions.show_digit_shortcuts):
+                self.actions.show_digit_shortcuts.setChecked(checked)
+        self.digit_shortcut_bar.setVisible(bool(checked))
+
+    def _sync_digit_shortcut_bar(self):
+        # Both drawing cancellation and shape completion update the cards.
+        workflow = getattr(self, "rectangle_creation", None)
+        self.digit_shortcut_bar.set_interactions_enabled(
+            bool(self.image_path)
+            and self.canvas.current is None
+            and (workflow is None or workflow.draft is None)
+        )
+
+    def _clear_digit_drawing_label(self):
+        self.digit_to_label = None
+        bar = getattr(self, "digit_shortcut_bar", None)
+        if bar is not None:
+            bar.set_active_digit(None)
+
     def _auto_show_image_tags(self):
         if self._image_tags_visibility != "auto":
             return
@@ -3760,6 +3806,11 @@ class LabelingWidget(LabelDialog):
 
     def toggle_actions(self, value=True):
         """Enable/Disable widgets which depend on an opened image."""
+        bar = getattr(self, "digit_shortcut_bar", None)
+        if bar is not None:
+            bar.set_interactions_enabled(value)
+            if not value:
+                bar.set_active_digit(None)
         for action in self.actions.zoom_actions:
             action.setEnabled(value)
         for action in self.actions.on_load_active:
@@ -3841,6 +3892,10 @@ class LabelingWidget(LabelDialog):
         self.filename = None
         self.update_browse_actions()
         self.image_path = None
+        self._clear_digit_drawing_label()
+        bar = getattr(self, "digit_shortcut_bar", None)
+        if bar is not None:
+            bar.set_interactions_enabled(False)
         self.image_data = None
         self.label_file = None
         self.other_data = {}
@@ -4280,6 +4335,9 @@ class LabelingWidget(LabelDialog):
             merged.pop(key[-1], None)
         self._config["digit_shortcuts"] = merged
         self.drawing_digit_shortcuts = merged
+        bar = getattr(self, "digit_shortcut_bar", None)
+        if bar is not None:
+            bar.set_mappings(merged)
         return True, ""
 
     def _store_digit_shortcuts(self):
@@ -5760,6 +5818,14 @@ class LabelingWidget(LabelDialog):
         self.actions.undo.setEnabled(not drawing)
         self.actions.delete.setEnabled(not drawing)
         self.actions.union_selection.setEnabled(not drawing)
+        if not drawing and self.digit_to_label is not None:
+            self._clear_digit_drawing_label()
+        bar = getattr(self, "digit_shortcut_bar", None)
+        if bar is not None:
+            if drawing:
+                bar.set_interactions_enabled(False)
+            else:
+                self._sync_digit_shortcut_bar()
         self.update_labeling_instruction()
 
     def create_digit_mode(self, digit_num):
@@ -5771,18 +5837,10 @@ class LabelingWidget(LabelDialog):
         so the pending geometry is never lost. 4.2.1 has no digit paging, so
         the mapping index is the digit itself.
         """
-        if self.drawing_digit_shortcuts is None:
+        entry = resolve_digit_mapping(self.drawing_digit_shortcuts, digit_num)
+        if entry is None:
             return
-
-        data = self.drawing_digit_shortcuts.get(digit_num, None)
-        if not data:
-            return
-
-        label = data.get("label", "object")
-        create_mode = data.get("mode", None)
-
-        if create_mode not in Shape.get_supported_shape():
-            return
+        label, create_mode = entry
         if self.canvas.current is not None:
             return
         workflow = getattr(self, "rectangle_creation", None)
@@ -5802,11 +5860,17 @@ class LabelingWidget(LabelDialog):
             ]
             if not editable:
                 return
-            self._relabel_selection(editable, label)
+            updated = self._relabel_selection(editable, label)
+            bar = getattr(self, "digit_shortcut_bar", None)
+            if updated and bar is not None:
+                bar.set_active_digit(digit_num)
             return
 
-        self.digit_to_label = label
         self.toggle_draw_mode(edit=False, create_mode=create_mode)
+        self.digit_to_label = label
+        bar = getattr(self, "digit_shortcut_bar", None)
+        if bar is not None:
+            bar.set_active_digit(digit_num)
 
     def _relabel_selection(self, shapes, label):
         """Apply one digit label to the frozen selection as one undo step."""
@@ -5827,6 +5891,7 @@ class LabelingWidget(LabelDialog):
         disable_auto_labeling=True,
         preserve_brush_mode=False,
     ):
+        self._clear_digit_drawing_label()
         workflow = getattr(self, "rectangle_creation", None)
         if workflow is not None:
             workflow.before_tool_change(edit, create_mode)
@@ -8811,6 +8876,15 @@ class LabelingWidget(LabelDialog):
         self.canvas_adjustment.raise_()
 
     def eventFilter(self, obj, event):
+        if (
+            obj is getattr(self, "canvas", None)
+            and event.type() == QtCore.QEvent.Type.KeyPress
+            and event.key() == Qt.Key.Key_Escape
+            and self.canvas.current is None
+            and self.digit_to_label is not None
+        ):
+            # Escape before the first click has no canvas draft to cancel.
+            self._clear_digit_drawing_label()
         if (
             hasattr(self, "_canvas_scroll_area")
             and obj is self._canvas_scroll_area.viewport()

@@ -5595,6 +5595,10 @@ Continue?</source>
 </context><context>
     <name>LabelingWidget</name>
     <message>
+        <source>Digit Key Hints</source>
+        <translation>数字键提示</translation>
+    </message>
+    <message>
         <source>Save Failed</source>
         <translation>保存失败</translation>
     </message>
@@ -14036,6 +14040,13 @@ Response preview:
     <message>
         <source>重试</source>
         <translation>重试</translation>
+    </message>
+</context>
+<context>
+    <name>DigitShortcutBar</name>
+    <message>
+        <source>Unbound</source>
+        <translation>未绑定</translation>
     </message>
 </context>
 </TS>

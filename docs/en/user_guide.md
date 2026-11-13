@@ -845,6 +845,8 @@ digit_shortcuts:
 
 Settings made in the interface are saved to `.xanylabelingrc` and loaded at the next startup. Manual configuration changes also take effect after restarting the application.
 
+**Digit Key Hints**: Enable **View > Digit Key Hints** (below *Rectangle Edge Editing*) to show a strip under the canvas. It is hidden by default; the choice is remembered across restarts and rolled back if saving fails. When another entry commits `show_digit_shortcuts` in the same configuration session, the menu check mark and the strip update together. The strip shows digits 1–9 only, as nine equal-width single-row cards with the digit on the left and the label on the right; long labels are elided (hover for the full name) and unbound cards cannot be clicked. Clicking a card uses the same mapping resolution and activation as pressing the key: with no selection it enters the bound drawing mode, with a selection it relabels the selected shapes. Legacy entries with only `mode` still work and use the label `object`; both integer and string digit keys are accepted. Cards are disabled and unhighlighted when no image is open, after an image fails to load or is closed, and while an ordinary shape or four-extreme draft is in progress; they come back after a successful load, or after the drawing is completed or cancelled. Hiding the strip does not affect the digit keys, and key 0 (not shown on the strip) remains configurable and usable through the manager. Saving the manager updates the strip immediately.
+
 ### 5.6 Group ID Manager
 
 The Group ID Manager is a batch management feature for group ID fields, allowing users to uniformly modify and delete group IDs within a specified range. You can access it in two ways:

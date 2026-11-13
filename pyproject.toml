@@ -186,6 +186,7 @@ addopts = "--doctest-modules --durations=30 --color=yes"
 testpaths = ["tests"]
 markers = [
     "slow: skip slow tests unless --slow is set",
+    "shared_config: window fixture shares the live config with the session",
 ]
 norecursedirs = [".git", "dist", "build"]
 

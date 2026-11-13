@@ -138,6 +138,7 @@ class SettingsController(QtCore.QObject):
         )
         self._runtime_keys = set(self._field_map) | {
             "digit_shortcuts",
+            "show_digit_shortcuts",
             "keep_prev",
             "keep_prev_scale",
             "keep_prev_brightness",

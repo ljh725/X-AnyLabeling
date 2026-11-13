@@ -239,6 +239,15 @@ class SettingsRuntimeApplier:
     def apply_change(self, key: str, value: Any) -> None:
         if key == "digit_shortcuts":
             self._widget.drawing_digit_shortcuts = copy.deepcopy(value or {})
+            bar = getattr(self._widget, "digit_shortcut_bar", None)
+            if bar is not None:
+                bar.set_mappings(self._widget.drawing_digit_shortcuts)
+            return
+        if key == "show_digit_shortcuts":
+            action = self._widget.actions.show_digit_shortcuts
+            with QtCore.QSignalBlocker(action):
+                action.setChecked(bool(value))
+            self._widget.digit_shortcut_bar.setVisible(bool(value))
             return
         if key in {
             "keep_prev",

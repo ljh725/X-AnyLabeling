@@ -20,7 +20,9 @@ from anylabeling.views.mainwindow import MainWindow
 
 
 @pytest.fixture
-def window(tmp_path, monkeypatch):
+def window(tmp_path, monkeypatch, request):
+    # Production hands the live config object to the session as ``effective``.
+    shared = request.node.get_closest_marker("shared_config") is not None
     app = QtWidgets.QApplication.instance()
     config_path = tmp_path / "config.yaml"
     # begin_session() creates the target from the template; pre-creating an
@@ -39,7 +41,7 @@ def window(tmp_path, monkeypatch):
     config = copy.deepcopy(load_template_config())
     user_config.begin_session(
         target_path=str(config_path), origin="file",
-        template=copy.deepcopy(config), effective=copy.deepcopy(config),
+        template=copy.deepcopy(config), effective=config if shared else copy.deepcopy(config),
         ensure_created=True, normalizer=normalize_user_config,
     )
     result = MainWindow(app, config=config)
@@ -110,6 +112,84 @@ def select_class(widget, label):
     item.setSelected(True)
     assert widget.unique_label_list.selectedItems() == [item]
     return item
+
+
+def test_digit_hint_menu_placement_persistence_and_canvas_space(window):
+    import yaml
+
+    widget = window.labeling_widget.view
+    action = widget.actions.show_digit_shortcuts
+    bar = widget.digit_shortcut_bar
+    view_actions = widget.menus.view.actions()
+    assert view_actions.index(action) == view_actions.index(widget.rectangle_edge_action) + 1
+    assert action not in widget.actions.tool
+    assert bar.isHidden()
+    canvas_height = widget._central_widget.height()
+
+    action.trigger()
+    QtWidgets.QApplication.processEvents()
+    assert action.isChecked()
+    assert bar.isVisible()
+    assert widget._central_widget.height() < canvas_height
+    assert not any(button.isEnabled() for button in bar.buttons.values())
+    target = user_config.current_session().target_path
+    with open(target, encoding="utf-8") as stream:
+        assert yaml.safe_load(stream)["show_digit_shortcuts"] is True
+
+    action.trigger()
+    QtWidgets.QApplication.processEvents()
+    assert bar.isHidden()
+    assert widget._central_widget.height() == canvas_height
+    with open(target, encoding="utf-8") as stream:
+        assert yaml.safe_load(stream)["show_digit_shortcuts"] is False
+
+
+def test_digit_hint_toggle_rolls_back_on_save_failure(window, monkeypatch):
+    widget = window.labeling_widget.view
+    monkeypatch.setattr(widget, "update_user_preference", lambda *_args: False)
+    widget.actions.show_digit_shortcuts.trigger()
+    assert not widget.actions.show_digit_shortcuts.isChecked()
+    assert widget.digit_shortcut_bar.isHidden()
+
+
+@pytest.mark.parametrize("auto_save", [True, False])
+def test_digit_hint_click_and_key_share_draw_and_relabel_behavior(window, tmp_path, auto_save):
+    widget = window.labeling_widget.view
+    widget._config["auto_save"] = auto_save
+    baseline = dict(widget.drawing_digit_shortcuts or {})
+    proposed = dict(baseline)
+    proposed.update({
+        1: {"mode": "rectangle", "label": "车辆"},
+        2: {"mode": "rectangle", "label": "Book"},
+    })
+    assert widget._commit_digit_shortcuts(proposed, baseline)[0]
+    assert widget.digit_shortcut_bar.buttons[1].label == "车辆"
+    image_path = tmp_path / "digit-hints.png"
+    Image.new("RGB", (200, 160), "white").save(image_path)
+    assert widget.load_file(str(image_path))
+    widget.actions.show_digit_shortcuts.trigger()
+    bar = widget.digit_shortcut_bar
+
+    bar.buttons[1].click()
+    assert widget.digit_to_label == "车辆"
+    assert widget.canvas.create_mode == "rectangle"
+    assert bar.buttons[1].isChecked()
+    assert window.grab().save(str(tmp_path / "digit-hints-window.png"))
+    click_points(widget, ((20, 30), (100, 110)))
+    assert widget.canvas.shapes[0].label == "车辆"
+    widget.canvas.select_shapes([widget.canvas.shapes[0]])
+    assert bar.buttons[2].isEnabled()
+    bar.buttons[2].click()
+    assert widget.canvas.shapes[0].label == "Book"
+    assert bar.buttons[2].isChecked()
+
+    # Hiding hints must leave physical digit-key shortcuts operational.
+    widget.actions.show_digit_shortcuts.trigger()
+    widget.canvas.setFocus()
+    QtTest.QTest.keyClick(widget.canvas, QtCore.Qt.Key.Key_1)
+    assert widget.canvas.shapes[0].label == "车辆"
+    assert bar.buttons[1].isChecked()
+    widget.error_message.assert_not_called()
 
 
 @pytest.mark.parametrize("auto_save", [True, False])
@@ -222,6 +302,52 @@ def test_digit_binding_is_consumed_by_the_completed_rectangle(window, tmp_path):
         "车辆",
         "其他类别",
     ]
+
+
+@pytest.mark.parametrize(
+    "abandon", ["escape", "escape_after_click", "edit", "next_image"]
+)
+def test_abandoned_digit_binding_does_not_label_a_plain_rectangle(
+    window, tmp_path, abandon
+):
+    widget = window.labeling_widget.view
+    widget._config.update(auto_save=True, display_label_popup=False)
+    widget.drawing_digit_shortcuts = {3: {"label": "车辆", "mode": "rectangle"}}
+    image_path = tmp_path / "first.png"
+    Image.new("RGB", (200, 160), "white").save(image_path)
+    assert widget.load_file(str(image_path))
+    canvas = widget.canvas
+    canvas.setFocus()
+    QtTest.QTest.keyClick(canvas, QtCore.Qt.Key.Key_3)
+    assert widget.digit_to_label == "车辆"
+
+    if abandon == "escape_after_click":
+        point = (QtCore.QPointF(20, 30) + canvas.offset_to_center()) * canvas.scale
+        QtTest.QTest.mouseClick(
+            canvas, QtCore.Qt.MouseButton.LeftButton, pos=point.toPoint()
+        )
+        assert canvas.current is not None
+    if abandon.startswith("escape"):
+        QtTest.QTest.keyClick(canvas, QtCore.Qt.Key.Key_Escape)
+    elif abandon == "edit":
+        widget.actions.edit_mode.trigger()
+    else:
+        image_path = tmp_path / "next.png"
+        Image.new("RGB", (200, 160), "white").save(image_path)
+        assert widget.load_file(str(image_path))
+
+    assert widget.digit_to_label is None
+    assert not canvas.shapes
+    select_class(widget, "其他类别")
+    if abandon.startswith("escape"):
+        assert canvas.drawing()
+        click_points(widget, ((20, 30), (100, 110)))
+    else:
+        draw_plain_rectangle(widget)
+    assert [shape.label for shape in canvas.shapes] == ["其他类别"]
+    saved = json.loads(image_path.with_suffix(".json").read_text(encoding="utf-8"))
+    assert [shape["label"] for shape in saved["shapes"]] == ["其他类别"]
+    widget.error_message.assert_not_called()
 
 
 def test_last_label_reuse_cannot_override_digit_binding(window, tmp_path):
@@ -337,3 +463,132 @@ def test_auto_labeling_special_mark_outranks_the_digit_binding():
 
     assert host.canvas.shapes[-1].label == AutoLabelingMode.ADD
     assert host.digit_to_label == "车辆"
+
+
+def _write_png(path):
+    Image.new("RGB", (200, 160), "white").save(path)
+    return str(path)
+
+
+def test_cards_follow_image_lifecycle(window, tmp_path):
+    widget = window.labeling_widget.view
+    bar = widget.digit_shortcut_bar
+    baseline = dict(widget.drawing_digit_shortcuts or {})
+    proposed = dict(baseline)
+    proposed[1] = {"mode": "rectangle", "label": "车辆"}
+    assert widget._commit_digit_shortcuts(proposed, baseline)[0]
+    assert not bar.buttons[1].isEnabled()
+
+    assert widget.load_file(_write_png(tmp_path / "ok.png"))
+    assert bar.buttons[1].isEnabled()
+    bar.buttons[1].click()
+    assert bar.buttons[1].isChecked()
+    # Ordinary drawing in progress disables the cards.
+    point = QtCore.QPointF(20, 30)
+    widget.canvas.setFocus()
+    click_points_partial = (point + widget.canvas.offset_to_center()) * widget.canvas.scale
+    QtTest.QTest.mouseClick(
+        widget.canvas, QtCore.Qt.MouseButton.LeftButton,
+        pos=click_points_partial.toPoint(),
+    )
+    assert widget.canvas.current is not None
+    assert not bar.buttons[1].isEnabled()
+    widget.canvas.cancel_drawing()
+    assert widget.digit_to_label is None
+    assert bar.buttons[1].isEnabled()
+    assert not bar.buttons[1].isChecked()
+
+    bar.buttons[1].click()
+    assert bar.buttons[1].isChecked()
+    # Missing and corrupt files both reset the image and disable the cards.
+    assert not widget.load_file(str(tmp_path / "missing.png"))
+    assert not bar.buttons[1].isEnabled()
+    assert not bar.buttons[1].isChecked()
+
+    assert widget.load_file(_write_png(tmp_path / "ok2.png"))
+    assert bar.buttons[1].isEnabled()
+    bad = tmp_path / "bad.png"
+    bad.write_bytes(b"not an image")
+    assert not widget.load_file(str(bad))
+    assert not bar.buttons[1].isEnabled()
+    assert not bar.buttons[1].isChecked()
+    assert widget.load_file(_write_png(tmp_path / "ok3.png"))
+    assert bar.buttons[1].isEnabled()
+
+
+def test_cards_disabled_during_extreme_draft(window, tmp_path):
+    widget = window.labeling_widget.view
+    bar = widget.digit_shortcut_bar
+    baseline = dict(widget.drawing_digit_shortcuts or {})
+    proposed = dict(baseline)
+    proposed[1] = {"mode": "rectangle", "label": "车辆"}
+    assert widget._commit_digit_shortcuts(proposed, baseline)[0]
+    assert widget.load_file(_write_png(tmp_path / "ok.png"))
+    workflow = widget.rectangle_creation
+    assert bar.buttons[1].isEnabled()
+
+    workflow.start_extreme()
+    assert workflow.draft is not None
+    assert not bar.buttons[1].isEnabled()
+    workflow.cancel()
+    assert workflow.draft is None
+    assert bar.buttons[1].isEnabled()
+
+    bar.buttons[1].click()
+    assert widget.digit_to_label == "车辆"
+    workflow.start_extreme()
+    assert widget.digit_to_label is None
+    assert not bar.buttons[1].isEnabled()
+    widget._config["display_label_popup"] = False
+    select_class(widget, "其他类别")
+    click_points(widget, ((20, 30), (100, 80), (60, 110), (20, 80)))
+    assert workflow.draft is None
+    assert [shape.label for shape in widget.canvas.shapes] == ["其他类别"]
+    assert bar.buttons[1].isEnabled()
+
+    workflow.continue_drawing()
+    assert widget.digit_to_label == "其他类别"
+    select_class(widget, "车辆")
+    click_points(widget, ((120, 30), (180, 80), (160, 110), (120, 80)))
+    assert workflow.draft is None
+    assert [shape.label for shape in widget.canvas.shapes] == ["其他类别"] * 2
+    assert widget.digit_to_label is None
+    assert bar.buttons[1].isEnabled()
+
+
+@pytest.mark.shared_config
+def test_config_session_commit_syncs_menu_and_bar(window, monkeypatch):
+    widget = window.labeling_widget.view
+    action = widget.actions.show_digit_shortcuts
+    bar = widget.digit_shortcut_bar
+    assert bar.isHidden() and not action.isChecked()
+    user_config.save_values({"show_digit_shortcuts": True})
+    QtWidgets.QApplication.processEvents()
+    assert action.isChecked() and bar.isVisible()
+    user_config.save_values({"show_digit_shortcuts": False})
+    QtWidgets.QApplication.processEvents()
+    assert not action.isChecked() and bar.isHidden()
+
+
+def test_legacy_mode_only_mapping_works_for_key_and_card(window, tmp_path):
+    widget = window.labeling_widget.view
+    bar = widget.digit_shortcut_bar
+    widget.drawing_digit_shortcuts = {
+        1: {"mode": "rectangle"},
+        "2": {"mode": "polygon", "label": "Car"},
+        0: {"mode": "rectangle", "label": "Zero"},
+    }
+    bar.set_mappings(widget.drawing_digit_shortcuts)
+    assert widget.load_file(_write_png(tmp_path / "ok.png"))
+    bar.buttons[1].click()
+    assert widget.digit_to_label == "object"
+    assert widget.canvas.create_mode == "rectangle"
+    widget.toggle_draw_mode(edit=True)
+    widget.create_digit_mode(2)
+    assert widget.digit_to_label == "Car"
+    assert widget.canvas.create_mode == "polygon"
+    widget.toggle_draw_mode(edit=True)
+    widget.canvas.setFocus()
+    QtTest.QTest.keyClick(widget.canvas, QtCore.Qt.Key.Key_0)
+    assert widget.digit_to_label == "Zero"
+    assert 0 not in bar.buttons

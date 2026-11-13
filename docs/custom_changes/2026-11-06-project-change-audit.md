@@ -17,7 +17,7 @@
 | 编号 / 主题 | 已有行为变化 | 主要源码落点 | 记录与当前边界 |
 | --- | --- | --- | --- |
 | CUSTOM-010 批量编辑 | 仅应用明确修改字段，保留其他字段并兼容撤销 | `editing_commands.py`、`label_widget.py`、`widgets/label_dialog.py` | [历史台账](CATALOG-20261030.md)；已提交，不在本轮重新全面验收 |
-| CUSTOM-011 数字键与模式 | 数字绘制/改标顺序、多选改标、创建/编辑状态衔接 | `label_widget.py`、settings 配置和动作 | [历史台账](CATALOG-20261030.md)；特定错存类别问题仍有未实施任务，见下 |
+| CUSTOM-011 数字键与模式 | 数字绘制/改标顺序、多选改标、创建/编辑状态衔接 | `label_widget.py`、settings 配置和动作 | [历史台账](CATALOG-20261030.md) · [类别保存复核](2026-11-11-digit-rectangle-label-save.md) |
 | CUSTOM-012 选择一致性 | 命中优先级、隐藏/聚焦及锁定行为 | `widgets/canvas.py`、`widgets/rectangle_edge.py` | [历史台账](CATALOG-20261030.md) |
 | CUSTOM-013 标签显示 | 仅显示选中对象标签，悬停可预览 | `widgets/canvas.py`、配置与菜单 | [历史台账](CATALOG-20261030.md) |
 | CUSTOM-014 窗口密度 | 按外层窗口尺寸判断；四极值提交/取消回归修复 | `label_widget.py`、矩形创建控制器 | [历史台账](CATALOG-20261030.md) |
@@ -52,7 +52,7 @@
 | --- | --- | --- |
 | CUSTOM-001 统计总览/标签管理器后台扫描与进度 | 诊断及方案存在，尚未实施；与已经实现的 Inspector 扫描进度是不同入口 | [方案](2026-10-29-dataset-scan-progress.md) |
 | CUSTOM-111 修正成本统计 | 部分服务、计时和 hooks 已保存；控制器/面板/报告窗口与完整集成尚缺，入口有开发状态门控 | [状态记录](2026-11-03-correction-cost-statistics.md) |
-| 数字矩形特定错存标签修复 | 已登记修复任务，全部实施任务尚未勾选；测试仍有严格 xfail，不能说已修复 | [任务](../../openspec/changes/fix-digit-rectangle-label-save/tasks.md) |
+| 数字矩形特定错存标签修复 | 11-10 类别优先级修复已提交；11-11 补修放弃绘制时残留绑定 | [实施与复核记录](2026-11-11-digit-rectangle-label-save.md) · [任务](../../openspec/changes/fix-digit-rectangle-label-save/tasks.md) |
 | 旧版双屏、SQLite 索引、完整旧质检/行为分析 | 不能因为旧项目存在就视为全部进入当前版本；Inspector 仅采用已登记算法与协议 | [历史范围说明](CATALOG-20261030.md)、[Inspector 迁移来源](2026-11-02-inspector-workflow.md) |
 
 ## 记录完整性

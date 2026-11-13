@@ -438,6 +438,7 @@ EXCLUDED_KEYS = frozenset(
         "auto_use_last_label",
         "auto_use_last_gid",
         "show_groups",
+        "show_digit_shortcuts",
         "show_masks",
         "show_texts",
         "show_labels",
