@@ -52,7 +52,11 @@ class RectangleCrosshairMixin:
         if preview is None:
             preview = self._build_point_fit_preview()
         fit_owns_guide = bool(
-            preview is not None and preview.valid and preview.candidate_differs
+            preview is not None
+            and (
+                preview.owns_guides
+                or (preview.valid and preview.candidate_differs)
+            )
         )
         return bool(
             self.cross_line_show

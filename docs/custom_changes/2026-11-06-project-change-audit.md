@@ -31,7 +31,7 @@
 
 | 编号 | 能力 | 主要源码落点 | 状态 / 记录 |
 | --- | --- | --- | --- |
-| CUSTOM-101 | Shift 单点拟合矩形、Shift+Alt 同侧角锚定 | `widgets/point_fit.py`、`rect_edge_click.py` | 11-06 按键刷新与小框防跳修复用户验收通过、132 项 Qt 回归通过，已提交并同步；[操作说明](../zh_cn/rectangle_point_fit.md) · [实施记录](2026-11-02-rectangle-preview-overlap-plan.md) |
+| CUSTOM-101 | Shift 单点拟合矩形、框内 Shift 锁角拖动、Shift+Alt 同侧角锚定 | `widgets/point_fit.py`、`rect_edge_click.py` | 11-06 按键刷新与小框防跳修复用户验收通过、132 项 Qt 回归通过，已提交并同步；11-11 框内锁角拖动自动化通过、真实屏幕验收待确认；[操作说明](../zh_cn/rectangle_point_fit.md) · [实施记录](2026-11-02-rectangle-preview-overlap-plan.md) · [锁角拖动](2026-11-11-point-fit-shift-corner-alignment.md) |
 | CUSTOM-102 | 矩形边命中与拖边调整 | `widgets/rectangle_edge.py` | 已有代码；[历史台账](CATALOG-20261030.md) |
 | CUSTOM-103 | 两点矩形创建十字线、创建/拟合共边预览避让 | `widgets/rectangle_crosshair.py`、`rectangle_preview.py` | 自动化有证据，真实屏幕验收未全完成；[预览修复](2026-11-02-rectangle-preview-overlap-plan.md) |
 | CUSTOM-104 | 四极值画框及创建模式管理 | `widgets/rectangle_creation.py`、`widgets/rectangle_extreme.py` | 已有代码；[历史台账](CATALOG-20261030.md) |

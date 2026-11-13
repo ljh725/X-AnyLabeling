@@ -5,6 +5,8 @@ import pytest
 from anylabeling.views.labeling.rect_edge_click import (
     corner_point,
     point_fit_decision,
+    point_fit_inside_box,
+    point_fit_lock_decision,
     proposed_inward_point_fit_box,
     proposed_point_fit_box,
 )
@@ -174,3 +176,94 @@ def test_tiny_box_caps_hover_buffer_to_keep_opposite_corner_reachable():
     assert point_fit_decision(
         box, (0.15, 1.35), previous_corner="top_right",
     ).edge == "bottom_left"
+
+
+def test_strict_inside_excludes_the_original_outline() -> None:
+    """A lock entry needs a point strictly inside the rectangle."""
+    assert point_fit_inside_box(BOX, (150.0, 150.0))
+    assert point_fit_inside_box(BOX, (100.5, 199.5))
+    for point in (
+        (100.0, 150.0),
+        (200.0, 150.0),
+        (150.0, 100.0),
+        (150.0, 200.0),
+        (100.0, 100.0),
+        (200.0, 200.0),
+        (99.0, 150.0),
+        (250.0, 150.0),
+    ):
+        assert not point_fit_inside_box(BOX, point)
+
+
+def test_inside_box_rejects_unusable_rectangles() -> None:
+    """Degenerate and non-finite geometry never starts a lock."""
+    assert not point_fit_inside_box((100, 100, 100, 200), (100, 150))
+    assert not point_fit_inside_box((100, 200, 200, 100), (150, 150))
+    assert not point_fit_inside_box(BOX, (float("nan"), 150))
+    assert not point_fit_inside_box(BOX, (float("inf"), 150))
+    assert not point_fit_inside_box(
+        (float("nan"), 100, 200, 200), (150, 150)
+    )
+
+
+@pytest.mark.parametrize("scale", [0.5, 1.0, 2.0])
+def test_lock_decision_waits_in_the_centre_buffer(scale: float) -> None:
+    """The first lock decision reuses the existing screen buffer."""
+    point = (150.0 + 1.5 / scale, 120.0)
+    assert point_fit_lock_decision(BOX, point, scale).edge == "top_right"
+    for distance in (0.0, 0.5, 1.0):
+        waiting = point_fit_lock_decision(
+            BOX, (150.0 + distance / scale, 120.0), scale
+        )
+        assert waiting.edge is None
+        assert waiting.reason == "dead_zone"
+
+
+def test_lock_decision_rejects_edge_and_outside_starts() -> None:
+    """Only a strictly inside press may lock an original corner."""
+    for point in (
+        (100.0, 120.0),
+        (200.0, 120.0),
+        (120.0, 100.0),
+        (120.0, 200.0),
+        (250.0, 120.0),
+        (150.0, 320.0),
+    ):
+        decision = point_fit_lock_decision(BOX, point, 1.0)
+        assert decision.edge is None
+        assert decision.reason == "outside"
+
+
+@pytest.mark.parametrize("scale", [0.3, 1.0, 2.0])
+def test_small_box_lock_zones_survive_zoom(scale: float) -> None:
+    """Each of the four zones stays reachable in a 12-screen-pixel box."""
+    left, top = 100.0, 100.0
+    right = left + 12 / scale
+    bottom = top + 12 / scale
+    box = (left, top, right, bottom)
+    for fraction, corner in (
+        ((0.1, 0.1), "top_left"),
+        ((0.9, 0.1), "top_right"),
+        ((0.1, 0.9), "bottom_left"),
+        ((0.9, 0.9), "bottom_right"),
+    ):
+        point = (
+            left + (right - left) * fraction[0],
+            top + (bottom - top) * fraction[1],
+        )
+        assert point_fit_lock_decision(box, point, scale).edge == corner
+
+
+@pytest.mark.parametrize(
+    ("point", "expected"),
+    [
+        ((120.0, 120.0), (120.0, 100.0, 200.0, 120.0)),
+        ((50.0, 50.0), (50.0, 50.0, 200.0, 100.0)),
+        ((250.0, 50.0), (200.0, 50.0, 250.0, 100.0)),
+        ((50.0, 250.0), (50.0, 100.0, 200.0, 250.0)),
+        ((250.0, 250.0), (200.0, 100.0, 250.0, 250.0)),
+    ],
+)
+def test_locked_corner_can_cross_its_own_axes(point, expected) -> None:
+    """The fixed top-right corner stays put and becomes another corner."""
+    assert proposed_inward_point_fit_box(BOX, "top_right", point) == expected

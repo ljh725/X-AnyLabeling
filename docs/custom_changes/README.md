@@ -31,6 +31,8 @@
 | 配置持久化修复 | 配置按字段保存、冲突处理、数字绑定/设置/显示保持同步、重启恢复 | 11-05 已提交保存；用户原启动方式的可见交互验收仍待做 | [任务与状态](../../openspec/changes/fix-user-settings-persistence/tasks.md) · [验证](../../openspec/changes/fix-user-settings-persistence/verification.md) |
 | 数字矩形标签保存修复 | 弹窗关闭且预选其他类别时数字绑定优先级 | 仅登记任务，尚未实施；不能作为已修复功能 | [任务](../../openspec/changes/fix-digit-rectangle-label-save/tasks.md) |
 | CUSTOM-101/103-显示 | 矩形创建与单点拟合预览的共边显示修复 | 11-06 单点拟合按键刷新与小框防跳修复用户验收通过，132 项隔离 Qt 回归通过；原创建/共边完整屏幕验收另见记录 | [方案与实施记录](2026-11-02-rectangle-preview-overlap-plan.md) · [操作说明](../zh_cn/rectangle_point_fit.md) · [验证](../../openspec/changes/fix-rectangle-preview-overlap/verification.md) |
+| CUSTOM-101 | 框内单点拟合锁角即时预览与单击确认 | 11-12 单击版已实测，固定对角修订已通过自动化验证 | [实施记录](2026-11-12-point-fit-lock-click.md) · [操作说明](../zh_cn/rectangle_point_fit.md) |
+| CUSTOM-101-统一手势 | Shift 单点拟合统一：框外进框锁角、按下捕获/松开提交、无效落点保留锁角、移除 Shift+Alt 同侧角 | 11-13 已验证，独立规格 87 项全部通过，用户确认人工验收通过 | [实施记录](2026-11-12-point-fit-unify-shift.md) · [操作说明](../zh_cn/rectangle_point_fit.md) · [OpenSpec](../../openspec/changes/unify-shift-rectangle-point-fit/proposal.md) |
 | CUSTOM-010～014、101～108 | 4.2.1上的既有增强/迁移功能 | 已含于历史混合快照，非本轮新增实施 | [完整分类台账](CATALOG-20261030.md) |
 
 ## 已有相关材料

@@ -46,6 +46,9 @@ class PointFitPreview:
     box: Box | None
     candidate_box: Box | None
     outline_path: QtGui.QPainterPath | None
+    fixed_point: tuple[float, float] | None = None
+    pointer: tuple[float, float] | None = None
+    guides: bool = False
 
     @property
     def valid(self) -> bool:
@@ -56,6 +59,11 @@ class PointFitPreview:
     def candidate_differs(self) -> bool:
         """Return whether the candidate changed the rectangle geometry."""
         return self.valid and self.candidate_box != self.box
+
+    @property
+    def owns_guides(self) -> bool:
+        """Return whether this frame draws its own crosshair guides."""
+        return self.guides and self.pointer is not None
 
 
 def normalize_box(box: Iterable[float]) -> Box | None:

@@ -117,11 +117,12 @@ class RectangleCreation(QtWidgets.QWidget):
 
     def reset(self) -> None:
         """Discard draft state while leaving committed shapes untouched."""
-        if self.draft is not None:
+        had_draft = self.draft is not None
+        self.draft = None
+        if had_draft:
             self.canvas.current = None
             self.canvas.line.points = []
             self.canvas.drawing_polygon.emit(False)
-        self.draft = None
         self.pointer = None
         self._release_pending = False
         self.refresh()
@@ -146,9 +147,9 @@ class RectangleCreation(QtWidgets.QWidget):
 
     def continue_drawing(self) -> None:
         """Start another draft with the last successfully committed label."""
-        if self._last_label:
-            self.owner.digit_to_label = self._last_label
         self.start_extreme()
+        if self.draft is not None and self._last_label:
+            self.owner.digit_to_label = self._last_label
 
     def back(self) -> None:
         """Undo one draft boundary without touching annotation history."""

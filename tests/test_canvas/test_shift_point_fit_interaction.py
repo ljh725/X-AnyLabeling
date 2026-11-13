@@ -310,17 +310,17 @@ def test_ambiguous_hint_uses_compiled_chinese_translation(
         app.removeTranslator(translator)
 
 
-def test_alt_shift_fit_shrinks_to_the_clicked_quadrant(
+def test_alt_does_not_create_a_same_side_corner_fit(
     canvas: Canvas,
 ) -> None:
-    """Alt commits the smaller box an interior point can define."""
+    """Alt keeps the opposite-corner anchor of the plain click fit."""
     point = (120, 120)
     send(canvas, QtCore.QEvent.Type.MouseMove, point, alt=True)
-    assert canvas._point_fit_pending_box == (100, 100, 120, 120)
-    assert canvas._point_fit_anchor == (100, 100)
+    assert canvas._point_fit_pending_box == (120, 120, 200, 200)
+    assert canvas._point_fit_anchor == (200, 200)
     send(canvas, QtCore.QEvent.Type.MouseButtonPress, point, alt=True)
     send(canvas, QtCore.QEvent.Type.MouseButtonRelease, point, alt=True)
-    assert coordinates(canvas.shapes[0]) == (100, 100, 120, 120)
+    assert coordinates(canvas.shapes[0]) == (120, 120, 200, 200)
     canvas.restore_shape()
     assert coordinates(canvas.shapes[0]) == (100, 100, 200, 200)
 
@@ -328,38 +328,39 @@ def test_alt_shift_fit_shrinks_to_the_clicked_quadrant(
 def test_alt_preview_keeps_the_rectangle_and_undo_untouched(
     canvas: Canvas,
 ) -> None:
-    """The inward preview never mutates data or records a snapshot."""
+    """An Alt hover never mutates data or records a snapshot."""
     baseline = len(canvas.shapes_backups)
     send(canvas, QtCore.QEvent.Type.MouseMove, (180, 120), alt=True)
-    assert canvas._point_fit_pending_box == (180, 100, 200, 120)
+    assert canvas._point_fit_pending_box == (100, 120, 180, 200)
     assert coordinates(canvas.shapes[0]) == (100, 100, 200, 200)
     assert len(canvas.shapes_backups) == baseline
 
 
 def test_default_preview_anchors_the_far_corner(canvas: Canvas) -> None:
-    """Without Alt the anchor stays at the opposite corner."""
+    """The anchor stays at the opposite corner of the hovered quadrant."""
     send(canvas, QtCore.QEvent.Type.MouseMove, (180, 120))
     assert canvas._point_fit_pending_box == (100, 120, 180, 200)
     assert canvas._point_fit_anchor == (100, 200)
 
 
-def test_releasing_alt_before_release_keeps_captured_mode(
+def test_toggling_alt_mid_gesture_keeps_the_captured_corner(
     canvas: Canvas,
 ) -> None:
-    """An inward gesture keeps its mode after Alt is released."""
+    """Alt neither switches the corner nor changes the captured mode."""
     point = (120, 120)
-    send(canvas, QtCore.QEvent.Type.MouseButtonPress, point, alt=True)
-    assert canvas._point_fit_pending_box == (100, 100, 120, 120)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, point)
+    assert canvas._point_fit_pending_box == (120, 120, 200, 200)
     send(
         canvas,
         QtCore.QEvent.Type.MouseMove,
-        point,
-        alt=False,
+        (130, 130),
+        alt=True,
         buttons=QtCore.Qt.MouseButton.LeftButton,
     )
-    assert canvas._point_fit_pending_box == (100, 100, 120, 120)
-    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, point, alt=False)
-    assert coordinates(canvas.shapes[0]) == (100, 100, 120, 120)
+    assert canvas._point_fit_pending_box == (130, 130, 200, 200)
+    assert canvas._point_fit_anchor == (200, 200)
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (130, 130), alt=True)
+    assert coordinates(canvas.shapes[0]) == (130, 130, 200, 200)
 
 
 def test_fit_keeps_anchor_across_centre_and_anchor(canvas: Canvas) -> None:
@@ -386,26 +387,26 @@ def test_preview_markers_use_clipped_coordinates(canvas: Canvas) -> None:
     assert canvas._point_fit_pending_box == (0, 0, 300, 300)
 
 
-def test_alt_fit_outside_anchors_the_quadrant_corner(canvas: Canvas) -> None:
-    """Outside points keep the click-quadrant corner fixed as well."""
+def test_alt_fit_outside_anchors_the_opposite_corner(canvas: Canvas) -> None:
+    """Outside points still keep the opposite corner of the quadrant."""
     send(canvas, QtCore.QEvent.Type.MouseButtonPress, (250, 50), alt=True)
     send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (250, 50), alt=True)
-    assert coordinates(canvas.shapes[0]) == (200, 50, 250, 100)
+    assert coordinates(canvas.shapes[0]) == (100, 50, 250, 200)
 
 
 def test_alt_fit_records_one_undo_step(canvas: Canvas) -> None:
-    """An inward fit is still a single undoable operation."""
+    """An Alt click fit is still a single undoable operation."""
     baseline = len(canvas.shapes_backups)
     send(canvas, QtCore.QEvent.Type.MouseButtonPress, (180, 180), alt=True)
     send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (180, 180), alt=True)
-    assert coordinates(canvas.shapes[0]) == (180, 180, 200, 200)
+    assert coordinates(canvas.shapes[0]) == (100, 100, 180, 180)
     assert len(canvas.shapes_backups) == baseline + 1
     canvas.restore_shape()
     assert coordinates(canvas.shapes[0]) == (100, 100, 200, 200)
 
 
 def test_alt_fit_still_rejects_locked_shapes(canvas: Canvas) -> None:
-    """Locked rectangles stay unfittable in inward mode."""
+    """Locked rectangles stay unfittable with Alt held."""
     canvas.shapes[0].locked = True
     send(canvas, QtCore.QEvent.Type.MouseButtonPress, (120, 120), alt=True)
     send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (120, 120), alt=True)
@@ -426,28 +427,49 @@ def stationary_pointer(monkeypatch, canvas, point):
     monkeypatch.setattr(canvas, "mapFromGlobal", lambda _pos: local.toPoint())
 
 
-def test_shift_shows_preview_without_mouse_move(canvas, monkeypatch):
+def test_shift_press_inside_a_corner_zone_locks_the_corner(canvas, monkeypatch):
+    """Pressing Shift inside a corner zone fixes that original corner."""
     stationary_pointer(monkeypatch, canvas, (180, 120))
     key_event(canvas, QtCore.Qt.Key.Key_Shift,
               QtCore.Qt.KeyboardModifier.ShiftModifier)
+    assert canvas._point_fit_locked_corner == "bottom_left"
     assert canvas._point_fit_pending_box == (100, 120, 180, 200)
 
 
-def test_alt_press_and_release_refresh_stationary_preview(canvas, monkeypatch):
-    stationary_pointer(monkeypatch, canvas, (180, 120))
+def test_shift_press_outside_shows_the_original_preview(canvas, monkeypatch):
+    """Pressing Shift outside the box still previews the click fit."""
+    stationary_pointer(monkeypatch, canvas, (250, 120))
+    key_event(canvas, QtCore.Qt.Key.Key_Shift,
+              QtCore.Qt.KeyboardModifier.ShiftModifier)
+    assert canvas._point_fit_pending_box == (100, 120, 250, 200)
+
+
+def test_alt_press_and_release_keep_the_same_preview(canvas):
+    """Alt never refreshes the preview into another corner or mode."""
     send(canvas, QtCore.QEvent.Type.MouseMove, (180, 120))
+    assert canvas._point_fit_pending_box == (100, 120, 180, 200)
     shift = QtCore.Qt.KeyboardModifier.ShiftModifier
     key_event(canvas, QtCore.Qt.Key.Key_Alt,
               shift | QtCore.Qt.KeyboardModifier.AltModifier)
-    assert canvas._point_fit_pending_box == (180, 100, 200, 120)
+    assert canvas._point_fit_pending_box == (100, 120, 180, 200)
+    # No Shift press opened this round, so the hover keeps the classic
+    # preview and never locks a corner.
+    assert canvas._point_fit_entry == "native"
+    assert canvas._point_fit_locked_corner is None
     key_event(canvas, QtCore.Qt.Key.Key_Alt, shift, release=True)
     assert canvas._point_fit_pending_box == (100, 120, 180, 200)
+    assert canvas._point_fit_locked_corner is None
 
 
 @pytest.mark.parametrize("scale", [0.5, 1, 2])
 @pytest.mark.parametrize("alt", [False, True])
 def test_small_box_preview_does_not_flip_with_center_jitter(canvas, scale, alt):
-    """A 12-screen-pixel box keeps its anchor through two-pixel jitter."""
+    """A 12-screen-pixel box keeps one anchor through pointer jitter.
+
+    These hovers have no Shift press behind them, so every move re-infers
+    the corner through ``point_fit_decision``. Its hysteresis must keep the
+    anchor through a jitter across the centre of the tiny box.
+    """
     canvas.scale = scale
     shape = canvas.shapes[0]
     shape.points = [QtCore.QPointF(x, y) for x, y in (
@@ -462,37 +484,70 @@ def test_small_box_preview_does_not_flip_with_center_jitter(canvas, scale, alt):
              (x, cy + offset / scale), alt=alt)
         assert canvas._point_fit_anchor == anchor
         assert canvas._point_fit_pending_box is not None
-    # An intentional move into the other half must still switch corners.
-    send(canvas, QtCore.QEvent.Type.MouseMove, (x, cy + 4 / scale), alt=alt)
+    # A deliberate move into the other half must still switch the corner.
+    send(canvas, QtCore.QEvent.Type.MouseMove,
+         (x - 8 / scale, cy + 8 / scale), alt=alt)
     assert canvas._point_fit_anchor != anchor
 
 
+def test_locked_preview_keeps_its_corner_through_center_jitter(canvas):
+    """A locked round never re-infers the corner from pointer jitter."""
+    shape = canvas.shapes[0]
+    shape.points = [QtCore.QPointF(x, y) for x, y in (
+        (100, 100), (112, 100), (112, 112), (100, 112),
+    )]
+    send(canvas, QtCore.QEvent.Type.MouseMove, (109, 103))
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (109, 103))
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (109, 103))
+    assert coordinates(shape) == (100, 103, 109, 112)
+    canvas.restore_shape()
+    assert coordinates(canvas.shapes[0]) == (100, 100, 112, 112)
+
+
 def test_click_commits_the_stable_preview_near_center(canvas):
-    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 140), alt=True)
-    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 152), alt=True)
+    """The click fit commits the anchor used by the visible preview."""
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 140))
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 152))
     expected = canvas._point_fit_pending_box
-    assert canvas._point_fit_anchor == (200, 100)
-    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (180, 152), alt=True)
-    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (180, 152), alt=True)
+    assert canvas._point_fit_anchor == (100, 200)
+    send(canvas, QtCore.QEvent.Type.MouseButtonPress, (180, 152))
+    send(canvas, QtCore.QEvent.Type.MouseButtonRelease, (180, 152))
     assert coordinates(canvas.shapes[0]) == expected
 
 
 def test_releasing_shift_resets_hover_corner(canvas):
-    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 140), alt=True)
+    """Releasing Shift drops the hover, so the next one re-infers itself."""
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 140))
+    assert canvas._point_fit_hover_corner == "top_right"
+    assert canvas._point_fit_anchor == (100, 200)
     key_event(canvas, QtCore.Qt.Key.Key_Shift,
               QtCore.Qt.KeyboardModifier.NoModifier, release=True)
-    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 152), alt=True)
-    assert canvas._point_fit_anchor == (200, 200)
+    assert canvas._point_fit_hover_corner is None
+    assert canvas._point_fit_anchor is None
+    # A new plain hover starts from the fresh quadrant, not the old side.
+    send(canvas, QtCore.QEvent.Type.MouseMove, (120, 160))
+    assert canvas._point_fit_hover_corner == "bottom_left"
+    assert canvas._point_fit_anchor == (200, 100)
 
 
-def test_geometry_change_resets_hover_corner(canvas):
-    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 140), alt=True)
+def test_geometry_change_rebuilds_the_hover_corner(canvas):
+    """An edit under the hover rebuilds the candidate from the new bounds."""
+    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 140))
+    assert canvas._point_fit_entry == "native"
+    assert canvas._point_fit_hover_corner == "top_right"
     shape = canvas.shapes[0]
     shape.points = [QtCore.QPointF(x, y) for x, y in (
         (100, 80), (200, 80), (200, 200), (100, 200),
     )]
-    send(canvas, QtCore.QEvent.Type.MouseMove, (180, 142), alt=True)
-    assert canvas._point_fit_anchor == (200, 200)
+    # The stale candidate is recomputed against the new bounds, and the
+    # pointer now sits on the horizontal centre of that box.
+    canvas._build_point_fit_preview()
+    assert canvas._point_fit_source_box == (100, 80, 200, 200)
+    assert canvas._point_fit_pending_box is None
+    assert canvas.toolTip() == "Unable to infer corner."
+    send(canvas, QtCore.QEvent.Type.MouseMove, (120, 160))
+    assert canvas._point_fit_hover_corner == "bottom_left"
+    assert canvas._point_fit_anchor == (200, 80)
 
 
 def test_modifier_refresh_does_not_steal_native_drag(canvas, monkeypatch):

@@ -187,7 +187,6 @@ class Canvas(
         self._point_fit_corner = None
         self._point_fit_hover_corner = None
         self._point_fit_box = None
-        self._point_fit_inward = False
         self._point_fit_target = None
         self._point_fit_start = None
         self._point_fit_pending_box = None
@@ -199,6 +198,18 @@ class Canvas(
         self._point_fit_source_target = None
         self._point_fit_source_box = None
         self._point_fit_pointer = None
+        self._point_fit_global_pointer = None
+        # One Shift round either starts the click fit or locks one original
+        # corner. The entry, the locked corner, and the left-button ownership
+        # are shared by the key, mouse, and paint entries.
+        self._point_fit_entry = None
+        self._point_fit_locked_corner = None
+        self._point_fit_locked_target = None
+        self._point_fit_locked_box = None
+        self._point_fit_lock_click = False
+        self._point_fit_round_locks = False
+        self._point_fit_round_spent = False
+        self._point_fit_release_pending = False
         self._rectangle_edge_enabled = False
         self._rectangle_edge_hover = None
         self._rectangle_edge_drag = None
@@ -438,6 +449,10 @@ class Canvas(
         """Set loading state"""
         if is_loading:
             self._cancel_marquee_selection()
+            # A round cannot survive a new image loading: cancel it now and
+            # keep consuming the left release the fit already owns, so that
+            # release can never write geometry back.
+            self._point_fit_cancel_round()
         self.is_loading = is_loading
         if loading_text:
             self.loading_text = loading_text
@@ -777,7 +792,7 @@ class Canvas(
         self._cancel_marquee_selection()
         self._clear_crosshair_cursor()
         self._rectangle_edge_cancel()
-        self._clear_point_fit()
+        self._point_fit_cancel_round()
         self._clear_space_pan_state()
         self._right_pan_start = None
         self._right_pan_prev_point = None
@@ -2092,7 +2107,7 @@ class Canvas(
         """Set editing mode. Editing is set to False, user is drawing"""
         self._cancel_marquee_selection()
         self._rectangle_edge_cancel()
-        self._clear_point_fit()
+        self._point_fit_cancel_round()
         self.mode = self.EDIT if value else self.CREATE
         if value:
             self.cancel_drawing()
@@ -2604,6 +2619,16 @@ class Canvas(
         """Update line with last point and current coordinates"""
         if self.is_loading:
             return
+        if self._point_fit_release_pending:
+            # A cancelled fit gesture still owns its left release. Moves made
+            # with the button down belong to that gesture and must never reach
+            # the native shape or vertex drag; a bare hover proves the button
+            # is up, so the ordinary pointer feedback may continue while the
+            # ownership stays reserved for the late release.
+            if ev.buttons() & QtCore.Qt.MouseButton.LeftButton:
+                ev.accept()
+                return
+            self._pointer_down = False
         if self._marquee_cancelled:
             if ev.buttons() & QtCore.Qt.MouseButton.LeftButton:
                 ev.accept()
@@ -3276,14 +3301,19 @@ class Canvas(
             self.update()
         self.prev_point = pos
 
+    def _begin_left_press(self):
+        """Start left-button ownership for a press or double click."""
+        self._pointer_down = True
+        self._point_fit_abandon_pending_release()
+        self._clear_marquee_selection()
+
     # QT Overload
     def mousePressEvent(self, ev):  # noqa: C901
         """Mouse press event"""
         if self.is_loading:
             return
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
-            self._pointer_down = True
-            self._clear_marquee_selection()
+            self._begin_left_press()
         self.interaction_started.emit()
         self._pending_edge_point = None
         if self._is_pan_gesture(ev) and self._start_space_pan(
@@ -3579,9 +3609,12 @@ class Canvas(
             if self._marquee_start is not None:
                 if self._finish_marquee_selection(ev):
                     return
+        # The fit owns a cancelled press until its release arrives, so it is
+        # asked first: the release must be consumed even while the next image
+        # is still loading.
         if (
-            self.is_loading
-            or self._point_fit_handle_release_event(ev)
+            self._point_fit_handle_release_event(ev)
+            or self.is_loading
             or self._rectangle_edge_release_event(ev)
         ):
             return
@@ -3715,6 +3748,17 @@ class Canvas(
         ):
             self.mousePressEvent(ev)
             return
+        if ev.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._begin_left_press()
+            if (
+                ev.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier
+                and self._point_fit_press(
+                    self.transform_pos(ev.position()), ev.modifiers()
+                )
+            ):
+                self._rectangle_edge_cancel()
+                ev.accept()
+                return
         if (
             self._space_pressed
             or self._space_panning
@@ -4738,6 +4782,13 @@ class Canvas(
         painter.restore()
 
     # QT Overload
+    def moveEvent(self, event):
+        """Refresh the fit when scrolling moves the canvas widget."""
+        super().moveEvent(event)
+        if self._point_fit_global_pointer is not None:
+            self.update()
+
+    # QT Overload
     def paintEvent(self, event):  # noqa: C901
         """Paint event for canvas"""
         if (
@@ -4811,7 +4862,7 @@ class Canvas(
             return
 
         # One frame snapshot keeps ordinary, mask, and candidate outlines
-        # consistent during a Shift / Shift+Alt fit preview.
+        # consistent during a Shift fit preview.
         self._point_fit_preview = self._build_point_fit_preview()
         preview = self._point_fit_preview
         preview_target = preview.target if preview is not None else None
@@ -5284,6 +5335,10 @@ class Canvas(
             pen = self._cross_line_pen()
             rect = self._cross_line_rect()
             p.setPen(pen)
+            # The crosshair opacity is local to its own two lines: leaving it
+            # applied would dim everything painted after it, including the
+            # point-fit marker and its dashed candidate.
+            previous_opacity = p.opacity()
             p.setOpacity(self.cross_line_opacity)
             p.drawLine(
                 QtCore.QPointF(self.prev_move_point.x(), rect.top()),
@@ -5293,6 +5348,7 @@ class Canvas(
                 QtCore.QPointF(rect.left(), self.prev_move_point.y()),
                 QtCore.QPointF(rect.right(), self.prev_move_point.y()),
             )
+            p.setOpacity(previous_opacity)
 
         # Draw attributes
         if self.show_attributes:
@@ -5797,7 +5853,11 @@ class Canvas(
             or self.rotating_shape
             or self._right_panning
             or self._space_panning
-            or self._point_fit_pressed
+            or (
+                self._point_fit_pressed
+                and not self._point_fit_release_pending
+            )
+            or self._point_fit_locked_target is not None
             or self._rectangle_edge_drag is not None
             or self._marquee_start is not None
             or self._vertex_erasing
@@ -6081,13 +6141,10 @@ class Canvas(
                 self.override_cursor(CURSOR_GRAB)
             ev.accept()
             return
-        if key in (Qt.Key.Key_Shift, Qt.Key.Key_Alt) and not ev.isAutoRepeat():
-            flag = (
-                Qt.KeyboardModifier.ShiftModifier
-                if key == Qt.Key.Key_Shift
-                else Qt.KeyboardModifier.AltModifier
-            )
-            if self._point_fit_refresh_from_cursor(modifiers | flag):
+        if key == Qt.Key.Key_Shift and not ev.isAutoRepeat():
+            if self._point_fit_shift_round(
+                modifiers | Qt.KeyboardModifier.ShiftModifier
+            ):
                 ev.accept()
                 return
         if self.is_brush_mode and self.editing():
@@ -6157,10 +6214,9 @@ class Canvas(
         modifiers = ev.modifiers()
         key = ev.key()
         if key == QtCore.Qt.Key.Key_Shift and not ev.isAutoRepeat():
-            self._clear_point_fit(keep_press=self._point_fit_pressed)
-        if key == Qt.Key.Key_Alt and not ev.isAutoRepeat():
-            self._point_fit_refresh_from_cursor(
-                modifiers & ~Qt.KeyboardModifier.AltModifier
+            self._point_fit_end_round(
+                keep_press=self._point_fit_left_press_owned(),
+                shift_released=True,
             )
         if key == QtCore.Qt.Key.Key_Space and not ev.isAutoRepeat():
             self._space_pressed = False
@@ -6259,7 +6315,7 @@ class Canvas(
         """Load pixmap"""
         self._clear_crosshair_cursor()
         self._rectangle_edge_cancel()
-        self._clear_point_fit()
+        self._point_fit_cancel_round()
         self.cancel_brush_mode()
         self._clear_magic_wand_preview()
         self._magic_wand_source = None
@@ -6449,7 +6505,7 @@ class Canvas(
         self._cancel_marquee_selection()
         self.inspection_candidates = []
         self._rectangle_edge_cancel()
-        self._clear_point_fit()
+        self._point_fit_cancel_round()
         self._clear_space_pan_state()
         self.pan_offset = QtCore.QPointF()
         self._right_pan_start = None

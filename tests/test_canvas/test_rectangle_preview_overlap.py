@@ -842,23 +842,23 @@ def test_keyboard_nudge_invalidates_hover_candidate(
     assert len(canvas.shapes_backups) == backups + 1
 
 
-def test_keyboard_nudge_keeps_alt_hover_mode(canvas: Canvas) -> None:
-    """Recomputing an Alt hover keeps the inward candidate semantics."""
+def test_keyboard_nudge_keeps_the_alt_hover_candidate(canvas: Canvas) -> None:
+    """Alt no longer changes the candidate, but the nudge still rebuilds it."""
     seed_pointer(canvas)
     send_mouse(canvas, QtCore.QEvent.Type.MouseMove, (120, 120), alt=True)
-    assert canvas._point_fit_pending_box == (100, 100, 120, 120)
+    assert canvas._point_fit_pending_box == (120, 120, 200, 200)
 
     nudge(canvas, QtCore.Qt.Key.Key_Left)
     image = render(canvas)
-    assert canvas._point_fit_pending_box == (99, 100, 120, 120)
+    assert canvas._point_fit_pending_box == (120, 120, 199, 200)
     assert canvas._point_fit_source_box == (99, 100, 199, 200)
-    assert count_ink(image, [(x, 100) for x in range(105, 116)]) == 0
-    assert count_orange(image, [(x, 100) for x in range(105, 116)]) > 0
-    assert count_ink(image, [(x, 200) for x in range(110, 190)]) > 60
+    assert count_orange(image, [(120, y) for y in range(125, 190)]) > 0
+    assert count_ink(image, [(x, 100) for x in range(105, 116)]) > 5
 
 
+@pytest.mark.parametrize("detect_on_move", [False, True])
 def test_captured_fit_cancels_when_keyboard_moves_source(
-    canvas: Canvas,
+    canvas: Canvas, detect_on_move: bool
 ) -> None:
     """A captured gesture whose geometry changed is dropped, not committed."""
     canvas.cross_line_show = True
@@ -874,8 +874,18 @@ def test_captured_fit_cancels_when_keyboard_moves_source(
     assert len(canvas.shapes_backups) == backups + 1
     moved_snapshot = snapshot(canvas)
 
+    if detect_on_move:
+        send_mouse(
+            canvas,
+            QtCore.QEvent.Type.MouseMove,
+            (151.5, 120),
+            buttons=QtCore.Qt.MouseButton.LeftButton,
+        )
+        assert canvas._point_fit_release_pending
+
     image = render(canvas)
-    assert canvas._point_fit_pressed
+    assert canvas._point_fit_release_pending
+    assert not canvas._point_fit_pressed
     assert canvas._point_fit_pending_box is None
     assert canvas._native_crosshair_enabled()
     assert count_orange(image, [(151, y) for y in range(130, 190)]) == 0
@@ -897,15 +907,18 @@ def test_captured_fit_cancels_when_keyboard_moves_source(
     send_mouse(canvas, QtCore.QEvent.Type.MouseButtonRelease, (151.5, 120))
     assert bounds(canvas.shapes[0]) == (101, 100, 201, 200)
     assert not canvas._point_fit_pressed
+    assert not canvas._point_fit_release_pending
     assert snapshot(canvas) == moved_snapshot
     assert len(canvas.shapes_backups) == backups + 1
+    send_mouse(canvas, QtCore.QEvent.Type.MouseMove, (180, 130))
+    assert canvas._build_point_fit_preview() is None
 
     canvas.restore_shape()
     assert bounds(canvas.shapes[0]) == (100, 100, 200, 200)
 
 
 def test_refit_after_cancelled_capture_commits_and_undoes(
-    canvas: Canvas,
+    canvas: Canvas, monkeypatch
 ) -> None:
     """A new gesture after the cancellation still commits and undoes."""
     seed_pointer(canvas)
@@ -916,6 +929,25 @@ def test_refit_after_cancelled_capture_commits_and_undoes(
     assert bounds(canvas.shapes[0]) == (101, 100, 201, 200)
     backups = len(canvas.shapes_backups)
 
+    send_mouse(canvas, QtCore.QEvent.Type.MouseMove, (180, 130))
+    assert canvas._build_point_fit_preview() is None
+
+    shift = QtCore.Qt.Key.Key_Shift
+    no_modifier = QtCore.Qt.KeyboardModifier.NoModifier
+    canvas.keyReleaseEvent(
+        QtGui.QKeyEvent(QtCore.QEvent.Type.KeyRelease, shift, no_modifier)
+    )
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            canvas, "mapFromGlobal", lambda _pos: QtCore.QPoint(151, 150)
+        )
+        canvas.keyPressEvent(
+            QtGui.QKeyEvent(
+                QtCore.QEvent.Type.KeyPress,
+                shift,
+                QtCore.Qt.KeyboardModifier.ShiftModifier,
+            )
+        )
     send_mouse(canvas, QtCore.QEvent.Type.MouseMove, (180, 130))
     assert canvas._point_fit_pending_box == (101, 130, 180, 200)
     send_mouse(canvas, QtCore.QEvent.Type.MouseButtonPress, (180, 130))

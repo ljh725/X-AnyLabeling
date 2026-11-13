@@ -29,8 +29,11 @@ class ClickDecision:
 
 
 def point_fit_decision(
-    box: Box, point: Point, scale: float = 1.0,
-    *, previous_corner: str | None = None,
+    box: Box,
+    point: Point,
+    scale: float = 1.0,
+    *,
+    previous_corner: str | None = None,
 ) -> ClickDecision:
     """Acquire a quadrant, then resist small movements across its centre.
 
@@ -70,6 +73,41 @@ def point_fit_decision(
     horizontal = "left" if x < cx else "right"
     vertical = "top" if y < cy else "bottom"
     return ClickDecision(f"{vertical}_{horizontal}")
+
+
+def point_fit_inside_box(box: Box, point: Point) -> bool:
+    """Return whether a point is strictly inside a usable rectangle.
+
+    Points on the outline are excluded: a Shift press there enters the
+    original point-fit flow instead of locking a corner.
+    """
+    left, top, right, bottom = box
+    if (
+        not all(math.isfinite(value) for value in box)
+        or right <= left
+        or bottom <= top
+    ):
+        return False
+    x, y = point
+    if not all(math.isfinite(value) for value in point):
+        return False
+    return left < x < right and top < y < bottom
+
+
+def point_fit_lock_decision(
+    box: Box,
+    point: Point,
+    scale: float = 1.0,
+) -> ClickDecision:
+    """Return the initial moving-corner region, or why it still waits.
+
+    The strict inside test keeps edge and outside presses in the original
+    flow; the shared centre buffer then leaves the corner undecided until
+    the pointer reaches one clear quadrant.
+    """
+    if not point_fit_inside_box(box, point):
+        return ClickDecision(None, "outside")
+    return point_fit_decision(box, point, scale)
 
 
 def corner_point(box: Box, corner: str) -> Point:
