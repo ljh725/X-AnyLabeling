@@ -22,6 +22,7 @@ from anylabeling.services.dense_review.config import save_config
 from anylabeling.views.mainwindow import MainWindow
 
 from .conftest import make_config
+from .test_display_consistency import _shape
 
 
 def _rectangle(label, shape_id, x, y, w=90, h=110, group_id=None):
@@ -361,3 +362,32 @@ def test_hold_original_button_ends_on_blur_close_and_image_switch(
     assert widget.load_file(image_path)
     app.processEvents()
     assert widget.dense_review_hold_active() is False
+
+
+def test_original_mode_renders_without_annotation_labels(app, open_window):
+    """No label text may reach the painter during source comparison."""
+    window, image_path = open_window(_three())
+    widget, workspace = _open_review(app, window, image_path)
+    canvas = widget.canvas
+    workspace.display_combo.setCurrentIndex(
+        workspace.display_combo.findData("original")
+    )
+    app.processEvents()
+    assert not canvas.is_visible(_shape(widget, "rect1"))
+    labels = []
+
+    class RecordingPainter(QtGui.QPainter):
+        def drawText(self, *args, **kwargs):
+            if (
+                args
+                and isinstance(args[-1], str)
+                and args[-1].startswith("person")
+            ):
+                labels.append(args[-1])
+            return super().drawText(*args, **kwargs)
+
+    from unittest.mock import patch as mock_patch
+
+    with mock_patch.object(canvas, "_painter", RecordingPainter()):
+        canvas.grab()
+    assert labels == []
