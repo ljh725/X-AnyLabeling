@@ -409,11 +409,22 @@ class DenseReviewSession:
         geometry_changed = geometry != item.geometry_signature
         category_changed = category != item.category_signature
         label_changed = label != item.label
+        raw_group = getattr(shape, "group_id", None)
+        try:
+            group_id = int(raw_group) if raw_group is not None else None
+        except (TypeError, ValueError):
+            group_id = None
+        # A pure group edit changes neither the category nor the geometry
+        # signature, so it has to be its own change condition; otherwise the
+        # ledger keeps the old group and the keypoint stays attached to the
+        # previous rectangle (OC-06, PC-11).
+        group_changed = group_id != item.group_id
         changed = (
             bounds_changed
             or geometry_changed
             or category_changed
             or label_changed
+            or group_changed
             or shape_type != item.shape_type
         )
         if not changed:
@@ -438,11 +449,7 @@ class DenseReviewSession:
         item.geometry_signature = geometry
         item.supported = shape_type in SUPPORTED_SHAPE_TYPES
         item.load_failed = bounds is None
-        raw_group = getattr(shape, "group_id", None)
-        try:
-            item.group_id = int(raw_group) if raw_group is not None else None
-        except (TypeError, ValueError):
-            item.group_id = None
+        item.group_id = group_id
         if item.load_failed or not item.supported:
             item.clear_confirmation(REVIEW_DIMENSIONS)
         return True
