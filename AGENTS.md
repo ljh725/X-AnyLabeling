@@ -55,6 +55,23 @@ xvfb-run -a -s "-screen 0 1920x1080x24" pytest --capture=sys tests/test_pointclo
 - Windows 上若遇到临时目录 ACL 残留导致的假失败，用 `.tmp` 下的独立 `--basetemp`
   （本机 `.tooling/dsh-pytest.cmd` 就是这种包装器，`.tooling/` 不入库）。
 
+### Qt 集成测试防挂起
+
+- `isolated_user_configuration` 在每条用例开始前清空配置会话，`QApplication`
+  fixture 只提供 Qt 应用实例。直接构造 `MainWindow` 的集成测试应在隔离
+  fixture 生效后，用 `get_config()` 加载 `.tmp/` 内的测试专用配置，再把
+  返回的配置传给窗口。仅传配置模板、设置 `current_config_file` 或改 Qt
+  fixture 的作用域都不会建立会话。保留现有配置写入保护。
+- 窗口初始化期间保存偏好失败时，测试可能卡在 offscreen 的模态错误弹窗。
+  先单跑相关用例，例如
+  `tests/test_canvas/test_navigation.py::test_image_switch_restores_fractional_zoom_and_pan_and_fit_resets`，
+  通过后再跑文件、受影响目录及全量。验证窗口初始化时保留真实的配置保存路径。
+- 对可能弹窗的用例和全量回归，用 `-vv -o faulthandler_timeout=30`
+  记录用例与堆栈，并用外层进程设置符合测试范围的硬超时
+  （例如 Python 的 `subprocess.run(..., timeout=...)`）。
+  `faulthandler_timeout` 只打印堆栈，结束进程靠外层超时。若堆栈卡在
+  `QMessageBox.critical()`，保留用例名、原始错误和堆栈，查清触发路径后再重跑。
+
 ---
 
 ## 3. 目录结构
