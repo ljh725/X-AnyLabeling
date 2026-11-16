@@ -318,12 +318,12 @@ def test_current_object_edges_and_handles_win_over_a_keypoint(
     assert edge_candidates
     assert edge_candidates[0] is rect
     assert keypoint not in edge_candidates
-    # Inside the rectangle the current object still owns the hit; the
-    # keypoint stays reachable because it is not excluded from the overlay
-    # (`hittable`), and the user can navigate to it from the panel (DP-07).
+    # Inside the rectangle a plainly visible keypoint wins: the current
+    # object's priority covers only actionable edges and handles, so an
+    # interior hit must not swallow the point (DP-07, DP-09).
     inside_candidates = canvas._shape_hit_candidates(QtCore.QPointF(100, 100))
     assert inside_candidates
-    assert inside_candidates[0] is rect
+    assert inside_candidates[0] is keypoint
     assert canvas.dense_review_hittable(keypoint) is True
 
 
@@ -596,3 +596,203 @@ def test_current_object_paints_last_without_reordering_data(
     after = [shape.xanylabeling_shape_id for shape in widget.canvas.shapes]
     assert after == before
 
+
+def test_single_manual_hide_is_not_a_global_shutdown(app, open_window):
+    """One hidden object must keep the "manual-hidden" reason (DP-11)."""
+    window, image_path = open_window(
+        [_rectangle("person", "rect1", 40, 40)],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    _hide(widget, "rect1")
+    app.processEvents()
+    display = widget.dense_review_display_entry("rect1")
+    assert display.reason == "manual-hidden"
+    assert "隐藏" in widget.dense_review_exclusion_reason("rect1")
+    # The exception works because the object is not globally switched off.
+    assert widget.dense_review_show_temporarily(["rect1"]) is True
+    app.processEvents()
+    assert widget.canvas.is_visible(_shape(widget, "rect1")) is True
+    # The manual record survives for the batch candidate set.
+    manual, _filtered = widget.dense_review_exclusion_ids()
+    assert "rect1" in manual
+    assert _workspace._scope().excluded["rect1"] == "manual_hidden"
+
+
+def test_hiding_every_object_by_hand_is_not_a_global_shutdown(
+    app, open_window
+):
+    window, image_path = open_window(
+        _three_rectangles(),
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    for shape_id in ("rect1", "rect2", "rect3"):
+        _hide(widget, shape_id)
+    app.processEvents()
+    for shape_id in ("rect1", "rect2", "rect3"):
+        assert (
+            widget.dense_review_display_entry(shape_id).reason
+            == "manual-hidden"
+        )
+    assert widget.dense_review_show_temporarily(["rect2"]) is True
+    app.processEvents()
+    assert widget.canvas.is_visible(_shape(widget, "rect2")) is True
+    assert widget.canvas.is_visible(_shape(widget, "rect1")) is False
+
+
+def test_real_global_switch_beats_temporary_show(app, open_window):
+    window, image_path = open_window(
+        [_rectangle("person", "rect1", 40, 40)],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    _hide(widget, "rect1")
+    app.processEvents()
+    assert widget.dense_review_show_temporarily(["rect1"]) is True
+    app.processEvents()
+    assert widget.canvas.is_visible(_shape(widget, "rect1")) is True
+
+    # The genuine global switch still wins over the exception (DP-12).
+    widget.actions.visibility_shapes_mode.trigger()
+    app.processEvents()
+    widget.refresh_dense_review_display()
+    app.processEvents()
+    assert widget._config["show_shapes"] is False
+    display = widget.dense_review_display_entry("rect1")
+    assert display.reason == "global-off"
+    assert widget.canvas.is_visible(_shape(widget, "rect1")) is False
+    assert (
+        widget.canvas.dense_review_hittable(_shape(widget, "rect1")) is False
+    )
+
+
+def test_original_mode_outranks_temporary_show_reason(app, open_window):
+    window, image_path = open_window(
+        [_rectangle("person", "rect1", 40, 40)],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    _hide(widget, "rect1")
+    app.processEvents()
+    widget.dense_review_show_temporarily(["rect1"])
+    app.processEvents()
+    widget.dense_review_set_display_mode("original")
+    app.processEvents()
+    assert widget.dense_review_display_entry("rect1").reason == "original-only"
+    assert widget.canvas.is_visible(_shape(widget, "rect1")) is False
+
+
+def test_point_inside_current_rectangle_is_selectable(app, open_window):
+    """Interior hits on the current rect must not swallow a visible point."""
+    window, image_path = open_window(
+        [
+            _rectangle("person", "rect1", 40, 40, w=120, h=120),
+            _point("nose", "kp1", 100, 100),
+        ],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    canvas = widget.canvas
+    rect = _shape(widget, "rect1")
+    keypoint = _shape(widget, "kp1")
+    canvas.select_shapes([rect])
+    app.processEvents()
+
+    # Centre of the point: the keypoint wins.
+    candidates = canvas._shape_hit_candidates(QtCore.QPointF(100, 100))
+    assert candidates[0] is keypoint
+    # On the rectangle border: the actionable edge still wins (DP-07).
+    edge_candidates = canvas._shape_hit_candidates(QtCore.QPointF(40, 100))
+    assert edge_candidates[0] is rect
+
+
+def test_group_gesture_skips_hidden_and_locked_members(app, open_window):
+    """Group selection, drag and nudge share one editable member set."""
+    window, image_path = open_window(
+        [
+            _rectangle("person", "rect1", 40, 40, group_id=0),
+            _rectangle("person", "rect2", 62, 62, group_id=0),
+            _rectangle("person", "rect3", 200, 40, group_id=0),
+        ],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    canvas = widget.canvas
+    canvas.show_groups = True
+    _hide(widget, "rect2")
+    locked = _shape(widget, "rect3")
+    locked.locked = True
+    app.processEvents()
+    if canvas.dense_review_active:
+        widget.refresh_dense_review_display()
+    app.processEvents()
+
+    hidden_before = _shape(widget, "rect2").bounding_rect()
+    locked_before = _shape(widget, "rect3").bounding_rect()
+    canvas._select_group(0, QtCore.QPointF(60, 60))
+    app.processEvents()
+    # The hidden member is excluded from selection; the locked member stays
+    # selectable (visible and inspectable) but is never moved.
+    assert [s.xanylabeling_shape_id for s in canvas.selected_shapes] == [
+        "rect1",
+        "rect3",
+    ]
+    visible_before = _shape(widget, "rect1").bounding_rect()
+    canvas.move_by_keyboard(QtCore.QPointF(5.0, 0.0))
+    app.processEvents()
+    # A locked member still blocks the whole group move (existing rule).
+    assert _shape(widget, "rect1").bounding_rect() == visible_before
+    # The hidden member keeps its exact coordinates and stays unselected.
+    assert _shape(widget, "rect2").bounding_rect() == hidden_before
+    assert _shape(widget, "rect2") not in canvas.selected_shapes
+    assert _shape(widget, "rect3").bounding_rect() == locked_before
+
+    # After unlocking, the group moves as one - still without the hidden box.
+    _shape(widget, "rect3").locked = False
+    canvas._select_group(0, QtCore.QPointF(60, 60))
+    app.processEvents()
+    canvas.move_by_keyboard(QtCore.QPointF(5.0, 0.0))
+    app.processEvents()
+    assert (
+        _shape(widget, "rect1").bounding_rect().x() == visible_before.x() + 5
+    )
+    assert _shape(widget, "rect2").bounding_rect() == hidden_before
+
+
+def test_original_mode_pauses_geometry_edits(app, open_window):
+    """Mouse, keyboard and preview entries pause during comparison."""
+    window, image_path = open_window(
+        [_rectangle("person", "rect1", 40, 40)],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    canvas = widget.canvas
+    target = _shape(widget, "rect1")
+    canvas.select_shapes([target])
+    app.processEvents()
+    before = target.bounding_rect()
+
+    widget.dense_review_set_display_mode("original")
+    app.processEvents()
+    assert canvas.annotation_editing_paused() is True
+    # The shared geometry entry point refuses the move.
+    assert canvas.bounded_move_shapes([target], QtCore.QPointF(9, 9)) is False
+    canvas.move_by_keyboard(QtCore.QPointF(9.0, 0.0))
+    canvas.rotate_by_keyboard(0.1)
+    app.processEvents()
+    assert target.bounding_rect() == before
+
+    widget.dense_review_set_display_mode("all")
+    app.processEvents()
+    assert canvas.annotation_editing_paused() is False
+    assert canvas.bounded_move_shapes([target], QtCore.QPointF(9, 9))
+    app.processEvents()
+    assert target.bounding_rect() != before

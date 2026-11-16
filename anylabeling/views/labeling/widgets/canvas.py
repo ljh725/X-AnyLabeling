@@ -1237,17 +1237,23 @@ class Canvas(
         candidates.sort(key=lambda item: item[0])
         ordered = [shape for _, shape in candidates]
         if self._dense_review_displays is not None:
-            # The current object keeps its editable edges and handles first,
-            # so a keypoint sitting on its border cannot steal the drag
-            # (DP-07).  Remaining candidates keep their geometric order.
-            current = [
+            # The current object only outranks others on an *actionable* hit:
+            # a vertex or an edge.  A plain interior hit must not swallow a
+            # keypoint that sits inside the current rectangle, otherwise the
+            # point becomes unselectable even though it is clearly visible
+            # (DP-07, DP-09).
+            priority_of = {
+                id(shape): priority for priority, shape in candidates
+            }
+            actionable = [
                 shape
                 for shape in ordered
                 if self._is_current_review_object(shape)
+                and priority_of.get(id(shape), (2,))[0] < 2
             ]
-            if current:
-                rest = [shape for shape in ordered if shape not in current]
-                ordered = current + rest
+            if actionable:
+                rest = [shape for shape in ordered if shape not in actionable]
+                ordered = actionable + rest
         return ordered
 
     def _is_current_review_object(self, shape) -> bool:
@@ -3990,6 +3996,33 @@ class Canvas(
             grouped_shapes.setdefault(shape.group_id, []).append(shape)
         return grouped_shapes
 
+    def _overlay_visible(self, shape) -> bool:
+        """Return whether an overlay component may paint for ``shape``.
+
+        The drawing loops used to test ``shape.visible`` directly, which the
+        source-image comparison never touches, so labels, plates, leaders,
+        attributes and masks kept painting over the bare image.  Routing them
+        through ``is_visible`` makes every overlay follow the same resolved
+        result as the outline (DP-13, DP-15).
+        """
+        return bool(shape.visible) and self.is_visible(shape)
+
+    def annotation_editing_paused(self) -> bool:
+        """Return whether geometry editing is paused right now.
+
+        While only the source image is shown, an edit target can still be
+        selected from before the switch, so every geometry entry point has to
+        check this: mouse drag, keyboard nudge and rotation, and the existing
+        edit previews (DP-13, DP-14).
+        """
+        if self._dense_review_displays is None:
+            return False
+        for shape in self.shapes:
+            display = self.dense_review_display_for(shape)
+            if display is not None and display.reason == "original-only":
+                return True
+        return False
+
     def _group_visible_shapes(self, group_shapes):
         """Return the members that may take part in geometry and hits.
 
@@ -4004,6 +4037,20 @@ class Canvas(
             for shape in group_shapes
             if shape.visible and self.dense_review_drawable(shape)
         ]
+
+    def _group_editable_shapes(self, group_shapes):
+        """Return the members a group action may actually modify.
+
+        Only the review overlay narrows this set: a hidden or filtered member
+        must not move through a group gesture while it stays invisible, since
+        the next save would commit a change the user never saw
+        (DP-11, DP-12).  Without an overlay the ordinary canvas rule is
+        preserved verbatim - the whole group is returned, and an existing
+        locked member keeps blocking the group move as before.
+        """
+        if self._dense_review_displays is None:
+            return list(group_shapes)
+        return self._group_visible_shapes(group_shapes)
 
     def dense_review_paint_sequence(self, shapes):
         """Return ``shapes`` in review paint order.
@@ -4093,7 +4140,13 @@ class Canvas(
     def _active_group_shapes(self):
         if not self.show_groups or self._selected_group_id is None:
             return []
-        shapes = self._group_shapes(self._selected_group_id)
+        # Compare against the editable subset so a group whose hidden members
+        # are not selected is still recognised as the active group.
+        shapes = self._group_editable_shapes(
+            self._group_shapes(self._selected_group_id)
+        )
+        if not shapes:
+            return []
         if len(shapes) != len(self.selected_shapes):
             return []
         if any(shape not in self.selected_shapes for shape in shapes):
@@ -4101,7 +4154,14 @@ class Canvas(
         return shapes
 
     def _select_group(self, group_id, point):
-        shapes = self._group_shapes(group_id)
+        members = self._group_shapes(group_id)
+        if not members:
+            return
+        # Selection is the root of every group edit (drag, arrow-key nudge,
+        # copy), so restrict it to the effective editable members.  The formal
+        # grouping, the reported count and ordinary canvas behaviour stay
+        # untouched.
+        shapes = self._group_editable_shapes(members)
         if not shapes:
             return
         self._selected_group_id = group_id
@@ -4643,6 +4703,8 @@ class Canvas(
 
     def bounded_move_shapes(self, shapes, pos):
         """Move shapes. Adjust position to be bounded by pixmap border"""
+        if self.annotation_editing_paused():
+            return False
         shapes = [shape for shape in shapes if not shape.locked]
         if not shapes:
             return False
@@ -4975,7 +5037,7 @@ class Canvas(
             linking_pairs = []
             group_color = (255, 128, 0)
             for shape in self.shapes:
-                if not shape.visible:
+                if not self._overlay_visible(shape):
                     continue
                 # Hidden or fully dimmed objects must not leave orphaned
                 # linking lines over the source image (DP-15).
@@ -5037,7 +5099,7 @@ class Canvas(
         # Draw shape masks
         if self.show_masks:
             for shape in self.shapes:
-                if not shape.visible:
+                if not self._overlay_visible(shape):
                     continue
                 # The review table decides masking per role: a zero mask and
                 # zero outline removes the whole overlay (DP-02).
@@ -5346,7 +5408,7 @@ class Canvas(
             if label_bounds.isEmpty():
                 label_bounds = self.rect()
             for shape in self.shapes:
-                if not shape.visible:
+                if not self._overlay_visible(shape):
                     continue
                 if shape.label in [
                     "AUTOLABEL_OBJECT",
@@ -5461,7 +5523,7 @@ class Canvas(
 
             p.setPen(QtCore.Qt.PenStyle.NoPen)
             for shape, rect, _, _ in labels:
-                if not shape.visible:
+                if not self._overlay_visible(shape):
                     continue
                 plate_style = self.dense_review_paint_style(shape)
                 plate_strength = (
@@ -5480,7 +5542,7 @@ class Canvas(
             )
             p.setPen(pen)
             for shape, _, text_pos, label_text in labels:
-                if not shape.visible:
+                if not self._overlay_visible(shape):
                     continue
                 previous = p.opacity()
                 p.setOpacity(
@@ -5518,7 +5580,7 @@ class Canvas(
             attributes_list = []
 
             for shape in self.shapes:
-                if not shape.visible:
+                if not self._overlay_visible(shape):
                     continue
                 if not hasattr(shape, "attributes") or not shape.attributes:
                     continue
@@ -5635,7 +5697,7 @@ class Canvas(
                 )
 
             for shape, rect, _, _ in attributes_list:
-                if not shape.visible:
+                if not self._overlay_visible(shape):
                     continue
 
                 background_color = QtGui.QColor(*self.attr_background_color)
@@ -6256,6 +6318,8 @@ class Canvas(
 
     def move_by_keyboard(self, offset):
         """Move selected shapes by an offset (using keyboard)"""
+        if self.annotation_editing_paused():
+            return
         if self.selected_shapes:
             group_shapes = self._active_group_shapes()
             if group_shapes and any(shape.locked for shape in group_shapes):
@@ -6268,6 +6332,8 @@ class Canvas(
 
     def rotate_by_keyboard(self, theta):
         """Rotate selected shapes by an theta (using keyboard)"""
+        if self.annotation_editing_paused():
+            return
         if self.selected_shapes:
             rotating_shape = False
             for i, shape in enumerate(self.selected_shapes):
