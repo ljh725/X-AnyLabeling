@@ -37,7 +37,7 @@
 - [x] 3.2 `3b09eefd`；`test_display_policy.py` 优先级用例
 - [ ] 3.3 为被排除对象显示具体原因并接入“临时显示/结束临时显示”，限定准确对象集合和本图生命周期；显现只改变观察结果，确认资格仍按排除来源计算。
 - [ ] 3.4 使显示解析响应实际选择、内容变更、偏好变更和过滤变更，建立准确缓存失效，避免每次鼠标移动扫描或重建全部对象状态。
-- [x] 3.5 `4af3c92f`；`test_display_consistency.py::test_closing_review_restores_latest_user_settings`
+- [x] 3.5 `4af3c92f` + `47c7018d`：关闭后改显隐/过滤保持普通画布，重开恢复同一会话；`test_display_consistency.py::test_closed_workspace_keeps_regular_canvas_after_visibility_edit`（DP-17、WL-12）
 - [ ] 3.6 核对类别变更后角色按稳定批次成员继续计算，临时原图、强度为零和布局折叠各自保留原确认范围，满足 PC-01、PC-05。
 
 ## 4. 分层绘制与组件弱化
@@ -45,7 +45,7 @@
 - [x] 4.1 `96e93981`；`test_canvas_display_overlay.py`、`test_display_policy.py` 角色分级
 - [x] 4.2 `96e93981`；`test_canvas_display_overlay.py::test_handles_follow_role_while_formal_points_stay`
 - [x] 4.3 `96e93981`；`test_canvas_display_overlay.py::test_zero_strength_role_paints_nothing`
-- [x] 4.4 `96e93981`；`test_canvas_display_overlay.py`、`test_display_consistency.py::test_painted_order_never_changes_saved_order`
+- [x] 4.4 `96e93981` + `7d9a27b3`：`test_canvas_display_overlay.py`、`test_display_consistency.py::test_current_object_paints_last_without_reordering_data`；绘制按其他→本批→当前对象，保存顺序不变（DP-08）
 - [ ] 4.5 接入单点拟合、拖边、创建草稿、旋转手柄与选择预览的原有显示约束，验证提交、取消和退出复核后的状态，满足 DP-16。
 - [ ] 4.6 用像素、几何和真实主画布回归验证深浅背景、重叠框、关键点和高 DPI；保存正确图与失败差异作为本组证据。
 
@@ -62,7 +62,7 @@
 - [x] 6.1 `26fed309`；`test_display_text_and_original.py::test_review_label_policy_overrides_ordinary_switch`、`test_review_never_writes_back_the_ordinary_label_settings`
 - [ ] 6.2 实现有限框外锚点避让和短引线，碰撞包括已放置文字与当前编辑手柄；空间不足时显示编号并映射侧栏完整名称，支持准确定位。
 - [ ] 6.3 标签布局按字体、DPI、文本和视口缓存，拖动时固定锚点，结束后重新排布；验证缩放后文字屏幕尺寸及对象身份稳定，满足 DP-06。
-- [x] 6.4 `26fed309`；`test_display_text_and_original.py::test_source_comparison_pauses_annotation_hits`、`test_source_comparison_ends_when_the_image_changes`
+- [x] 6.4 `26fed309` + `47c7018d`：`test_display_text_and_original.py` 原图对照暂停命中、切图/关闭结束、按住查看/松开恢复/失焦清理与切图清理（DP-13、DP-14）
 - [ ] 6.5 验证当前对象、本批标签回退、关联点名称、长中文及日/韩文本、手柄和键盘焦点；将文字可读性人工步骤加入 M2。
 
 ## 7. 矩形卡与关联点导航
@@ -77,9 +77,9 @@
 ## 8. 卡片尺寸、裁切和异步图块
 
 - [x] 8.1 `c569a29f`；`test_card_geometry.py::test_card_image_height_defaults_to_320`
-- [x] 8.2 `c569a29f` 部分：`test_widening_changes_columns_but_keeps_height`、`test_context_change_keeps_the_selected_height`；宽度受限提示与主画布入口未实现
+- [ ] 8.2 部分完成 `c569a29f`：高度独立与列数重排已验证（`test_card_geometry.py::test_widening_changes_columns_but_keeps_height`、`test_context_change_keeps_the_selected_height`）；**宽度受限提示与「在主画布查看」入口未实现**，故不勾选
 - [ ] 8.3 裁切包含矩形及明确关联点并集，任一有效框外点即提供提示、主体观察及逐点定位，边界点视为框内；裁切钳制真实图像边界，满足 OC-11、OC-12。
-- [x] 8.4 `c569a29f` 部分：`test_thumbnail_target_follows_size_and_dpr`、`test_height_change_invalidates_cached_crops`；比较窗口当前版本未实现
+- [ ] 8.4 部分完成 `c569a29f`：目标像素与 DPR、尺寸进入缓存键已验证（`test_thumbnail_target_follows_size_and_dpr`、`test_height_change_invalidates_cached_crops`）；**比较窗口当前版本未实现**，故不勾选
 - [ ] 8.5 合并尺寸滑块与布局变化请求，优先可见项和有限预取，保留虚拟列表；为源图、图块、图形资源、在途请求与结果队列登记各自容量或字节预算，满足 OC-18。
 - [ ] 8.6 切图、改目录、调整尺寸和关闭工作区时取消或丢弃旧结果，后台线程仅提交当前代际可用数据；拖动期间遵守现有后台延迟策略。
 - [ ] 8.7 实现明确失败、重试和冷缓存比较，关闭比较窗口后停止更新，成功恢复后按当前范围重算确认候选，满足 OC-19、OC-20、PC-07。

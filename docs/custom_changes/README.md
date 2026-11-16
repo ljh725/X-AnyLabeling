@@ -24,7 +24,7 @@
 | CUSTOM-002 | 分阶段标注加载、搜索与审核一致性 | 已有实现，历史验证见报告 | [实现归档](2026-10-30-staged-loading.md) |
 | CUSTOM-003 | 大数据集拖动响应优化 | 已实施，历史回归与用户体验确认见修复记录 | [修复记录](2026-10-30-canvas-dragging.md) |
 | CUSTOM-119 | 标签缩放测试截图裁剪修复 | 已验证 | [修复记录](2026-11-13-shape-label-zoom-test.md) |
-| CUSTOM-121 | 密集复核工作区重设计 | 实施中：显示解析与画布接入已验证，其余任务组及人工验收待执行 | [规划记录](2026-11-13-dense-review-redesign.md) · [OpenSpec 任务](../../openspec/changes/redesign-dense-review-workspace/tasks.md) |
+| CUSTOM-121 | 密集复核工作区重设计 | 实施中：显示解析、画布接入、标签、卡片尺寸及复核轮修复已验证；其余任务组及人工验收待执行 | [规划记录](2026-11-13-dense-review-redesign.md) · [OpenSpec 任务](../../openspec/changes/redesign-dense-review-workspace/tasks.md) |
 | CUSTOM-122 | 关键点三层表达与画布符号 | 方案，未实施，已形成规格、任务与验收清单 | [方案与示意图](2026-11-13-keypoint-three-layer-expression.md) · [OpenSpec 任务](../../openspec/changes/add-keypoint-display-presets/tasks.md) |
 | CUSTOM-109 | Inspector 检查与复核工作流 | 11-05 已提交保存；代码/自动化 52/55，人工验收 3 项待做 | [实施记录](2026-11-02-inspector-workflow.md) · [操作说明](../zh_cn/inspector.md) · [验证](../../openspec/changes/archive/2026-11-10-refactor-data-inspector-workflow/verification.md) |
 | CUSTOM-110 | 密集标注复核工作流 | 11-05 已提交保存；功能/性能专项有通过证据，人工试用与完整组合回归仍待验收 | [最新实施结果](../../openspec/changes/add-dense-annotation-review-workflow/implementation-20261105.md) · [实施记录](2026-11-02-dense-annotation-review-workflow.md) · [任务](../../openspec/changes/add-dense-annotation-review-workflow/tasks.md) |

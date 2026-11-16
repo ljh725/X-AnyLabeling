@@ -145,6 +145,50 @@ DPR 计算并进入缓存键；新增高度滑块与四语言文案并重跑资�
 `MainWindow` / `LabelingWidget` 直建用例，需要同样的配置会话改造。
 本批次只按要求修复 `test_navigation.py`，上述两文件按未覆盖登记。
 
+## 复核轮次 · 2026-11-16（针对 `6b0f1168` 的六项问题）
+
+复核脚本 `.tmp/test_redesign_review_audit.py` 复跑六项，修复前 **6 failed**，
+修复后 **6 passed**；断言已并入持久测试文件，临时脚本未入库。
+
+| 问题 | 根因 | 修复 | 提交 | 测试节点 |
+| --- | --- | --- | --- | --- |
+| P1 关闭后复核样式重新生效 | 覆盖层按「会话存在」安装，会话关闭后仍存活 | 改为按工作区可见状态激活 | `47c7018d` | `test_display_consistency.py::test_closed_workspace_keeps_regular_canvas_after_visibility_edit` |
+| P1 原图对照仍显示/命中分组 | `_group_at_point`/`_paint_groups` 只看 `shape.visible` | 新增 `_group_visible_shapes()` 服从显示解析；旋转手柄同源接入 | `7d9a27b3` | `test_original_comparison_blocks_group_paint_and_hit`、`test_original_comparison_disables_rotation_handles` |
+| P2 临时显示只停在解析表 | 绘制/命中被旧可见性提前过滤 | `is_visible()` 在复核模式下以有效结果为准；命中去掉旧过滤 | `47c7018d` | `test_temporary_show_reaches_paint_and_hit`、`test_original_comparison_wins_over_temporary_show` |
+| P2 默认聚焦吞掉本批与关联点 | 沿用旧背景隐藏开关 | 聚焦模式不再隐藏背景，由角色决定 | `47c7018d` | `test_focus_mode_paints_batch_members_and_associated_points` |
+| P2 当前对象未置顶 | 轮廓按 `canvas.shapes` 原顺序绘制 | 新增按角色排序的绘制序列，数据顺序不变 | `7d9a27b3` | `test_current_object_paints_last_without_reordering_data` |
+| P2 仅改 `group_id` 关联不更新 | `_sync_one()` 未把组号列为变更条件 | 提升为独立变更条件 | `bfd7e001` | `test_group_association_sync.py` |
+
+任务 6.4 的按住查看补齐：`test_hold_original_restores_previous_mode_on_release`、
+`test_hold_original_ends_on_blur_and_image_switch`、`test_hold_original_requires_an_active_workspace`。
+
+### 本轮验证
+
+| 项目 | 结果 |
+| --- | --- |
+| `tests/test_dense_review` 全目录 | **209 passed, 2 failed**, 614 subtests, 255.89s, 退出码 1 |
+| 失败项 | `test_workspace_evidence.py::test_closed_workspace_keeps_shift_fit_target_and_undo[False]` / `[True]`，与上轮 198/2 完全同一批，非本次引入 |
+| `test_display_consistency.py` | 17 passed |
+| `test_display_text_and_original.py` | 10 passed |
+| `test_group_association_sync.py` | 1 passed（新增文件） |
+| `test_workspace.py` | 22 passed |
+| 受影响画布测试 | `test_fill_opacity` 12、`test_shape_selection` 11、`test_groups` 16、`test_label_visibility_mode` 6、`test_rotation_handle` 2、`test_selection_priority` 6、`test_drag_refresh` 11，全部通过 |
+| OpenSpec | `openspec validate --strict` valid |
+| 格式与静态检查 | `black` 通过；`flake8` 无新增问题（仅仓库既有 C901/F841/F541） |
+| `git diff --check` | 通过 |
+
+过程中修正的自身问题：`_grouped_shapes()` 一度整体过滤隐藏成员，导致
+`test_groups.py::test_hidden_group_members_are_counted_but_not_hit_tested`
+失败；改为只在几何/命中处过滤后恢复通过。
+
+### 本轮未修与跟踪
+
+- 任务 5.3 的重叠候选选择界面仍按原任务跟踪，未在本轮实现。
+- `test_rectangle_edge_migration.py`、`test_rectangle_preview_overlap.py`
+  整文件仍复现基线既有模态弹窗挂起（本次未触碰，未作为回归依据）。
+- 任务 8.2 的宽度受限提示与主画布入口、8.4 的比较窗口当前版本仍未实现，
+  `tasks.md` 中两项已恢复为未勾选并标注「部分完成」。
+
 ## 最终验收（本次交付范围）
 
 | 项目 | 命令 | 结果 |
