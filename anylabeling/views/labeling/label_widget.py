@@ -60,6 +60,13 @@ from ...services.dense_review.config import (
     load_config as load_dense_review_config,
     save_config as save_dense_review_config,
 )
+from ...services.dense_review.display import (
+    DisplayContext,
+    REASON_TEXT,
+    ROLE_BATCH,
+    ROLE_CURRENT,
+    resolve_all,
+)
 from ...services.dense_review.models import (
     CoverageSettings,
     IncompatibleReviewState,
@@ -316,6 +323,12 @@ class LabelingWidget(LabelDialog):
         self._dense_review_display_mode = "all"
         self._dense_review_original_visibility = None
         self._dense_review_full_view = None
+        self._dense_review_revision = 0
+        self._dense_review_temporary_ids: set[str] = set()
+        self._dense_review_temporary_image = ""
+        self._dense_review_hover_id = ""
+        self._dense_review_role_styles: dict = {}
+        self._dense_review_displays: dict = {}
         self.label_loop_count = -1
         self.label_loop_shapes = None
         self.label_loop_popup = None
@@ -4073,7 +4086,10 @@ class LabelingWidget(LabelDialog):
             # The canvas snapshot was trimmed by the history cap; drop the
             # matching marker so redo can move on to the next transaction.
             session.drop_stale_canvas_redo()
-            if session.next_redo_kind() == "progress" and session.redo_progress():
+            if (
+                session.next_redo_kind() == "progress"
+                and session.redo_progress()
+            ):
                 notify_metrics(self, "review_event", "review-confirm")
                 self.dense_review_after_progress_change()
                 self._update_history_actions()
@@ -4769,6 +4785,166 @@ class LabelingWidget(LabelDialog):
                 return shape
         return None
 
+    def dense_review_display_context(self, session=None) -> DisplayContext:
+        """Build the display-resolver input from the live canvas state.
+
+        Everything the resolver needs is collected here so the canvas never
+        re-derives visibility.  ``manual_hidden``/``filtered`` keep their own
+        sources and stay distinct from the review roles, which is what makes
+        "temporary show" an observation-only exception (DP-11, DP-12).
+        """
+        session = session if session is not None else self.dense_review_session
+        manual, filtered = self.dense_review_exclusion_ids()
+        label_hidden = set()
+        for shape in self.dense_review_shapes():
+            info = self.label_info.get(shape.label, {})
+            if not info.get("visible", True):
+                label_hidden.add(shape.xanylabeling_shape_id)
+        batch_ids = set()
+        current_id = ""
+        associated = set()
+        if session is not None:
+            current = session.current_object()
+            if current is not None:
+                current_id = current.shape_id
+            batch_id = session.state.current_batch
+            batch_ids = set(session.state.member_ids(batch_id))
+            associated = set(session.associated_ids(current_id))
+        return DisplayContext(
+            batch_ids=frozenset(batch_ids),
+            current_id=current_id,
+            associated_ids=frozenset(associated),
+            styles=dict(self._dense_review_role_styles),
+            global_annotations_on=self._dense_review_annotations_enabled(),
+            original_only=self._dense_review_display_mode == "original",
+            manual_hidden=frozenset(manual),
+            label_hidden=frozenset(label_hidden),
+            filtered=frozenset(filtered),
+            unsupported=frozenset(self._dense_review_unsupported_ids(session)),
+            temporary_ids=frozenset(self._active_temporary_ids()),
+            hovering_id=self._dense_review_hover_id,
+        )
+
+    @staticmethod
+    def _dense_review_unsupported_ids(session) -> set:
+        if session is None:
+            return set()
+        return {
+            item.shape_id
+            for item in session.state.objects.values()
+            if not item.supported
+        }
+
+    def _dense_review_annotations_enabled(self) -> bool:
+        """Report whether ordinary annotation display is switched on.
+
+        ``toggle_visibility_shapes`` is the existing global switch: it flips
+        every shape's own ``visible`` flag, so the resolver reads that flag
+        instead of inventing a second source of truth.  A single shape's check
+        box therefore still wins inside the review (DP-12, DP-18, DP-17).
+        """
+        shapes = self.dense_review_shapes()
+        if not shapes:
+            return True
+        return any(bool(shape.visible) for shape in shapes)
+
+    def refresh_dense_review_display(self, force: bool = False) -> None:
+        """Recompute and install the review display table.
+
+        The table is rebuilt from the live session, filters and temporary
+        exceptions.  It is only installed while a review round owns the
+        canvas; ordinary labelling keeps its previous behaviour untouched
+        (DP-17, DP-18).
+        """
+        canvas = getattr(self, "canvas", None)
+        if canvas is None:
+            return
+        session = self.dense_review_session
+        if session is None:
+            self._dense_review_displays = {}
+            canvas.clear_dense_review_display()
+            return
+        context = self.dense_review_display_context(session)
+        displays = resolve_all(
+            self.dense_review_shapes(),
+            context,
+            shape_id_of=lambda shape: shape.xanylabeling_shape_id,
+            label_of=lambda shape: shape.label,
+        )
+        self._dense_review_displays = displays
+        self._dense_review_revision += 1
+        canvas.set_dense_review_display(displays, self._dense_review_revision)
+
+    # -- temporary display exceptions ----------------------------------
+
+    def _active_temporary_ids(self) -> set:
+        """Return the temporary-show set, cleared when the image changes."""
+        if self._dense_review_temporary_image != (self.filename or ""):
+            self._dense_review_temporary_ids = set()
+            self._dense_review_temporary_image = self.filename or ""
+        return self._dense_review_temporary_ids
+
+    def dense_review_temporary_ids(self) -> set:
+        """Public read-only view of the temporary-show set."""
+        return set(self._active_temporary_ids())
+
+    def dense_review_show_temporarily(self, shape_ids) -> bool:
+        """Add explicit objects to this image's temporary-show exception.
+
+        The exception only changes observation.  Confirmation eligibility
+        still follows the exclusion source, so a temporarily shown manual
+        hide stays out of the batch candidates (PC-06).
+        """
+        shape_ids = {str(item) for item in shape_ids or () if item}
+        existing = {
+            shape.xanylabeling_shape_id for shape in self.canvas.shapes
+        }
+        added = shape_ids & existing
+        if not added:
+            return False
+        self._active_temporary_ids().update(added)
+        self.refresh_dense_review_display()
+        self.canvas.update()
+        return True
+
+    def dense_review_end_temporary(self, shape_ids=None) -> bool:
+        """Remove objects (or the whole set) from the temporary exception."""
+        active = self._active_temporary_ids()
+        if not active:
+            return False
+        if shape_ids is None:
+            active.clear()
+        else:
+            active.difference_update(str(item) for item in shape_ids if item)
+        self.refresh_dense_review_display()
+        self.canvas.update()
+        return True
+
+    def dense_review_end_temporary_on_image_change(self) -> None:
+        """Drop the exception when the current image changes (DP-11)."""
+        if self._dense_review_temporary_ids:
+            self._dense_review_temporary_ids = set()
+        self._dense_review_temporary_image = self.filename or ""
+
+    def dense_review_exclusion_reason(self, shape_id: str) -> str:
+        """Return a readable exclusion reason for one object, or ""."""
+        display = self._dense_review_displays.get(shape_id)
+        if display is None:
+            return ""
+        return REASON_TEXT.get(display.reason, display.reason)
+
+    def dense_review_display_entry(self, shape_id: str):
+        """Return the resolved display entry for one object, or ``None``."""
+        return self._dense_review_displays.get(str(shape_id))
+
+    def dense_review_set_hover(self, shape_id: str) -> None:
+        """Record the hovered object without changing the review target."""
+        shape_id = str(shape_id or "")
+        if shape_id == self._dense_review_hover_id:
+            return
+        self._dense_review_hover_id = shape_id
+        self.refresh_dense_review_display()
+
     def _dense_review_cancel_pending_edit(self):
         if self.canvas.current is not None:
             self.canvas.cancel_drawing()
@@ -4780,6 +4956,8 @@ class LabelingWidget(LabelDialog):
         shape = self._dense_review_find_shape(shape_id)
         if shape is None:
             return
+        # An explicit target change ends any temporary show (DP-11).
+        self._reveal_auto_clears_temporary(shape_id)
         self._dense_review_cancel_pending_edit()
         self.canvas.select_shapes([shape])
         if self._dense_review_display_mode == "focus":
@@ -4876,6 +5054,21 @@ class LabelingWidget(LabelDialog):
             min(max(0, y_scroll), vertical.maximum()),
         )
 
+    def _reveal_auto_clears_temporary(self, shape_id):
+        """Drop the temporary-show exception when the target changes.
+
+        The exception belongs to *one* object on *one* image; navigation to
+        a different object must not leave the previous one visible
+        (DP-11, DP-12).
+        """
+        active = self._active_temporary_ids()
+        if not active:
+            return
+        if shape_id and shape_id in active:
+            return
+        active.clear()
+        self.refresh_dense_review_display()
+
     def dense_review_set_display_mode(self, mode):
         if mode not in ("focus", "all", "original"):
             return
@@ -4906,6 +5099,9 @@ class LabelingWidget(LabelDialog):
                     for shape in self.canvas.shapes
                 }
             self._dense_review_apply_original_visibility()
+        # Rebuild after switching: "original" resolves to nothing drawable,
+        # which also removes every hit target (DP-12, DP-13).
+        self.refresh_dense_review_display()
         self.canvas.update()
 
     def _dense_review_apply_original_visibility(self):
@@ -4914,12 +5110,42 @@ class LabelingWidget(LabelDialog):
         self.canvas.update()
 
     def _dense_review_restore_visibility(self):
+        """Undo the original-only overlay without overwriting user choices.
+
+        The snapshot only exists to serve the temporary "show the source
+        image" mode.  Restoring it verbatim on close would overwrite a hide
+        or filter the user changed *during* the review, which DP-17 and
+        WL-12 forbid, so visibility is recomputed from the live filter state
+        and the snapshot only says which shapes the overlay touched.
+        """
         if self._dense_review_original_visibility is None:
             return
-        for shape, visible in self._dense_review_original_visibility.items():
-            if shape in self.canvas.shapes:
-                self.canvas.visible[shape] = visible
+        touched = {
+            shape
+            for shape in self._dense_review_original_visibility
+            if shape in self.canvas.shapes
+        }
         self._dense_review_original_visibility = None
+        if not touched:
+            return
+        label = self.label_filter_combobox.text_box.currentText()
+        gid = self.gid_filter_combobox.gid_box.currentText() or "-1"
+        manual_hidden = self._manually_hidden_shapes
+        for shape in touched:
+            if shape.visible is False or shape in manual_hidden:
+                self.canvas.visible[shape] = False
+                continue
+            self.canvas.visible[shape] = desired_visibility(
+                shape,
+                label=label,
+                gid=gid,
+                label_visible=self.label_info.get(shape.label, {}).get(
+                    "visible", True
+                ),
+                invert=self._invert_shape_filter,
+                manually_hidden=False,
+            )
+        self.canvas.update()
 
     def dense_review_toggle_full_image(self):
         self._dense_review_cancel_pending_edit()
@@ -4972,6 +5198,14 @@ class LabelingWidget(LabelDialog):
         if self._dense_review_full_view is not None:
             self.dense_review_toggle_full_image()
         self._dense_review_display_mode = "all"
+        # Review-only overlays end here; the ordinary painting is recomputed
+        # from the user's latest settings rather than a stale snapshot
+        # (DP-17, WL-12).
+        self._dense_review_temporary_ids = set()
+        self._dense_review_temporary_image = self.filename or ""
+        self._dense_review_role_styles = {}
+        self._dense_review_displays = {}
+        self.canvas.clear_dense_review_display()
         if self.dense_review_workspace is not None:
             self.dense_review_workspace._full_image = False
 
@@ -5008,6 +5242,10 @@ class LabelingWidget(LabelDialog):
         self._dense_review_restore_visibility()
         self._dense_review_display_mode = "all"
         self._dense_review_full_view = None
+        self._dense_review_temporary_ids = set()
+        self._dense_review_displays = {}
+        if self.canvas is not None:
+            self.canvas.clear_dense_review_display()
         self.dense_review_session = None
         self._dense_review_annotation_path = ""
         self._dense_review_annotation_stat = None
@@ -5023,6 +5261,8 @@ class LabelingWidget(LabelDialog):
             self.dense_review_workspace.refresh_all()
 
     def _dense_review_on_file_loaded(self):
+        # Exceptions never cross images (DP-11, DP-14).
+        self.dense_review_end_temporary_on_image_change()
         self._dense_review_image_hash = ""
         if not self.image.isNull():
             self._dense_review_image_size = (
@@ -5043,6 +5283,7 @@ class LabelingWidget(LabelDialog):
                 or "focus"
             )
             self.dense_review_set_display_mode(mode)
+            self.refresh_dense_review_display()
             self.dense_review_workspace._focus_current()
 
     def inspection_dataset_root(self):
@@ -5214,9 +5455,7 @@ class LabelingWidget(LabelDialog):
             return unique[0]
         # A bare basename is only a fallback when it is unambiguous.
         if "/" not in raw:
-            by_name = [
-                path for path in paths if osp.basename(path) == raw
-            ]
+            by_name = [path for path in paths if osp.basename(path) == raw]
             unique_by_name = list(dict.fromkeys(by_name))
             if len(unique_by_name) == 1:
                 return unique_by_name[0]
@@ -5414,9 +5653,11 @@ class LabelingWidget(LabelDialog):
         self, object_ids, relative_path="", dataset_root="", output_dir=""
     ):
         guard = self._inspection_file_guard(
-            relative_path
-            if relative_path
-            else self.inspection_current_relative_path(),
+            (
+                relative_path
+                if relative_path
+                else self.inspection_current_relative_path()
+            ),
             dataset_root,
             output_dir,
         )
@@ -5444,7 +5685,9 @@ class LabelingWidget(LabelDialog):
         self.canvas.shapes_redo.clear()
         self.canvas.update()
         self.shape_selection_changed(self.canvas.selected_shapes)
-        notify_metrics(self, "edit", "delete", "inspection_edit", removed=deletable)
+        notify_metrics(
+            self, "edit", "delete", "inspection_edit", removed=deletable
+        )
         self.set_dirty()
         return True, ""
 
@@ -5457,9 +5700,11 @@ class LabelingWidget(LabelDialog):
         output_dir="",
     ):
         guard = self._inspection_file_guard(
-            relative_path
-            if relative_path
-            else self.inspection_current_relative_path(),
+            (
+                relative_path
+                if relative_path
+                else self.inspection_current_relative_path()
+            ),
             dataset_root,
             output_dir,
         )
@@ -5500,9 +5745,8 @@ class LabelingWidget(LabelDialog):
             self.load_file(target)
             if osp.abspath(str(self.filename or "")) != osp.abspath(target):
                 return False, self.tr("Candidate image failed to load")
-        if (
-            self.inspection_current_relative_path()
-            != str(candidate.relative_path)
+        if self.inspection_current_relative_path() != str(
+            candidate.relative_path
         ):
             return False, self.tr(
                 "Candidate file identity does not match the loaded image"
@@ -5512,19 +5756,28 @@ class LabelingWidget(LabelDialog):
                 False,
                 self.tr("Candidate label is not in the current label set"),
             )
-        if (self.image is None or candidate.image_width != self.image.width()
-                or candidate.image_height != self.image.height()):
+        if (
+            self.image is None
+            or candidate.image_width != self.image.width()
+            or candidate.image_height != self.image.height()
+        ):
             return False, self.tr("Candidate image dimensions do not match")
         left, top, right, bottom = candidate.region
-        if (not all(math.isfinite(v) for v in candidate.region)
-                or not 0 <= left < right <= candidate.image_width
-                or not 0 <= top < bottom <= candidate.image_height):
+        if (
+            not all(math.isfinite(v) for v in candidate.region)
+            or not 0 <= left < right <= candidate.image_width
+            or not 0 <= top < bottom <= candidate.image_height
+        ):
             return False, self.tr("Candidate coordinates are invalid")
         if candidate.orientation:
-            from anylabeling.services.inspection.manifest import image_orientation
+            from anylabeling.services.inspection.manifest import (
+                image_orientation,
+            )
 
             if candidate.orientation != image_orientation(self.filename):
-                return False, self.tr("Candidate image orientation does not match")
+                return False, self.tr(
+                    "Candidate image orientation does not match"
+                )
         if candidate.image_digest:
             from anylabeling.services.inspection.manifest import file_digest
 
@@ -5533,13 +5786,19 @@ class LabelingWidget(LabelDialog):
             ):
                 return False, self.tr("Candidate image contents have changed")
         for current in self.canvas.shapes:
-            if (current.attributes.get("inspection_candidate_id")
-                    == candidate.candidate_id):
+            if (
+                current.attributes.get("inspection_candidate_id")
+                == candidate.candidate_id
+            ):
                 if not shape_id or current.xanylabeling_shape_id == shape_id:
                     return True, current.xanylabeling_shape_id
-                return False, self.tr("Candidate association is ambiguous; recheck current objects")
+                return False, self.tr(
+                    "Candidate association is ambiguous; recheck current objects"
+                )
             if shape_id and current.xanylabeling_shape_id == shape_id:
-                return False, self.tr("Candidate object identity is already in use")
+                return False, self.tr(
+                    "Candidate object identity is already in use"
+                )
         shape = Shape(
             label=candidate.label,
             shape_type="rectangle",
@@ -5555,7 +5814,9 @@ class LabelingWidget(LabelDialog):
             QPointF(candidate.region[2], candidate.region[3]),
         ]
         self.load_shapes([shape], replace=False, update_last_label=False)
-        notify_metrics(self, "edit", "create", "inspection_edit", changed=[shape])
+        notify_metrics(
+            self, "edit", "create", "inspection_edit", changed=[shape]
+        )
         self.set_dirty()
         return True, shape.xanylabeling_shape_id
 
@@ -6677,8 +6938,11 @@ class LabelingWidget(LabelDialog):
                     unique_label_item, label, rgb, LABEL_OPACITY
                 )
         notify_metrics(
-            self, "edit", "relabel" if "label" in touched else "attributes",
-            source, changed=changed
+            self,
+            "edit",
+            "relabel" if "label" in touched else "attributes",
+            source,
+            changed=changed,
         )
         self.set_dirty()
         self._refresh_shape_filters()
@@ -7664,6 +7928,11 @@ class LabelingWidget(LabelDialog):
             )
         )
         self._sync_invert_filter_actions()
+        # Label visibility, group/label filters and invert all funnel through
+        # here, so one invalidation keeps the review roles deterministic
+        # (DP-11, DP-12).
+        if self.dense_review_session is not None:
+            self.refresh_dense_review_display()
 
     def _sync_invert_filter_actions(self):
         """Keep the invert menu entries in sync with the filter state."""
@@ -7801,7 +8070,9 @@ class LabelingWidget(LabelDialog):
             if osp.dirname(filename) and not osp.exists(osp.dirname(filename)):
                 os.makedirs(osp.dirname(filename))
 
-            metrics_token = notify_metrics(self, "prepare_save", filename, shapes)
+            metrics_token = notify_metrics(
+                self, "prepare_save", filename, shapes
+            )
             label_file.save(
                 filename=filename,
                 shapes=shapes,
@@ -7952,6 +8223,11 @@ class LabelingWidget(LabelDialog):
             self._manually_hidden_shapes.discard(shape)
         else:
             self._manually_hidden_shapes.add(shape)
+        # A manual hide is the most common user exclusion, and it has to
+        # invalidate the review table immediately; otherwise the stale table
+        # would keep painting and hitting the object (DP-11).
+        if self.dense_review_session is not None:
+            self.refresh_dense_review_display()
         self._update_select_toggle_button_tooltip()
         if (
             hasattr(self, "navigator_dialog")
@@ -10121,12 +10397,16 @@ class LabelingWidget(LabelDialog):
         if self.canvas.selected_shapes:
             self._refresh_shape_filters()
         self.label_list.clearSelection()
-        notify_metrics(self, "edit", "duplicate", changed=self.canvas.selected_shapes)
+        notify_metrics(
+            self, "edit", "duplicate", changed=self.canvas.selected_shapes
+        )
         self.set_dirty()
 
     def move_shape(self):
         self.canvas.end_move(copy=False)
-        notify_metrics(self, "edit", "geometry", changed=self.canvas.selected_shapes)
+        notify_metrics(
+            self, "edit", "geometry", changed=self.canvas.selected_shapes
+        )
         self.set_dirty()
 
     def open_folder_dialog(self, _value=False, dirpath=None):
@@ -10398,7 +10678,9 @@ class LabelingWidget(LabelDialog):
             result_filename = osp.normpath(osp.abspath(result_image_path))
             if result_filename != current_filename:
                 notify_metrics(
-                    self, "prediction_unapplied", result_image_path,
+                    self,
+                    "prediction_unapplied",
+                    result_image_path,
                     getattr(auto_labeling_result, "provenance", None) or {},
                 )
                 logger.warning(
@@ -10486,7 +10768,9 @@ class LabelingWidget(LabelDialog):
 
         if tags_changed or not tags_only_result:
             if auto_labeling_result.replace or auto_labeling_result.shapes:
-                notify_metrics(self, "prediction_applied", auto_labeling_result)
+                notify_metrics(
+                    self, "prediction_applied", auto_labeling_result
+                )
             self.set_dirty()
 
     def clear_auto_labeling_marks(self):
@@ -10778,7 +11062,9 @@ class LabelingWidget(LabelDialog):
             group_id = min(group_ids)
         else:
             group_id = self.canvas.gen_new_group_id()
-        if self._apply_field_patch(targets, {"group_id": group_id}, {"group_id"}):
+        if self._apply_field_patch(
+            targets, {"group_id": group_id}, {"group_id"}
+        ):
             self.canvas._selected_group_id = None
             self.canvas._hovered_group_id = None
             self.canvas.update()
