@@ -1545,6 +1545,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             self._refresh_batches()
             self._refresh_cards(force=force_cards)
             self._refresh_coverage()
+            self._sync_list_enabled()
         finally:
             self._updating = False
         QtCore.QTimer.singleShot(0, self._request_visible_thumbnails)
@@ -1555,9 +1556,6 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
 
     def _set_empty_state(self) -> None:
         for widget in (
-            self.batch_list,
-            self.card_list,
-            self.region_list,
             self.complete_batch_button,
             self.complete_object_button,
             self.skip_button,
@@ -1577,6 +1575,12 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             self.rebuild_plan_button,
         ):
             widget.setEnabled(False)
+        # The lists keep the same empty/ready contract as the buttons so a
+        # session that becomes valid later restores them through
+        # ``_sync_list_enabled`` (WL-05, WL-06).
+        self.batch_list.setEnabled(False)
+        self.card_list.setEnabled(False)
+        self.region_list.setEnabled(False)
         self.summary_label.setText(self.tr("尚未开始本轮复核。"))
         self.progress_bar.setValue(0)
         self.completion_label.setText("")
@@ -1687,6 +1691,34 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             ).format(stats=stats or self.tr("无"))
         )
         self._set_controls_enabled(True)
+
+    def _sync_list_enabled(self) -> None:
+        """Enable the three lists only when their backing content exists.
+
+        ``_set_empty_state`` disables batches, cards and regions together
+        with every action, but nothing re-enabled the lists, so a session
+        opened after the empty state left them inert (WL-05, WL-06).  Each
+        gate below mirrors what the list currently holds, which keeps the
+        rendered content and the operability in sync.
+        """
+        session = self.session
+        ready = session is not None
+        self.batch_list.setEnabled(bool(ready and self.batch_list.count()))
+        self.card_list.setEnabled(bool(ready and self._card_model.rowCount()))
+        coverage = session.state.coverage if ready else None
+        has_regions = bool(coverage is not None and coverage.regions)
+        self.region_list.setEnabled(has_regions)
+        # Region actions depend on a plan, so they follow the same gate
+        # instead of the coarser "session exists" one.
+        for widget in (
+            self.complete_region_button,
+            self.region_difficult_button,
+            self.clear_region_difficult_button,
+            self.region_skip_button,
+            self.clear_region_skip_button,
+            self.current_region_button,
+        ):
+            widget.setEnabled(has_regions)
 
     def _set_controls_enabled(self, enabled: bool) -> None:
         for widget in (
