@@ -174,6 +174,42 @@ def default_role_styles() -> dict[str, RoleStyle]:
 
 
 @dataclass(frozen=True)
+class PaintStyle:
+    """Paint-time projection of :class:`RoleStyle` for one shape.
+
+    ``Shape.paint`` and the canvas overlay loops read only this object, so
+    the decision (``RoleStyle``) and the drawing stay in one direction:
+    changing a strength never requires touching a paint call site.
+    """
+
+    outline_opacity: float = 1.0
+    outline_width: float = 1.0
+    points_opacity: float = 1.0
+    handles_visible: bool = True
+    fill_opacity: float = 0.0
+    mask_opacity: float = 0.0
+    text_opacity: float = 1.0
+    plate_opacity: float = 1.0
+    attributes_opacity: float = 1.0
+    linking_opacity: float = 1.0
+
+    @classmethod
+    def from_role_style(cls, style: RoleStyle) -> "PaintStyle":
+        return cls(
+            outline_opacity=style.outline,
+            outline_width=style.outline_width,
+            points_opacity=style.points,
+            handles_visible=style.handles > 0.0,
+            fill_opacity=style.fill,
+            mask_opacity=style.mask,
+            text_opacity=style.text,
+            plate_opacity=style.text_plate,
+            attributes_opacity=style.attributes,
+            linking_opacity=style.linking,
+        )
+
+
+@dataclass(frozen=True)
 class ShapeDisplay:
     """The effective display result for one shape.
 
@@ -181,6 +217,11 @@ class ShapeDisplay:
     component that exits painting exits hit testing too (DP-02).  ``reason``
     carries the machine-readable exclusion cause so the panel can explain a
     hidden object instead of silently ignoring a navigation request (DP-11).
+
+    ``reviewable`` is deliberately *separate* from ``drawable``: a keypoint or
+    another unsupported shape stays visible, hittable and editable, while
+    ``reviewable=False`` marks it as outside the formal confirmation range
+    (PC-03, OC-15).
     """
 
     shape_id: str
@@ -192,10 +233,16 @@ class ShapeDisplay:
     reason: str = ""
     temporary: bool = False
     locked: bool = False
+    reviewable: bool = True
 
     @property
     def visible(self) -> bool:
         return self.drawable
+
+    @property
+    def paint_style(self) -> PaintStyle:
+        """Return the paint projection consumed by the canvas."""
+        return PaintStyle.from_role_style(self.style)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -208,6 +255,7 @@ class ShapeDisplay:
             "reason": self.reason,
             "temporary": self.temporary,
             "locked": self.locked,
+            "reviewable": self.reviewable,
         }
 
 
@@ -219,6 +267,9 @@ REASON_LABEL_HIDDEN = "label-hidden"
 REASON_FILTERED = "filtered"
 REASON_MISSING = "missing"
 REASON_UNSUPPORTED = "unsupported"
+
+#: Reasons that block painting and hit testing.  ``unsupported`` is absent on
+#: purpose: it limits the *review* range, not the display.
 
 REASON_TEXT = {
     REASON_GLOBAL_OFF: "全局标注显示已关闭",
@@ -322,8 +373,6 @@ def _resolve(
         if shape_id in context.temporary_ids:
             reason = ""
             temporary = True
-    if not reason and shape_id in context.unsupported:
-        reason = REASON_UNSUPPORTED
 
     role = _role_for(shape_id, context)
     style = context.style_for(role)
@@ -339,6 +388,7 @@ def _resolve(
         reason=reason,
         temporary=temporary,
         locked=bool(locked),
+        reviewable=shape_id not in context.unsupported,
     )
 
 

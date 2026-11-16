@@ -76,6 +76,13 @@ def build_object_state(
     rules = config.rules
     geometry_signature = shape_geometry_signature(shape, rules)
     load_failed = bounds is None or not bool(shape_points(shape))
+    raw_group = getattr(shape, "group_id", None)
+    group_id = None
+    if raw_group is not None:
+        try:
+            group_id = int(raw_group)
+        except (TypeError, ValueError):
+            group_id = None
     return ObjectReviewState(
         shape_id=shape_id,
         display_index=display_index,
@@ -89,6 +96,7 @@ def build_object_state(
         added=added,
         supported=shape_type in SUPPORTED_SHAPE_TYPES,
         load_failed=load_failed,
+        group_id=group_id,
     )
 
 

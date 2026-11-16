@@ -438,6 +438,11 @@ class DenseReviewSession:
         item.geometry_signature = geometry
         item.supported = shape_type in SUPPORTED_SHAPE_TYPES
         item.load_failed = bounds is None
+        raw_group = getattr(shape, "group_id", None)
+        try:
+            item.group_id = int(raw_group) if raw_group is not None else None
+        except (TypeError, ValueError):
+            item.group_id = None
         if item.load_failed or not item.supported:
             item.clear_confirmation(REVIEW_DIMENSIONS)
         return True
@@ -1018,6 +1023,39 @@ class DenseReviewSession:
 
     def object(self, shape_id: str) -> Optional[ObjectReviewState]:
         return self.state.objects.get(shape_id)
+
+    def associated_ids(self, shape_id: str) -> tuple[str, ...]:
+        """Return keypoints that belong to the given rectangle's group.
+
+        The relation is derived from the persisted ``group_id`` only, so the
+        review aggregation never rewrites labelling data.  A group with a
+        single rectangle (including group 0) makes its points associated;
+        ambiguous groups are resolved by the object-card view, not here
+        (OC-01, OC-02, OC-03).
+        """
+        if not shape_id:
+            return ()
+        anchor = self.object(shape_id)
+        if anchor is None:
+            return ()
+        group = getattr(anchor, "group_id", None)
+        if group is None:
+            return ()
+        group_key = str(group)
+        members = [
+            item
+            for item in self.state.objects.values()
+            if getattr(item, "group_id", None) is not None
+            and str(item.group_id) == group_key
+        ]
+        rectangles = [
+            item for item in members if item.shape_type == "rectangle"
+        ]
+        if len(rectangles) != 1 or rectangles[0].shape_id != shape_id:
+            # Ambiguous grouping is surfaced by the card view; the display
+            # layer must not guess which rectangle owns the points.
+            return ()
+        return tuple(item.shape_id for item in members if item is not anchor)
 
     def batch_counts(self, batch_id: str) -> dict[str, int]:
         members = self.state.member_ids(batch_id)

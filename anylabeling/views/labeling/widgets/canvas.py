@@ -2,6 +2,7 @@
 
 import copy
 import math
+from typing import Mapping, Optional
 
 import cv2
 import numpy as np
@@ -105,6 +106,9 @@ class Canvas(
     # Emitted when brush-edit mode is toggled on/off (keeps the UI in sync).
     brush_mode_changed = QtCore.pyqtSignal(bool)
     brush_history_changed = QtCore.pyqtSignal(bool)
+    # Emitted when the dense-review display table is installed or cleared so
+    # the label layout and the panel can rebuild their own view of it.
+    dense_review_display_changed = QtCore.pyqtSignal()
 
     CREATE, EDIT = 0, 1
 
@@ -239,6 +243,8 @@ class Canvas(
         self.visible = {}
         self.dense_review_region = None
         self.dense_review_region_label = ""
+        self._dense_review_displays = None
+        self._dense_review_revision = 0
         self.inspection_candidates = []
         self._hide_backround = False
         self.hide_backround = False
@@ -297,9 +303,7 @@ class Canvas(
         self._rectangle_size_evaluator = RectangleSizeEvaluator(())
         self._rectangle_size_issues: tuple = ()
         self._rectangle_size_issue_shapes: dict = {}
-        self._rectangle_size_overlay_renderer = (
-            RectangleSizeOverlayRenderer()
-        )
+        self._rectangle_size_overlay_renderer = RectangleSizeOverlayRenderer()
         self._rectangle_size_scan_interval_ms = 32
         self._rectangle_size_scan_timer = QtCore.QTimer(self)
         self._rectangle_size_scan_timer.setSingleShot(True)
@@ -738,9 +742,7 @@ class Canvas(
         # Keep the restored collection on the undo stack: the caller refreshes
         # labels with ``load_shapes(record_history=False)`` so the next undo
         # still sees two snapshots.
-        self.shapes_backups.append(
-            [shape.copy() for shape in self.shapes]
-        )
+        self.shapes_backups.append([shape.copy() for shape in self.shapes])
         # The collection we just left is what redo replays next.
         self.shapes_redo.append([shape.copy() for shape in undone])
         if len(self.shapes_redo) > self.num_backups:
@@ -758,9 +760,7 @@ class Canvas(
             return
         target = self.shapes_redo.pop()
         # Make the collection we are about to leave undoable again.
-        self.shapes_backups.append(
-            [shape.copy() for shape in self.shapes]
-        )
+        self.shapes_backups.append([shape.copy() for shape in self.shapes])
         if len(self.shapes_backups) > self.num_backups + 1:
             self.shapes_backups = self.shapes_backups[-self.num_backups - 1 :]
         self.shapes = target
@@ -1101,8 +1101,7 @@ class Canvas(
     def _paint_rectangle_size(self, painter):
         """Paint live size readouts and rule warnings above everything else."""
         if not (
-            self.show_rectangle_pixels
-            or self.show_rectangle_size_violations
+            self.show_rectangle_pixels or self.show_rectangle_size_violations
         ):
             return
         requests = merge_overlay_requests(
@@ -1127,6 +1126,10 @@ class Canvas(
             # Focus/background hiding stops painting unselected shapes, so
             # they must not stay hittable as invisible targets.
             if self._hide_backround and not shape.selected:
+                continue
+            # The review table gates paint and hit from one decision, so a
+            # zero-strength or excluded object cannot be clicked (DP-02).
+            if not self.dense_review_hittable(shape):
                 continue
 
             rect = shape.bounding_rect()
@@ -2014,7 +2017,9 @@ class Canvas(
                     pen.setStyle(Qt.PenStyle.DashLine)
                 p.setPen(pen)
                 fill_color = QtGui.QColor(outline_color)
-                fill_color.setAlpha(round(self.mask_opacity * self.shape_opacity))
+                fill_color.setAlpha(
+                    round(self.mask_opacity * self.shape_opacity)
+                )
                 p.setBrush(fill_color)
                 p.drawPath(outline_path)
 
@@ -4866,9 +4871,7 @@ class Canvas(
         self._point_fit_preview = self._build_point_fit_preview()
         preview = self._point_fit_preview
         preview_target = preview.target if preview is not None else None
-        preview_outline = (
-            preview.outline_path if preview is not None else None
-        )
+        preview_outline = preview.outline_path if preview is not None else None
 
         # Draw KIE linking
         if self.show_linking:
@@ -4879,6 +4882,12 @@ class Canvas(
             group_color = (255, 128, 0)
             for shape in self.shapes:
                 if not shape.visible:
+                    continue
+                # Hidden or fully dimmed objects must not leave orphaned
+                # linking lines over the source image (DP-15).
+                if not self.dense_review_drawable(shape):
+                    continue
+                if self._dense_review_linking_strength(shape) <= 0.0:
                     continue
 
                 try:
@@ -4935,6 +4944,16 @@ class Canvas(
         if self.show_masks:
             for shape in self.shapes:
                 if not shape.visible:
+                    continue
+                # The review table decides masking per role: a zero mask and
+                # zero outline removes the whole overlay (DP-02).
+                if not self.dense_review_drawable(shape):
+                    continue
+                mask_style = self.dense_review_paint_style(shape)
+                if mask_style is not None and (
+                    mask_style.mask_opacity <= 0.0
+                    and mask_style.outline_opacity <= 0.0
+                ):
                     continue
                 # Shapes under live brush editing render their own overlay.
                 if getattr(shape, "_brush_using_mask", False):
@@ -5007,11 +5026,16 @@ class Canvas(
                     if shape.selected
                     else shape.line_color
                 )
+                mask_strength = (
+                    1.0 if mask_style is None else mask_style.mask_opacity
+                )
                 fill_color_alpha = QtGui.QColor(
                     fill_color.red(),
                     fill_color.green(),
                     fill_color.blue(),
-                    round(self.mask_opacity * self.shape_opacity),
+                    round(
+                        self.mask_opacity * self.shape_opacity * mask_strength
+                    ),
                 )
                 if not (self.moving_shape and shape.selected):
                     p.setPen(Qt.PenStyle.NoPen)
@@ -5023,25 +5047,39 @@ class Canvas(
                     if shape.selected
                     else shape.line_color
                 )
+                if mask_style is not None:
+                    outline_color = QtGui.QColor(outline_color)
+                    outline_color.setAlphaF(
+                        max(0.0, min(1.0, mask_style.outline_opacity))
+                    )
                 pen = QtGui.QPen(outline_color)
-                pen.setWidthF(float(shape.line_width))
+                pen.setWidthF(
+                    float(shape.line_width)
+                    if mask_style is None
+                    else float(mask_style.outline_width)
+                )
                 pen.setCosmetic(True)
                 if shape.difficult:
-                    pen.setStyle(Qt.PenStyle.DashLine)
+                    pen.setStyle(QtCore.Qt.PenStyle.DashLine)
                 p.setPen(pen)
-                p.setBrush(Qt.BrushStyle.NoBrush)
-                p.drawPath(
-                    mask_path
-                    if shape is not preview_target
-                    or preview_outline is None
-                    else preview_outline
-                )
+                p.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+                if mask_style is None or mask_style.outline_opacity > 0.0:
+                    p.drawPath(
+                        mask_path
+                        if shape is not preview_target
+                        or preview_outline is None
+                        else preview_outline
+                    )
 
         # Draw degrees
         for shape in self.shapes:
             if (
                 shape.selected or not self._hide_backround
             ) and self.is_visible(shape):
+                # The review table gates painting per shape, and the style it
+                # returns drives every component in one place (DP-01..DP-03).
+                if not self.dense_review_drawable(shape):
+                    continue
                 shape.hovered = shape == self.h_shape
                 shape.fill = (
                     self._fill_drawing
@@ -5058,12 +5096,14 @@ class Canvas(
                             if shape is preview_target
                             else None
                         ),
+                        display_style=self.dense_review_paint_style(shape),
                     )
 
             if (
                 shape.shape_type == "rotation"
                 and len(shape.points) == 4
                 and self.is_visible(shape)
+                and self._dense_review_text_strength(shape) > 0.0
             ):
                 d = shape.point_size / shape.scale
                 center = QtCore.QPointF(
@@ -5214,6 +5254,10 @@ class Canvas(
                     "AUTOLABEL_REMOVE",
                 ]:
                     continue
+                # Role text strength decides readability, so a dimmed role
+                # drops its plate, leader and text together (DP-15).
+                if self._dense_review_text_strength(shape) <= 0.0:
+                    continue
                 label_text = self._label_display_text(shape)
                 if not label_text:
                     continue
@@ -5315,19 +5359,35 @@ class Canvas(
                 p.setPen(pen)
                 p.drawPolyline(QtGui.QPolygonF([start, elbow, end]))
 
-            p.setPen(Qt.PenStyle.NoPen)
+            p.setPen(QtCore.Qt.PenStyle.NoPen)
             for shape, rect, _, _ in labels:
                 if not shape.visible:
                     continue
+                plate_style = self.dense_review_paint_style(shape)
+                plate_strength = (
+                    1.0 if plate_style is None else plate_style.plate_opacity
+                )
+                if plate_strength <= 0.0:
+                    continue
+                previous = p.opacity()
+                p.setOpacity(previous * plate_strength)
                 p.setBrush(shape.line_color)
                 p.drawRoundedRect(QtCore.QRectF(rect), 4.0, 4.0)
+                p.setOpacity(previous)
 
-            pen = QtGui.QPen(QtGui.QColor("#000000"), 8, Qt.PenStyle.SolidLine)
+            pen = QtGui.QPen(
+                QtGui.QColor("#000000"), 8, QtCore.Qt.PenStyle.SolidLine
+            )
             p.setPen(pen)
             for shape, _, text_pos, label_text in labels:
                 if not shape.visible:
                     continue
+                previous = p.opacity()
+                p.setOpacity(
+                    previous * self._dense_review_text_strength(shape)
+                )
                 p.drawText(text_pos, label_text)
+                p.setOpacity(previous)
             p.restore()
 
         # Draw mouse coordinates
@@ -5361,6 +5421,8 @@ class Canvas(
                 if not shape.visible:
                     continue
                 if not hasattr(shape, "attributes") or not shape.attributes:
+                    continue
+                if self._dense_review_attribute_strength(shape) <= 0.0:
                     continue
                 if shape.label in [
                     "AUTOLABEL_OBJECT",
@@ -5854,8 +5916,7 @@ class Canvas(
             or self._right_panning
             or self._space_panning
             or (
-                self._point_fit_pressed
-                and not self._point_fit_release_pending
+                self._point_fit_pressed and not self._point_fit_release_pending
             )
             or self._point_fit_locked_target is not None
             or self._rectangle_edge_drag is not None
@@ -5956,8 +6017,7 @@ class Canvas(
             if delta.y():
                 self.zoom_request.emit(delta.y(), ev.position())
         elif mods == shift or (
-            mods == no_modifier
-            and self.wheel_navigation_mode == "traditional"
+            mods == no_modifier and self.wheel_navigation_mode == "traditional"
         ):
             if delta.x():
                 self.scroll_request.emit(
@@ -6400,6 +6460,103 @@ class Canvas(
         self.dense_review_region_label = str(label or "")
         self.update()
 
+    # --- dense review display overlay ---------------------------------
+    #
+    # The overlay is a pure decision table produced by
+    # ``services.dense_review.display``; the canvas only applies it.  Keeping
+    # the two apart is what lets paint and hit testing agree (DP-07, DP-08).
+
+    def set_dense_review_display(
+        self, displays: Optional[Mapping] = None, revision: int = 0
+    ) -> None:
+        """Install (or clear) the resolved dense-review display table.
+
+        ``displays`` maps a shape id to its ``ShapeDisplay``.  ``None``
+        removes the overlay so ordinary labelling behaves exactly as before
+        (DP-18, DP-17).
+        """
+        self._dense_review_displays = (
+            dict(displays) if displays is not None else None
+        )
+        self._dense_review_revision = int(revision)
+        self.dense_review_display_changed.emit()
+        self.update()
+
+    def clear_dense_review_display(self) -> None:
+        """Remove the overlay and return to ordinary canvas painting."""
+        if self._dense_review_displays is None:
+            return
+        self._dense_review_displays = None
+        self.dense_review_display_changed.emit()
+        self.update()
+
+    @property
+    def dense_review_active(self) -> bool:
+        """Return whether a review display table is installed."""
+        return self._dense_review_displays is not None
+
+    @property
+    def dense_review_revision(self) -> int:
+        """Return the revision the overlay was built for."""
+        return getattr(self, "_dense_review_revision", 0)
+
+    def dense_review_display_for(self, shape):
+        """Return the overlay entry for ``shape``, or ``None``."""
+        displays = self._dense_review_displays
+        if displays is None or shape is None:
+            return None
+        shape_id = getattr(shape, "xanylabeling_shape_id", "") or ""
+        return displays.get(shape_id)
+
+    def dense_review_paint_style(self, shape):
+        """Return the paint style for ``shape``, or ``None`` in normal mode."""
+        display = self.dense_review_display_for(shape)
+        if display is None:
+            return None
+        return display.paint_style
+
+    def dense_review_drawable(self, shape) -> bool:
+        """Return whether the overlay lets ``shape`` paint at all."""
+        if self._dense_review_displays is None:
+            return True
+        display = self.dense_review_display_for(shape)
+        if display is None:
+            # Objects added after the table was built must not vanish
+            # silently; the workspace rebuilds on the next sync.  Treating
+            # them as drawable keeps editing usable in the meantime.
+            return True
+        return bool(display.drawable)
+
+    def dense_review_hittable(self, shape) -> bool:
+        """Return whether the overlay lets ``shape`` receive the mouse."""
+        if self._dense_review_displays is None:
+            return True
+        display = self.dense_review_display_for(shape)
+        if display is None:
+            return True
+        return bool(display.hittable)
+
+    def _dense_review_text_strength(self, shape) -> float:
+        """Return the label-text strength for ``shape`` (1.0 normally)."""
+        style = self.dense_review_paint_style(shape)
+        if style is None:
+            return 1.0
+        return max(0.0, min(1.0, style.text_opacity))
+
+    def _dense_review_attribute_strength(self, shape) -> float:
+        """Return the attribute/degree text strength for ``shape``."""
+        style = self.dense_review_paint_style(shape)
+        if style is None:
+            return 1.0
+        return max(0.0, min(1.0, style.attributes_opacity))
+
+    def _dense_review_linking_strength(self, shape) -> float:
+        """Return the group-link strength for ``shape``."""
+        style = self.dense_review_paint_style(shape)
+        if style is None:
+            return 1.0
+        return max(0.0, min(1.0, style.linking_opacity))
+
     def set_inspection_candidates(self, candidates=()):
         """Show external model candidates in a read-only overlay.
 
@@ -6435,7 +6592,9 @@ class Canvas(
                 float(region[2]),
                 float(region[3]),
             )
-            painter.drawRect(QtCore.QRectF(left, top, right - left, bottom - top))
+            painter.drawRect(
+                QtCore.QRectF(left, top, right - left, bottom - top)
+            )
             painter.drawText(
                 QtCore.QPointF(left, max(0.0, top - 3.0)),
                 "{} · {}".format(

@@ -409,6 +409,7 @@ class ObjectReviewState:
     added: bool = False
     supported: bool = True
     load_failed: bool = False
+    group_id: Optional[int] = None
 
     def confirmed(self, dimension: str) -> bool:
         if dimension == "category":
@@ -487,6 +488,7 @@ class ObjectReviewState:
             "added": self.added,
             "supported": self.supported,
             "load_failed": self.load_failed,
+            "group_id": self.group_id,
         }
 
     @classmethod
@@ -503,6 +505,13 @@ class ObjectReviewState:
                 for item in data.get("difficulty_dimensions", ())
                 if str(item) in REVIEW_DIMENSIONS
             )
+            raw_group = data.get("group_id")
+            group_id = None
+            if raw_group is not None and str(raw_group) != "":
+                try:
+                    group_id = int(raw_group)
+                except (TypeError, ValueError):
+                    group_id = None
             return cls(
                 shape_id=str(data["shape_id"]),
                 display_index=int(data.get("display_index", 0)),
@@ -524,6 +533,7 @@ class ObjectReviewState:
                 added=bool(data.get("added", False)),
                 supported=bool(data.get("supported", True)),
                 load_failed=load_failed,
+                group_id=group_id,
             )
         except (KeyError, TypeError, ValueError) as error:
             raise IncompatibleReviewState(

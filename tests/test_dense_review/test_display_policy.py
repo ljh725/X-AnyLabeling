@@ -202,11 +202,18 @@ def test_point_only_style_stays_hittable_without_handles():
     assert display.hittable is True
 
 
-def test_missing_and_unsupported_are_reported_separately():
+def test_unsupported_shapes_stay_visible_but_outside_review_range():
     context = _context(unsupported=frozenset({"id5"}))
-    unsupported = resolve_shape("id5", "polygon-ish", context)
-    assert unsupported.drawable is False
-    assert unsupported.reason == "unsupported"
+    unsupported = resolve_shape("id5", "nose", context)
+    # A keypoint (or any unsupported shape) has to stay observable and
+    # editable; only the formal confirmation range excludes it (PC-03).
+    assert unsupported.drawable is True
+    assert unsupported.hittable is True
+    assert unsupported.reason == ""
+    assert unsupported.reviewable is False
+
+    supported = resolve_shape("id1", "person", _context())
+    assert supported.reviewable is True
 
     resolved = resolve_all(
         [_Shape("id1", "person")],
