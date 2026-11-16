@@ -38,6 +38,10 @@ from ..shape_identity import (
     normalize_shape_identities,
 )
 
+OTHER_ROLE = "other"
+BATCH_ROLE = "batch"
+CURRENT_ROLE = "current"
+
 CURSOR_DEFAULT = QtCore.Qt.CursorShape.ArrowCursor
 CURSOR_POINT = QtCore.Qt.CursorShape.PointingHandCursor
 CURSOR_DRAW = QtCore.Qt.CursorShape.CrossCursor
@@ -800,7 +804,19 @@ class Canvas(
         self.restore_cursor()
 
     def is_visible(self, shape):
-        """Check if a shape is visible"""
+        """Check if a shape is visible.
+
+        While a review display table is installed the resolved result is
+        authoritative: it already folds in global-off, source comparison,
+        manual hides, filters and the explicit temporary-show exception.
+        Keeping that decision here (instead of only in the review helpers)
+        makes paint, hit testing, groups and handles agree by construction
+        (DP-02, DP-11, DP-13).
+        """
+        if self._dense_review_displays is not None:
+            display = self.dense_review_display_for(shape)
+            if display is not None:
+                return bool(display.drawable)
         return self.visible.get(shape, True)
 
     def label_text_visible(self, shape):
@@ -1142,6 +1158,8 @@ class Canvas(
         for stack_index, shape in enumerate(self.shapes):
             if not self.is_visible(shape):
                 continue
+            if self._dense_review_displays is None and not shape.visible:
+                continue
             # Focus/background hiding stops painting unselected shapes, so
             # they must not stay hittable as invisible targets.
             if self._hide_backround and not shape.selected:
@@ -1217,7 +1235,25 @@ class Canvas(
                 candidates.append((priority, shape))
 
         candidates.sort(key=lambda item: item[0])
-        return [shape for _, shape in candidates]
+        ordered = [shape for _, shape in candidates]
+        if self._dense_review_displays is not None:
+            # The current object keeps its editable edges and handles first,
+            # so a keypoint sitting on its border cannot steal the drag
+            # (DP-07).  Remaining candidates keep their geometric order.
+            current = [
+                shape
+                for shape in ordered
+                if self._is_current_review_object(shape)
+            ]
+            if current:
+                rest = [shape for shape in ordered if shape not in current]
+                ordered = current + rest
+        return ordered
+
+    def _is_current_review_object(self, shape) -> bool:
+        """Return whether ``shape`` is the review's current edit target."""
+        display = self.dense_review_display_for(shape)
+        return display is not None and display.role == CURRENT_ROLE
 
     def drawing(self):
         """Check if user is drawing (mode==CREATE)"""
@@ -2365,6 +2401,10 @@ class Canvas(
                 and not shape.locked
                 and shape.visible
                 and self.is_visible(shape)
+                # Rotation handles are both painted and hit here, so the
+                # effective display result has to gate them too (DP-13).
+                and self.dense_review_drawable(shape)
+                and self.dense_review_hittable(shape)
                 and shape.shape_type == "rotation"
                 and len(shape.points) == 4
             ],
@@ -3950,6 +3990,41 @@ class Canvas(
             grouped_shapes.setdefault(shape.group_id, []).append(shape)
         return grouped_shapes
 
+    def _group_visible_shapes(self, group_shapes):
+        """Return the members that may take part in geometry and hits.
+
+        Hidden members stay counted in ``_grouped_shapes`` so the group label
+        can report them, but they must not contribute a hit target.  The
+        review overlay is consulted for the same reason: a source-image
+        comparison or a fully dimmed role cannot leave a clickable group
+        behind (DP-13, DP-14, DP-15).
+        """
+        return [
+            shape
+            for shape in group_shapes
+            if shape.visible and self.dense_review_drawable(shape)
+        ]
+
+    def dense_review_paint_sequence(self, shapes):
+        """Return ``shapes`` in review paint order.
+
+        Other objects paint first, then the batch, then the current object so
+        the edit target is never covered by a later outline.  The ordering is
+        derived per frame and never touches ``self.shapes``, which keeps the
+        saved order, undo history and data meaning untouched
+        (DP-07, DP-08).
+        """
+        if self._dense_review_displays is None:
+            return list(shapes)
+        rank = {OTHER_ROLE: 0, BATCH_ROLE: 1, CURRENT_ROLE: 2}
+
+        def key(shape):
+            display = self.dense_review_display_for(shape)
+            role = display.role if display is not None else OTHER_ROLE
+            return rank.get(role, 0)
+
+        return sorted(shapes, key=key)
+
     def _group_rect(self, shapes):
         min_x = float("inf")
         min_y = float("inf")
@@ -3993,7 +4068,7 @@ class Canvas(
         candidates = []
         tolerance = max(0.5, 6.0 / self.scale)
         for group_id, group_shapes in self._grouped_shapes().items():
-            visible_shapes = [shape for shape in group_shapes if shape.visible]
+            visible_shapes = self._group_visible_shapes(group_shapes)
             if not visible_shapes:
                 continue
             rect = self._group_rect(visible_shapes)
@@ -4731,7 +4806,7 @@ class Canvas(
         theme = get_theme()
         active_shapes = self._active_group_shapes()
         for group_id, group_shapes in self._grouped_shapes().items():
-            visible_shapes = [shape for shape in group_shapes if shape.visible]
+            visible_shapes = self._group_visible_shapes(group_shapes)
             if not visible_shapes:
                 continue
             group_rect = self._group_rect(visible_shapes)
@@ -5091,7 +5166,7 @@ class Canvas(
                     )
 
         # Draw degrees
-        for shape in self.shapes:
+        for shape in self.dense_review_paint_sequence(self.shapes):
             if (
                 shape.selected or not self._hide_backround
             ) and self.is_visible(shape):
