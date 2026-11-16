@@ -996,10 +996,29 @@ class Canvas(
             bottom_right.y(),
         )
 
+    def _dense_review_text_policy(self, shape):
+        """Return whether the review label policy shows text for ``shape``.
+
+        During review the role text strength is the only gate, so a project
+        with ``show_labels=False`` or ``show_labels_only_selected=True`` still
+        gets readable category names.  The ordinary switches are never
+        written back; they apply again after review ends (DP-05, DP-18).
+        """
+        if self._dense_review_displays is None:
+            return None
+        return self._dense_review_text_strength(shape) > 0.0
+
     def _label_display_text(self, shape):
         """Return the label line painted for one shape, or an empty string."""
         fields = []
-        if self.show_labels and self.label_text_visible(shape):
+        review_policy = self._dense_review_text_policy(shape)
+        if review_policy is None:
+            show_label_line = self.show_labels and self.label_text_visible(
+                shape
+            )
+        else:
+            show_label_line = review_policy
+        if show_label_line:
             label = shape.label or ""
             if shape.group_id is not None:
                 label = f"{label} ({shape.group_id})".strip()
@@ -5234,8 +5253,14 @@ class Canvas(
         p.setOpacity(1.0)
 
         # Draw texts
-        # Draw labels
-        if self.show_labels or self.show_texts:
+        # Draw labels.  Review mode opens this block even when the ordinary
+        # switches are off, because the role text strength decides
+        # readability (DP-05).
+        if (
+            self.show_labels
+            or self.show_texts
+            or self._dense_review_displays is not None
+        ):
             label_transform = p.transform()
             p.save()
             p.resetTransform()
