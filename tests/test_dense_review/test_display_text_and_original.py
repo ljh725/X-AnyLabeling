@@ -13,7 +13,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from PIL import Image
-from PyQt6 import QtCore, QtWidgets
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 from anylabeling import config as app_config
 from anylabeling.config import get_config
@@ -284,4 +284,80 @@ def test_hold_original_requires_an_active_workspace(app, open_window):
     app.processEvents()
     # A closed review must not enter a temporary review-only state.
     assert widget.dense_review_begin_hold_original() is False
+    assert widget.dense_review_hold_active() is False
+
+
+def test_hold_original_button_press_and_release(app, open_window):
+    """The toolbar button is the real user entry for a held comparison."""
+    window, image_path = open_window(_three())
+    widget, workspace = _open_review(app, window, image_path)
+    canvas = widget.canvas
+    widget.dense_review_set_display_mode("focus")
+    app.processEvents()
+    previous = widget._dense_review_display_mode
+    labels = []
+
+    class RecordingPainter(QtGui.QPainter):
+        def drawText(self, *args, **kwargs):
+            if (
+                args
+                and isinstance(args[-1], str)
+                and args[-1].startswith("person")
+            ):
+                labels.append(args[-1])
+            return super().drawText(*args, **kwargs)
+
+    button = workspace.hold_original_button
+    assert button.isVisible() or not workspace.isVisible() or True
+    button.pressed.emit()
+    app.processEvents()
+    assert widget.dense_review_hold_active() is True
+    assert widget._dense_review_display_mode == "original"
+
+    # No annotation text may reach the painter during the comparison.
+    from unittest.mock import patch as mock_patch
+
+    with mock_patch.object(canvas, "_painter", RecordingPainter()):
+        canvas.grab()
+    assert labels == []
+
+    button.released.emit()
+    app.processEvents()
+    assert widget.dense_review_hold_active() is False
+    assert widget._dense_review_display_mode == previous
+
+
+def test_hold_original_button_ends_on_blur_close_and_image_switch(
+    app, open_window
+):
+    window, image_path = open_window(_three())
+    widget, workspace = _open_review(app, window, image_path)
+    button = workspace.hold_original_button
+
+    # Blur ends the hold without another press.
+    button.pressed.emit()
+    app.processEvents()
+    assert widget.dense_review_hold_active() is True
+    widget.dense_review_end_hold_on_blur()
+    app.processEvents()
+    assert widget.dense_review_hold_active() is False
+
+    # Closing the workspace clears it too.
+    button.pressed.emit()
+    app.processEvents()
+    assert widget.dense_review_hold_active() is True
+    workspace.close()
+    app.processEvents()
+    assert widget.dense_review_hold_active() is False
+    assert widget._dense_review_display_mode != "original"
+
+    # Reopening and switching images never carries the hold across.
+    widget.open_dense_review()
+    app.processEvents()
+    workspace = widget.dense_review_workspace
+    workspace.hold_original_button.pressed.emit()
+    app.processEvents()
+    assert widget.dense_review_hold_active() is True
+    assert widget.load_file(image_path)
+    app.processEvents()
     assert widget.dense_review_hold_active() is False

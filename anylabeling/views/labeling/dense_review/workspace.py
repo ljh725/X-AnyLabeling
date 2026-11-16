@@ -1162,6 +1162,14 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.display_combo.addItem(self.tr("原图（无标注）"), "original")
         self.full_image_button = QtWidgets.QPushButton(self.tr("看全图"))
         self.full_image_button.setProperty("variant", "quiet")
+        self.hold_original_button = QtWidgets.QPushButton(
+            self.tr("按住看原图")
+        )
+        self.hold_original_button.setProperty("variant", "quiet")
+        self.hold_original_button.setAccessibleName(self.tr("按住看原图"))
+        self.hold_original_button.setToolTip(
+            self.tr("按住期间只显示原图；松开恢复当前显示策略。")
+        )
         self.more_button = QtWidgets.QPushButton(self.tr("更多"))
         self.more_button.setObjectName("moreButton")
         self.more_button.setProperty("variant", "quiet")
@@ -1217,6 +1225,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         bar.addWidget(display_caption)
         bar.addWidget(self.display_combo)
         bar.addWidget(self.full_image_button)
+        bar.addWidget(self.hold_original_button)
         bar.addWidget(self.more_button)
         bar.addWidget(self.compact_batch_combo)
         bar.addStretch(1)
@@ -1340,6 +1349,8 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             self._on_display_mode_changed
         )
         self.full_image_button.clicked.connect(self._toggle_full_image)
+        self.hold_original_button.pressed.connect(self._begin_hold_original)
+        self.hold_original_button.released.connect(self._end_hold_original)
         self.complete_batch_button.clicked.connect(self._complete_batch)
         self.complete_object_button.clicked.connect(
             self._complete_current_object
@@ -2538,6 +2549,14 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self._display_mode = str(self.display_combo.currentData())
         self.host.dense_review_set_display_mode(self._display_mode)
         self._focus_current()
+
+    def _begin_hold_original(self) -> None:
+        """Start the held source-image comparison from the toolbar button."""
+        self.host.dense_review_begin_hold_original()
+
+    def _end_hold_original(self) -> None:
+        """End the held comparison when the button is released."""
+        self.host.dense_review_end_hold_original()
 
     def _toggle_full_image(self) -> None:
         self._full_image = self.host.dense_review_toggle_full_image()

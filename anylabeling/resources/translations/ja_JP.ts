@@ -2634,6 +2634,14 @@ Review the prompt before generating.</source>
         <translation>全体を表示</translation>
     </message>
     <message>
+        <source>按住看原图</source>
+        <translation>押している間は元画像を表示</translation>
+    </message>
+    <message>
+        <source>按住期间只显示原图；松开恢复当前显示策略。</source>
+        <translation>押している間は元画像のみを表示します。離すと現在の表示方針に戻ります。</translation>
+    </message>
+    <message>
         <source>更多</source>
         <translation>その他</translation>
     </message>

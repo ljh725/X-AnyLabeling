@@ -2634,6 +2634,14 @@ Review the prompt before generating.</source>
         <translation>看全图</translation>
     </message>
     <message>
+        <source>按住看原图</source>
+        <translation>按住看原图</translation>
+    </message>
+    <message>
+        <source>按住期间只显示原图；松开恢复当前显示策略。</source>
+        <translation>按住期间只显示原图；松开恢复当前显示策略。</translation>
+    </message>
+    <message>
         <source>更多</source>
         <translation>更多</translation>
     </message>

@@ -2635,6 +2635,14 @@ Review the prompt before generating.</translation>
         <translation>View whole image</translation>
     </message>
     <message>
+        <source>按住看原图</source>
+        <translation>Hold to see image only</translation>
+    </message>
+    <message>
+        <source>按住期间只显示原图；松开恢复当前显示策略。</source>
+        <translation>Hold to show the source image only; release to restore the current display policy.</translation>
+    </message>
+    <message>
         <source>更多</source>
         <translation>More</translation>
     </message>

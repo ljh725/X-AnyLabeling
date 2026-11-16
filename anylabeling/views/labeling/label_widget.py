@@ -4837,17 +4837,22 @@ class LabelingWidget(LabelDialog):
         }
 
     def _dense_review_annotations_enabled(self) -> bool:
-        """Report whether ordinary annotation display is switched on.
+        """Report whether the *global* annotation switch is on.
 
-        ``toggle_visibility_shapes`` is the existing global switch: it flips
-        every shape's own ``visible`` flag, so the resolver reads that flag
-        instead of inventing a second source of truth.  A single shape's check
-        box therefore still wins inside the review (DP-12, DP-18, DP-17).
+        ``toggle_visibility_shapes`` stores its state in ``show_shapes``.  The
+        earlier version inferred the switch from "does any shape still have
+        ``visible`` set", which mis-reported a single manual hide (or hiding
+        every object by hand) as a global shutdown - and a global reason also
+        blocks the temporary-show exception.  Reading the real switch keeps
+        the two causes separate: manual hides and filters stay their own
+        reasons and remain temporarily revealable (DP-11, DP-12).
         """
-        shapes = self.dense_review_shapes()
-        if not shapes:
-            return True
-        return any(bool(shape.visible) for shape in shapes)
+        for attr in ("actions",):
+            actions = getattr(self, attr, None)
+            action = getattr(actions, "visibility_shapes_mode", None)
+            if action is not None:
+                return bool(action.isChecked())
+        return bool(self._config.get("show_shapes", True))
 
     def dense_review_active(self) -> bool:
         """Return whether the review overlay currently owns the canvas.

@@ -2635,6 +2635,14 @@ Review the prompt before generating.</source>
         <translation>전체 이미지 보기</translation>
     </message>
     <message>
+        <source>按住看原图</source>
+        <translation>누르고 있으면 원본 이미지</translation>
+    </message>
+    <message>
+        <source>按住期间只显示原图；松开恢复当前显示策略。</source>
+        <translation>누르고 있는 동안 원본 이미지만 표시합니다. 떼면 현재 표시 정책으로 돌아갑니다.</translation>
+    </message>
+    <message>
         <source>更多</source>
         <translation>더 보기</translation>
     </message>
