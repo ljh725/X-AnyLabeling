@@ -232,3 +232,56 @@ def test_source_comparison_ends_when_the_workspace_closes(app, open_window):
     assert widget.canvas.dense_review_active is False
     for shape in widget.canvas.shapes:
         assert widget.canvas.is_visible(shape) is True
+
+
+def test_hold_original_restores_previous_mode_on_release(app, open_window):
+    """Holding shows only the source image; releasing restores the mode."""
+    window, image_path = open_window(_three())
+    widget, _workspace = _open_review(app, window, image_path)
+    canvas = widget.canvas
+    widget.dense_review_set_display_mode("focus")
+    app.processEvents()
+    before = widget._dense_review_display_mode
+    rect = next(s for s in canvas.shapes if s.xanylabeling_shape_id == "rect1")
+
+    assert widget.dense_review_begin_hold_original() is True
+    app.processEvents()
+    assert widget.dense_review_hold_active() is True
+    assert widget._dense_review_display_mode == "original"
+    assert canvas.dense_review_hittable(rect) is False
+    assert canvas._shape_hit_candidates(QtCore.QPointF(60, 60)) == []
+
+    assert widget.dense_review_end_hold_original() is True
+    app.processEvents()
+    assert widget.dense_review_hold_active() is False
+    assert widget._dense_review_display_mode == before
+    assert canvas.dense_review_hittable(rect) is True
+
+
+def test_hold_original_ends_on_blur_and_image_switch(app, open_window):
+    window, image_path = open_window(_three())
+    widget, _workspace = _open_review(app, window, image_path)
+
+    assert widget.dense_review_begin_hold_original() is True
+    widget.dense_review_end_hold_on_blur()
+    app.processEvents()
+    assert widget.dense_review_hold_active() is False
+    assert widget._dense_review_display_mode != "original"
+
+    # A hold never survives an image switch (DP-14).
+    assert widget.dense_review_begin_hold_original() is True
+    assert widget.dense_review_hold_active() is True
+    assert widget.load_file(image_path)
+    app.processEvents()
+    assert widget.dense_review_hold_active() is False
+    assert widget._dense_review_display_mode != "original"
+
+
+def test_hold_original_requires_an_active_workspace(app, open_window):
+    window, image_path = open_window(_three())
+    widget, workspace = _open_review(app, window, image_path)
+    workspace.close()
+    app.processEvents()
+    # A closed review must not enter a temporary review-only state.
+    assert widget.dense_review_begin_hold_original() is False
+    assert widget.dense_review_hold_active() is False

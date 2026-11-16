@@ -2914,6 +2914,17 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         super().resizeEvent(event)
         self._relayout_cards()
 
+    def changeEvent(self, event) -> None:  # noqa: N802
+        """End a held source-image comparison when focus leaves.
+
+        ``DP-14`` requires the held state to die on blur; otherwise the panel
+        would stay in source-only mode until the user pressed again.
+        """
+        if event.type() == QtCore.QEvent.Type.ActivationChange:
+            if not self.isActiveWindow():
+                self.host.dense_review_end_hold_on_blur()
+        super().changeEvent(event)
+
     def eventFilter(self, watched, event):
         if (
             watched is self.card_list.viewport()
@@ -2935,6 +2946,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             self._focus_current()
 
     def closeEvent(self, event) -> None:
+        self.host.dense_review_end_hold_on_blur()
         for shortcut in self._shortcuts:
             shortcut.setEnabled(False)
         self._close_compare_dialogs()

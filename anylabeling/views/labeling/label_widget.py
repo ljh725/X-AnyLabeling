@@ -321,6 +321,7 @@ class LabelingWidget(LabelDialog):
         self._dense_review_image_size = (0, 0)
         self._dense_review_round_generation = 0
         self._dense_review_display_mode = "all"
+        self._dense_review_hold_mode = ""
         self._dense_review_original_visibility = None
         self._dense_review_full_view = None
         self._dense_review_revision = 0
@@ -4848,19 +4849,37 @@ class LabelingWidget(LabelDialog):
             return True
         return any(bool(shape.visible) for shape in shapes)
 
+    def dense_review_active(self) -> bool:
+        """Return whether the review overlay currently owns the canvas.
+
+        The session deliberately outlives a closed workspace so reopening
+        resumes the same round, but the *overlay* must not: a closed review
+        has to leave the ordinary canvas alone.  Activation therefore tracks
+        the visible workspace, not the session's existence
+        (DP-17, DP-18).
+        """
+        workspace = self.dense_review_workspace
+        if workspace is None:
+            return False
+        try:
+            return bool(workspace.isVisible())
+        except RuntimeError:
+            # The C++ object was already destroyed.
+            return False
+
     def refresh_dense_review_display(self, force: bool = False) -> None:
         """Recompute and install the review display table.
 
         The table is rebuilt from the live session, filters and temporary
-        exceptions.  It is only installed while a review round owns the
-        canvas; ordinary labelling keeps its previous behaviour untouched
+        exceptions.  It is only installed while the workspace is actually
+        active; ordinary labelling keeps its previous behaviour untouched
         (DP-17, DP-18).
         """
         canvas = getattr(self, "canvas", None)
         if canvas is None:
             return
         session = self.dense_review_session
-        if session is None:
+        if session is None or not self.dense_review_active():
             self._dense_review_displays = {}
             canvas.clear_dense_review_display()
             return
@@ -4960,9 +4979,10 @@ class LabelingWidget(LabelDialog):
         self._reveal_auto_clears_temporary(shape_id)
         self._dense_review_cancel_pending_edit()
         self.canvas.select_shapes([shape])
-        if self._dense_review_display_mode == "focus":
-            self.canvas.hide_background_shapes(True)
-            self.canvas.set_hiding(True)
+        # Focus mode no longer hides the background: the resolved roles keep
+        # the batch readable and only dim the unrelated objects, so the
+        # current rectangle and its associated keypoints stay visible
+        # (DP-01, DP-03).
         rect = shape.bounding_rect()
         if rect.width() <= 0 and rect.height() <= 0:
             return
@@ -5069,6 +5089,42 @@ class LabelingWidget(LabelDialog):
         active.clear()
         self.refresh_dense_review_display()
 
+    def dense_review_begin_hold_original(self) -> bool:
+        """Show only the source image while the key stays pressed.
+
+        Holding is a *temporary* transition: the previous mode is remembered
+        so releasing restores exactly what the user was looking at, and any
+        blur, close or image switch ends it without a second press
+        (DP-13, DP-14).
+        """
+        if not self.dense_review_active():
+            return False
+        if self._dense_review_hold_mode:
+            return False
+        # Finish any pending edit preview before annotations pause.
+        self._dense_review_cancel_pending_edit()
+        self._dense_review_hold_mode = self._dense_review_display_mode
+        self.dense_review_set_display_mode("original")
+        return True
+
+    def dense_review_end_hold_original(self) -> bool:
+        """Release a held comparison and restore the previous mode."""
+        if not self._dense_review_hold_mode:
+            return False
+        previous = self._dense_review_hold_mode
+        self._dense_review_hold_mode = ""
+        if self._dense_review_display_mode == "original":
+            self.dense_review_set_display_mode(previous)
+        return True
+
+    def dense_review_hold_active(self) -> bool:
+        """Return whether the comparison is currently held down."""
+        return bool(self._dense_review_hold_mode)
+
+    def dense_review_end_hold_on_blur(self) -> None:
+        """End a held comparison when the window loses focus (DP-14)."""
+        self.dense_review_end_hold_original()
+
     def dense_review_set_display_mode(self, mode):
         if mode not in ("focus", "all", "original"):
             return
@@ -5085,8 +5141,10 @@ class LabelingWidget(LabelDialog):
                     shape = self._dense_review_find_shape(current.shape_id)
                     if shape is not None:
                         self.canvas.select_shapes([shape])
-            self.canvas.hide_background_shapes(True)
-            self.canvas.set_hiding(True)
+            # Roles decide what stays readable; the legacy background
+            # hiding would drop every non-selected batch member (DP-01).
+            self.canvas.hide_background_shapes(False)
+            self.canvas.set_hiding(False)
         elif mode == "all":
             self.canvas.hide_background_shapes(False)
             self.canvas.set_hiding(False)
@@ -5203,6 +5261,7 @@ class LabelingWidget(LabelDialog):
         # (DP-17, WL-12).
         self._dense_review_temporary_ids = set()
         self._dense_review_temporary_image = self.filename or ""
+        self._dense_review_hold_mode = ""
         self._dense_review_role_styles = {}
         self._dense_review_displays = {}
         self.canvas.clear_dense_review_display()
@@ -5261,7 +5320,8 @@ class LabelingWidget(LabelDialog):
             self.dense_review_workspace.refresh_all()
 
     def _dense_review_on_file_loaded(self):
-        # Exceptions never cross images (DP-11, DP-14).
+        # Exceptions and holds never cross images (DP-11, DP-14).
+        self._dense_review_hold_mode = ""
         self.dense_review_end_temporary_on_image_change()
         self._dense_review_image_hash = ""
         if not self.image.isNull():
@@ -7931,7 +7991,7 @@ class LabelingWidget(LabelDialog):
         # Label visibility, group/label filters and invert all funnel through
         # here, so one invalidation keeps the review roles deterministic
         # (DP-11, DP-12).
-        if self.dense_review_session is not None:
+        if self.dense_review_active():
             self.refresh_dense_review_display()
 
     def _sync_invert_filter_actions(self):
@@ -8226,7 +8286,7 @@ class LabelingWidget(LabelDialog):
         # A manual hide is the most common user exclusion, and it has to
         # invalidate the review table immediately; otherwise the stale table
         # would keep painting and hitting the object (DP-11).
-        if self.dense_review_session is not None:
+        if self.dense_review_active():
             self.refresh_dense_review_display()
         self._update_select_toggle_button_tooltip()
         if (

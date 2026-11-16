@@ -21,6 +21,7 @@ from anylabeling import config as app_config
 from anylabeling.config import get_config
 from anylabeling.resources import resources  # noqa: F401
 from anylabeling.services.dense_review.config import save_config
+from anylabeling.views.labeling.shape import Shape
 from anylabeling.views.mainwindow import MainWindow
 
 from .conftest import make_config
@@ -369,3 +370,229 @@ def test_painted_order_never_changes_saved_order(app, open_window):
     assert after == before
     assert widget._dense_review_displays["rect3"].role == "current"
     assert widget._dense_review_displays["rect1"].role == "batch"
+
+
+# -- review audit regressions (2026-11-16 review of 6b0f1168) -------------
+
+
+def test_closed_workspace_keeps_regular_canvas_after_visibility_edit(
+    app, open_window
+):
+    """The overlay follows workspace activation, not session existence.
+
+    The session deliberately survives a close so reopening resumes the round,
+    but the overlay must not come back when the user only touches ordinary
+    visibility or filters (DP-17, DP-18).
+    """
+    window, image_path = open_window(
+        _three_rectangles(),
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, workspace = _open_review(app, window, image_path)
+    session = widget.dense_review_session
+    workspace.close()
+    app.processEvents()
+    assert widget.dense_review_active() is False
+    assert widget.canvas.dense_review_active is False
+    assert widget.dense_review_session is session
+
+    # Ordinary hide and filter edits must not reinstall review styling.
+    _hide(widget, "rect2")
+    app.processEvents()
+    assert widget.canvas.dense_review_active is False
+    widget.set_invert_shape_filter(True)
+    app.processEvents()
+    assert widget.canvas.dense_review_active is False
+    widget.set_invert_shape_filter(False)
+    app.processEvents()
+    assert widget.canvas.dense_review_active is False
+
+    # Reopening restores the same round and its progress.
+    widget.open_dense_review()
+    app.processEvents()
+    assert widget.dense_review_session is session
+    assert widget.canvas.dense_review_active is True
+    assert widget._dense_review_displays
+
+
+def test_original_comparison_blocks_group_paint_and_hit(app, open_window):
+    """Groups obey the effective display result, not raw shape.visible."""
+    window, image_path = open_window(
+        [_rectangle("person", "rect1", 40, 40, group_id=0)],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    canvas = widget.canvas
+    canvas.show_groups = True
+    app.processEvents()
+    assert canvas._grouped_shapes()
+    assert canvas._group_at_point(QtCore.QPointF(70, 70)) is not None
+
+    widget.dense_review_set_display_mode("original")
+    app.processEvents()
+    assert canvas._shape_hit_candidates(QtCore.QPointF(70, 70)) == []
+    assert canvas._group_at_point(QtCore.QPointF(70, 70)) is None
+    # Hidden members stay *counted* for the group label, but the geometry
+    # used for hits and painting excludes them.
+    assert canvas._grouped_shapes()
+    assert canvas._group_visible_shapes(canvas._grouped_shapes()[0]) == []
+
+    widget.dense_review_set_display_mode("all")
+    app.processEvents()
+    assert canvas._group_at_point(QtCore.QPointF(70, 70)) is not None
+
+
+def test_original_comparison_disables_rotation_handles(app, open_window):
+    window, image_path = open_window(
+        [
+            {
+                "label": "person",
+                "shape_type": "rotation",
+                "points": [[40, 40], [160, 40], [160, 160], [40, 160]],
+                "xanylabeling_shape_id": "rot1",
+            }
+        ],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    canvas = widget.canvas
+    shape = _shape(widget, "rot1")
+    canvas.select_shapes([shape])
+    app.processEvents()
+    assert canvas._rotation_handle_shapes() == [shape]
+
+    widget.dense_review_set_display_mode("original")
+    app.processEvents()
+    assert canvas._rotation_handle_shapes() == []
+
+    widget.dense_review_set_display_mode("all")
+    app.processEvents()
+    assert canvas._rotation_handle_shapes() == [shape]
+
+
+def test_temporary_show_reaches_paint_and_hit(app, open_window):
+    """The exception must reach the real hit path, not just the table."""
+    window, image_path = open_window(
+        _three_rectangles(),
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    widget.dense_review_set_display_mode("all")
+    _hide(widget, "rect2")
+    app.processEvents()
+    target = _shape(widget, "rect2")
+    assert widget.canvas.is_visible(target) is False
+    assert target not in widget.canvas._shape_hit_candidates(
+        QtCore.QPointF(220, 70)
+    )
+
+    assert widget.dense_review_show_temporarily(["rect2"]) is True
+    app.processEvents()
+    assert widget.canvas.is_visible(target) is True
+    assert widget.canvas.dense_review_hittable(target) is True
+    assert target in widget.canvas._shape_hit_candidates(
+        QtCore.QPointF(220, 70)
+    )
+    # Eligibility is untouched while the object is only being observed.
+    manual, _filtered = widget.dense_review_exclusion_ids()
+    assert "rect2" in manual
+
+    # Ending the exception restores the manual hide.
+    assert widget.dense_review_end_temporary(["rect2"]) is True
+    app.processEvents()
+    assert widget.canvas.is_visible(target) is False
+    assert target not in widget.canvas._shape_hit_candidates(
+        QtCore.QPointF(220, 70)
+    )
+
+
+def test_original_comparison_wins_over_temporary_show(app, open_window):
+    window, image_path = open_window(
+        _three_rectangles(),
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    widget.dense_review_set_display_mode("all")
+    _hide(widget, "rect2")
+    app.processEvents()
+    widget.dense_review_show_temporarily(["rect2"])
+    app.processEvents()
+    target = _shape(widget, "rect2")
+    assert widget.canvas.is_visible(target) is True
+
+    # Source comparison outranks the exception (DP-12).
+    widget.dense_review_set_display_mode("original")
+    app.processEvents()
+    assert widget.canvas.is_visible(target) is False
+    assert widget.canvas.dense_review_hittable(target) is False
+
+    widget.dense_review_set_display_mode("all")
+    app.processEvents()
+    assert widget.canvas.is_visible(target) is True
+
+
+def test_focus_mode_paints_batch_members_and_associated_points(
+    app, open_window, monkeypatch
+):
+    """Default focus must not swallow the batch or the associated points."""
+    shapes = [
+        _rectangle("person", "rect1", 40, 40, group_id=0),
+        _point("nose", "kp1", 90, 90, group_id=0),
+        _rectangle("person", "rect2", 260, 40, group_id=1),
+    ]
+    window, image_path = open_window(
+        shapes,
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, workspace = _open_review(app, window, image_path)
+    assert workspace.display_combo.currentData() == "focus"
+    assert widget._dense_review_displays["rect2"].drawable is True
+    assert widget._dense_review_displays["kp1"].role == "current"
+
+    painted = []
+    original = Shape.paint
+
+    def record(shape, *args, **kwargs):
+        painted.append(shape.xanylabeling_shape_id)
+        return original(shape, *args, **kwargs)
+
+    monkeypatch.setattr(Shape, "paint", record)
+    widget.canvas.grab()
+    # The batch member and the associated keypoint are really painted.
+    assert "rect2" in painted
+    assert "kp1" in painted
+
+
+def test_current_object_paints_last_without_reordering_data(
+    app, open_window, monkeypatch
+):
+    window, image_path = open_window(
+        _three_rectangles(),
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    widget.dense_review_set_display_mode("all")
+    before = [shape.xanylabeling_shape_id for shape in widget.canvas.shapes]
+    assert widget.dense_review_display_entry("rect1").role == "current"
+
+    painted = []
+    original = Shape.paint
+
+    def record(shape, *args, **kwargs):
+        painted.append(shape.xanylabeling_shape_id)
+        return original(shape, *args, **kwargs)
+
+    monkeypatch.setattr(Shape, "paint", record)
+    widget.canvas.grab()
+    assert painted == ["rect2", "rect3", "rect1"]
+    # The persisted order is untouched by the temporary paint order.
+    after = [shape.xanylabeling_shape_id for shape in widget.canvas.shapes]
+    assert after == before
+

@@ -504,7 +504,12 @@ def test_hidden_and_filtered_objects_are_excluded_but_focus_is_not(
     manual, filtered = widget.dense_review_exclusion_ids()
     assert not manual
     assert not filtered
-    assert widget.canvas.hide_backround is True
+    # Focus mode resolves visibility through the review roles instead of the
+    # legacy background hiding, so batch members stay readable (DP-01).
+    assert widget.canvas.hide_backround is False
+    assert widget.canvas._hide_backround is False
+    for shape_id in ("id1", "id2"):
+        assert widget.dense_review_display_entry(shape_id).drawable is True
 
 
 def test_main_window_undo_reverts_latest_move_after_manual_roundtrip(
@@ -689,7 +694,8 @@ def test_display_modes_and_full_image_restore(window, tmp_path):
     widget.open_dense_review()
     workspace = widget.dense_review_workspace
     widget.dense_review_set_display_mode("focus")
-    assert widget.canvas.hide_backround is True
+    # Roles, not the legacy background flag, decide what stays readable.
+    assert widget.canvas.hide_backround is False
     assert all(
         widget.canvas.visible.get(shape, True)
         for shape in widget.canvas.shapes
