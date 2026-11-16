@@ -2595,6 +2595,18 @@ Review the prompt before generating.</source>
         <translation>객체별 모드(완료/건너뛰고 다음)</translation>
     </message>
     <message>
+        <source>图像高度</source>
+        <translation>이미지 높이</translation>
+    </message>
+    <message>
+        <source>卡片图像高度</source>
+        <translation>카드 이미지 높이</translation>
+    </message>
+    <message>
+        <source>调整卡片图像区高度，只改变大小不改变裁切上下文。</source>
+        <translation>카드 이미지 영역 높이를 조정합니다. 크기만 바뀌고 자르기 범위는 그대로입니다.</translation>
+    </message>
+    <message>
         <source>卡片上下文</source>
         <translation>카드 주변 범위</translation>
     </message>

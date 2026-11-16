@@ -2594,6 +2594,18 @@ Review the prompt before generating.</source>
         <translation>対象ごとの確認（完了／スキップして次へ）</translation>
     </message>
     <message>
+        <source>图像高度</source>
+        <translation>画像の高さ</translation>
+    </message>
+    <message>
+        <source>卡片图像高度</source>
+        <translation>カード画像の高さ</translation>
+    </message>
+    <message>
+        <source>调整卡片图像区高度，只改变大小不改变裁切上下文。</source>
+        <translation>カード画像領域の高さを調整します。サイズのみ変更し、切り抜き範囲は変わりません。</translation>
+    </message>
+    <message>
         <source>卡片上下文</source>
         <translation>カードの周辺範囲</translation>
     </message>

@@ -343,6 +343,7 @@ class _CardDelegate(QtWidgets.QStyledItemDelegate):
 
     def paint(self, painter, option, index):
         theme = get_theme()
+        view = option.widget
         painter.save()
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         rect = QtCore.QRectF(option.rect).adjusted(4, 4, -4, -6)
@@ -374,8 +375,12 @@ class _CardDelegate(QtWidgets.QStyledItemDelegate):
         painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
         painter.drawRoundedRect(rect, 10, 10)
 
+        image_height = getattr(view, "card_image_height", 320)
         well = QtCore.QRectF(
-            rect.left() + 10, rect.top() + 12, rect.width() - 20, 108
+            rect.left() + 10,
+            rect.top() + 12,
+            rect.width() - 20,
+            max(1.0, float(image_height)),
         )
         painter.setPen(QtCore.Qt.PenStyle.NoPen)
         painter.setBrush(QtGui.QColor(theme["surface"]))
@@ -847,6 +852,14 @@ class _CompareDialog(QtWidgets.QDialog):
 class DenseReviewWorkspace(QtWidgets.QDialog):
     """Batch, card and spatial-review controls over the existing canvas."""
 
+    #: Card image-area height in logical pixels (OC-07).
+    DEFAULT_IMAGE_HEIGHT = 320
+    MIN_IMAGE_HEIGHT = 160
+    MAX_IMAGE_HEIGHT = 640
+    #: Space reserved below the image for title and meta lines.
+    CARD_TEXT_HEIGHT = 66
+    CARD_MIN_WIDTH = 178
+
     def __init__(
         self,
         host: Any,
@@ -870,6 +883,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self._compare_dialogs: list[_CompareDialog] = []
         self._batches_visible = True
         self._cards_visible = True
+        self._card_image_height = self.DEFAULT_IMAGE_HEIGHT
         self._last_thumb_generation = -1
         self._display_mode = "focus"
         self._full_image = False
@@ -1074,6 +1088,33 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         context_row.addStretch(1)
         right_layout.addLayout(context_row)
 
+        height_row = QtWidgets.QHBoxLayout()
+        height_row.setSpacing(6)
+        height_label = QtWidgets.QLabel(self.tr("图像高度"))
+        height_label.setObjectName("fieldLabel")
+        self.image_height_slider = QtWidgets.QSlider(
+            QtCore.Qt.Orientation.Horizontal
+        )
+        self.image_height_slider.setRange(
+            self.MIN_IMAGE_HEIGHT, self.MAX_IMAGE_HEIGHT
+        )
+        self.image_height_slider.setSingleStep(20)
+        self.image_height_slider.setPageStep(80)
+        self.image_height_slider.setValue(self._card_image_height)
+        self.image_height_slider.setAccessibleName(self.tr("卡片图像高度"))
+        self.image_height_slider.setToolTip(
+            self.tr("调整卡片图像区高度，只改变大小不改变裁切上下文。")
+        )
+        self.image_height_label = QtWidgets.QLabel(
+            str(self._card_image_height)
+        )
+        self.image_height_label.setObjectName("fieldLabel")
+        self.image_height_label.setMinimumWidth(34)
+        height_row.addWidget(height_label)
+        height_row.addWidget(self.image_height_slider, 1)
+        height_row.addWidget(self.image_height_label)
+        right_layout.addLayout(height_row)
+
         self.card_list = QtWidgets.QListView()
         self.card_list.setModel(self._card_model)
         self.card_list.setViewMode(QtWidgets.QListView.ViewMode.IconMode)
@@ -1083,8 +1124,10 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.card_list.setWordWrap(False)
         self.card_list.setUniformItemSizes(True)
         self.card_list.setSpacing(0)
-        self.card_list.setIconSize(QtCore.QSize(180, 108))
-        self.card_list.setGridSize(QtCore.QSize(216, 176))
+        self.card_list.setIconSize(QtCore.QSize(196, self._card_image_height))
+        self.card_list.setGridSize(
+            QtCore.QSize(216, self._card_image_height + self.CARD_TEXT_HEIGHT)
+        )
         self.card_list.setItemDelegate(_CardDelegate(self.card_list))
         self.card_list.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
@@ -1290,6 +1333,9 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             self._schedule_visible_thumbnails
         )
         self.apply_context_button.clicked.connect(self._on_context_changed)
+        self.image_height_slider.valueChanged.connect(
+            self._on_card_height_changed
+        )
         self.display_combo.currentIndexChanged.connect(
             self._on_display_mode_changed
         )
@@ -1548,6 +1594,10 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             self._sync_list_enabled()
         finally:
             self._updating = False
+        # The canvas overlay is derived from the same session state; rebuild
+        # it on every refresh so the painted roles never lag the panel
+        # (DP-01, DP-08).
+        self.host.refresh_dense_review_display()
         QtCore.QTimer.singleShot(0, self._request_visible_thumbnails)
         if self.tabs.currentIndex() == 1:
             self._show_current_region()
@@ -1921,7 +1971,13 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         image_path, image_bytes = self.host.dense_review_image_source()
         source_version = self.host.dense_review_image_info()[0]
         margin = self.context_spin.value() / 100.0
-        return image_path, image_bytes, source_version, margin, (360, 240)
+        return (
+            image_path,
+            image_bytes,
+            source_version,
+            margin,
+            self._thumbnail_target_pixels(),
+        )
 
     def _request_visible_thumbnails(self) -> None:
         if self.session is None:
@@ -2112,6 +2168,29 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             self._compare_dialogs.remove(dialog)
             dialog.close()
 
+    def _on_card_height_changed(self, value: int) -> None:
+        """Apply the slider height without fighting the user's drag.
+
+        Requests are coalesced through the provider's bounded queue, so
+        dragging the slider does not schedule one crop per pixel
+        (OC-07, OC-18).
+        """
+        self.image_height_label.setText(str(int(value)))
+        self.set_card_image_height(int(value))
+
+    def _thumbnail_target_pixels(self) -> tuple:
+        """Return the cached thumbnail size for the current card geometry.
+
+        The target follows the displayed image area multiplied by the device
+        pixel ratio, so a 200% screen gets a sharp crop instead of an
+        upscaled 1x image (OC-09, OC-17).
+        """
+        cell = self._card_cell_size()
+        width = max(1, cell.width() - 20)
+        height = max(1, self._card_image_height)
+        ratio = float(self.devicePixelRatioF() or 1.0)
+        return (int(round(width * ratio)), int(round(height * ratio)))
+
     def _on_context_changed(self) -> None:
         self._generation += 1
         self.thumbnails.start_generation(self._generation)
@@ -2161,6 +2240,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.session.set_current(self._current_batch_id(), selected[0])
         self._update_summary()
         self._update_action_labels()
+        self.host.refresh_dense_review_display()
         self._focus_current()
 
     def _on_per_object_toggled(self, _checked) -> None:
@@ -2780,20 +2860,55 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             "compare_dialogs": len(self._compare_dialogs),
         }
 
+    @property
+    def card_image_height(self) -> int:
+        """Current card image-area height in logical pixels."""
+        return int(self._card_image_height)
+
+    def set_card_image_height(self, height: int) -> None:
+        """Set the card image-area height within the allowed range.
+
+        Height is independent from the crop context: widening the panel only
+        changes the column count, never the height the user picked
+        (OC-07, OC-08).
+        """
+        height = max(
+            self.MIN_IMAGE_HEIGHT, min(self.MAX_IMAGE_HEIGHT, int(height))
+        )
+        if height == self._card_image_height:
+            return
+        self._card_image_height = height
+        self._relayout_cards()
+        self._card_model.layoutChanged.emit()
+        self._schedule_visible_thumbnails()
+
+    def _card_cell_size(self) -> QtCore.QSize:
+        """Return the grid cell size for the current image height."""
+        text = self.CARD_TEXT_HEIGHT
+        return QtCore.QSize(
+            max(self.CARD_MIN_WIDTH, self.card_list.gridSize().width()),
+            self._card_image_height + text,
+        )
+
     def _relayout_cards(self) -> None:
         viewport = self.card_list.viewport().width()
         if viewport <= 0:
             return
-        minimum, gap, right_pad = 178, 12, 8
+        minimum, gap, right_pad = self.CARD_MIN_WIDTH, 12, 8
         available = max(minimum, viewport - right_pad)
         columns = max(1, (available + gap) // (minimum + gap))
         while columns > 1 and available // columns < minimum:
             columns -= 1
         cell = available // columns
-        size = QtCore.QSize(cell, 176)
+        size = QtCore.QSize(
+            cell, self._card_image_height + self.CARD_TEXT_HEIGHT
+        )
         if self.card_list.gridSize() != size:
             self.card_list.setGridSize(size)
             self.card_list.doItemsLayout()
+        icon = QtCore.QSize(max(1, cell - 20), max(1, self._card_image_height))
+        if self.card_list.iconSize() != icon:
+            self.card_list.setIconSize(icon)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)

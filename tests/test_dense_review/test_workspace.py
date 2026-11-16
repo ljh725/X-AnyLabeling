@@ -578,7 +578,7 @@ def test_changed_bounds_request_fresh_card(window, tmp_path):
     item = session.object(shape_id)
     provider = workspace.thumbnails
     margin = workspace.context_spin.value() / 100.0
-    target = (360, 240)
+    target = workspace._thumbnail_target_pixels()
     source_version = widget.dense_review_image_info()[0]
     old_key = provider.request_key(
         shape_id,

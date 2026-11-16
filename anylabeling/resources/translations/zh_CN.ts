@@ -2594,6 +2594,18 @@ Review the prompt before generating.</source>
         <translation>逐框模式（完成并下一个 / 暂跳下一个）</translation>
     </message>
     <message>
+        <source>图像高度</source>
+        <translation>图像高度</translation>
+    </message>
+    <message>
+        <source>卡片图像高度</source>
+        <translation>卡片图像高度</translation>
+    </message>
+    <message>
+        <source>调整卡片图像区高度，只改变大小不改变裁切上下文。</source>
+        <translation>调整卡片图像区高度，只改变大小不改变裁切上下文。</translation>
+    </message>
+    <message>
         <source>卡片上下文</source>
         <translation>卡片上下文</translation>
     </message>

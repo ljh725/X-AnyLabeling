@@ -2595,6 +2595,18 @@ Review the prompt before generating.</translation>
         <translation>Per-object mode (complete / skip and next)</translation>
     </message>
     <message>
+        <source>图像高度</source>
+        <translation>Image height</translation>
+    </message>
+    <message>
+        <source>卡片图像高度</source>
+        <translation>Card image height</translation>
+    </message>
+    <message>
+        <source>调整卡片图像区高度，只改变大小不改变裁切上下文。</source>
+        <translation>Adjust the card image height; this changes size only, not the crop context.</translation>
+    </message>
+    <message>
         <source>卡片上下文</source>
         <translation>Card context</translation>
     </message>
