@@ -209,7 +209,7 @@ DPR 计算并进入缓存键；新增高度滑块与四语言文案并重跑资�
 | --- | --- |
 | 本轮复现脚本 | 修复前 5 failed → 修复后 5 passed |
 | 上轮复现脚本 | 6 passed（无回退） |
-| `tests/test_dense_review` 全目录 | **229 passed, 2 failed**, 622 subtests, 299.71s, 退出码 1 |
+| `tests/test_dense_review` 全目录 | **229 passed, 2 failed**, 622 subtests, 299.71s, 退出码 1（含两份临时审计脚本）；断言迁入持久文件并删除临时脚本后复跑为 **219 passed, 2 failed**, 281.85s, 退出码 1 |
 | 失败项 | `test_workspace_evidence.py::test_closed_workspace_keeps_shift_fit_target_and_undo[False]` / `[True]`，与 `2df16c07` 基线完全同一批 |
 | `test_display_consistency.py` | 23 passed |
 | `test_display_text_and_original.py` | 12 passed |
