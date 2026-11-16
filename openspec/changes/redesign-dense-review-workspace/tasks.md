@@ -1,6 +1,6 @@
 # 密集复核工作区重设计任务清单
 
-状态为方案。以下复选框表示未来实施及验收，当前全部未完成。提案和文档校验完成不能替代任一实现任务。
+状态为实施中（2026-11-16）。已勾选项表示有对应提交与验证证据，详见 [PROGRESS.md](../../../reports/dense_review_redesign/2026-11-16/PROGRESS.md)；未勾选项仍未实施或未验证。提案和文档校验完成不能替代任一实现任务。
 
 依据为 [设计](design.md) 和五份 [显示](specs/dense-review-display-policy/spec.md)、[布局](specs/dense-review-workbench-layout/spec.md)、[卡片](specs/dense-review-object-cards/spec.md)、[查漏](specs/dense-review-spatial-navigation/spec.md)、[进度](specs/dense-review-progress-compatibility/spec.md) 规格。场景 ID、测试方法和人工步骤见 [验收矩阵](acceptance.md)。
 
@@ -17,44 +17,44 @@
 
 ## 1. 实施基线与样本
 
-- [ ] 1.1 核对当前分支、HEAD、工作区和暂存区，确认包含所需依赖的已保存起点及集成目标；记录与规划基线 `498b59e9` 的差异和其他任务改动归属。
-- [ ] 1.2 用 `x-anylabeling-cu12` 核对 Python、PyQt6、Qt 和平台，建立 `.tmp/` 隔离配置及 QSettings；记录现有相关测试的基线与退出码，保留写保护 guard。
+- [x] 1.1 分支、HEAD、工作区与集成目标已核对（`reports/dense_review_redesign/2026-11-16/PROGRESS.md`）
+- [x] 1.2 环境与基线退出码已记录，写保护 guard 保留
 - [ ] 1.3 在样本副本通过菜单打开工作区，复现列表禁用、滚轮无效、108 像素图块和查漏遮挡画布，记录动作与控件状态，覆盖 WL-05、OC-16。
 - [ ] 1.4 准备可复现样本清单，包含 s1274 的 6 框92点、30框多类别、300框压力、空图、遮挡小目标、长类名、孤立点、group 0、同组多框、离群点和混合不支持形状；私有样本仅在本地副本使用。
 - [ ] 1.5 盘点显隐写入、绘制、标签、命中、快捷键、保存和撤销入口，覆盖 mask、属性、组连线、点拟合预览与 Inspector 交接；在验证记录中列明接入位置。
-- [ ] 1.6 将本变更场景 ID 关联到现有测试或拟补回归及人工步骤，建立 `reports/dense_review_redesign/` 验证记录入口，明确 CUSTOM-110 未完成项继续保留原状态。
+- [x] 1.6 已建立 `reports/dense_review_redesign/2026-11-16/PROGRESS.md`，场景与测试对应关系见该记录；CUSTOM-110 原状态未改
 
 ## 2. 列表与会话启用修复
 
-- [ ] 2.1 修复空状态到有效会话的启用路径，覆盖卡片、批次和已建立计划的区域列表；验证内容和可操作状态一致，满足 WL-05。
+- [x] 2.1 `bf75b13f`；`test_workspace_lists.py::test_empty_state_then_session_enables_all_lists`
 - [ ] 2.2 覆盖加载失败、重试成功、关闭重开和切图的启用恢复，阻止无效会话执行依赖动作，满足 WL-06。
-- [ ] 2.3 在正常窗口入口发送滚轮和键盘事件，验证有滚动范围时列表位置改变，普通滚动保持当前复核目标，满足 OC-16。
-- [ ] 2.4 验证滚动后的异步图块刷新不会滚回当前选择，直接点击冷批次会请求可见图块；将此修复作为可独立验证批次记录。
+- [x] 2.3 `bf75b13f`；`test_workspace_lists.py::test_wheel_and_scrollbar_move_view_without_moving_target`
+- [x] 2.4 `bf75b13f`；`test_workspace_lists.py::test_background_refresh_does_not_force_scroll_back`
 
 ## 3. 有效显示状态与优先级
 
-- [ ] 3.1 定义当前对象、本批对象、其他对象角色及填充、描边、点标记、编辑手柄、标签和命中输出，按 D2–D3 实现纯数据解析，保留普通过滤调用契约。
-- [ ] 3.2 按全局开关、原图对照、手动隐藏、类别/group过滤和反选、明确临时显现、复核角色求值，补足冲突组合回归，满足 DP-11、DP-12、DP-18。
+- [x] 3.1 `3b09eefd`；`test_display_policy.py`
+- [x] 3.2 `3b09eefd`；`test_display_policy.py` 优先级用例
 - [ ] 3.3 为被排除对象显示具体原因并接入“临时显示/结束临时显示”，限定准确对象集合和本图生命周期；显现只改变观察结果，确认资格仍按排除来源计算。
 - [ ] 3.4 使显示解析响应实际选择、内容变更、偏好变更和过滤变更，建立准确缓存失效，避免每次鼠标移动扫描或重建全部对象状态。
-- [ ] 3.5 梳理 `canvas.visible`、`shape.visible`、手动隐藏集合和背景隐藏的所有者，在 Dense Review 入口迁移直接写入，关闭时根据最新普通设置重算，满足 DP-17、WL-12。
+- [x] 3.5 `4af3c92f`；`test_display_consistency.py::test_closing_review_restores_latest_user_settings`
 - [ ] 3.6 核对类别变更后角色按稳定批次成员继续计算，临时原图、强度为零和布局折叠各自保留原确认范围，满足 PC-01、PC-05。
 
 ## 4. 分层绘制与组件弱化
 
-- [ ] 4.1 在普通形状绘制接入组件样式，复核首次默认填充为零，当前、本批和其他对象按 D3 初值显示；普通画布现有填充透明度含义继续有效，满足 DP-01、DP-18。
-- [ ] 4.2 将正式点标记与矩形编辑手柄分开处理，按角色弱化点符号，当前可编辑手柄保持清晰，锁定对象显示锁定状态，满足 DP-03、DP-04。
-- [ ] 4.3 接入 mask、轮廓、文字底板、属性、角度文字及组连线，强度零或隐藏时清理全部附属叠加，满足 DP-02、DP-15。
-- [ ] 4.4 按组件和角色派生绘制顺序，当前对象与编辑预览在操作层，仅绘制各组件一次；验证 alpha、类别颜色和持久 shape 顺序，满足 DP-08。
+- [x] 4.1 `96e93981`；`test_canvas_display_overlay.py`、`test_display_policy.py` 角色分级
+- [x] 4.2 `96e93981`；`test_canvas_display_overlay.py::test_handles_follow_role_while_formal_points_stay`
+- [x] 4.3 `96e93981`；`test_canvas_display_overlay.py::test_zero_strength_role_paints_nothing`
+- [x] 4.4 `96e93981`；`test_canvas_display_overlay.py`、`test_display_consistency.py::test_painted_order_never_changes_saved_order`
 - [ ] 4.5 接入单点拟合、拖边、创建草稿、旋转手柄与选择预览的原有显示约束，验证提交、取消和退出复核后的状态，满足 DP-16。
 - [ ] 4.6 用像素、几何和真实主画布回归验证深浅背景、重叠框、关键点和高 DPI；保存正确图与失败差异作为本组证据。
 
 ## 5. 鼠标命中与当前编辑对象
 
-- [ ] 5.1 使命中使用与绘制相同的有效结果，收起或零强度对象退出鼠标命中，可见弱化对象仍可选择，满足 DP-02、DP-09。
-- [ ] 5.2 当前对象的可编辑边和手柄优先命中，保留其他候选的几何合法性与屏幕容差，验证点压边、大小嵌套框和共边场景，满足 DP-07、DP-08。
+- [x] 5.1 `96e93981`；`test_canvas_display_overlay.py::test_installed_overlay_gates_paint_and_hit_together`
+- [x] 5.2 `4af3c92f`；`test_display_consistency.py::test_current_object_edges_and_handles_win_over_a_keypoint`
 - [ ] 5.3 提供重叠候选选择，列出编号、类名和形状类型；鼠标或键盘明确选择后同步当前目标，取消选择保持原状态。
-- [ ] 5.4 悬停只提供临时提示，离开恢复角色；拖动、绘制和预览期间固定编辑目标，切换按既有提交/取消边界处理，满足 DP-09、DP-10、WL-08。
+- [x] 5.4 `4af3c92f`；`test_display_consistency.py::test_dragging_keeps_its_start_target`
 - [ ] 5.5 回归锁定、手动隐藏、Ctrl多选、数字改类、Shift单点拟合、方向微调及撤销，验证编辑命令只作用于明确对象，记录差异及其归属。
 
 ## 6. 类别文字与原图对照
@@ -67,12 +67,12 @@
 
 ## 7. 矩形卡与关联点导航
 
-- [ ] 7.1 在全对象账本上派生以矩形稳定 ID 为身份的卡片视图，按同图非空 group_id 的唯一矩形关联点，明确 0 为有效组，满足 OC-01、OC-02。
-- [ ] 7.2 为多框同组建立关联待确认入口和临时观察主框选择，为孤立点、只有点的组及其他形状保留独立入口；总数按原始 ID 去重，满足 OC-03、OC-04。
+- [x] 7.1 `96e93981`；`test_workspace_mixed_shapes.py::test_group_zero_associates_points_with_its_only_rectangle`
+- [x] 7.2 `96e93981`；`test_workspace_mixed_shapes.py::test_ambiguous_group_does_not_guess_an_owner`、`test_ungrouped_point_is_not_associated` 同文件
 - [ ] 7.3 子对象展开、点选和主卡选择共同同步面板、当前编辑目标与主画布，子点选择保留人物上下文，满足 OC-13。
 - [ ] 7.4 跨类修改保持矩形卡位置和原批次，新建、复制、删除、改组与撤销更新卡片、关联及计数，满足 OC-05、OC-06、PC-09、PC-13。
-- [ ] 7.5 将合法点的展示几何与矩形正面积要求区分，点裁切使用坐标邻域；无效坐标与图块读取失败分别反馈，旧点确认继续待支持，满足 OC-10、OC-12。
-- [ ] 7.6 显示 6框92点98对象等原始数量，人物卡显示实际点数，矩形确认按钮明确维度及范围，点核验和点完整性保持各自支持状态，满足 OC-14、OC-15、PC-03、PC-04。
+- [x] 7.5 `96e93981`；`test_workspace_mixed_shapes.py::test_keypoints_remain_observable_and_editable`
+- [x] 7.6 `96e93981`；`test_workspace_mixed_shapes.py::test_batch_confirmation_never_confirms_keypoints`
 
 ## 8. 卡片尺寸、裁切和异步图块
 
@@ -107,7 +107,7 @@
 
 ## 11. 审核范围、撤销、保存与交接
 
-- [ ] 11.1 确认显示操作不进入标注审核历史、不改变内容 dirty、不新增或撤销审核结论；偏好单独保存，满足 PC-01、PC-02。
+- [x] 11.1 `4af3c92f`；`test_display_consistency.py::test_temporary_show_lifts_visibility_not_eligibility`
 - [ ] 11.2 批次按钮展示候选、排除和屏外/策略收起人数，成员列表准确；区分临时弱化、显式隐藏、疑难、暂跳与失败，满足 PC-05、PC-06、PC-07。
 - [ ] 11.3 保留类别/几何维度、稳定成员和内容指纹，确认时范围变化则重新呈现，重复确认幂等且整批可撤销，满足 PC-08、PC-09。
 - [ ] 11.4 接入矩形编辑的确认与覆盖失效，点编辑刷新关联和图块，并对无法可靠定位的覆盖影响保守处理；点编辑沿用原数据命令，满足 PC-10、PC-11。
