@@ -59,3 +59,4 @@ CUSTOM-120 的原草案保留为设计来源。新的决策包括手动隐藏通
 | 2026-11-13 | 用户要求详细完整 OpenSpec 任务清单 | 提案、设计、五份规格、91项任务和86场景验收矩阵 | OpenSpec strict、映射、本地链接及差异检查通过；实施未开始 |
 | 2026-11-16 | 开始实施，先做显示与画布接入 | 新增 `services/dense_review/display.py` 纯解析层；`Canvas`/`Shape` 按组件强度绘制并同源命中；`ObjectReviewState` 记录 `group_id`，新增 `session.associated_ids()`；修复列表启用、隐藏/过滤失效与退出快照覆盖 | `tests/test_dense_review` 182 passed；21 项任务有对应提交与证据，详见 [PROGRESS.md](../../reports/dense_review_redesign/2026-11-16/PROGRESS.md)。人工验收与性能门槛未执行 |
 | 2026-11-16 | 实施中发现两处真实缺陷 | 手动隐藏/过滤变更未使复核显示表失效；退出复核用进入快照覆盖用户新设置 | 由 `test_display_consistency.py` 9 项真实窗口回归固定 |
+| 2026-11-16 | 完成复核标签策略、原图对照与可调卡片尺寸 | 标签由角色强度决定且不改普通开关；卡片图像高度 320/160–640 可调，图块按 DPR 取像素并进入缓存键，四语言补齐 | `26fed309`、`c569a29f`；`tests/test_dense_review` 198 passed，OpenSpec strict 通过。人工与性能验收未执行 |

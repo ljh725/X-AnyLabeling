@@ -59,10 +59,10 @@
 
 ## 6. 类别文字与原图对照
 
-- [ ] 6.1 将当前对象完整类名接入画布与固定面板标题，本批其他对象保持类别读取入口；复核标签临时覆盖普通关闭/仅选中策略但不写回其设置，退出恢复，作用范围清楚可见，满足 DP-05、DP-18。
+- [x] 6.1 `26fed309`；`test_display_text_and_original.py::test_review_label_policy_overrides_ordinary_switch`、`test_review_never_writes_back_the_ordinary_label_settings`
 - [ ] 6.2 实现有限框外锚点避让和短引线，碰撞包括已放置文字与当前编辑手柄；空间不足时显示编号并映射侧栏完整名称，支持准确定位。
 - [ ] 6.3 标签布局按字体、DPI、文本和视口缓存，拖动时固定锚点，结束后重新排布；验证缩放后文字屏幕尺寸及对象身份稳定，满足 DP-06。
-- [ ] 6.4 接入原图对照的点击往返及按住/松开交互，失焦、关闭、切图和重配快捷键时结束临时状态，恢复当前有效视图，满足 DP-13、DP-14。
+- [x] 6.4 `26fed309`；`test_display_text_and_original.py::test_source_comparison_pauses_annotation_hits`、`test_source_comparison_ends_when_the_image_changes`
 - [ ] 6.5 验证当前对象、本批标签回退、关联点名称、长中文及日/韩文本、手柄和键盘焦点；将文字可读性人工步骤加入 M2。
 
 ## 7. 矩形卡与关联点导航
@@ -76,10 +76,10 @@
 
 ## 8. 卡片尺寸、裁切和异步图块
 
-- [ ] 8.1 增加独立图像高度控制，默认 320、范围 160–640 逻辑像素，移除固定 108 图像高度和固定单元高度依赖，满足 OC-07。
-- [ ] 8.2 保留独立上下文控制，面板增宽保留选定图像区高度并重排列数，窄面板单列；图像等比完整适配宽高，宽度受限时提示并提供主画布查看，文字与操作区可用，满足 OC-08、OC-09。
+- [x] 8.1 `c569a29f`；`test_card_geometry.py::test_card_image_height_defaults_to_320`
+- [x] 8.2 `c569a29f` 部分：`test_widening_changes_columns_but_keeps_height`、`test_context_change_keeps_the_selected_height`；宽度受限提示与主画布入口未实现
 - [ ] 8.3 裁切包含矩形及明确关联点并集，任一有效框外点即提供提示、主体观察及逐点定位，边界点视为框内；裁切钳制真实图像边界，满足 OC-11、OC-12。
-- [ ] 8.4 根据显示尺寸和 DPR 生成目标像素，缓存键包括图像版本、输出代际、几何及关联范围、裁切模式和尺寸；比较视图使用对应当前版本，满足 OC-17、OC-20。
+- [x] 8.4 `c569a29f` 部分：`test_thumbnail_target_follows_size_and_dpr`、`test_height_change_invalidates_cached_crops`；比较窗口当前版本未实现
 - [ ] 8.5 合并尺寸滑块与布局变化请求，优先可见项和有限预取，保留虚拟列表；为源图、图块、图形资源、在途请求与结果队列登记各自容量或字节预算，满足 OC-18。
 - [ ] 8.6 切图、改目录、调整尺寸和关闭工作区时取消或丢弃旧结果，后台线程仅提交当前代际可用数据；拖动期间遵守现有后台延迟策略。
 - [ ] 8.7 实现明确失败、重试和冷缓存比较，关闭比较窗口后停止更新，成功恢复后按当前范围重算确认候选，满足 OC-19、OC-20、PC-07。

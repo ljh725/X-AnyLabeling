@@ -93,6 +93,35 @@ python .tmp/hard_timeout.py <秒> -q -o faulthandler_timeout=60 <目标> \
 | `tests/test_dense_review` 全目录 | 182 passed，2 项基线失败 |
 | 覆盖场景 | DP-11 隐藏原因与命中、PC-06 临时显示不改确认资格、DP-11/DP-14 切目标与切图结束例外、DP-12/DP-13 原图对照退出命中、DP-17/WL-12 关闭恢复最新设置、DP-07 当前矩形边优先、DP-10 拖动目标固定、DP-08 绘制顺序不改保存顺序 |
 
+## 批次 5 · `26fed309` 复核标签策略与原图对照（任务组 6）
+
+改动：复核期间标签文字由角色强度决定，临时覆盖普通 `show_labels=False`
+与 `show_labels_only_selected=True`，类别名始终可读且不写回普通设置；
+标签循环在复核模式下即使普通开关全关也进入。
+
+| 项目 | 结果 |
+| --- | --- |
+| `tests/test_dense_review/test_display_text_and_original.py` | 7 passed，新增，真实 `MainWindow` |
+| `tests/test_dense_review` 全目录 | 189 passed，2 项基线失败 |
+| 覆盖场景 | DP-05 普通开关两态下的标签可读与设置不被改写、DP-13 对照暂停标注命中、DP-14 切图/关闭结束对照、DP-17 退出恢复、DP-18 普通模式 |
+
+## 批次 6 · `c569a29f` 可调卡片图像高度与大图块（任务组 8.1–8.5 部分）
+
+改动：移除固定 176 单元高与 108 图像高；图像区默认 320（160–640 可调），
+文字带单独预留；面板增宽只改列数并保持高度；图块目标像素按显示尺寸与
+DPR 计算并进入缓存键；新增高度滑块与四语言文案并重跑资源编译。
+
+| 项目 | 结果 |
+| --- | --- |
+| `tests/test_dense_review/test_card_geometry.py` | 9 passed，新增 |
+| `tests/test_dense_review/test_translations.py` | 8 passed，614 subtests |
+| `tests/test_dense_review` 全目录 | 198 passed，2 项基线失败 |
+| 覆盖场景 | OC-07 默认值与可调范围、OC-08 上下文独立、OC-09 列数与 DPR、OC-17/OC-18 尺寸进入缓存键 |
+
+过程中修正的自身问题：新增文案未入翻译导致 `test_translations` 12 项失败；
+`.ts` 插入时留下重复 `<message>` 与缺失开标签，`lrelease` 直接报错。
+均已修复并重新编译，最终 `test_translations` 全通过。
+
 ## 任务 1 附带修复 · `db2b10d2` 导航用例配置会话挂起
 
 现象：`tests/test_canvas/test_navigation.py` 顺序执行必挂，单跑通过。
@@ -116,11 +145,34 @@ python .tmp/hard_timeout.py <秒> -q -o faulthandler_timeout=60 <目标> \
 `MainWindow` / `LabelingWidget` 直建用例，需要同样的配置会话改造。
 本批次只按要求修复 `test_navigation.py`，上述两文件按未覆盖登记。
 
+## 最终验收（本次交付范围）
+
+| 项目 | 命令 | 结果 |
+| --- | --- | --- |
+| 密集复核目录 | `pytest tests/test_dense_review` | 198 passed，2 failed（基线既有），614 subtests |
+| 导航文件 | `pytest tests/test_canvas/test_navigation.py` | 83 passed，9.94s，退出码 0 |
+| 受影响的画布文件 | `test_fill_opacity` / `test_shape_selection` / `test_groups` / `test_label_visibility_mode` | 12 / 11 / 16 / 6 passed |
+| OpenSpec | `openspec validate redesign-dense-review-workspace --strict` | valid |
+| 翻译 | `scripts/compile_languages.py` | 四语言 2459 条，无错误 |
+
+单列说明：
+
+- `tests/test_widgets/test_toolbar_layout.py`：**未运行**（CI 排除项，本次未涉及工具栏布局）。
+- `tests/test_pointcloud/`：**未运行**（Windows 不具备 xcb + xvfb），本功能不涉及点云。
+- `tests/test_canvas/test_rectangle_edge_migration.py` 与
+  `tests/test_canvas/test_rectangle_preview_overlap.py`：整文件执行仍复现基线
+  既有模态弹窗挂起，**未作为本次回归依据**；其目标用例单跑可过。
+- 人工验收 M1–M8、性能门槛 P1–P4：**未执行**，均为真实屏幕项。
+- 本次勾选 26 项任务，均对应具体提交与测试；其余 65 项未勾选，保持未完成。
+
 ## 未覆盖与后续
 
 - `tests/test_widgets/test_toolbar_layout.py`：未运行（CI 排除项）。
 - `tests/test_pointcloud/`：Windows 上不适用（需 xcb + xvfb），未运行。
-- 任务组 6 及以后（类别文字、原图对照交互、矩形卡与大图块、停靠布局、
-  原图小地图、设置与翻译、Inspector 交接）尚未实施。
+- 任务组 6 已完成（`26fed309`）；任务组 8 的尺寸/DPR/缓存键部分已完成
+  （`c569a29f`），其余部分（裁切并集、框外点入口、失败重试、比较窗口）
+  尚未实施。
+- 尚未实施：矩形卡聚合 UI（组 7）、停靠工作区（组 9）、原图小地图与
+  空间查漏（组 10）、设置与交接（组 11–12）。
 - 人工验收 M1–M8 与性能门槛 P1–P4 未执行，均为真实屏幕项，不能由离屏
   截图替代。
