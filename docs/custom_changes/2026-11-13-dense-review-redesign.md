@@ -59,5 +59,6 @@ CUSTOM-120 的原草案保留为设计来源。新的决策包括手动隐藏通
 | 2026-11-13 | 用户要求详细完整 OpenSpec 任务清单 | 提案、设计、五份规格、91项任务和86场景验收矩阵 | OpenSpec strict、映射、本地链接及差异检查通过；实施未开始 |
 | 2026-11-16 | 开始实施，先做显示与画布接入 | 新增 `services/dense_review/display.py` 纯解析层；`Canvas`/`Shape` 按组件强度绘制并同源命中；`ObjectReviewState` 记录 `group_id`，新增 `session.associated_ids()`；修复列表启用、隐藏/过滤失效与退出快照覆盖 | `tests/test_dense_review` 182 passed；21 项任务有对应提交与证据，详见 [PROGRESS.md](../../reports/dense_review_redesign/2026-11-16/PROGRESS.md)。人工验收与性能门槛未执行 |
 | 2026-11-16 | 实施中发现两处真实缺陷 | 手动隐藏/过滤变更未使复核显示表失效；退出复核用进入快照覆盖用户新设置 | 由 `test_display_consistency.py` 9 项真实窗口回归固定 |
+| 2026-11-16 | 第二轮复核 `2df16c07` 的五项问题 | 分组编辑改用有效成员集合；原图对照暂停几何修改；工具栏新增「按住看原图」；标签/底板/引线/属性/遮罩服从显示结果；当前对象命中优先限边与手柄；全局开关改读真实状态 | `82668b12`、`05b1a26b`；`tests/test_dense_review` 229 passed / 2 项同批基线失败；OpenSpec strict 通过 |
 | 2026-11-16 | 复核 `6b0f1168` 的六项问题 | 覆盖层跟随工作区激活；分组/旋转手柄服从显示解析；临时显示打通绘制与命中；聚焦模式不再吞掉本批；按角色绘制置顶；`group_id` 单独变更即时同步；补齐按住查看原图 | `bfd7e001`、`47c7018d`、`7d9a27b3`；`tests/test_dense_review` 209 passed / 2 项同批基线失败；OpenSpec strict 通过 |
 | 2026-11-16 | 完成复核标签策略、原图对照与可调卡片尺寸 | 标签由角色强度决定且不改普通开关；卡片图像高度 320/160–640 可调，图块按 DPR 取像素并进入缓存键，四语言补齐 | `26fed309`、`c569a29f`；`tests/test_dense_review` 198 passed，OpenSpec strict 通过。人工与性能验收未执行 |

@@ -35,7 +35,7 @@
 
 - [x] 3.1 `3b09eefd`；`test_display_policy.py`
 - [x] 3.2 `3b09eefd`；`test_display_policy.py` 优先级用例
-- [ ] 3.3 为被排除对象显示具体原因并接入“临时显示/结束临时显示”，限定准确对象集合和本图生命周期；显现只改变观察结果，确认资格仍按排除来源计算。
+- [x] 3.3 `05b1a26b`：排除原因可读（`dense_review_exclusion_reason`）；临时显示/结束动作经面板入口接入；单框与全部手动隐藏保持 `manual-hidden` 并可临时显示，真实全局关闭与对照仍优先；显现保留原隐藏记录与批次排除资格（`test_display_consistency.py::test_single_manual_hide_is_not_a_global_shutdown`、`test_hiding_every_object_by_hand_is_not_a_global_shutdown`、`test_real_global_switch_beats_temporary_show`、`test_original_mode_outranks_temporary_show_reason`）
 - [ ] 3.4 使显示解析响应实际选择、内容变更、偏好变更和过滤变更，建立准确缓存失效，避免每次鼠标移动扫描或重建全部对象状态。
 - [x] 3.5 `4af3c92f` + `47c7018d`：关闭后改显隐/过滤保持普通画布，重开恢复同一会话；`test_display_consistency.py::test_closed_workspace_keeps_regular_canvas_after_visibility_edit`（DP-17、WL-12）
 - [ ] 3.6 核对类别变更后角色按稳定批次成员继续计算，临时原图、强度为零和布局折叠各自保留原确认范围，满足 PC-01、PC-05。
@@ -62,7 +62,7 @@
 - [x] 6.1 `26fed309`；`test_display_text_and_original.py::test_review_label_policy_overrides_ordinary_switch`、`test_review_never_writes_back_the_ordinary_label_settings`
 - [ ] 6.2 实现有限框外锚点避让和短引线，碰撞包括已放置文字与当前编辑手柄；空间不足时显示编号并映射侧栏完整名称，支持准确定位。
 - [ ] 6.3 标签布局按字体、DPI、文本和视口缓存，拖动时固定锚点，结束后重新排布；验证缩放后文字屏幕尺寸及对象身份稳定，满足 DP-06。
-- [x] 6.4 `26fed309` + `47c7018d`：`test_display_text_and_original.py` 原图对照暂停命中、切图/关闭结束、按住查看/松开恢复/失焦清理与切图清理（DP-13、DP-14）
+- [x] 6.4 `26fed309` + `47c7018d` + `05b1a26b`：原图对照暂停命中与几何修改；工具栏「按住看原图」真实按键进入，松开/失焦/关闭/切图恢复（`test_display_text_and_original.py::test_hold_original_button_press_and_release`、`test_hold_original_button_ends_on_blur_close_and_image_switch`）；原图模式下标签/底板/引线/属性/遮罩停止绘制（`test_redesign_followup_audit.py::test_original_mode_renders_without_annotation_labels`）（DP-13、DP-14、DP-15）
 - [ ] 6.5 验证当前对象、本批标签回退、关联点名称、长中文及日/韩文本、手柄和键盘焦点；将文字可读性人工步骤加入 M2。
 
 ## 7. 矩形卡与关联点导航

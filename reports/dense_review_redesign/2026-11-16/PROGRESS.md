@@ -189,6 +189,53 @@ DPR 计算并进入缓存键；新增高度滑块与四语言文案并重跑资�
 - 任务 8.2 的宽度受限提示与主画布入口、8.4 的比较窗口当前版本仍未实现，
   `tasks.md` 中两项已恢复为未勾选并标注「部分完成」。
 
+## 第二轮复核 · 2026-11-16（针对 `2df16c07`）
+
+复核脚本 `.tmp/test_redesign_followup_audit.py` 复跑五项：修复前 **5 failed**，
+修复后 **5 passed**。上轮脚本 `.tmp/test_redesign_review_audit.py` 六项仍
+**6 passed**（无回退）。两份脚本的断言已并入持久测试文件，临时脚本未入库。
+
+| 问题 | 根因 | 修复 | 提交 | 测试节点 |
+| --- | --- | --- | --- | --- |
+| 分组编辑改动隐藏成员 | `_select_group()` 取整组，隐藏与锁定成员一并入选 | 新增 `_group_editable_shapes()`，复核下选择/拖动/微调共用有效成员；无覆盖层时保持原规则 | `82668b12` | `test_redesign_followup_audit.py::test_group_hit_cannot_select_or_move_a_hidden_member`、`test_display_consistency.py::test_group_gesture_skips_hidden_and_locked_members` |
+| 原图模式仍可移动 | 几何入口未检查对照状态 | 新增 `annotation_editing_paused()`，`bounded_move_shapes`/`move_by_keyboard`/`rotate_by_keyboard` 统一拒绝 | `82668b12` | `test_original_mode_does_not_nudge_invisible_selection`、`test_display_consistency.py::test_original_mode_pauses_geometry_edits` |
+| 按住看原图无入口、标签绕过显示结果 | hold API 仅测试调用；绘制循环直接读 `shape.visible` | 工具栏新增按钮（pressed/released 绑定）；新增 `_overlay_visible()` 接管标签/底板/引线/属性/遮罩 | `05b1a26b`、`82668b12` | `test_display_text_and_original.py::test_hold_original_button_press_and_release`、`test_hold_original_button_ends_on_blur_close_and_image_switch`、`test_original_mode_renders_without_annotation_labels` |
+| 当前矩形内部命中抢占关键点 | 当前角色全部命中整体提前 | 优先权仅限命中类型 0/1（顶点、边）；内部命中不覆盖可见点 | `82668b12` | `test_click_point_inside_current_rect_targets_point`、`test_display_consistency.py::test_point_inside_current_rectangle_is_selectable` |
+| 手动隐藏被误判为全局关闭 | 以「是否还有可见对象」推断全局开关 | 改读真实开关状态；`manual-hidden` 可临时显示，真实 `global-off` 仍优先 | `05b1a26b` | `test_all_manual_hides_are_distinct_from_global_toggle`、`test_single_manual_hide_is_not_a_global_shutdown`、`test_hiding_every_object_by_hand_is_not_a_global_shutdown`、`test_real_global_switch_beats_temporary_show`、`test_original_mode_outranks_temporary_show_reason` |
+
+### 本轮验证
+
+| 项目 | 结果 |
+| --- | --- |
+| 本轮复现脚本 | 修复前 5 failed → 修复后 5 passed |
+| 上轮复现脚本 | 6 passed（无回退） |
+| `tests/test_dense_review` 全目录 | **229 passed, 2 failed**, 622 subtests, 299.71s, 退出码 1 |
+| 失败项 | `test_workspace_evidence.py::test_closed_workspace_keeps_shift_fit_target_and_undo[False]` / `[True]`，与 `2df16c07` 基线完全同一批 |
+| `test_display_consistency.py` | 23 passed |
+| `test_display_text_and_original.py` | 12 passed |
+| `test_translations.py` | 8 passed，622 subtests |
+| 受影响画布测试 | `test_fill_opacity` 12、`test_shape_selection` 11、`test_groups` 16、`test_label_visibility_mode` 6、`test_rotation_handle` 2、`test_selection_priority` 6、`test_drag_refresh` 11、`test_shift_point_fit_interaction` 44，共 108 passed |
+| OpenSpec | `openspec validate --strict` valid |
+| 格式与静态检查 | `black` 通过；`flake8` 无新增问题（仅既有 C901/F841/F541） |
+| `git diff --check` | 通过（仅 CRLF 转换警告） |
+
+过程中修正的自身问题：
+
+1. `_group_editable_shapes()` 一度在普通模式也过滤锁定成员，令
+   `test_groups.py::test_locked_group_does_not_move_partially` 失败；改为
+   仅在复核覆盖层存在时收窄集合后恢复。
+2. 两处新增界面文案未入翻译，导致 `test_translations` 8 项子失败；补齐
+   中英日韩并重编译后通过。
+3. 一条既有断言（框内命中归矩形）与本轮修复目标冲突，按新语义更新为
+   「框内可见关键点优先，点压框边时框边优先」。
+
+### 本轮未修与跟踪
+
+- 任务 5.3 重叠候选选择界面、8.2 宽度受限提示、8.4 比较窗口仍未实现。
+- 停靠面板、三任务视图、原图小地图、Inspector 交接继续由原任务跟踪。
+- `test_rectangle_edge_migration.py`、`test_rectangle_preview_overlap.py`
+  整文件仍复现基线既有模态弹窗挂起，未触碰。
+
 ## 最终验收（本次交付范围）
 
 | 项目 | 命令 | 结果 |
