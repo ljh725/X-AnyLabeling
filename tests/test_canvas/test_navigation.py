@@ -17,6 +17,24 @@ from anylabeling.views.labeling.widgets.navigator_widget import NavigatorDialog
 from anylabeling.views.labeling.widgets.zoom_widget import ZoomWidget
 
 
+def _isolated_window_config(tmp_path):
+    """Return a config that carries an active, writable test session.
+
+    ``isolated_user_configuration`` ends the configuration session before
+    every test, so a bare ``MainWindow(...)`` built straight from the
+    template has nowhere to persist preferences.  The failed save raises a
+    real modal ``QMessageBox.critical`` during window construction, which
+    blocks forever under the offscreen platform.  ``get_config()`` installs
+    the session for the ``.tmp`` target and keeps the ordinary save path
+    (and the global write guard) intact.
+    """
+    from anylabeling.config import get_config
+
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("{}", encoding="utf-8")
+    return get_config(str(config_file), show_msg=False)
+
+
 class NavigationView(QtWidgets.QWidget):
     MANUAL_ZOOM = LabelingWidget.MANUAL_ZOOM
     set_zoom = LabelingWidget.set_zoom
@@ -317,14 +335,10 @@ def test_image_switch_restores_fractional_zoom_and_pan_and_fit_resets(
     tmp_path, monkeypatch, navigation_app
 ):
     from anylabeling import config as app_config
-    from anylabeling.views.labeling.settings.schema import load_template_config
     from anylabeling.views.mainwindow import MainWindow
 
     app = navigation_app
     monkeypatch.setattr(app_config, "_work_directory", str(tmp_path))
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(app_config, "current_config_file", str(config_file))
     settings_class = QtCore.QSettings
     monkeypatch.setattr(
         QtCore,
@@ -333,7 +347,7 @@ def test_image_switch_restores_fractional_zoom_and_pan_and_fit_resets(
             str(tmp_path / "settings.ini"), settings_class.Format.IniFormat
         ),
     )
-    window = MainWindow(app, config=copy.deepcopy(load_template_config()))
+    window = MainWindow(app, config=_isolated_window_config(tmp_path))
     window.resize(1400, 900)
     window.show()
     app.processEvents()
@@ -376,20 +390,18 @@ def test_image_switch_restores_fractional_zoom_and_pan_and_fit_resets(
 
 def test_shared_view_tracks_revisits_and_reset(tmp_path, monkeypatch, navigation_app):
     from anylabeling import config as app_config
-    from anylabeling.views.labeling.settings.schema import load_template_config
     from anylabeling.views.mainwindow import MainWindow
 
     monkeypatch.setattr(app_config, "_work_directory", str(tmp_path))
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(app_config, "current_config_file", str(config_file))
     settings_class = QtCore.QSettings
     monkeypatch.setattr(
         QtCore, "QSettings", lambda *args: settings_class(
             str(tmp_path / "settings.ini"), settings_class.Format.IniFormat
         )
     )
-    window = MainWindow(navigation_app, config=copy.deepcopy(load_template_config()))
+    window = MainWindow(
+        navigation_app, config=_isolated_window_config(tmp_path)
+    )
     window.resize(1400, 900)
     window.show()
     navigation_app.processEvents()
