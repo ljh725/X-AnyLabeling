@@ -1,5 +1,9 @@
 # OpenSpec 未完成任务清单
 
+## 2026-11-16 新增规划
+
+[关键点三层显示](changes/add-keypoint-display-presets/tasks.md) 已整理为独立 OpenSpec 变更，共 **6 组、22 项任务，0 项实施完成**。[验收清单](changes/add-keypoint-display-presets/acceptance.md)覆盖 19 个规格场景，以 `s1194` 和 `s54` 为本地真实样本。详见 [CUSTOM-122](../docs/custom_changes/2026-11-13-keypoint-three-layer-expression.md)。
+
 ## 2026-11-13 新增规划
 
 [密集复核工作区重设计](changes/redesign-dense-review-workspace/tasks.md) 已生成提案、设计、五份规格及验收协议，共 **15 组、91 项任务，0 项实施完成**。本次只完善方案，原密集复核和 Inspector 验收状态保持各自原记录。详见 [CUSTOM-121](../docs/custom_changes/2026-11-13-dense-review-redesign.md)。
