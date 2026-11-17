@@ -1,0 +1,77 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 10 items
+
+tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable FAILED [ 10%]
+tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[False] PASSED [ 20%]
+tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True] PASSED [ 30%]
+tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input PASSED [ 40%]
+tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed PASSED [ 50%]
+tests/test_dense_review/test_redesign_interactions.py::test_ambiguous_observation_owner_preserves_saved_group PASSED [ 60%]
+tests/test_dense_review/test_redesign_interactions.py::test_retry_excludes_known_failure_until_current_success PASSED [ 70%]
+tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen PASSED [ 80%]
+tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results PASSED [ 90%]
+tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild PASSED [100%]
+
+================================== FAILURES ===================================
+____ test_handoff_keeps_cross_batch_objects_and_associated_point_reachable ____
+
+app = <PyQt6.QtWidgets.QApplication object at 0x000001DEF61E62B0>
+open_window = <function open_window.<locals>._open at 0x000001DEF61E5F80>
+
+    def test_handoff_keeps_cross_batch_objects_and_associated_point_reachable(app, open_window):
+        from dataclasses import replace
+        from anylabeling.services.inspection.handoff import HandoffRequest
+        from .test_workspace_dock_tasks import _rectangle, _point, _open_review
+        window, path = open_window([
+            _rectangle("person", "rect1", 40, 40, group_id=0),
+            _rectangle("vehicle", "rect2", 300, 40, group_id=1),
+            _point("nose", "kp1", 80, 80, group_id=0),
+        ], batches=(("person", ("person",)), ("vehicle", ("vehicle",))),
+           rules=(("person", "visible", ""), ("vehicle", "visible", "")))
+        widget, ws = _open_review(app, window, path)
+        request = HandoffRequest("issue", "family", widget.inspection_dataset_root(),
+                                 widget.inspection_output_dir(), widget.inspection_current_relative_path(),
+                                 object_ids=("rect1", "rect2"))
+>       assert widget.inspection_handoff_to_dense_review(request)[0]
+E       assert False
+
+tests\test_dense_review\test_redesign_interactions.py:24: AssertionError
+============================ slowest 30 durations =============================
+3.44s call     tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results
+3.21s call     tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild
+3.07s call     tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen
+3.05s call     tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed
+2.85s call     tests/test_dense_review/test_redesign_interactions.py::test_retry_excludes_known_failure_until_current_success
+2.79s call     tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True]
+2.79s call     tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[False]
+2.79s call     tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input
+2.77s call     tests/test_dense_review/test_redesign_interactions.py::test_ambiguous_observation_owner_preserves_saved_group
+2.77s call     tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable
+0.46s teardown tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild
+0.45s teardown tests/test_dense_review/test_redesign_interactions.py::test_ambiguous_observation_owner_preserves_saved_group
+0.41s teardown tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable
+0.40s teardown tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[False]
+0.40s teardown tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed
+0.40s teardown tests/test_dense_review/test_redesign_interactions.py::test_retry_excludes_known_failure_until_current_success
+0.36s teardown tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True]
+0.36s teardown tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input
+0.30s teardown tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results
+0.29s teardown tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen
+0.01s setup    tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True]
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[False]
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_ambiguous_observation_owner_preserves_saved_group
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_retry_excludes_known_failure_until_current_success
+=========================== short test summary info ===========================
+FAILED tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable - assert False
+======================== 1 failed, 9 passed in 34.44s =========================

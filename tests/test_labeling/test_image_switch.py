@@ -61,7 +61,7 @@ def window(tmp_path, monkeypatch):
             str(tmp_path / "settings.ini"), settings_class.Format.IniFormat
         ),
     )
-    window = MainWindow(app, config=copy.deepcopy(load_template_config()))
+    window = MainWindow(app, config=app_config.get_config(str(config_file)))
     window.resize(1600, 1000)
     window.show()
     app.processEvents()

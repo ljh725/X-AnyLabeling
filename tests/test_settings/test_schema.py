@@ -30,14 +30,14 @@ class TestSettingsSchema(unittest.TestCase):
         # workflow entry, and ``correction_metrics_enabled`` (a General field,
         # default off) with the statistics workflow gate. The canvas group also includes wheel navigation mode.
         # Inspector also has configurable previous/next issue shortcuts.
-        self.assertEqual(len(SETTING_FIELDS), 152)
+        self.assertEqual(len(SETTING_FIELDS), 157)
 
     def test_shortcut_and_non_shortcut_count(self):
         shortcut_fields = [
             field for field in SETTING_FIELDS if field.primary == "Shortcuts"
         ]
         self.assertEqual(len(shortcut_fields), 94)
-        self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 58)
+        self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 63)
 
     def test_defaults_cover_all_keys(self):
         defaults = defaults_map()

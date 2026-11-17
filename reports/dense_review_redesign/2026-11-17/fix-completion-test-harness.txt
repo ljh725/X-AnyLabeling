@@ -1,0 +1,129 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 146 items / 126 deselected / 20 selected
+
+tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[False-False] PASSED [  5%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[False-True] PASSED [ 10%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[True-False] PASSED [ 15%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[True-True] PASSED [ 20%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-False] PASSED [ 25%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-True] PASSED [ 30%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-False] PASSED [ 35%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-True] PASSED [ 40%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-False] PASSED [ 45%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-True] PASSED [ 50%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-False] PASSED [ 55%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-True] PASSED [ 60%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_fit_commit_marks_host_dirty_once[False] PASSED [ 65%]
+tests/test_canvas/test_rectangle_preview_overlap.py::test_fit_commit_marks_host_dirty_once[True] PASSED [ 70%]
+tests/test_canvas/test_rectangle_size.py::test_action_switch_updates_canvas_and_config PASSED [ 75%]
+tests/test_labeling/test_label_locks.py::TestLabelLocks::test_category_checkbox_controls_all_matching_shapes PASSED [ 80%]
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-edge] PASSED [ 85%]
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit] FAILED [ 90%]
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-edge] PASSED [ 95%]
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-fit] FAILED [100%]
+
+================================== FAILURES ===================================
+______________ test_pending_mode_finishes_real_edit[commit-fit] _______________
+
+window = <anylabeling.views.mainwindow.MainWindow object at 0x000001DE6E048FF0>
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/fix-tests-completion-test-harness/test_pending_mode_finishes_rea1')
+gesture = 'fit', cancel = False
+
+    @pytest.mark.parametrize("gesture", ["edge", "fit"])
+    @pytest.mark.parametrize("cancel", [False, True], ids=["commit", "cancel"])
+    def test_pending_mode_finishes_real_edit(window, tmp_path, gesture, cancel):
+        w = open_rectangles(window, tmp_path)
+        canvas = w.canvas
+        before = canvas.shapes[0].to_dict()
+        if gesture == "edge":
+            canvas.set_rectangle_edge_enabled(True)
+            modifiers = Qt.KeyboardModifier.NoModifier
+            start, end = (100, 150), (90, 150)
+            mouse(canvas, QtCore.QEvent.Type.MouseMove, start)
+        else:
+            modifiers = Qt.KeyboardModifier.ShiftModifier
+            start, end = (210, 90), (220, 80)
+            # A real pointer reaches the candidate before its press; Shift fit
+            # captures the opposite corner from that hover position.
+            mouse(canvas, QtCore.QEvent.Type.MouseMove, start, modifiers)
+        mouse(canvas, QtCore.QEvent.Type.MouseButtonPress, start, modifiers)
+>       assert canvas.interaction_in_progress()
+E       assert False
+E        +  where False = interaction_in_progress()
+E        +    where interaction_in_progress = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x000001DE6FA73B10>.interaction_in_progress
+
+tests\test_labeling\test_canvas_controls_integration.py:92: AssertionError
+______________ test_pending_mode_finishes_real_edit[cancel-fit] _______________
+
+window = <anylabeling.views.mainwindow.MainWindow object at 0x000001DE6FA853B0>
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/fix-tests-completion-test-harness/test_pending_mode_finishes_rea3')
+gesture = 'fit', cancel = True
+
+    @pytest.mark.parametrize("gesture", ["edge", "fit"])
+    @pytest.mark.parametrize("cancel", [False, True], ids=["commit", "cancel"])
+    def test_pending_mode_finishes_real_edit(window, tmp_path, gesture, cancel):
+        w = open_rectangles(window, tmp_path)
+        canvas = w.canvas
+        before = canvas.shapes[0].to_dict()
+        if gesture == "edge":
+            canvas.set_rectangle_edge_enabled(True)
+            modifiers = Qt.KeyboardModifier.NoModifier
+            start, end = (100, 150), (90, 150)
+            mouse(canvas, QtCore.QEvent.Type.MouseMove, start)
+        else:
+            modifiers = Qt.KeyboardModifier.ShiftModifier
+            start, end = (210, 90), (220, 80)
+            # A real pointer reaches the candidate before its press; Shift fit
+            # captures the opposite corner from that hover position.
+            mouse(canvas, QtCore.QEvent.Type.MouseMove, start, modifiers)
+        mouse(canvas, QtCore.QEvent.Type.MouseButtonPress, start, modifiers)
+>       assert canvas.interaction_in_progress()
+E       assert False
+E        +  where False = interaction_in_progress()
+E        +    where interaction_in_progress = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x000001DE6DF89770>.interaction_in_progress
+
+tests\test_labeling\test_canvas_controls_integration.py:92: AssertionError
+============================ slowest 30 durations =============================
+2.77s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-edge]
+2.71s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-fit]
+2.61s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-edge]
+2.53s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit]
+0.04s call     tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-edge]
+0.03s call     tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-edge]
+0.03s call     tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-fit]
+0.03s call     tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit]
+0.02s teardown tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit]
+0.02s teardown tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-edge]
+0.02s teardown tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-fit]
+0.02s teardown tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-edge]
+0.02s call     tests/test_labeling/test_label_locks.py::TestLabelLocks::test_category_checkbox_controls_all_matching_shapes
+0.01s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[False-False]
+0.01s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-False]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[False-False]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-True]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-True]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-True]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-True]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_fit_commit_marks_host_dirty_once[True]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_fit_commit_marks_host_dirty_once[False]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-False]
+0.00s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-True]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-False]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-False]
+0.00s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-True]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[False-True]
+0.00s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[False-True]
+0.00s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_preview_cancel_preserves_host_dirty[True-False]
+=========================== short test summary info ===========================
+FAILED tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit] - assert False
+ +  where False = interaction_in_progress()
+ +    where interaction_in_progress = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x000001DE6FA73B10>.interaction_in_progress
+FAILED tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-fit] - assert False
+ +  where False = interaction_in_progress()
+ +    where interaction_in_progress = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x000001DE6DF89770>.interaction_in_progress
+================ 2 failed, 18 passed, 126 deselected in 14.24s ================

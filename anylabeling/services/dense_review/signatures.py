@@ -44,6 +44,12 @@ def shape_bounds(shape: Any) -> Optional[tuple[float, float, float, float]]:
     points = shape_points(shape)
     if not points:
         return None
+    if not all(math.isfinite(value) for point in points for value in point):
+        return None
+    if str(getattr(shape, "shape_type", "")) == "point" and len(points) == 1:
+        x, y = points[0]
+        if math.isfinite(x) and math.isfinite(y):
+            return (x, y, x, y)
     xs = [point[0] for point in points]
     ys = [point[1] for point in points]
     return normalize_bounds((min(xs), min(ys), max(xs), max(ys)))
@@ -51,7 +57,10 @@ def shape_bounds(shape: Any) -> Optional[tuple[float, float, float, float]]:
 
 def _canonical_points(shape: Any) -> list[tuple[str, str]]:
     points = [
-        (_number_text(x_value), _number_text(y_value))
+        tuple(
+            _number_text(value) if math.isfinite(value) else f"invalid:{value}"
+            for value in (x_value, y_value)
+        )
         for x_value, y_value in shape_points(shape)
     ]
     if len(points) > 1 and points[0] == points[-1]:

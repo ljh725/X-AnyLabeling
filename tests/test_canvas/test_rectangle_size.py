@@ -484,6 +484,7 @@ def test_action_switch_updates_canvas_and_config():
 
     host = SimpleNamespace(
         _config={},
+        update_user_preference=Mock(side_effect=lambda key, value: host._config.__setitem__(key, value) or True),
         canvas=SimpleNamespace(
             show_rectangle_pixels=False, update=Mock()
         ),

@@ -3224,6 +3224,150 @@ Review the prompt before generating.</source>
         <source>还有 {count} 个查漏区域未完成</source>
         <translation>还有 {count} 个查漏区域未完成</translation>
     </message>
+    <message>
+        <source>主体观察</source>
+        <translation>主体观察</translation>
+    </message>
+    <message>
+        <source>也可在主画布按 Ctrl+Alt 并单击</source>
+        <translation>也可在主画布按 Ctrl+Alt 并单击</translation>
+    </message>
+    <message>
+        <source>关联待确认：选择观察主框不修改正式分组</source>
+        <translation>关联待确认：选择观察主框不修改正式分组</translation>
+    </message>
+    <message>
+        <source>关联点 {n} · 点审核待支持</source>
+        <translation>关联点 {n} · 点审核待支持</translation>
+    </message>
+    <message>
+        <source>关联点与未关联对象</source>
+        <translation>关联点与未关联对象</translation>
+    </message>
+    <message>
+        <source>关联点超出人物范围</source>
+        <translation>关联点超出人物范围</translation>
+    </message>
+    <message>
+        <source>关联线</source>
+        <translation>关联线</translation>
+    </message>
+    <message>
+        <source>关联观察主框</source>
+        <translation>关联观察主框</translation>
+    </message>
+    <message>
+        <source>其他对象</source>
+        <translation>其他对象</translation>
+    </message>
+    <message>
+        <source>受面板宽度限制，可拉宽或浮动面板</source>
+        <translation>受面板宽度限制，可拉宽或浮动面板</translation>
+    </message>
+    <message>
+        <source>在主画布查看</source>
+        <translation>在主画布查看</translation>
+    </message>
+    <message>
+        <source>填充</source>
+        <translation>填充</translation>
+    </message>
+    <message>
+        <source>复核偏好保存失败：{error}</source>
+        <translation>复核偏好保存失败：{error}</translation>
+    </message>
+    <message>
+        <source>属性</source>
+        <translation>属性</translation>
+    </message>
+    <message>
+        <source>当前对象</source>
+        <translation>当前对象</translation>
+    </message>
+    <message>
+        <source>文字底板</source>
+        <translation>文字底板</translation>
+    </message>
+    <message>
+        <source>本批对象</source>
+        <translation>本批对象</translation>
+    </message>
+    <message>
+        <source>查看全部关联点</source>
+        <translation>查看全部关联点</translation>
+    </message>
+    <message>
+        <source>点标记</source>
+        <translation>点标记</translation>
+    </message>
+    <message>
+        <source>类别文字</source>
+        <translation>类别文字</translation>
+    </message>
+    <message>
+        <source>编辑手柄</source>
+        <translation>编辑手柄</translation>
+    </message>
+    <message>
+        <source>轮廓</source>
+        <translation>轮廓</translation>
+    </message>
+    <message>
+        <source>选择对象以定位</source>
+        <translation>选择对象以定位</translation>
+    </message>
+    <message>
+        <source>选择重叠对象</source>
+        <translation>选择重叠对象</translation>
+    </message>
+    <message>
+        <source>遮罩</source>
+        <translation>遮罩</translation>
+    </message>
+    <message>
+        <source>重试图块</source>
+        <translation>重试图块</translation>
+    </message>
+    <message>
+        <source>对象坐标无效</source>
+        <translation>对象坐标无效</translation>
+    </message>
+    <message>
+        <source> · 策略收起 {n}</source>
+        <translation> · 策略收起 {n}</translation>
+    </message>
+    <message>
+        <source>确认范围</source>
+        <translation>确认范围</translation>
+    </message>
+    <message>
+        <source>可确认</source>
+        <translation>可确认</translation>
+    </message>
+    <message>
+        <source>关联点超出图像范围</source>
+        <translation>关联点超出图像范围</translation>
+    </message>
+    <message>
+        <source>查漏时显示点</source>
+        <translation>查漏时显示点</translation>
+    </message>
+    <message>
+        <source>区域计划设置</source>
+        <translation>区域计划设置</translation>
+    </message>
+    <message>
+        <source>当前审核范围：{dimensions}</source>
+        <translation>当前审核范围：{dimensions}</translation>
+    </message>
+    <message>
+        <source> · 矩形 {boxes} · 点 {points} · 当前卡片 {cards}</source>
+        <translation> · 矩形 {boxes} · 点 {points} · 当前卡片 {cards}</translation>
+    </message>
+    <message>
+        <source>框</source>
+        <translation>框</translation>
+    </message>
 </context><context>
     <name>DescriptionEditor</name>
     <message>
@@ -8095,6 +8239,10 @@ This warning will only be shown once. Do you want to continue?</source>
         <source>Candidate association is ambiguous; recheck current objects</source>
         <translation>Candidate association is ambiguous; recheck current objects</translation>
     </message>
+    <message>
+        <source>交接对象已过期，请刷新检查结果。</source>
+        <translation>交接对象已过期，请刷新检查结果。</translation>
+    </message>
 </context><context>
     <name>Model</name>
     <message>
@@ -12075,6 +12223,26 @@ Changes will not be saved until you click Save.</source>
     </message>
 <message><source>Inspector: Previous Issue</source><translation>Inspector：上一个问题</translation></message>
 <message><source>Inspector: Next Issue</source><translation>Inspector：下一个问题</translation></message>
+    <message>
+        <source>Dense Review Task</source>
+        <translation>复核任务</translation>
+    </message>
+    <message>
+        <source>Card Image Height</source>
+        <translation>卡片图像高度</translation>
+    </message>
+    <message>
+        <source>Card Context</source>
+        <translation>卡片上下文</translation>
+    </message>
+    <message>
+        <source>Show Review Batches</source>
+        <translation>显示复核批次</translation>
+    </message>
+    <message>
+        <source>Show Review Cards</source>
+        <translation>显示复核卡片</translation>
+    </message>
 </context><context>
     <name>SettingsRuntimeApplier</name>
     <message>

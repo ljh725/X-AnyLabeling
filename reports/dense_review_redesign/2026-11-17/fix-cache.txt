@@ -1,0 +1,19 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 42 items / 40 deselected / 2 selected
+
+tests/test_dense_review/test_display_consistency.py::test_display_cache_invalidates_on_real_changes_not_hover PASSED [ 50%]
+tests/test_dense_review/test_display_consistency.py::test_view_only_changes_keep_stable_batch_confirmation_scope PASSED [100%]
+
+============================ slowest 30 durations =============================
+2.74s call     tests/test_dense_review/test_display_consistency.py::test_display_cache_invalidates_on_real_changes_not_hover
+2.62s call     tests/test_dense_review/test_display_consistency.py::test_view_only_changes_keep_stable_batch_confirmation_scope
+0.03s teardown tests/test_dense_review/test_display_consistency.py::test_display_cache_invalidates_on_real_changes_not_hover
+0.03s teardown tests/test_dense_review/test_display_consistency.py::test_view_only_changes_keep_stable_batch_confirmation_scope
+0.02s setup    tests/test_dense_review/test_display_consistency.py::test_display_cache_invalidates_on_real_changes_not_hover
+0.00s setup    tests/test_dense_review/test_display_consistency.py::test_view_only_changes_keep_stable_batch_confirmation_scope
+====================== 2 passed, 40 deselected in 5.93s =======================

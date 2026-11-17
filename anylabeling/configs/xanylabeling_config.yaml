@@ -146,6 +146,17 @@ canvas:
   mask:
     opacity: 80  # transparency value (0-255), 0 is fully transparent, 255 is fully opaque
 
+dense_review:
+  task: category
+  image_height: 320
+  context: 35
+  batches_visible: true
+  cards_visible: true
+  task_display:
+    category: {mode: focus, show_points: false, styles: null}
+    box-points: {mode: focus, show_points: false, styles: null}
+    coverage: {mode: all, show_points: false, styles: null}
+
 shortcuts:
   close: Ctrl+W
   open: Ctrl+I

@@ -1,0 +1,81 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 40 items
+
+tests/test_dense_review/test_workspace_review_fixes.py::test_hide_dock_removes_review_overlay PASSED [  2%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_hide_then_show_restores_the_review_overlay PASSED [  5%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_background_refresh_keeps_coverage_viewport PASSED [  7%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_explicit_region_navigation_still_moves_the_canvas PASSED [ 10%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_reapplies_coverage_preset PASSED [ 12%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False] PASSED [ 15%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[True] PASSED [ 17%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_text_switch PASSED [ 20%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_label_switch PASSED [ 22%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_hides_associated_keypoint_symbols PASSED [ 25%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_category_does_not_promote_associated_points PASSED [ 27%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_box_points_promotes_associated_points PASSED [ 30%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_zoom_control_and_canvas_size PASSED [ 32%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_fit_width_mode PASSED [ 35%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_has_no_rendered_pixels PASSED [ 37%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_is_not_hittable PASSED [ 40%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_keeps_latest_current_object PASSED [ 42%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_float_keeps_original_display_mode PASSED [ 45%]
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_keypoints_remain_observable_and_editable PASSED [ 47%]
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_group_zero_associates_points_with_its_only_rectangle PASSED [ 50%]
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_ambiguous_group_does_not_guess_an_owner PASSED [ 52%]
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_ungrouped_point_is_not_associated PASSED [ 55%]
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_batch_confirmation_never_confirms_keypoints PASSED [ 57%]
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_keypoint_can_still_be_edited_through_existing_commands PASSED [ 60%]
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_defaults_to_320 PASSED [ 62%]
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_adjustable[160] PASSED [ 65%]
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_adjustable[480] PASSED [ 67%]
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_adjustable[640] PASSED [ 70%]
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_clamped PASSED [ 72%]
+tests/test_dense_review/test_card_geometry.py::test_widening_changes_columns_but_keeps_height PASSED [ 75%]
+tests/test_dense_review/test_card_geometry.py::test_context_change_keeps_the_selected_height PASSED [ 77%]
+tests/test_dense_review/test_card_geometry.py::test_thumbnail_target_follows_size_and_dpr PASSED [ 80%]
+tests/test_dense_review/test_card_geometry.py::test_height_change_invalidates_cached_crops PASSED [ 82%]
+tests/test_dense_review/test_thumbnails.py::test_crop_thumbnail_clamps_to_image_edges PASSED [ 85%]
+tests/test_dense_review/test_thumbnails.py::test_crop_thumbnail_rejects_outside_bounds PASSED [ 87%]
+tests/test_dense_review/test_thumbnails.py::test_crop_thumbnail_requires_source PASSED [ 90%]
+tests/test_dense_review/test_thumbnails.py::test_cache_is_keyed_by_bounds_and_source_version PASSED [ 92%]
+tests/test_dense_review/test_thumbnails.py::test_stale_same_id_result_is_ignored PASSED [ 95%]
+tests/test_dense_review/test_thumbnails.py::test_drain_defers_finished_cards_while_interacting PASSED [ 97%]
+tests/test_dense_review/test_thumbnails.py::test_crop_yielding_waits_until_interaction_ends PASSED [100%]
+
+============================ slowest 30 durations =============================
+3.29s call     tests/test_dense_review/test_card_geometry.py::test_widening_changes_columns_but_keeps_height
+3.11s call     tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_adjustable[160]
+3.02s call     tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_reapplies_coverage_preset
+3.01s call     tests/test_dense_review/test_workspace_mixed_shapes.py::test_keypoint_can_still_be_edited_through_existing_commands
+2.98s call     tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_text_switch
+2.98s call     tests/test_dense_review/test_workspace_review_fixes.py::test_hide_then_show_restores_the_review_overlay
+2.97s call     tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_adjustable[640]
+2.96s call     tests/test_dense_review/test_workspace_mixed_shapes.py::test_batch_confirmation_never_confirms_keypoints
+2.95s call     tests/test_dense_review/test_card_geometry.py::test_card_image_height_defaults_to_320
+2.92s call     tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_clamped
+2.86s call     tests/test_dense_review/test_workspace_review_fixes.py::test_float_keeps_original_display_mode
+2.84s call     tests/test_dense_review/test_card_geometry.py::test_thumbnail_target_follows_size_and_dpr
+2.83s call     tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_adjustable[480]
+2.81s call     tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_zoom_control_and_canvas_size
+2.79s call     tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False]
+2.79s call     tests/test_dense_review/test_card_geometry.py::test_height_change_invalidates_cached_crops
+2.78s call     tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_is_not_hittable
+2.77s call     tests/test_dense_review/test_workspace_review_fixes.py::test_box_points_promotes_associated_points
+2.77s call     tests/test_dense_review/test_workspace_review_fixes.py::test_hide_dock_removes_review_overlay
+2.76s call     tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_keeps_latest_current_object
+2.76s call     tests/test_dense_review/test_workspace_mixed_shapes.py::test_group_zero_associates_points_with_its_only_rectangle
+2.75s call     tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_has_no_rendered_pixels
+2.74s call     tests/test_dense_review/test_workspace_review_fixes.py::test_category_does_not_promote_associated_points
+2.73s call     tests/test_dense_review/test_workspace_review_fixes.py::test_background_refresh_keeps_coverage_viewport
+2.72s call     tests/test_dense_review/test_card_geometry.py::test_context_change_keeps_the_selected_height
+2.68s call     tests/test_dense_review/test_workspace_mixed_shapes.py::test_ungrouped_point_is_not_associated
+2.67s call     tests/test_dense_review/test_workspace_mixed_shapes.py::test_keypoints_remain_observable_and_editable
+2.67s call     tests/test_dense_review/test_workspace_review_fixes.py::test_explicit_region_navigation_still_moves_the_canvas
+2.66s call     tests/test_dense_review/test_workspace_mixed_shapes.py::test_ambiguous_group_does_not_guess_an_owner
+2.65s call     tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_hides_associated_keypoint_symbols
+======================= 40 passed in 101.18s (0:01:41) ========================

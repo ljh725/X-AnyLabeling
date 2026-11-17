@@ -1,0 +1,19 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 2 items
+
+tests/test_labeling/test_candidate_review_regressions.py::test_right_drag_copy_can_save[False] PASSED [ 50%]
+tests/test_labeling/test_candidate_review_regressions.py::test_right_drag_copy_can_save[True] PASSED [100%]
+
+============================ slowest 30 durations =============================
+3.75s setup    tests/test_labeling/test_candidate_review_regressions.py::test_right_drag_copy_can_save[True]
+3.26s setup    tests/test_labeling/test_candidate_review_regressions.py::test_right_drag_copy_can_save[False]
+0.07s call     tests/test_labeling/test_candidate_review_regressions.py::test_right_drag_copy_can_save[True]
+0.05s call     tests/test_labeling/test_candidate_review_regressions.py::test_right_drag_copy_can_save[False]
+0.02s teardown tests/test_labeling/test_candidate_review_regressions.py::test_right_drag_copy_can_save[True]
+0.02s teardown tests/test_labeling/test_candidate_review_regressions.py::test_right_drag_copy_can_save[False]
+============================== 2 passed in 9.49s ==============================

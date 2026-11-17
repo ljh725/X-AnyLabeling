@@ -1,0 +1,71 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 26 items
+
+tests/test_dense_review/test_coverage_grid.py::test_content_rect_keeps_image_aspect_ratio PASSED [  3%]
+tests/test_dense_review/test_coverage_grid.py::test_cell_rects_follow_region_geometry PASSED [  7%]
+tests/test_dense_review/test_coverage_grid.py::test_state_colors_use_theme_tokens PASSED [ 11%]
+tests/test_dense_review/test_coverage_grid.py::test_current_region_gets_accent_border PASSED [ 15%]
+tests/test_dense_review/test_coverage_grid.py::test_click_emits_region_id PASSED [ 19%]
+tests/test_dense_review/test_coverage_grid.py::test_overlapping_regions_pick_last_drawn PASSED [ 23%]
+tests/test_dense_review/test_coverage_grid.py::test_empty_plan_renders_hint_without_error PASSED [ 26%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_dense_review_strings_are_translated_for_chinese
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_dense_review_strings_are_translated_for_chinese PASSED [ 30%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_en_us_keeps_source_text PASSED [ 34%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_every_language_loads
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_every_language_loads PASSED [ 38%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_literal_messages_in_all_runtime_contexts_and_resources
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_literal_messages_in_all_runtime_contexts_and_resources PASSED [ 42%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_new_strings_are_finished_in_chinese PASSED [ 46%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_redo_strings_are_translated
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_redo_strings_are_translated PASSED [ 50%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_runtime_states_and_rules_are_localized PASSED [ 53%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_workspace_messages_are_finished_in_chinese PASSED [ 57%]
+tests/test_dense_review/test_display_consistency.py::test_temporary_show_lifts_visibility_not_eligibility PASSED [ 61%]
+tests/test_dense_review/test_workspace.py::test_changed_bounds_request_fresh_card PASSED [ 65%]
+tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[False] PASSED [ 69%]
+tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True] PASSED [ 73%]
+tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input PASSED [ 76%]
+tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed PASSED [ 80%]
+tests/test_dense_review/test_redesign_interactions.py::test_ambiguous_observation_owner_preserves_saved_group PASSED [ 84%]
+tests/test_dense_review/test_redesign_interactions.py::test_retry_excludes_known_failure_until_current_success PASSED [ 88%]
+tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen PASSED [ 92%]
+tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results PASSED [ 96%]
+tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild PASSED [100%]
+
+============================ slowest 30 durations =============================
+3.08s call     tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen
+2.95s call     tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results
+2.92s call     tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True]
+2.83s call     tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[False]
+2.83s call     tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed
+2.83s call     tests/test_dense_review/test_display_consistency.py::test_temporary_show_lifts_visibility_not_eligibility
+2.80s call     tests/test_dense_review/test_redesign_interactions.py::test_retry_excludes_known_failure_until_current_success
+2.79s call     tests/test_dense_review/test_redesign_interactions.py::test_ambiguous_observation_owner_preserves_saved_group
+2.77s call     tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild
+2.73s call     tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input
+2.58s setup    tests/test_dense_review/test_workspace.py::test_changed_bounds_request_fresh_card
+0.73s teardown tests/test_dense_review/test_display_consistency.py::test_temporary_show_lifts_visibility_not_eligibility
+0.52s teardown tests/test_dense_review/test_workspace.py::test_changed_bounds_request_fresh_card
+0.48s teardown tests/test_dense_review/test_redesign_interactions.py::test_ambiguous_observation_owner_preserves_saved_group
+0.44s teardown tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed
+0.41s teardown tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input
+0.41s teardown tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[False]
+0.39s teardown tests/test_dense_review/test_redesign_interactions.py::test_retry_excludes_known_failure_until_current_success
+0.39s teardown tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True]
+0.38s teardown tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild
+0.37s call     tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_literal_messages_in_all_runtime_contexts_and_resources
+0.32s teardown tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results
+0.30s teardown tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen
+0.12s call     tests/test_dense_review/test_workspace.py::test_changed_bounds_request_fresh_card
+0.05s call     tests/test_dense_review/test_coverage_grid.py::test_state_colors_use_theme_tokens
+0.04s call     tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_new_strings_are_finished_in_chinese
+0.04s call     tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_workspace_messages_are_finished_in_chinese
+0.02s setup    tests/test_dense_review/test_display_consistency.py::test_temporary_show_lifts_visibility_not_eligibility
+0.01s setup    tests/test_dense_review/test_coverage_grid.py::test_content_rect_keeps_image_aspect_ratio
+0.01s call     tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_redo_strings_are_translated
+================== 26 passed, 842 subtests passed in 37.18s ===================

@@ -50,7 +50,7 @@ def view(
     image = QtGui.QImage(200, 200, QtGui.QImage.Format.Format_RGB32)
     image.fill(QtCore.Qt.GlobalColor.white)
     assert image.save(str(tmp_path / "drag.png"))
-    settings = copy.deepcopy(load_template_config())
+    settings = config.get_config(str(tmp_path / "config.yaml"))
     settings["auto_save"] = False
     window = MainWindow(app, config=settings)
     window.show()

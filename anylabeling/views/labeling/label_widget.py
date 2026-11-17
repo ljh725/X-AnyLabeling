@@ -4956,6 +4956,18 @@ class LabelingWidget(LabelDialog):
             batch_id = session.state.current_batch
             batch_ids = set(session.state.member_ids(batch_id))
             associated = set(session.associated_ids(current_id))
+            workspace = self.dense_review_workspace
+            if (
+                current is not None
+                and workspace is not None
+                and hasattr(workspace, "_card_parent")
+            ):
+                parent = workspace._card_parent(current)
+                associated.update(
+                    point.shape_id for point in workspace._card_points(parent)
+                )
+                if parent is not current:
+                    associated.add(parent.shape_id)
         return DisplayContext(
             batch_ids=frozenset(batch_ids),
             current_id=current_id,
@@ -4968,8 +4980,17 @@ class LabelingWidget(LabelDialog):
             filtered=frozenset(filtered),
             unsupported=frozenset(self._dense_review_unsupported_ids(session)),
             temporary_ids=frozenset(self._active_temporary_ids()),
-            hovering_id=self._dense_review_hover_id,
+            hovering_id="",
             task_id=self.dense_review_task_id(),
+            hide_task_points=not (
+                self.dense_review_workspace is not None
+                and getattr(
+                    self.dense_review_workspace,
+                    "coverage_points_checkbox",
+                    None,
+                )
+                and self.dense_review_workspace.coverage_points_checkbox.isChecked()
+            ),
         )
 
     def dense_review_task_id(self) -> str:
@@ -5042,17 +5063,41 @@ class LabelingWidget(LabelDialog):
             return
         session = self.dense_review_session
         if session is None or not self.dense_review_active():
+            self._dense_review_display_key = None
             self._dense_review_displays = {}
             canvas.clear_dense_review_display()
             return
         context = self.dense_review_display_context(session)
+        shapes = self.dense_review_shapes()
+        key = (
+            context,
+            tuple(
+                (
+                    id(shape),
+                    shape.xanylabeling_shape_id,
+                    shape.label,
+                    shape.shape_type,
+                    shape.locked,
+                )
+                for shape in shapes
+            ),
+        )
+        if not force and key == getattr(
+            self, "_dense_review_display_key", None
+        ):
+            return
+        self._dense_review_display_key = key
         displays = resolve_all(
-            self.dense_review_shapes(),
+            shapes,
             context,
             shape_id_of=lambda shape: shape.xanylabeling_shape_id,
             label_of=lambda shape: shape.label,
         )
         self._dense_review_displays = displays
+        canvas._dense_review_object_numbers = {
+            shape_id: item.display_index
+            for shape_id, item in session.state.objects.items()
+        }
         self._dense_review_revision += 1
         # The resolver's own ``original_only`` input is the single source of
         # truth for "only the source image is shown", so the canvas can pause
@@ -5134,7 +5179,9 @@ class LabelingWidget(LabelDialog):
         if shape_id == self._dense_review_hover_id:
             return
         self._dense_review_hover_id = shape_id
-        self.refresh_dense_review_display()
+        # Hover is a paint hint, not a session/role change. Never rebuild the
+        # full object table for mouse movement.
+        self.canvas.update()
 
     def _dense_review_cancel_pending_edit(self):
         if self.canvas.current is not None:
@@ -5157,7 +5204,7 @@ class LabelingWidget(LabelDialog):
         # (DP-01, DP-03).
         rect = shape.bounding_rect()
         if rect.width() <= 0 and rect.height() <= 0:
-            return
+            rect = QtCore.QRectF(rect.x() - 24, rect.y() - 24, 48, 48)
         bounds = (
             rect.x(),
             rect.y(),
@@ -5529,7 +5576,7 @@ class LabelingWidget(LabelDialog):
         value = self._config.get("shortcuts", {}).get(key, default)
         if isinstance(value, (list, tuple)):
             value = value[0] if value else default
-        return value or default
+        return value
 
     def existing_shortcut_sequences(self):
         sequences = set()
@@ -5710,6 +5757,11 @@ class LabelingWidget(LabelDialog):
         )
         if reason:
             return False, reason
+        if any(
+            object_id not in self.dense_review_shape_ids()
+            for object_id in request.object_ids
+        ):
+            return False, self.tr("交接对象已过期，请刷新检查结果。")
         try:
             self.open_dense_review()
         except (ImportError, OSError, RuntimeError) as error:
@@ -5725,7 +5777,13 @@ class LabelingWidget(LabelDialog):
             if object_id in self.dense_review_shape_ids()
         ]
         if object_ids:
-            self.dense_review_focus_object(object_ids[0])
+            workspace._handoff_object_ids = tuple(object_ids)
+            workspace._on_canvas_review_selection(
+                [self._dense_review_find_shape(object_ids[0])]
+            )
+            workspace._navigate_to(
+                workspace._current_batch_id(), object_ids[0]
+            )
         elif request.region:
             self.inspection_focus_region(request.region)
             workspace._status(

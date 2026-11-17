@@ -1,0 +1,687 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 295 items
+
+tests/test_dense_review/test_canvas_display_overlay.py::test_overlay_is_inactive_by_default PASSED [  0%]
+tests/test_dense_review/test_canvas_display_overlay.py::test_installed_overlay_gates_paint_and_hit_together PASSED [  0%]
+tests/test_dense_review/test_canvas_display_overlay.py::test_handles_follow_role_while_formal_points_stay PASSED [  1%]
+tests/test_dense_review/test_canvas_display_overlay.py::test_zero_strength_role_paints_nothing PASSED [  1%]
+tests/test_dense_review/test_canvas_display_overlay.py::test_clearing_the_overlay_restores_normal_mode PASSED [  1%]
+tests/test_dense_review/test_canvas_display_overlay.py::test_unknown_shape_stays_interactive_until_resync PASSED [  2%]
+tests/test_dense_review/test_canvas_display_overlay.py::test_painting_with_a_display_style_does_not_raise PASSED [  2%]
+tests/test_dense_review/test_canvas_display_overlay.py::test_other_role_style_paints_no_fill PASSED [  2%]
+tests/test_dense_review/test_canvas_display_overlay.py::test_paint_event_applies_the_table PASSED [  3%]
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_defaults_to_320 PASSED [  3%]
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_adjustable[160] PASSED [  3%]
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_adjustable[480] PASSED [  4%]
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_adjustable[640] PASSED [  4%]
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_clamped PASSED [  4%]
+tests/test_dense_review/test_card_geometry.py::test_widening_changes_columns_but_keeps_height PASSED [  5%]
+tests/test_dense_review/test_card_geometry.py::test_context_change_keeps_the_selected_height PASSED [  5%]
+tests/test_dense_review/test_card_geometry.py::test_thumbnail_target_follows_size_and_dpr PASSED [  5%]
+tests/test_dense_review/test_card_geometry.py::test_height_change_invalidates_cached_crops PASSED [  6%]
+tests/test_dense_review/test_config_dialog.py::test_config_dialog_round_trip_and_validation PASSED [  6%]
+tests/test_dense_review/test_config_dialog.py::test_config_dialog_coverage_settings PASSED [  6%]
+tests/test_dense_review/test_coverage_grid.py::test_content_rect_keeps_image_aspect_ratio PASSED [  7%]
+tests/test_dense_review/test_coverage_grid.py::test_cell_rects_follow_region_geometry PASSED [  7%]
+tests/test_dense_review/test_coverage_grid.py::test_state_colors_use_theme_tokens FAILED [  7%]
+tests/test_dense_review/test_coverage_grid.py::test_current_region_gets_accent_border PASSED [  8%]
+tests/test_dense_review/test_coverage_grid.py::test_click_emits_region_id PASSED [  8%]
+tests/test_dense_review/test_coverage_grid.py::test_overlapping_regions_pick_last_drawn PASSED [  8%]
+tests/test_dense_review/test_coverage_grid.py::test_empty_plan_renders_hint_without_error PASSED [  9%]
+tests/test_dense_review/test_coverage_plan.py::test_plan_covers_whole_image_and_has_overlap PASSED [  9%]
+tests/test_dense_review/test_coverage_plan.py::test_complete_region_records_baseline PASSED [  9%]
+tests/test_dense_review/test_coverage_plan.py::test_move_invalidates_old_and_new_regions_only PASSED [ 10%]
+tests/test_dense_review/test_coverage_plan.py::test_delete_without_old_bounds_withdraws_everything PASSED [ 10%]
+tests/test_dense_review/test_coverage_plan.py::test_region_difficult_and_skipped_are_not_completed PASSED [ 10%]
+tests/test_dense_review/test_coverage_plan.py::test_different_grid_settings_produce_different_plan_identity PASSED [ 11%]
+tests/test_dense_review/test_delay_injection.py::test_fast_image_switch_drops_late_card_result PASSED [ 11%]
+tests/test_dense_review/test_delay_injection.py::test_fast_output_directory_switch_drops_late_result PASSED [ 11%]
+tests/test_dense_review/test_delay_injection.py::test_late_old_bounds_result_is_dropped PASSED [ 12%]
+tests/test_dense_review/test_delay_injection.py::test_late_failure_does_not_mark_new_card_failed PASSED [ 12%]
+tests/test_dense_review/test_delay_injection.py::test_stale_scan_backfill_is_dropped_after_switch PASSED [ 12%]
+tests/test_dense_review/test_delay_injection.py::test_delayed_results_never_pollute_window_state PASSED [ 13%]
+tests/test_dense_review/test_display_consistency.py::test_global_switch_preserves_explicit_hide_and_candidate_scope[True] PASSED [ 13%]
+tests/test_dense_review/test_display_consistency.py::test_global_switch_preserves_explicit_hide_and_candidate_scope[False] PASSED [ 13%]
+tests/test_dense_review/test_display_consistency.py::test_manual_hide_excludes_paint_and_hit_but_explains_why PASSED [ 14%]
+tests/test_dense_review/test_display_consistency.py::test_temporary_show_lifts_visibility_not_eligibility FAILED [ 14%]
+tests/test_dense_review/test_display_consistency.py::test_temporary_show_ends_on_target_change PASSED [ 14%]
+tests/test_dense_review/test_display_consistency.py::test_temporary_show_does_not_survive_an_image_switch PASSED [ 15%]
+tests/test_dense_review/test_display_consistency.py::test_original_mode_hides_overlay_and_hits PASSED [ 15%]
+tests/test_dense_review/test_display_consistency.py::test_closing_review_restores_latest_user_settings PASSED [ 15%]
+tests/test_dense_review/test_display_consistency.py::test_current_object_edges_and_handles_win_over_a_keypoint PASSED [ 16%]
+tests/test_dense_review/test_display_consistency.py::test_dragging_keeps_its_start_target PASSED [ 16%]
+tests/test_dense_review/test_display_consistency.py::test_painted_order_never_changes_saved_order PASSED [ 16%]
+tests/test_dense_review/test_display_consistency.py::test_closed_workspace_keeps_regular_canvas_after_visibility_edit PASSED [ 17%]
+tests/test_dense_review/test_display_consistency.py::test_original_comparison_blocks_group_paint_and_hit PASSED [ 17%]
+tests/test_dense_review/test_display_consistency.py::test_original_comparison_disables_rotation_handles PASSED [ 17%]
+tests/test_dense_review/test_display_consistency.py::test_temporary_show_reaches_paint_and_hit PASSED [ 18%]
+tests/test_dense_review/test_display_consistency.py::test_original_comparison_wins_over_temporary_show PASSED [ 18%]
+tests/test_dense_review/test_display_consistency.py::test_focus_mode_paints_batch_members_and_associated_points PASSED [ 18%]
+tests/test_dense_review/test_display_consistency.py::test_current_object_paints_last_without_reordering_data PASSED [ 19%]
+tests/test_dense_review/test_display_consistency.py::test_single_manual_hide_is_not_a_global_shutdown PASSED [ 19%]
+tests/test_dense_review/test_display_consistency.py::test_hiding_every_object_by_hand_is_not_a_global_shutdown PASSED [ 20%]
+tests/test_dense_review/test_display_consistency.py::test_real_global_switch_beats_temporary_show PASSED [ 20%]
+tests/test_dense_review/test_display_consistency.py::test_original_mode_outranks_temporary_show_reason PASSED [ 20%]
+tests/test_dense_review/test_display_consistency.py::test_point_inside_current_rectangle_is_selectable PASSED [ 21%]
+tests/test_dense_review/test_display_consistency.py::test_group_gesture_skips_hidden_and_locked_members PASSED [ 21%]
+tests/test_dense_review/test_display_consistency.py::test_original_mode_pauses_geometry_edits PASSED [ 21%]
+tests/test_dense_review/test_display_consistency.py::test_group_move_recomputes_members_after_a_hide PASSED [ 22%]
+tests/test_dense_review/test_display_consistency.py::test_group_move_is_a_noop_when_every_member_is_hidden PASSED [ 22%]
+tests/test_dense_review/test_display_consistency.py::test_locked_visible_member_still_blocks_the_group PASSED [ 22%]
+tests/test_dense_review/test_display_consistency.py::test_group_move_respects_visibility_and_locks_after_label_press[locked-mouse] PASSED [ 23%]
+tests/test_dense_review/test_display_consistency.py::test_group_move_respects_visibility_and_locks_after_label_press[locked-keyboard] PASSED [ 23%]
+tests/test_dense_review/test_display_consistency.py::test_group_move_respects_visibility_and_locks_after_label_press[unlocked-mouse] PASSED [ 23%]
+tests/test_dense_review/test_display_consistency.py::test_group_move_respects_visibility_and_locks_after_label_press[unlocked-keyboard] PASSED [ 24%]
+tests/test_dense_review/test_display_consistency.py::test_group_move_respects_visibility_and_locks_after_label_press[all-hidden-mouse] PASSED [ 24%]
+tests/test_dense_review/test_display_consistency.py::test_group_move_respects_visibility_and_locks_after_label_press[all-hidden-keyboard] PASSED [ 24%]
+tests/test_dense_review/test_display_consistency.py::test_ordinary_group_behaviour_returns_after_closing_review PASSED [ 25%]
+tests/test_dense_review/test_display_consistency.py::test_panel_offers_temporary_show_for_a_manual_hide PASSED [ 25%]
+tests/test_dense_review/test_display_consistency.py::test_panel_offers_temporary_show_after_a_filter PASSED [ 25%]
+tests/test_dense_review/test_display_consistency.py::test_panel_hides_the_button_for_a_global_shutdown PASSED [ 26%]
+tests/test_dense_review/test_display_consistency.py::test_temporary_show_survives_original_round_trip PASSED [ 26%]
+tests/test_dense_review/test_display_consistency.py::test_temporary_reveal_paints_outline_and_label PASSED [ 26%]
+tests/test_dense_review/test_display_consistency.py::test_display_cache_invalidates_on_real_changes_not_hover PASSED [ 27%]
+tests/test_dense_review/test_display_consistency.py::test_view_only_changes_keep_stable_batch_confirmation_scope PASSED [ 27%]
+tests/test_dense_review/test_display_policy.py::test_roles_default_fill_to_zero_and_scale_by_role PASSED [ 27%]
+tests/test_dense_review/test_display_policy.py::test_role_assignment_covers_current_batch_and_other PASSED [ 28%]
+tests/test_dense_review/test_display_policy.py::test_associated_keypoint_follows_current_rectangle_only_in_its_task PASSED [ 28%]
+tests/test_dense_review/test_display_policy.py::test_global_off_and_original_only_stop_paint_and_hit PASSED [ 28%]
+tests/test_dense_review/test_display_policy.py::test_manual_hide_and_filters_exclude_but_explain PASSED [ 29%]
+tests/test_dense_review/test_display_policy.py::test_temporary_show_lifts_only_user_exclusions PASSED [ 29%]
+tests/test_dense_review/test_display_policy.py::test_zero_strength_role_removes_paint_and_hit_together PASSED [ 29%]
+tests/test_dense_review/test_display_policy.py::test_point_only_style_stays_hittable_without_handles PASSED [ 30%]
+tests/test_dense_review/test_display_policy.py::test_unsupported_shapes_stay_visible_but_outside_review_range PASSED [ 30%]
+tests/test_dense_review/test_display_policy.py::test_paint_order_is_other_batch_current PASSED [ 30%]
+tests/test_dense_review/test_display_policy.py::test_exclusion_summary_counts_reasons PASSED [ 31%]
+tests/test_dense_review/test_display_policy.py::test_role_style_normalizes_out_of_range_values PASSED [ 31%]
+tests/test_dense_review/test_display_policy.py::test_locked_object_stays_visible_and_marked PASSED [ 31%]
+tests/test_dense_review/test_display_policy.py::test_hover_does_not_change_the_current_object PASSED [ 32%]
+tests/test_dense_review/test_display_text_and_original.py::test_review_label_policy_overrides_ordinary_switch[True] PASSED [ 32%]
+tests/test_dense_review/test_display_text_and_original.py::test_review_label_policy_overrides_ordinary_switch[False] PASSED [ 32%]
+tests/test_dense_review/test_display_text_and_original.py::test_review_never_writes_back_the_ordinary_label_settings PASSED [ 33%]
+tests/test_dense_review/test_display_text_and_original.py::test_other_objects_keep_no_text_at_default_strength PASSED [ 33%]
+tests/test_dense_review/test_display_text_and_original.py::test_source_comparison_pauses_annotation_hits PASSED [ 33%]
+tests/test_dense_review/test_display_text_and_original.py::test_source_comparison_ends_when_the_image_changes PASSED [ 34%]
+tests/test_dense_review/test_display_text_and_original.py::test_source_comparison_ends_when_the_workspace_closes PASSED [ 34%]
+tests/test_dense_review/test_display_text_and_original.py::test_hold_original_restores_previous_mode_on_release PASSED [ 34%]
+tests/test_dense_review/test_display_text_and_original.py::test_hold_original_ends_on_blur_and_image_switch PASSED [ 35%]
+tests/test_dense_review/test_display_text_and_original.py::test_hold_original_requires_an_active_workspace PASSED [ 35%]
+tests/test_dense_review/test_display_text_and_original.py::test_hold_original_button_press_and_release PASSED [ 35%]
+tests/test_dense_review/test_display_text_and_original.py::test_hold_original_button_ends_on_blur_close_and_image_switch PASSED [ 36%]
+tests/test_dense_review/test_display_text_and_original.py::test_original_mode_renders_without_annotation_labels PASSED [ 36%]
+tests/test_dense_review/test_display_text_and_original.py::test_global_off_then_source_mode_pauses_keyboard_edits PASSED [ 36%]
+tests/test_dense_review/test_display_text_and_original.py::test_source_mode_blocks_polygon_draft_on_empty_image PASSED [ 37%]
+tests/test_dense_review/test_display_text_and_original.py::test_dropdown_comparison_round_trip_keeps_the_viewport[False] PASSED [ 37%]
+tests/test_dense_review/test_display_text_and_original.py::test_dropdown_comparison_round_trip_keeps_the_viewport[True] PASSED [ 37%]
+tests/test_dense_review/test_display_text_and_original.py::test_close_dropdown_comparison_starts_fresh_on_reopen PASSED [ 38%]
+tests/test_dense_review/test_display_text_and_original.py::test_original_blocks_alt_drag_vertex_eraser PASSED [ 38%]
+tests/test_dense_review/test_display_text_and_original.py::test_enter_original_commits_in_flight_geometry_once[move] PASSED [ 38%]
+tests/test_dense_review/test_display_text_and_original.py::test_enter_original_commits_in_flight_geometry_once[rotate] PASSED [ 39%]
+tests/test_dense_review/test_display_text_and_original.py::test_enter_original_commits_in_flight_geometry_once[keyboard-rotate] PASSED [ 39%]
+tests/test_dense_review/test_display_text_and_original.py::test_held_comparison_round_trip_restores_the_same_viewport PASSED [ 40%]
+tests/test_dense_review/test_display_text_and_original.py::test_comparison_snapshot_does_not_leak_to_another_image PASSED [ 40%]
+tests/test_dense_review/test_display_text_and_original.py::test_source_mode_blocks_polygon_draft_on_a_loaded_image PASSED [ 40%]
+tests/test_dense_review/test_export_roundtrip.py::test_saved_file_keeps_progress_out_of_shapes PASSED [ 41%]
+tests/test_dense_review/test_export_roundtrip.py::test_legacy_fields_and_shape_extensions_survive_round_trip PASSED [ 41%]
+tests/test_dense_review/test_export_roundtrip.py::test_training_export_contains_only_training_fields PASSED [ 41%]
+tests/test_dense_review/test_export_roundtrip.py::test_old_program_rewrite_without_namespace_does_not_restore PASSED [ 42%]
+tests/test_dense_review/test_export_roundtrip.py::test_old_program_edit_invalidates_confirmations_and_coverage PASSED [ 42%]
+tests/test_dense_review/test_group_association_sync.py::test_pure_group_edit_updates_association_immediately PASSED [ 42%]
+tests/test_dense_review/test_performance_smoke.py::test_benchmark_harness_smoke PASSED [ 43%]
+tests/test_dense_review/test_persistence.py::test_payload_round_trip_keeps_valid_confirmations PASSED [ 43%]
+tests/test_dense_review/test_persistence.py::test_equivalent_rectangle_order_keeps_confirmation PASSED [ 43%]
+tests/test_dense_review/test_persistence.py::test_small_coordinate_change_invalidates_after_reload PASSED [ 44%]
+tests/test_dense_review/test_persistence.py::test_image_change_clears_confirmations_and_coverage PASSED [ 44%]
+tests/test_dense_review/test_persistence.py::test_external_move_invalidates_old_and_new_regions_on_reload PASSED [ 44%]
+tests/test_dense_review/test_persistence.py::test_external_delete_invalidates_only_old_regions PASSED [ 45%]
+tests/test_dense_review/test_persistence.py::test_rule_change_on_reload_invalidates PASSED [ 45%]
+tests/test_dense_review/test_persistence.py::test_unknown_version_is_rejected PASSED [ 45%]
+tests/test_dense_review/test_persistence.py::test_invalid_object_bounds_persist_as_unrenderable_pending PASSED [ 46%]
+tests/test_dense_review/test_persistence.py::test_load_payload_rejects_non_mapping PASSED [ 46%]
+tests/test_dense_review/test_persistence.py::test_annotation_state_detects_external_edit PASSED [ 46%]
+tests/test_dense_review/test_persistence.py::test_config_round_trip_and_atomic_save PASSED [ 47%]
+tests/test_dense_review/test_persistence.py::test_conflicting_config_is_not_saved PASSED [ 47%]
+tests/test_dense_review/test_persistence.py::test_image_fingerprint_is_content_based PASSED [ 47%]
+tests/test_dense_review/test_persistence.py::test_payload_uses_versioned_namespace_and_preserves_other_data PASSED [ 48%]
+tests/test_dense_review/test_redesign_completion.py::test_point_navigation_keeps_parent_and_edit_identity PASSED [ 48%]
+tests/test_dense_review/test_redesign_completion.py::test_outside_point_crop_and_body_observation PASSED [ 48%]
+tests/test_dense_review/test_redesign_completion.py::test_task_display_strength_survives_roundtrip PASSED [ 49%]
+tests/test_dense_review/test_redesign_completion.py::test_preference_failure_keeps_live_view PASSED [ 49%]
+tests/test_dense_review/test_redesign_completion.py::test_preferences_persist_without_annotation_changes PASSED [ 49%]
+tests/test_dense_review/test_redesign_completion.py::test_overlap_menu_only_changes_target_on_explicit_action PASSED [ 50%]
+tests/test_dense_review/test_redesign_completion.py::test_minimap_has_real_source_and_keeps_plan PASSED [ 50%]
+tests/test_dense_review/test_redesign_completion.py::test_label_layout_avoids_handles_freezes_drag_and_numbers_overflow PASSED [ 50%]
+tests/test_dense_review/test_redesign_completion.py::test_invalid_preferences_normalize_to_supported_values PASSED [ 51%]
+tests/test_dense_review/test_samples.py::test_manifest_matches_regenerated_scenes PASSED [ 51%]
+tests/test_dense_review/test_samples.py::test_generated_scene_counts_classes_and_ids PASSED [ 51%]
+tests/test_dense_review/test_samples.py::test_label_files_load_without_identity_repair PASSED [ 52%]
+tests/test_dense_review/test_samples.py::test_checked_in_label_files_load PASSED [ 52%]
+tests/test_dense_review/test_samples.py::test_generation_is_deterministic PASSED [ 52%]
+tests/test_dense_review/test_samples.py::test_generate_requires_force_to_overwrite PASSED [ 53%]
+tests/test_dense_review/test_samples.py::test_manifest_matches_review_ledger PASSED [ 53%]
+tests/test_dense_review/test_samples.py::test_label_version_tracks_application PASSED [ 53%]
+tests/test_dense_review/test_samples.py::test_redesign_inventory_covers_stress_and_mixed_navigation PASSED [ 54%]
+tests/test_dense_review/test_session.py::test_all_objects_enter_stable_batches PASSED [ 54%]
+tests/test_dense_review/test_session.py::test_relabel_keeps_batch_position_and_geometry_confirmation PASSED [ 54%]
+tests/test_dense_review/test_session.py::test_geometry_move_invalidates_both_and_intersecting_coverage PASSED [ 55%]
+tests/test_dense_review/test_session.py::test_repeated_batch_confirmation_is_idempotent PASSED [ 55%]
+tests/test_dense_review/test_session.py::test_pure_relabel_does_not_withdraw_coverage PASSED [ 55%]
+tests/test_dense_review/test_session.py::test_new_pending_delete_and_undo_restores_identity PASSED [ 56%]
+tests/test_dense_review/test_session.py::test_reused_identity_with_new_content_does_not_inherit_confirmation PASSED [ 56%]
+tests/test_dense_review/test_session.py::test_candidate_scope_excludes_unresolved_and_conflicts_are_rejected PASSED [ 56%]
+tests/test_dense_review/test_session.py::test_dimension_only_confirmation_and_completion PASSED [ 57%]
+tests/test_dense_review/test_session.py::test_empty_image_still_requires_spatial_review PASSED [ 57%]
+tests/test_dense_review/test_session.py::test_non_rectangle_image_reports_partial_review_only PASSED [ 57%]
+tests/test_dense_review/test_session.py::test_difficult_skipped_and_new_pending_block_completion PASSED [ 58%]
+tests/test_dense_review/test_session.py::test_locked_object_can_be_confirmed PASSED [ 58%]
+tests/test_dense_review/test_session.py::test_undo_progress_and_content_edit PASSED [ 58%]
+tests/test_dense_review/test_session.py::test_manual_edit_back_to_same_content_keeps_canvas_undo_first PASSED [ 59%]
+tests/test_dense_review/test_session.py::test_progress_history_limit_keeps_matching_snapshots[50] PASSED [ 59%]
+tests/test_dense_review/test_session.py::test_progress_history_limit_keeps_matching_snapshots[51] PASSED [ 60%]
+tests/test_dense_review/test_session.py::test_progress_history_limit_keeps_matching_snapshots[99] PASSED [ 60%]
+tests/test_dense_review/test_session.py::test_progress_history_limit_keeps_matching_snapshots[100] PASSED [ 60%]
+tests/test_dense_review/test_session.py::test_progress_history_limit_keeps_matching_snapshots[101] PASSED [ 61%]
+tests/test_dense_review/test_session.py::test_progress_history_limit_keeps_matching_snapshots[151] PASSED [ 61%]
+tests/test_dense_review/test_session.py::test_mixed_history_limit_restores_each_transaction_state PASSED [ 61%]
+tests/test_dense_review/test_session.py::test_canvas_only_undo_keeps_review_content_transaction PASSED [ 62%]
+tests/test_dense_review/test_session.py::test_two_progress_commands_can_be_undone_consecutively PASSED [ 62%]
+tests/test_dense_review/test_session.py::test_config_rule_change_invalidates_and_batch_change_does_not PASSED [ 62%]
+tests/test_dense_review/test_session.py::test_incompatible_version_and_identity_repair_do_not_inherit PASSED [ 63%]
+tests/test_dense_review/test_session.py::test_conflicting_config_cannot_start PASSED [ 63%]
+tests/test_dense_review/test_session.py::test_redo_progress_restores_confirmation_and_cursor PASSED [ 63%]
+tests/test_dense_review/test_session.py::test_redo_after_canvas_restores_review_state PASSED [ 64%]
+tests/test_dense_review/test_session.py::test_new_progress_action_clears_redo PASSED [ 64%]
+tests/test_dense_review/test_session.py::test_noop_confirm_keeps_redo_stream PASSED [ 64%]
+tests/test_dense_review/test_session.py::test_mixed_undo_then_redo_restores_every_transaction PASSED [ 65%]
+tests/test_dense_review/test_signatures.py::test_rectangle_vertex_order_and_numeric_spelling_are_equivalent PASSED [ 65%]
+tests/test_dense_review/test_signatures.py::test_tiny_coordinate_change_is_detected PASSED [ 65%]
+tests/test_dense_review/test_signatures.py::test_unknown_box_rule_includes_label_in_geometry_signature PASSED [ 66%]
+tests/test_dense_review/test_signatures.py::test_category_note_changes_category_only PASSED [ 66%]
+tests/test_dense_review/test_signatures.py::test_box_rule_change_changes_geometry_signature PASSED [ 66%]
+tests/test_dense_review/test_signatures.py::test_content_hash_ignores_visibility_and_lock_but_tracks_content PASSED [ 67%]
+tests/test_dense_review/test_thumbnail_lifecycle.py::test_real_executor_bounds_backlog_and_recovers_after_switch PASSED [ 67%]
+tests/test_dense_review/test_thumbnail_lifecycle.py::test_shutdown_interrupts_worker_waiting_for_drag PASSED [ 67%]
+tests/test_dense_review/test_thumbnails.py::test_crop_thumbnail_clamps_to_image_edges PASSED [ 68%]
+tests/test_dense_review/test_thumbnails.py::test_crop_thumbnail_rejects_outside_bounds PASSED [ 68%]
+tests/test_dense_review/test_thumbnails.py::test_crop_thumbnail_requires_source PASSED [ 68%]
+tests/test_dense_review/test_thumbnails.py::test_cache_is_keyed_by_bounds_and_source_version PASSED [ 69%]
+tests/test_dense_review/test_thumbnails.py::test_stale_same_id_result_is_ignored PASSED [ 69%]
+tests/test_dense_review/test_thumbnails.py::test_drain_defers_finished_cards_while_interacting PASSED [ 69%]
+tests/test_dense_review/test_thumbnails.py::test_crop_yielding_waits_until_interaction_ends PASSED [ 70%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_dense_review_strings_are_translated_for_chinese
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_dense_review_strings_are_translated_for_chinese PASSED [ 70%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_en_us_keeps_source_text PASSED [ 70%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_every_language_loads
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_every_language_loads PASSED [ 71%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_literal_messages_in_all_runtime_contexts_and_resources
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_literal_messages_in_all_runtime_contexts_and_resources PASSED [ 71%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_new_strings_are_finished_in_chinese PASSED [ 71%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_redo_strings_are_translated
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_redo_strings_are_translated PASSED [ 72%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_runtime_states_and_rules_are_localized PASSED [ 72%]
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_workspace_messages_are_finished_in_chinese PASSED [ 72%]
+tests/test_dense_review/test_workspace.py::test_open_confirm_and_save_round_trip PASSED [ 73%]
+tests/test_dense_review/test_workspace.py::test_batch_confirmation_is_one_undo_without_touching_labels PASSED [ 73%]
+tests/test_dense_review/test_workspace.py::test_batch_confirmation_redo_restores_progress PASSED [ 73%]
+tests/test_dense_review/test_workspace.py::test_canvas_edit_redo_restores_bounds_and_review_state PASSED [ 74%]
+tests/test_dense_review/test_workspace.py::test_new_edit_clears_redo PASSED [ 74%]
+tests/test_dense_review/test_workspace.py::test_relabel_move_and_undo_invalidate_progress PASSED [ 74%]
+tests/test_dense_review/test_workspace.py::test_spatial_review_requires_explicit_region_completion PASSED [ 75%]
+tests/test_dense_review/test_workspace.py::test_dense_shortcuts_share_the_active_canvas_and_dock PASSED [ 75%]
+tests/test_dense_review/test_workspace.py::test_coverage_grid_click_selects_matching_region PASSED [ 75%]
+tests/test_dense_review/test_workspace.py::test_external_change_is_detected_before_save PASSED [ 76%]
+tests/test_dense_review/test_workspace.py::test_configured_batches_keep_membership_after_relabel PASSED [ 76%]
+tests/test_dense_review/test_workspace.py::test_new_copy_enters_pending_without_inheriting PASSED [ 76%]
+tests/test_dense_review/test_workspace.py::test_hidden_and_filtered_objects_are_excluded_but_focus_is_not PASSED [ 77%]
+tests/test_dense_review/test_workspace.py::test_main_window_undo_reverts_latest_move_after_manual_roundtrip PASSED [ 77%]
+tests/test_dense_review/test_workspace.py::test_changed_bounds_request_fresh_card FAILED [ 77%]
+tests/test_dense_review/test_workspace.py::test_full_image_roundtrip_restores_user_zoom PASSED [ 78%]
+tests/test_dense_review/test_workspace.py::test_quick_difficult_shortcut_marks_without_dialog PASSED [ 78%]
+tests/test_dense_review/test_workspace.py::test_closing_workspace_restores_canvas_and_writes_nothing PASSED [ 78%]
+tests/test_dense_review/test_workspace.py::test_display_modes_and_full_image_restore PASSED [ 79%]
+tests/test_dense_review/test_workspace.py::test_output_directory_keeps_independent_progress PASSED [ 79%]
+tests/test_dense_review/test_workspace.py::test_unknown_progress_is_preserved_until_explicit_rebuild PASSED [ 80%]
+tests/test_dense_review/test_workspace.py::test_save_failure_keeps_memory_progress PASSED [ 80%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_menu_entry_docks_the_panel_beside_the_editable_canvas PASSED [ 80%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_reopening_reuses_dock_canvas_session_and_history PASSED [ 81%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_floating_then_reopening_keeps_it_floating PASSED [ 81%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_closing_and_reopening_keeps_the_session_and_history PASSED [ 81%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_dock_visibility_events_do_not_rebuild_the_round PASSED [ 82%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_default_task_is_category_check PASSED [ 82%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_box_points_task_promotes_associated_keypoints PASSED [ 82%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_task_round_trip_restores_object_and_coverage_targets PASSED [ 83%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_task_switch_never_changes_content_dirty_or_history PASSED [ 83%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_coverage_task_falls_back_when_plan_is_empty PASSED [ 83%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_deleted_target_falls_back_to_a_valid_object PASSED [ 84%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_navigation_snapshot_does_not_cross_images PASSED [ 84%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_task_switch_settles_a_live_edit_first PASSED [ 84%]
+tests/test_dense_review/test_workspace_dock_tasks.py::test_editing_still_works_on_the_canvas_while_docked PASSED [ 85%]
+tests/test_dense_review/test_workspace_evidence.py::test_cross_batch_completion_keeps_views_in_sync[batch] PASSED [ 85%]
+tests/test_dense_review/test_workspace_evidence.py::test_cross_batch_completion_keeps_views_in_sync[object] PASSED [ 85%]
+tests/test_dense_review/test_workspace_evidence.py::test_cross_batch_completion_keeps_views_in_sync[skip] PASSED [ 86%]
+tests/test_dense_review/test_workspace_evidence.py::test_direct_batch_click_schedules_visible_thumbnails PASSED [ 86%]
+tests/test_dense_review/test_workspace_evidence.py::test_card_view_virtualizes_and_bounds_resources PASSED [ 86%]
+tests/test_dense_review/test_workspace_evidence.py::test_small_window_can_collapse_each_auxiliary_panel PASSED [ 87%]
+tests/test_dense_review/test_workspace_evidence.py::test_compare_cold_cache_requests_updates_and_failures PASSED [ 87%]
+tests/test_dense_review/test_workspace_evidence.py::test_spatial_region_state_restores_after_save_and_reopen PASSED [ 87%]
+tests/test_dense_review/test_workspace_evidence.py::test_workspace_closed_keeps_editing_navigation_and_save PASSED [ 88%]
+tests/test_dense_review/test_workspace_evidence.py::test_external_conflict_from_save_entry[cancel] PASSED [ 88%]
+tests/test_dense_review/test_workspace_evidence.py::test_external_conflict_from_save_entry[reload] PASSED [ 88%]
+tests/test_dense_review/test_workspace_evidence.py::test_external_conflict_from_save_entry[save] PASSED [ 89%]
+tests/test_dense_review/test_workspace_evidence.py::test_autosave_writes_at_edit_and_confirmation_boundaries PASSED [ 89%]
+tests/test_dense_review/test_workspace_evidence.py::test_closed_workspace_keeps_shift_fit_target_and_undo[False] PASSED [ 89%]
+tests/test_dense_review/test_workspace_evidence.py::test_closed_workspace_keeps_shift_fit_target_and_undo[True] PASSED [ 90%]
+tests/test_dense_review/test_workspace_lists.py::test_empty_state_then_session_enables_all_lists PASSED [ 90%]
+tests/test_dense_review/test_workspace_lists.py::test_session_switch_keeps_lists_enabled PASSED [ 90%]
+tests/test_dense_review/test_workspace_lists.py::test_failed_load_retry_reopen_and_image_switch_restore_session PASSED [ 91%]
+tests/test_dense_review/test_workspace_lists.py::test_wheel_and_scrollbar_move_view_without_moving_target PASSED [ 91%]
+tests/test_dense_review/test_workspace_lists.py::test_background_refresh_does_not_force_scroll_back PASSED [ 91%]
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_keypoints_remain_observable_and_editable PASSED [ 92%]
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_group_zero_associates_points_with_its_only_rectangle PASSED [ 92%]
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_ambiguous_group_does_not_guess_an_owner PASSED [ 92%]
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_ungrouped_point_is_not_associated PASSED [ 93%]
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_batch_confirmation_never_confirms_keypoints PASSED [ 93%]
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_keypoint_can_still_be_edited_through_existing_commands PASSED [ 93%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_hide_dock_removes_review_overlay PASSED [ 94%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_hide_then_show_restores_the_review_overlay PASSED [ 94%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_background_refresh_keeps_coverage_viewport PASSED [ 94%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_explicit_region_navigation_still_moves_the_canvas PASSED [ 95%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_reapplies_coverage_preset PASSED [ 95%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False] PASSED [ 95%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[True] PASSED [ 96%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_text_switch PASSED [ 96%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_label_switch PASSED [ 96%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_hides_associated_keypoint_symbols PASSED [ 97%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_category_does_not_promote_associated_points PASSED [ 97%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_box_points_promotes_associated_points PASSED [ 97%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_zoom_control_and_canvas_size PASSED [ 98%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_fit_width_mode PASSED [ 98%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_has_no_rendered_pixels PASSED [ 98%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_is_not_hittable PASSED [ 99%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_keeps_latest_current_object PASSED [ 99%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_float_keeps_original_display_mode PASSED [100%]
+
+================================== FAILURES ===================================
+_____________________ test_state_colors_use_theme_tokens ______________________
+
+qt_app = <PyQt6.QtWidgets.QApplication object at 0x0000024BBA853F70>
+
+    def test_state_colors_use_theme_tokens(qt_app):
+        plan = _four_state_plan()
+        widget = _grid(qt_app, plan)
+        content = widget._content_rect()
+        theme = get_theme()
+        expected = [
+            _rgb(theme["success"]),
+            _rgb(theme["warning"]),
+            _rgb(theme["primary"]),
+            _rgb(blend_hex(theme["surface"], theme["background"], 0.85)),
+        ]
+        for region, color in zip(plan.regions, expected):
+            colors = _colors_in(widget, widget._cell_rect(region, content))
+>           assert _has_color(colors, color, tolerance=14), (
+                region.region_id,
+                color,
+                sorted(set(colors))[:3],
+            )
+E           AssertionError: ('r0', (48, 209, 88), [(214, 246, 222), (255, 255, 255)])
+E           assert False
+E            +  where False = _has_color([(214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (255, 255, 255), (255, 255, 255), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222)], (48, 209, 88), tolerance=14)
+
+tests\test_dense_review\test_coverage_grid.py:128: AssertionError
+____________ test_temporary_show_lifts_visibility_not_eligibility _____________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x0000024BBA853F70>
+open_window = <function open_window.<locals>._open at 0x0000024BBB58FF60>
+
+    def test_temporary_show_lifts_visibility_not_eligibility(app, open_window):
+        window, image_path = open_window(
+            _three_rectangles(),
+            batches=(("person", ("person",)),),
+            rules=(("person", "visible", ""),),
+        )
+        widget, workspace = _open_review(app, window, image_path)
+        target = _shape(widget, "rect2")
+        _hide(widget, "rect2")
+        app.processEvents()
+
+        # An explicit "show anyway" lets the user look at it (DP-11).
+        assert widget.dense_review_show_temporarily(["rect2"]) is True
+        app.processEvents()
+        display = widget._dense_review_displays["rect2"]
+        assert display.drawable is True
+        assert display.temporary is True
+        assert display.reason == ""
+        assert widget.canvas.dense_review_hittable(target) is True
+
+        # Observing it does not restore confirmation eligibility (PC-06).
+        manual, _filtered = widget.dense_review_exclusion_ids()
+        assert "rect2" in manual
+        scope = workspace._scope()
+        assert "rect2" not in scope.candidate_ids
+        session = widget.dense_review_session
+        workspace._complete_batch()
+        app.processEvents()
+>       assert session.object("rect1").confirmed_both() is True
+E       AssertionError: assert False is True
+E        +  where False = confirmed_both()
+E        +    where confirmed_both = ObjectReviewState(shape_id='rect1', display_index=1, label='person', shape_type='rectangle', bounds=(40.0, 40.0, 120.0, 140.0), category_signature='db8634e206c6d0c9a03267e8c4898ffb67613597731bb4996f277536802520a6', geometry_signature='7cb0ddf4cbed72849d5ea763ab594e4e88e9318e4308b6b83cf1fd6c5677d7ff', category_confirmed=None, geometry_confirmed=None, difficult=False, difficulty_dimensions=(), difficulty_reason='', skipped=False, added=False, supported=True, load_failed=False, group_id=None).confirmed_both
+E        +      where ObjectReviewState(shape_id='rect1', display_index=1, label='person', shape_type='rectangle', bounds=(40.0, 40.0, 120.0, 140.0), category_signature='db8634e206c6d0c9a03267e8c4898ffb67613597731bb4996f277536802520a6', geometry_signature='7cb0ddf4cbed72849d5ea763ab594e4e88e9318e4308b6b83cf1fd6c5677d7ff', category_confirmed=None, geometry_confirmed=None, difficult=False, difficulty_dimensions=(), difficulty_reason='', skipped=False, added=False, supported=True, load_failed=False, group_id=None) = object('rect1')
+E        +        where object = <anylabeling.services.dense_review.session.DenseReviewSession object at 0x0000024BBAA18B00>.object
+
+tests\test_dense_review\test_display_consistency.py:252: AssertionError
+_ TestDenseReviewTranslations.test_literal_messages_in_all_runtime_contexts_and_resources (language='en_US', context='DenseReviewWorkspace', source='框') _
+
+self = <tests.test_dense_review.test_translations.TestDenseReviewTranslations testMethod=test_literal_messages_in_all_runtime_contexts_and_resources>
+
+    def test_literal_messages_in_all_runtime_contexts_and_resources(self):
+        """Check actual source contexts, not just representative messages."""
+        from anylabeling.resources import resources  # noqa: F401
+        from anylabeling.services.dense_review.display import REASON_TEXT
+
+        entries = [("LabelingWidget", reason) for reason in REASON_TEXT.values()]
+        folder = REPO_ROOT / "anylabeling/views/labeling/dense_review"
+        for filename in ("workspace.py", "config_dialog.py"):
+            tree = ast.parse((folder / filename).read_text(encoding="utf-8"))
+            for cls in tree.body:
+                if not isinstance(cls, ast.ClassDef):
+                    continue
+                for node in ast.walk(cls):
+                    if (
+                        isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Attribute)
+                        and node.func.attr == "tr"
+                        and node.args
+                        and isinstance(node.args[0], ast.Constant)
+                        and isinstance(node.args[0].value, str)
+                    ):
+                        context = cls.name
+                        if context == "_CardModel":
+                            context = "DenseReviewWorkspace"
+                        entries.append((context, node.args[0].value))
+        for language in LANGUAGES:
+            tree = ET.parse(TRANSLATIONS_DIR / f"{language}.ts")
+            catalog = {
+                node.findtext("name"): {
+                    message.findtext("source"): message
+                    for message in node.findall("message")
+                }
+                for node in tree.getroot().findall("context")
+            }
+            disk = QTranslator()
+            embedded = QTranslator()
+            self.assertTrue(
+                disk.load(str(TRANSLATIONS_DIR / f"{language}.qm"))
+            )
+            self.assertTrue(
+                embedded.load(f":/languages/translations/{language}.qm")
+            )
+            for context, source in set(entries):
+                with self.subTest(
+                    language=language, context=context, source=source
+                ):
+                    message = catalog.get(context, {}).get(source)
+>                   self.assertIsNotNone(message)
+E                   AssertionError: unexpectedly None
+
+tests\test_dense_review\test_translations.py:171: AssertionError
+_ TestDenseReviewTranslations.test_literal_messages_in_all_runtime_contexts_and_resources (language='zh_CN', context='DenseReviewWorkspace', source='框') _
+
+self = <tests.test_dense_review.test_translations.TestDenseReviewTranslations testMethod=test_literal_messages_in_all_runtime_contexts_and_resources>
+
+    def test_literal_messages_in_all_runtime_contexts_and_resources(self):
+        """Check actual source contexts, not just representative messages."""
+        from anylabeling.resources import resources  # noqa: F401
+        from anylabeling.services.dense_review.display import REASON_TEXT
+
+        entries = [("LabelingWidget", reason) for reason in REASON_TEXT.values()]
+        folder = REPO_ROOT / "anylabeling/views/labeling/dense_review"
+        for filename in ("workspace.py", "config_dialog.py"):
+            tree = ast.parse((folder / filename).read_text(encoding="utf-8"))
+            for cls in tree.body:
+                if not isinstance(cls, ast.ClassDef):
+                    continue
+                for node in ast.walk(cls):
+                    if (
+                        isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Attribute)
+                        and node.func.attr == "tr"
+                        and node.args
+                        and isinstance(node.args[0], ast.Constant)
+                        and isinstance(node.args[0].value, str)
+                    ):
+                        context = cls.name
+                        if context == "_CardModel":
+                            context = "DenseReviewWorkspace"
+                        entries.append((context, node.args[0].value))
+        for language in LANGUAGES:
+            tree = ET.parse(TRANSLATIONS_DIR / f"{language}.ts")
+            catalog = {
+                node.findtext("name"): {
+                    message.findtext("source"): message
+                    for message in node.findall("message")
+                }
+                for node in tree.getroot().findall("context")
+            }
+            disk = QTranslator()
+            embedded = QTranslator()
+            self.assertTrue(
+                disk.load(str(TRANSLATIONS_DIR / f"{language}.qm"))
+            )
+            self.assertTrue(
+                embedded.load(f":/languages/translations/{language}.qm")
+            )
+            for context, source in set(entries):
+                with self.subTest(
+                    language=language, context=context, source=source
+                ):
+                    message = catalog.get(context, {}).get(source)
+>                   self.assertIsNotNone(message)
+E                   AssertionError: unexpectedly None
+
+tests\test_dense_review\test_translations.py:171: AssertionError
+_ TestDenseReviewTranslations.test_literal_messages_in_all_runtime_contexts_and_resources (language='ja_JP', context='DenseReviewWorkspace', source='框') _
+
+self = <tests.test_dense_review.test_translations.TestDenseReviewTranslations testMethod=test_literal_messages_in_all_runtime_contexts_and_resources>
+
+    def test_literal_messages_in_all_runtime_contexts_and_resources(self):
+        """Check actual source contexts, not just representative messages."""
+        from anylabeling.resources import resources  # noqa: F401
+        from anylabeling.services.dense_review.display import REASON_TEXT
+
+        entries = [("LabelingWidget", reason) for reason in REASON_TEXT.values()]
+        folder = REPO_ROOT / "anylabeling/views/labeling/dense_review"
+        for filename in ("workspace.py", "config_dialog.py"):
+            tree = ast.parse((folder / filename).read_text(encoding="utf-8"))
+            for cls in tree.body:
+                if not isinstance(cls, ast.ClassDef):
+                    continue
+                for node in ast.walk(cls):
+                    if (
+                        isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Attribute)
+                        and node.func.attr == "tr"
+                        and node.args
+                        and isinstance(node.args[0], ast.Constant)
+                        and isinstance(node.args[0].value, str)
+                    ):
+                        context = cls.name
+                        if context == "_CardModel":
+                            context = "DenseReviewWorkspace"
+                        entries.append((context, node.args[0].value))
+        for language in LANGUAGES:
+            tree = ET.parse(TRANSLATIONS_DIR / f"{language}.ts")
+            catalog = {
+                node.findtext("name"): {
+                    message.findtext("source"): message
+                    for message in node.findall("message")
+                }
+                for node in tree.getroot().findall("context")
+            }
+            disk = QTranslator()
+            embedded = QTranslator()
+            self.assertTrue(
+                disk.load(str(TRANSLATIONS_DIR / f"{language}.qm"))
+            )
+            self.assertTrue(
+                embedded.load(f":/languages/translations/{language}.qm")
+            )
+            for context, source in set(entries):
+                with self.subTest(
+                    language=language, context=context, source=source
+                ):
+                    message = catalog.get(context, {}).get(source)
+>                   self.assertIsNotNone(message)
+E                   AssertionError: unexpectedly None
+
+tests\test_dense_review\test_translations.py:171: AssertionError
+_ TestDenseReviewTranslations.test_literal_messages_in_all_runtime_contexts_and_resources (language='ko_KR', context='DenseReviewWorkspace', source='框') _
+
+self = <tests.test_dense_review.test_translations.TestDenseReviewTranslations testMethod=test_literal_messages_in_all_runtime_contexts_and_resources>
+
+    def test_literal_messages_in_all_runtime_contexts_and_resources(self):
+        """Check actual source contexts, not just representative messages."""
+        from anylabeling.resources import resources  # noqa: F401
+        from anylabeling.services.dense_review.display import REASON_TEXT
+
+        entries = [("LabelingWidget", reason) for reason in REASON_TEXT.values()]
+        folder = REPO_ROOT / "anylabeling/views/labeling/dense_review"
+        for filename in ("workspace.py", "config_dialog.py"):
+            tree = ast.parse((folder / filename).read_text(encoding="utf-8"))
+            for cls in tree.body:
+                if not isinstance(cls, ast.ClassDef):
+                    continue
+                for node in ast.walk(cls):
+                    if (
+                        isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Attribute)
+                        and node.func.attr == "tr"
+                        and node.args
+                        and isinstance(node.args[0], ast.Constant)
+                        and isinstance(node.args[0].value, str)
+                    ):
+                        context = cls.name
+                        if context == "_CardModel":
+                            context = "DenseReviewWorkspace"
+                        entries.append((context, node.args[0].value))
+        for language in LANGUAGES:
+            tree = ET.parse(TRANSLATIONS_DIR / f"{language}.ts")
+            catalog = {
+                node.findtext("name"): {
+                    message.findtext("source"): message
+                    for message in node.findall("message")
+                }
+                for node in tree.getroot().findall("context")
+            }
+            disk = QTranslator()
+            embedded = QTranslator()
+            self.assertTrue(
+                disk.load(str(TRANSLATIONS_DIR / f"{language}.qm"))
+            )
+            self.assertTrue(
+                embedded.load(f":/languages/translations/{language}.qm")
+            )
+            for context, source in set(entries):
+                with self.subTest(
+                    language=language, context=context, source=source
+                ):
+                    message = catalog.get(context, {}).get(source)
+>                   self.assertIsNotNone(message)
+E                   AssertionError: unexpectedly None
+
+tests\test_dense_review\test_translations.py:171: AssertionError
+___________________ test_changed_bounds_request_fresh_card ____________________
+
+window = <anylabeling.views.mainwindow.MainWindow object at 0x0000024BBAA2C910>
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/fix-tests-completion-dense/test_changed_bounds_request_fr0')
+
+    def test_changed_bounds_request_fresh_card(window, tmp_path):
+        app = QtWidgets.QApplication.instance()
+        widget = window.labeling_widget.view
+        image_path = _prepare_image(tmp_path)
+        assert widget.load_file(image_path)
+        widget.open_dense_review()
+        app.processEvents()
+        workspace = widget.dense_review_workspace
+        session = widget.dense_review_session
+        shape_id = session.current_object().shape_id
+        item = session.object(shape_id)
+        provider = workspace.thumbnails
+        margin = workspace.context_spin.value() / 100.0
+        target = workspace._thumbnail_target_pixels()
+        source_version = widget.dense_review_image_info()[0]
+        old_key = provider.request_key(
+            shape_id,
+            provider.generation,
+            item.bounds,
+            margin,
+            target,
+            source_version,
+        )
+        old_image = QtGui.QImage(8, 8, QtGui.QImage.Format.Format_RGB32)
+        old_image.fill(QtGui.QColor("red"))
+        provider._cache[old_key] = old_image
+        provider._latest_requests[shape_id] = old_key
+        workspace._card_request_keys[shape_id] = old_key
+
+        with patch.object(provider, "request", return_value=None) as request_spy:
+            workspace._request_visible_thumbnails()
+>           assert not any(
+                call.args[0] == shape_id for call in request_spy.call_args_list
+            )
+E           assert not True
+E            +  where True = any(<generator object test_changed_bounds_request_fresh_card.<locals>.<genexpr> at 0x0000024BBEE82740>)
+
+tests\test_dense_review\test_workspace.py:607: AssertionError
+============================ slowest 30 durations =============================
+8.67s call     tests/test_dense_review/test_performance_smoke.py::test_benchmark_harness_smoke
+4.03s call     tests/test_dense_review/test_display_consistency.py::test_group_move_recomputes_members_after_a_hide
+3.65s call     tests/test_dense_review/test_display_consistency.py::test_global_switch_preserves_explicit_hide_and_candidate_scope[False]
+3.64s call     tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_keeps_latest_current_object
+3.47s call     tests/test_dense_review/test_workspace_lists.py::test_failed_load_retry_reopen_and_image_switch_restore_session
+3.47s call     tests/test_dense_review/test_display_consistency.py::test_global_switch_preserves_explicit_hide_and_candidate_scope[True]
+3.35s call     tests/test_dense_review/test_display_consistency.py::test_closed_workspace_keeps_regular_canvas_after_visibility_edit
+3.34s call     tests/test_dense_review/test_display_consistency.py::test_ordinary_group_behaviour_returns_after_closing_review
+3.33s call     tests/test_dense_review/test_workspace_dock_tasks.py::test_navigation_snapshot_does_not_cross_images
+3.33s call     tests/test_dense_review/test_display_consistency.py::test_real_global_switch_beats_temporary_show
+3.32s call     tests/test_dense_review/test_display_consistency.py::test_hiding_every_object_by_hand_is_not_a_global_shutdown
+3.31s call     tests/test_dense_review/test_display_consistency.py::test_focus_mode_paints_batch_members_and_associated_points
+3.27s call     tests/test_dense_review/test_workspace_evidence.py::test_workspace_closed_keeps_editing_navigation_and_save
+3.27s call     tests/test_dense_review/test_workspace_review_fixes.py::test_float_keeps_original_display_mode
+3.26s call     tests/test_dense_review/test_workspace_review_fixes.py::test_hide_dock_removes_review_overlay
+3.23s call     tests/test_dense_review/test_display_text_and_original.py::test_global_off_then_source_mode_pauses_keyboard_edits
+3.23s call     tests/test_dense_review/test_workspace_evidence.py::test_spatial_region_state_restores_after_save_and_reopen
+3.23s call     tests/test_dense_review/test_display_consistency.py::test_temporary_show_survives_original_round_trip
+3.19s call     tests/test_dense_review/test_workspace_dock_tasks.py::test_dock_visibility_events_do_not_rebuild_the_round
+3.17s call     tests/test_dense_review/test_display_consistency.py::test_single_manual_hide_is_not_a_global_shutdown
+3.16s call     tests/test_dense_review/test_display_text_and_original.py::test_hold_original_button_ends_on_blur_close_and_image_switch
+3.15s call     tests/test_dense_review/test_workspace_review_fixes.py::test_hide_then_show_restores_the_review_overlay
+3.15s call     tests/test_dense_review/test_display_consistency.py::test_original_comparison_wins_over_temporary_show
+3.14s call     tests/test_dense_review/test_workspace_evidence.py::test_card_view_virtualizes_and_bounds_resources
+3.12s call     tests/test_dense_review/test_display_text_and_original.py::test_review_never_writes_back_the_ordinary_label_settings
+3.12s call     tests/test_dense_review/test_display_text_and_original.py::test_close_dropdown_comparison_starts_fresh_on_reopen
+3.12s call     tests/test_dense_review/test_display_text_and_original.py::test_source_mode_blocks_polygon_draft_on_a_loaded_image
+3.11s call     tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_text_switch
+3.10s call     tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_reapplies_coverage_preset
+3.09s call     tests/test_dense_review/test_display_consistency.py::test_closing_review_restores_latest_user_settings
+=========================== short test summary info ===========================
+FAILED tests/test_dense_review/test_coverage_grid.py::test_state_colors_use_theme_tokens - AssertionError: ('r0', (48, 209, 88), [(214, 246, 222), (255, 255, 255)])
+assert False
+ +  where False = _has_color([(214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (255, 255, 255), (255, 255, 255), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222), (214, 246, 222)], (48, 209, 88), tolerance=14)
+FAILED tests/test_dense_review/test_display_consistency.py::test_temporary_show_lifts_visibility_not_eligibility - AssertionError: assert False is True
+ +  where False = confirmed_both()
+ +    where confirmed_both = ObjectReviewState(shape_id='rect1', display_index=1, label='person', shape_type='rectangle', bounds=(40.0, 40.0, 120.0, 140.0), category_signature='db8634e206c6d0c9a03267e8c4898ffb67613597731bb4996f277536802520a6', geometry_signature='7cb0ddf4cbed72849d5ea763ab594e4e88e9318e4308b6b83cf1fd6c5677d7ff', category_confirmed=None, geometry_confirmed=None, difficult=False, difficulty_dimensions=(), difficulty_reason='', skipped=False, added=False, supported=True, load_failed=False, group_id=None).confirmed_both
+ +      where ObjectReviewState(shape_id='rect1', display_index=1, label='person', shape_type='rectangle', bounds=(40.0, 40.0, 120.0, 140.0), category_signature='db8634e206c6d0c9a03267e8c4898ffb67613597731bb4996f277536802520a6', geometry_signature='7cb0ddf4cbed72849d5ea763ab594e4e88e9318e4308b6b83cf1fd6c5677d7ff', category_confirmed=None, geometry_confirmed=None, difficult=False, difficulty_dimensions=(), difficulty_reason='', skipped=False, added=False, supported=True, load_failed=False, group_id=None) = object('rect1')
+ +        where object = <anylabeling.services.dense_review.session.DenseReviewSession object at 0x0000024BBAA18B00>.object
+SUBFAILED(language='en_US', context='DenseReviewWorkspace', source='框') tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_literal_messages_in_all_runtime_contexts_and_resources - AssertionError: unexpectedly None
+SUBFAILED(language='zh_CN', context='DenseReviewWorkspace', source='框') tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_literal_messages_in_all_runtime_contexts_and_resources - AssertionError: unexpectedly None
+SUBFAILED(language='ja_JP', context='DenseReviewWorkspace', source='框') tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_literal_messages_in_all_runtime_contexts_and_resources - AssertionError: unexpectedly None
+SUBFAILED(language='ko_KR', context='DenseReviewWorkspace', source='框') tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_literal_messages_in_all_runtime_contexts_and_resources - AssertionError: unexpectedly None
+FAILED tests/test_dense_review/test_workspace.py::test_changed_bounds_request_fresh_card - assert not True
+ +  where True = any(<generator object test_changed_bounds_request_fresh_card.<locals>.<genexpr> at 0x0000024BBEE82740>)
+======= 7 failed, 292 passed, 726 subtests passed in 589.33s (0:09:49) ========

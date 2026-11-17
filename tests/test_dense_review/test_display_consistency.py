@@ -1258,3 +1258,147 @@ def test_temporary_reveal_paints_outline_and_label(app, open_window):
     with mock_patch.object(canvas, "_painter", RecordingPainter()):
         canvas.grab()
     assert labels == []
+
+
+def test_display_cache_invalidates_on_real_changes_not_hover(
+    app, open_window, monkeypatch
+):
+    from anylabeling.services.dense_review.display import RoleStyle
+    from anylabeling.views.labeling import label_widget as label_widget_module
+
+    window, image_path = open_window(
+        _three_rectangles(),
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    session = widget.dense_review_session
+    calls = []
+    original = label_widget_module.resolve_all
+
+    def counted(*args, **kwargs):
+        calls.append(1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(label_widget_module, "resolve_all", counted)
+    revision = widget._dense_review_revision
+    widget.refresh_dense_review_display()
+    widget.refresh_dense_review_display()
+    assert calls == []
+
+    current = session.current_object().shape_id
+    for shape_id in ("rect2", "rect3", "rect2", ""):
+        widget.dense_review_set_hover(shape_id)
+        app.processEvents()
+    assert calls == []
+    assert widget._dense_review_revision == revision
+    assert session.current_object().shape_id == current
+
+    session.set_current(session.state.current_batch, "rect2")
+    widget.refresh_dense_review_display()
+    assert len(calls) == 1
+    assert widget.dense_review_display_entry("rect2").role == "current"
+    widget.refresh_dense_review_display()
+    assert len(calls) == 1
+
+    target = _shape(widget, "rect2")
+    target.label = "vehicle"
+    widget.refresh_dense_review_display()
+    assert len(calls) == 2
+    target.locked = True
+    widget.refresh_dense_review_display()
+    assert len(calls) == 3
+    assert widget.dense_review_display_entry("rect2").locked is True
+
+    widget._dense_review_role_styles = {
+        "batch": RoleStyle(
+            outline=0.0,
+            points=0.0,
+            handles=0.0,
+            text=0.0,
+            attributes=0.0,
+            linking=0.0,
+            mask=0.0,
+        )
+    }
+    widget.refresh_dense_review_display()
+    assert len(calls) == 4
+    assert widget.dense_review_display_entry("rect1").drawable is False
+    assert widget.dense_review_display_entry("rect2").drawable is True
+
+    widget._dense_review_role_styles = {}
+    widget.refresh_dense_review_display()
+    assert len(calls) == 5
+    filter_combo = widget.label_filter_combobox.text_box
+    if filter_combo.findText("vehicle") < 0:
+        filter_combo.addItem("vehicle")
+    filter_combo.setCurrentText("vehicle")
+    app.processEvents()
+    assert len(calls) >= 6
+    assert widget.dense_review_display_entry("rect1").reason == "filtered"
+
+    previous = len(calls)
+    widget.refresh_dense_review_display()
+    assert len(calls) == previous
+    widget.refresh_dense_review_display(force=True)
+    assert len(calls) == previous + 1
+
+
+def test_view_only_changes_keep_stable_batch_confirmation_scope(
+    app, open_window
+):
+    from anylabeling.services.dense_review.display import RoleStyle
+
+    window, image_path = open_window(
+        _three_rectangles(),
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, workspace = _open_review(app, window, image_path)
+    session = widget.dense_review_session
+    batch_id = session.state.current_batch
+    members = session.state.member_ids(batch_id)
+    candidates = workspace._scope().candidate_ids
+
+    target = _shape(widget, "rect1")
+    target.label = "vehicle"
+    widget._dense_review_sync_from_canvas()
+    app.processEvents()
+    assert session.state.member_ids(batch_id) == members
+    assert workspace._scope().candidate_ids == candidates
+    assert widget.dense_review_display_entry("rect1").role == "current"
+
+    widget.dense_review_set_display_mode("original")
+    app.processEvents()
+    assert workspace._scope().candidate_ids == candidates
+    assert session.state.member_ids(batch_id) == members
+
+    invisible = RoleStyle(
+        outline=0.0,
+        points=0.0,
+        handles=0.0,
+        text=0.0,
+        attributes=0.0,
+        linking=0.0,
+        mask=0.0,
+    )
+    widget._dense_review_role_styles = {
+        "current": invisible,
+        "batch": invisible,
+        "other": invisible,
+    }
+    widget.dense_review_set_display_mode("focus")
+    app.processEvents()
+    assert all(
+        not display.drawable
+        for display in widget._dense_review_displays.values()
+    )
+    assert workspace._scope().candidate_ids == candidates
+    assert session.state.member_ids(batch_id) == members
+
+    workspace.set_cards_visible(False)
+    workspace.set_batches_visible(False)
+    app.processEvents()
+    assert workspace._scope().candidate_ids == candidates
+    assert session.state.member_ids(batch_id) == members
+    assert not widget.dirty

@@ -236,7 +236,28 @@ class SettingsRuntimeApplier:
             logger.warning("Could not stop correction statistics: %s", error)
         host.correction_metrics = None
 
+    def _apply_review_settings(self, key: str, value: Any) -> None:
+        """Apply isolated review view settings and rebuild shared bindings."""
+        workspace = getattr(self._widget, "dense_review_workspace", None)
+        if key.startswith("dense_review."):
+            if workspace is not None:
+                workspace._restore_review_preferences()
+                workspace._restore_task_view(
+                    restore_viewport=False, focus=False
+                )
+            return
+        if key.startswith("shortcuts.dense_review_") and workspace is not None:
+            for shortcut in workspace._shortcuts:
+                shortcut.setEnabled(False)
+                shortcut.deleteLater()
+            workspace._shortcuts.clear()
+            workspace._install_shortcuts()
+            for shortcut in workspace._shortcuts:
+                shortcut.setEnabled(workspace.isVisible())
+            return
+
     def apply_change(self, key: str, value: Any) -> None:
+        self._apply_review_settings(key, value)
         if key == "digit_shortcuts":
             self._widget.drawing_digit_shortcuts = copy.deepcopy(value or {})
             bar = getattr(self._widget, "digit_shortcut_bar", None)

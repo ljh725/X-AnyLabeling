@@ -1,0 +1,69 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 9 items
+
+tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[False] PASSED [ 11%]
+tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True] PASSED [ 22%]
+tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input PASSED [ 33%]
+tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed PASSED [ 44%]
+tests/test_dense_review/test_redesign_interactions.py::test_ambiguous_observation_owner_preserves_saved_group PASSED [ 55%]
+tests/test_dense_review/test_redesign_interactions.py::test_retry_excludes_known_failure_until_current_success PASSED [ 66%]
+tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen PASSED [ 77%]
+tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results PASSED [ 88%]
+tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild FAILED [100%]
+
+================================== FAILURES ===================================
+___________ test_grid_draft_survives_refresh_until_explicit_rebuild ___________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x00000260A326FF70>
+open_window = <function open_window.<locals>._open at 0x00000260A7F5E160>
+
+    def test_grid_draft_survives_refresh_until_explicit_rebuild(app, open_window):
+        _, _, ws = _open(app, open_window)
+        ws.set_task(ws.TASK_COVERAGE)
+        old_plan = ws.session.state.coverage
+        ws.columns_spin.setValue(7)
+        ws.refresh_all()
+        assert ws.columns_spin.value() == 7
+        assert ws.session.state.coverage is old_plan
+>       assert old_plan.columns == 4
+E       AssertionError: assert 2 == 4
+E        +  where 2 = CoveragePlan(plan_id='f9ec138b336220ba', columns=2, rows=2, overlap=0.2, image_width=640, image_height=480, regions=[CoverageRegion(region_id='r00-00', row=0, column=0, rect=(0.0, 0.0, 352.0, 264.0), completed=False, difficult=False, skipped=False, baseline={}), CoverageRegion(region_id='r00-01', row=0, column=1, rect=(288.0, 0.0, 640.0, 264.0), completed=False, difficult=False, skipped=False, baseline={}), CoverageRegion(region_id='r01-00', row=1, column=0, rect=(0.0, 216.0, 352.0, 480.0), completed=False, difficult=False, skipped=False, baseline={}), CoverageRegion(region_id='r01-01', row=1, column=1, rect=(288.0, 216.0, 640.0, 480.0), completed=False, difficult=False, skipped=False, baseline={})], current_region='r00-00').columns
+
+tests\test_dense_review\test_redesign_interactions.py:107: AssertionError
+============================ slowest 30 durations =============================
+3.18s call     tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results
+3.11s call     tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen
+3.01s call     tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[False]
+2.99s call     tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True]
+2.95s call     tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild
+2.85s call     tests/test_dense_review/test_redesign_interactions.py::test_ambiguous_observation_owner_preserves_saved_group
+2.79s call     tests/test_dense_review/test_redesign_interactions.py::test_retry_excludes_known_failure_until_current_success
+2.73s call     tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed
+2.60s call     tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input
+0.74s teardown tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results
+0.45s teardown tests/test_dense_review/test_redesign_interactions.py::test_retry_excludes_known_failure_until_current_success
+0.44s teardown tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed
+0.38s teardown tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild
+0.38s teardown tests/test_dense_review/test_redesign_interactions.py::test_ambiguous_observation_owner_preserves_saved_group
+0.36s teardown tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input
+0.36s teardown tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[False]
+0.35s teardown tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True]
+0.32s teardown tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen
+0.01s setup    tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[False]
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_retry_excludes_known_failure_until_current_success
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True]
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild
+0.00s setup    tests/test_dense_review/test_redesign_interactions.py::test_ambiguous_observation_owner_preserves_saved_group
+=========================== short test summary info ===========================
+FAILED tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild - AssertionError: assert 2 == 4
+ +  where 2 = CoveragePlan(plan_id='f9ec138b336220ba', columns=2, rows=2, overlap=0.2, image_width=640, image_height=480, regions=[CoverageRegion(region_id='r00-00', row=0, column=0, rect=(0.0, 0.0, 352.0, 264.0), completed=False, difficult=False, skipped=False, baseline={}), CoverageRegion(region_id='r00-01', row=0, column=1, rect=(288.0, 0.0, 640.0, 264.0), completed=False, difficult=False, skipped=False, baseline={}), CoverageRegion(region_id='r01-00', row=1, column=0, rect=(0.0, 216.0, 352.0, 480.0), completed=False, difficult=False, skipped=False, baseline={}), CoverageRegion(region_id='r01-01', row=1, column=1, rect=(288.0, 216.0, 640.0, 480.0), completed=False, difficult=False, skipped=False, baseline={})], current_region='r00-00').columns
+======================== 1 failed, 8 passed in 30.88s =========================

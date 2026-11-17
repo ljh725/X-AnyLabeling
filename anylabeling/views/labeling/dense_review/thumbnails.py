@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import math
 import os.path as osp
 import queue
 import threading
@@ -18,6 +19,8 @@ from PyQt6 import QtCore, QtGui
 # repaints stay below one frame budget during a drag.
 _DRAIN_BATCH = 8
 _REQUEST_LIMIT = 32
+_CACHE_BYTES = 64 * 1024 * 1024
+_SOURCE_PIXELS = 64 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -43,14 +46,24 @@ def crop_thumbnail(
     """Load, context-crop and thumbnail one object; run on a worker."""
     if request.image_path and osp.isfile(request.image_path):
         with Image.open(request.image_path) as source:
+            if source.width * source.height > _SOURCE_PIXELS:
+                raise ValueError(
+                    "source image exceeds thumbnail memory budget"
+                )
             image = source.convert("RGB")
     elif request.image_bytes:
         with Image.open(io.BytesIO(request.image_bytes)) as source:
+            if source.width * source.height > _SOURCE_PIXELS:
+                raise ValueError(
+                    "source image exceeds thumbnail memory budget"
+                )
             image = source.convert("RGB")
     else:
         raise ValueError("source image is unavailable")
     width, height = image.size
     x0, y0, x1, y1 = request.bounds
+    if not all(math.isfinite(value) for value in request.bounds):
+        raise ValueError("object coordinates are not finite")
     box_width = max(1.0, x1 - x0)
     box_height = max(1.0, y1 - y0)
     margin_x = box_width * request.margin_ratio
@@ -84,7 +97,7 @@ class ThumbnailProvider(QtCore.QObject):
         self._executor = ThreadPoolExecutor(
             max_workers=2, thread_name_prefix="dense-review-thumb"
         )
-        self._queue: queue.Queue = queue.Queue()
+        self._queue: queue.Queue = queue.Queue(maxsize=_REQUEST_LIMIT)
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(30)
         self._timer.timeout.connect(self._drain)
@@ -329,6 +342,12 @@ class ThumbnailProvider(QtCore.QObject):
                 "inflight": len(self._futures),
                 "outstanding": self._load,
                 "limit": _REQUEST_LIMIT,
+                "queued_results": self._queue.qsize(),
+                "cache_bytes": sum(
+                    img.sizeInBytes() for img in self._cache.values()
+                ),
+                "cache_byte_limit": _CACHE_BYTES,
+                "source_pixel_limit": _SOURCE_PIXELS,
             }
 
     def _drain(self) -> None:
@@ -393,7 +412,11 @@ class ThumbnailProvider(QtCore.QObject):
         self.failed.emit(request.shape_id, payload)
 
     def _trim_cache(self) -> None:
-        while len(self._cache) > self._cache_limit:
+        while self._cache and (
+            len(self._cache) > self._cache_limit
+            or sum(image.sizeInBytes() for image in self._cache.values())
+            > _CACHE_BYTES
+        ):
             self._cache.popitem(last=False)
 
     def shutdown(self) -> None:

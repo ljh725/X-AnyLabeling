@@ -37,6 +37,7 @@ def dirty_host(canvas):
     from anylabeling.views.labeling.label_widget import LabelingWidget
 
     host = SimpleNamespace(
+        canvas=canvas,
         dirty=False,
         correction_metrics=None,
         dense_review_session=None,

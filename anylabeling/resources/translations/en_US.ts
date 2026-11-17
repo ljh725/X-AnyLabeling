@@ -3225,6 +3225,150 @@ Click Rebuild region plan</translation>
         <source>还有 {count} 个查漏区域未完成</source>
         <translation>{count} omission-review regions remain incomplete</translation>
     </message>
+    <message>
+        <source>主体观察</source>
+        <translation>Body view</translation>
+    </message>
+    <message>
+        <source>也可在主画布按 Ctrl+Alt 并单击</source>
+        <translation>You can also Ctrl+Alt-click the main canvas</translation>
+    </message>
+    <message>
+        <source>关联待确认：选择观察主框不修改正式分组</source>
+        <translation>Ambiguous association: choosing a viewing owner does not change saved groups</translation>
+    </message>
+    <message>
+        <source>关联点 {n} · 点审核待支持</source>
+        <translation>Associated points {n} · point review is not yet supported</translation>
+    </message>
+    <message>
+        <source>关联点与未关联对象</source>
+        <translation>Associated points and unassociated objects</translation>
+    </message>
+    <message>
+        <source>关联点超出人物范围</source>
+        <translation>Associated points extend beyond the object</translation>
+    </message>
+    <message>
+        <source>关联线</source>
+        <translation>Association lines</translation>
+    </message>
+    <message>
+        <source>关联观察主框</source>
+        <translation>Viewing owner for associated points</translation>
+    </message>
+    <message>
+        <source>其他对象</source>
+        <translation>Other objects</translation>
+    </message>
+    <message>
+        <source>受面板宽度限制，可拉宽或浮动面板</source>
+        <translation>Limited by panel width; widen or float the panel</translation>
+    </message>
+    <message>
+        <source>在主画布查看</source>
+        <translation>View on main canvas</translation>
+    </message>
+    <message>
+        <source>填充</source>
+        <translation>Fill</translation>
+    </message>
+    <message>
+        <source>复核偏好保存失败：{error}</source>
+        <translation>Could not save review preferences: {error}</translation>
+    </message>
+    <message>
+        <source>属性</source>
+        <translation>Attributes</translation>
+    </message>
+    <message>
+        <source>当前对象</source>
+        <translation>Current object</translation>
+    </message>
+    <message>
+        <source>文字底板</source>
+        <translation>Text background</translation>
+    </message>
+    <message>
+        <source>本批对象</source>
+        <translation>Batch objects</translation>
+    </message>
+    <message>
+        <source>查看全部关联点</source>
+        <translation>View all associated points</translation>
+    </message>
+    <message>
+        <source>点标记</source>
+        <translation>Point markers</translation>
+    </message>
+    <message>
+        <source>类别文字</source>
+        <translation>Class labels</translation>
+    </message>
+    <message>
+        <source>编辑手柄</source>
+        <translation>Editing handles</translation>
+    </message>
+    <message>
+        <source>轮廓</source>
+        <translation>Outline</translation>
+    </message>
+    <message>
+        <source>选择对象以定位</source>
+        <translation>Choose an object to locate</translation>
+    </message>
+    <message>
+        <source>选择重叠对象</source>
+        <translation>Choose overlapping object</translation>
+    </message>
+    <message>
+        <source>遮罩</source>
+        <translation>Mask</translation>
+    </message>
+    <message>
+        <source>重试图块</source>
+        <translation>Retry thumbnail</translation>
+    </message>
+    <message>
+        <source>对象坐标无效</source>
+        <translation>Invalid object coordinates</translation>
+    </message>
+    <message>
+        <source> · 策略收起 {n}</source>
+        <translation> · Hidden by display policy {n}</translation>
+    </message>
+    <message>
+        <source>确认范围</source>
+        <translation>Confirmation scope</translation>
+    </message>
+    <message>
+        <source>可确认</source>
+        <translation>Eligible for confirmation</translation>
+    </message>
+    <message>
+        <source>关联点超出图像范围</source>
+        <translation>Associated points are outside the image</translation>
+    </message>
+    <message>
+        <source>查漏时显示点</source>
+        <translation>Show points during coverage review</translation>
+    </message>
+    <message>
+        <source>区域计划设置</source>
+        <translation>Region plan settings</translation>
+    </message>
+    <message>
+        <source>当前审核范围：{dimensions}</source>
+        <translation>Current review scope: {dimensions}</translation>
+    </message>
+    <message>
+        <source> · 矩形 {boxes} · 点 {points} · 当前卡片 {cards}</source>
+        <translation> · Rectangles {boxes} · Points {points} · Current cards {cards}</translation>
+    </message>
+    <message>
+        <source>框</source>
+        <translation>Box</translation>
+    </message>
 </context><context>
     <name>DescriptionEditor</name>
     <message>
@@ -8149,6 +8293,10 @@ This warning will only be shown once. Do you want to continue?</translation>
         <source>Candidate association is ambiguous; recheck current objects</source>
         <translation>Candidate association is ambiguous; recheck current objects</translation>
     </message>
+    <message>
+        <source>交接对象已过期，请刷新检查结果。</source>
+        <translation>The handed-off object is stale; refresh inspection results.</translation>
+    </message>
 </context><context>
     <name>Model</name>
     <message>
@@ -12129,6 +12277,26 @@ Changes will not be saved until you click Save.</translation>
     </message>
 <message><source>Inspector: Previous Issue</source><translation>Inspector: Previous Issue</translation></message>
 <message><source>Inspector: Next Issue</source><translation>Inspector: Next Issue</translation></message>
+    <message>
+        <source>Dense Review Task</source>
+        <translation>Dense Review Task</translation>
+    </message>
+    <message>
+        <source>Card Image Height</source>
+        <translation>Card Image Height</translation>
+    </message>
+    <message>
+        <source>Card Context</source>
+        <translation>Card Context</translation>
+    </message>
+    <message>
+        <source>Show Review Batches</source>
+        <translation>Show Review Batches</translation>
+    </message>
+    <message>
+        <source>Show Review Cards</source>
+        <translation>Show Review Cards</translation>
+    </message>
 </context><context>
     <name>SettingsRuntimeApplier</name>
     <message>

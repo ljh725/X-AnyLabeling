@@ -1,0 +1,134 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 2 items
+
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-False] Traceback (most recent call last):
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\labeling\label_widget.py", line 4469, in _on_geometry_committed
+    self, "edit", "geometry", changed=list(self.canvas.shapes)
+                                           ^^^^^^^^^^^
+AttributeError: 'types.SimpleNamespace' object has no attribute 'canvas'
+FAILED
+tests/test_labeling/test_label_locks.py::TestLabelLocks::test_category_checkbox_controls_all_matching_shapes Traceback (most recent call last):
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\labeling\label_widget.py", line 8374, in set_label_visibility
+    self._refresh_shape_filters()
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\labeling\label_widget.py", line 8377, in apply_label_visibility
+    self._apply_shape_filter_visibility()
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\labeling\label_widget.py", line 8316, in _apply_shape_filter_visibility
+    review_active = self.dense_review_active()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'
+FAILED
+
+================================== FAILURES ===================================
+________ test_nudge_preview_preserves_host_dirty[16777234-False-False] ________
+
+canvas = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x00000205C45C5A90>
+dirty_host = namespace(dirty=False, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='2223792495...0>, namespace(...)), set_dirty=<Mock id='2223792496400'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x00000205C45B9850>)
+show_masks = False, captured = False, key = <Key.Key_Left: 16777234>
+
+    @pytest.mark.parametrize("show_masks", [False, True])
+    @pytest.mark.parametrize("captured", [False, True])
+    @pytest.mark.parametrize("key", [QtCore.Qt.Key.Key_Left,
+                                     QtCore.Qt.Key.Key_Right])
+    def test_nudge_preview_preserves_host_dirty(canvas, dirty_host, show_masks,
+                                              captured, key):
+        """Only the nudge commits; recomputation/cancel/release stay silent."""
+        canvas.show_masks = show_masks
+        seed_pointer(canvas)
+        kind = (QtCore.QEvent.Type.MouseButtonPress if captured
+                else QtCore.QEvent.Type.MouseMove)
+        send_mouse(canvas, kind, (151.5, 120))
+        render(canvas)
+        assert dirty_host.dirty is False
+        assert dirty_host.set_dirty.call_count == len(dirty_host.moves) == 0
+
+        nudge(canvas, key)
+>       assert dirty_host.dirty is True
+E       AssertionError: assert False is True
+E        +  where False = namespace(dirty=False, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='2223792495824'>, undo=<Mock id='2223792496064'>, redo=<Mock id='2223792496160'>), _config={'auto_save': False}, _dense_review_undo_available=<function dirty_host.<locals>.<lambda> at 0x000002059BDF72E0>, _dense_review_redo_available=<function dirty_host.<locals>.<lambda> at 0x00000205C45C62A0>, update_progress_title=<Mock id='2223792496016'>, _notify_inspection_edit=functools.partial(<function LabelingWidget._notify_inspection_edit at 0x00000205C4302CA0>, namespace(...)), set_dirty=<Mock id='2223792496400'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x00000205C45B9850>).dirty
+
+tests\test_canvas\test_rectangle_preview_overlap.py:1002: AssertionError
+_____ TestLabelLocks.test_category_checkbox_controls_all_matching_shapes ______
+
+self = <test_label_locks.TestLabelLocks testMethod=test_category_checkbox_controls_all_matching_shapes>
+
+    def test_category_checkbox_controls_all_matching_shapes(self):
+        from anylabeling.views.labeling.widgets.label_list_widget import (
+            LabelListWidget,
+            LabelListWidgetItem,
+        )
+
+        objects = LabelListWidget()
+        for shape in self.shapes:
+            objects.add_iem(LabelListWidgetItem(shape.label, shape))
+        self.widget.label_list = objects
+        self.widget.label_info = {}
+        self.widget.canvas.visible = {}
+        self.widget.canvas.update = Mock()
+        self.widget._get_rgb_by_label = Mock(return_value=(0, 255, 0))
+        self.widget._update_select_toggle_button_tooltip = Mock()
+        self.widget._sync_label_list_visibility = partial(
+            LabelingWidget._sync_label_list_visibility, self.widget
+        )
+        self.widget._refresh_shape_filters = partial(
+            LabelingWidget.apply_label_visibility, self.widget
+        )
+        self.labels.label_visibility_changed.connect(
+            partial(LabelingWidget.set_label_visibility, self.widget)
+        )
+        self.labels.show()
+        self.app.processEvents()
+        item = self.labels.item(0)
+        option = QtWidgets.QStyleOptionViewItem()
+        option.initFrom(self.labels)
+        option.rect = self.labels.visualItemRect(item)
+        self.labels.itemDelegate().initStyleOption(
+            option, self.labels.indexFromItem(item)
+        )
+        rect = self.labels.style().subElementRect(
+            QtWidgets.QStyle.SubElement.SE_ItemViewItemCheckIndicator,
+            option,
+            self.labels,
+        )
+        for visible in (False, True):
+            QTest.mouseClick(
+                self.labels.viewport(),
+                QtCore.Qt.MouseButton.LeftButton,
+                pos=rect.center(),
+            )
+>           self.assertEqual(
+                [s.visible for s in self.shapes], [visible, visible, True]
+            )
+E           AssertionError: Lists differ: [True, True, True] != [False, False, True]
+E
+E           First differing element 0:
+E           True
+E           False
+E
+E           - [True, True, True]
+E           + [False, False, True]
+
+tests\test_labeling\test_label_locks.py:197: AssertionError
+============================ slowest 30 durations =============================
+0.02s call     tests/test_labeling/test_label_locks.py::TestLabelLocks::test_category_checkbox_controls_all_matching_shapes
+0.01s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-False]
+0.01s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-False]
+0.00s teardown tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-False]
+0.00s setup    tests/test_labeling/test_label_locks.py::TestLabelLocks::test_category_checkbox_controls_all_matching_shapes
+0.00s teardown tests/test_labeling/test_label_locks.py::TestLabelLocks::test_category_checkbox_controls_all_matching_shapes
+=========================== short test summary info ===========================
+FAILED tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-False] - AssertionError: assert False is True
+ +  where False = namespace(dirty=False, correction_metrics=None, dense_review_session=None, actions=namespace(save=<Mock id='2223792495824'>, undo=<Mock id='2223792496064'>, redo=<Mock id='2223792496160'>), _config={'auto_save': False}, _dense_review_undo_available=<function dirty_host.<locals>.<lambda> at 0x000002059BDF72E0>, _dense_review_redo_available=<function dirty_host.<locals>.<lambda> at 0x00000205C45C62A0>, update_progress_title=<Mock id='2223792496016'>, _notify_inspection_edit=functools.partial(<function LabelingWidget._notify_inspection_edit at 0x00000205C4302CA0>, namespace(...)), set_dirty=<Mock id='2223792496400'>, moves=<PyQt6.QtTest.QSignalSpy object at 0x00000205C45B9850>).dirty
+FAILED tests/test_labeling/test_label_locks.py::TestLabelLocks::test_category_checkbox_controls_all_matching_shapes - AssertionError: Lists differ: [True, True, True] != [False, False, True]
+
+First differing element 0:
+True
+False
+
+- [True, True, True]
++ [False, False, True]
+============================== 2 failed in 3.00s ==============================

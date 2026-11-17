@@ -1,0 +1,56 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 15 items
+
+tests/test_dense_review/test_redesign_completion.py::test_point_navigation_keeps_parent_and_edit_identity PASSED [  6%]
+tests/test_dense_review/test_redesign_completion.py::test_outside_point_crop_and_body_observation PASSED [ 13%]
+tests/test_dense_review/test_redesign_completion.py::test_task_display_strength_survives_roundtrip PASSED [ 20%]
+tests/test_dense_review/test_redesign_completion.py::test_preference_failure_keeps_live_view PASSED [ 26%]
+tests/test_dense_review/test_redesign_completion.py::test_preferences_persist_without_annotation_changes PASSED [ 33%]
+tests/test_dense_review/test_redesign_completion.py::test_overlap_menu_only_changes_target_on_explicit_action PASSED [ 40%]
+tests/test_dense_review/test_redesign_completion.py::test_minimap_has_real_source_and_keeps_plan PASSED [ 46%]
+tests/test_dense_review/test_redesign_completion.py::test_label_layout_avoids_handles_freezes_drag_and_numbers_overflow PASSED [ 53%]
+tests/test_dense_review/test_redesign_completion.py::test_invalid_preferences_normalize_to_supported_values PASSED [ 60%]
+tests/test_dense_review/test_signatures.py::test_rectangle_vertex_order_and_numeric_spelling_are_equivalent PASSED [ 66%]
+tests/test_dense_review/test_signatures.py::test_tiny_coordinate_change_is_detected PASSED [ 73%]
+tests/test_dense_review/test_signatures.py::test_unknown_box_rule_includes_label_in_geometry_signature PASSED [ 80%]
+tests/test_dense_review/test_signatures.py::test_category_note_changes_category_only PASSED [ 86%]
+tests/test_dense_review/test_signatures.py::test_box_rule_change_changes_geometry_signature PASSED [ 93%]
+tests/test_dense_review/test_signatures.py::test_content_hash_ignores_visibility_and_lock_but_tracks_content PASSED [100%]
+
+============================ slowest 30 durations =============================
+2.99s call     tests/test_dense_review/test_redesign_completion.py::test_preferences_persist_without_annotation_changes
+2.88s call     tests/test_dense_review/test_redesign_completion.py::test_task_display_strength_survives_roundtrip
+2.82s call     tests/test_dense_review/test_redesign_completion.py::test_minimap_has_real_source_and_keeps_plan
+2.77s call     tests/test_dense_review/test_redesign_completion.py::test_outside_point_crop_and_body_observation
+2.74s call     tests/test_dense_review/test_redesign_completion.py::test_point_navigation_keeps_parent_and_edit_identity
+2.74s call     tests/test_dense_review/test_redesign_completion.py::test_overlap_menu_only_changes_target_on_explicit_action
+2.73s call     tests/test_dense_review/test_redesign_completion.py::test_preference_failure_keeps_live_view
+0.51s teardown tests/test_dense_review/test_redesign_completion.py::test_task_display_strength_survives_roundtrip
+0.48s teardown tests/test_dense_review/test_redesign_completion.py::test_minimap_has_real_source_and_keeps_plan
+0.47s teardown tests/test_dense_review/test_redesign_completion.py::test_point_navigation_keeps_parent_and_edit_identity
+0.45s teardown tests/test_dense_review/test_redesign_completion.py::test_overlap_menu_only_changes_target_on_explicit_action
+0.41s teardown tests/test_dense_review/test_redesign_completion.py::test_preferences_persist_without_annotation_changes
+0.40s teardown tests/test_dense_review/test_redesign_completion.py::test_outside_point_crop_and_body_observation
+0.04s teardown tests/test_dense_review/test_redesign_completion.py::test_preference_failure_keeps_live_view
+0.01s setup    tests/test_dense_review/test_redesign_completion.py::test_point_navigation_keeps_parent_and_edit_identity
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_task_display_strength_survives_roundtrip
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_minimap_has_real_source_and_keeps_plan
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_preferences_persist_without_annotation_changes
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_preference_failure_keeps_live_view
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_overlap_menu_only_changes_target_on_explicit_action
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_outside_point_crop_and_body_observation
+0.00s setup    tests/test_dense_review/test_signatures.py::test_category_note_changes_category_only
+0.00s setup    tests/test_dense_review/test_signatures.py::test_unknown_box_rule_includes_label_in_geometry_signature
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_label_layout_avoids_handles_freezes_drag_and_numbers_overflow
+0.00s teardown tests/test_dense_review/test_signatures.py::test_content_hash_ignores_visibility_and_lock_but_tracks_content
+0.00s teardown tests/test_dense_review/test_signatures.py::test_category_note_changes_category_only
+0.00s setup    tests/test_dense_review/test_signatures.py::test_box_rule_change_changes_geometry_signature
+0.00s setup    tests/test_dense_review/test_signatures.py::test_content_hash_ignores_visibility_and_lock_but_tracks_content
+0.00s teardown tests/test_dense_review/test_signatures.py::test_tiny_coordinate_change_is_detected
+0.00s teardown tests/test_dense_review/test_signatures.py::test_unknown_box_rule_includes_label_in_geometry_signature
+============================= 15 passed in 22.87s =============================

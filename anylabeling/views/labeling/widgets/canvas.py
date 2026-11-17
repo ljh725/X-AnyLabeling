@@ -3388,6 +3388,19 @@ class Canvas(
         """Mouse press event"""
         if self.is_loading:
             return
+        if (
+            self.dense_review_active
+            and not self.annotation_editing_paused()
+            and ev.button() == QtCore.Qt.MouseButton.LeftButton
+            and ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
+            and ev.modifiers() & QtCore.Qt.KeyboardModifier.AltModifier
+        ):
+            self.choose_dense_review_candidate(
+                self.transform_pos(ev.position()),
+                ev.globalPosition().toPoint(),
+            )
+            ev.accept()
+            return
         self._blocked_edit_buttons &= ~ev.button()
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             self._begin_left_press()
@@ -5478,7 +5491,49 @@ class Canvas(
             label_bounds = self.visibleRegion().boundingRect()
             if label_bounds.isEmpty():
                 label_bounds = self.rect()
-            for shape in self.shapes:
+            review_layout = None
+            label_shapes = self.shapes
+            if self.dense_review_active:
+                from ..dense_review.label_layout import ReviewLabelLayout
+
+                review_layout = getattr(self, "_review_label_layout", None)
+                if review_layout is None:
+                    review_layout = ReviewLabelLayout()
+                    self._review_label_layout = review_layout
+                handles = []
+                for selected in self.selected_shapes:
+                    for point in selected.points:
+                        position = label_transform.map(point).toPoint()
+                        handles.append(
+                            QtCore.QRect(
+                                position.x() - 6, position.y() - 6, 12, 12
+                            )
+                        )
+                frame = (
+                    self.dense_review_revision,
+                    p.font().toString(),
+                    self.devicePixelRatioF(),
+                    label_bounds,
+                    label_transform,
+                    tuple(
+                        (
+                            id(obj),
+                            obj.label,
+                            tuple((pt.x(), pt.y()) for pt in obj.points),
+                        )
+                        for obj in self.shapes
+                    ),
+                )
+                review_layout.begin(frame, self.is_pointer_down, handles)
+                label_shapes = sorted(
+                    self.shapes,
+                    key=lambda obj: (
+                        self.dense_review_display_for(obj).role != "current"
+                        if self.dense_review_display_for(obj)
+                        else True
+                    ),
+                )
+            for shape in label_shapes:
                 if not self._overlay_visible(shape):
                     continue
                 if shape.label in [
@@ -5500,6 +5555,10 @@ class Canvas(
                 padding_y = 2
                 rect_width = text_rect.width() + 2 * padding_x
                 rect_height = fm.height() + 2 * padding_y
+                if review_layout is not None:
+                    rect_width, rect_height = review_layout.measure(
+                        p.font(), self.devicePixelRatioF(), label_text, fm
+                    )
 
                 if shape.shape_type in [
                     "rectangle",
@@ -5579,18 +5638,52 @@ class Canvas(
                         end.x() - 8 if end_x == rect.left() else end.x() + 8,
                         end.y(),
                     )
-                    leaders.append((shape, point, elbow, end))
+                    if review_layout is None:
+                        leaders.append((shape, point, elbow, end))
                 else:
                     continue
+                if review_layout is not None:
+                    shape_id = getattr(shape, "xanylabeling_shape_id", "")
+                    display = self.dense_review_display_for(shape)
+                    previous_rect = QtCore.QRect(rect)
+                    rect, fallback = review_layout.place(
+                        shape_id,
+                        rect,
+                        label_bounds,
+                        current=display is not None
+                        and display.role == "current",
+                    )
+                    text_pos = QtCore.QPoint(
+                        rect.left() + padding_x,
+                        rect.bottom() + 1 - padding_y - fm.descent(),
+                    )
+                    if fallback:
+                        label_text = (
+                            f"#{self.dense_review_object_number(shape)}"
+                        )
+                    if (
+                        rect != previous_rect
+                        or shape.shape_type != "rectangle"
+                    ):
+                        start = label_transform.map(
+                            shape.bounding_rect().topLeft()
+                        )
+                        end = QtCore.QPointF(rect.center())
+                        leaders.append((shape, start, end, end))
                 labels.append((shape, rect, text_pos, label_text))
 
             for shape, start, elbow, end in leaders:
+                previous = p.opacity()
+                p.setOpacity(
+                    previous * self._dense_review_text_strength(shape)
+                )
                 color = QtGui.QColor(shape.line_color)
                 color.setAlphaF(0.5)
                 pen = QtGui.QPen(color, 1, Qt.PenStyle.DashLine)
                 pen.setCosmetic(True)
                 p.setPen(pen)
                 p.drawPolyline(QtGui.QPolygonF([start, elbow, end]))
+                p.setOpacity(previous)
 
             p.setPen(QtCore.Qt.PenStyle.NoPen)
             for shape, rect, _, _ in labels:
@@ -6664,6 +6757,39 @@ class Canvas(
         self.visible[shape] = value
         self.invalidate_rectangle_size_issues()
         self.update()
+
+    def dense_review_object_number(self, shape):
+        """Return the same stable number used by the review card ledger."""
+        shape_id = getattr(shape, "xanylabeling_shape_id", "")
+        return getattr(self, "_dense_review_object_numbers", {}).get(
+            shape_id, "?"
+        )
+
+    def dense_review_candidate_menu(self, point):
+        """Build an explicit overlap chooser without changing selection."""
+        menu = QtWidgets.QMenu(self)
+        for shape in self._shape_hit_candidates(point):
+            index = self.dense_review_object_number(shape)
+            action = menu.addAction(
+                f"#{index} {shape.label} · {shape.shape_type}"
+            )
+            action.triggered.connect(
+                lambda _checked=False, target=shape: self.select_shapes(
+                    [target]
+                )
+            )
+        return menu
+
+    def choose_dense_review_candidate(self, point, global_position=None):
+        """Let mouse or keyboard explicitly select an overlapping object."""
+        if not self.dense_review_active or self.annotation_editing_paused():
+            return
+        menu = self.dense_review_candidate_menu(point)
+        if menu.actions():
+            menu.exec(
+                global_position or self.mapToGlobal(self.rect().center())
+            )
+        menu.deleteLater()
 
     def set_dense_review_region(self, rect=None, label=""):
         """Temporarily outline one spatial-review region in image coords."""

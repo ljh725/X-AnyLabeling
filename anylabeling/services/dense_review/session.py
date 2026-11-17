@@ -203,7 +203,10 @@ class DenseReviewSession:
                 state.batches[0].batch_id if state.batches else ""
             )
         members = state.member_ids(state.current_batch)
-        if state.current_object not in members:
+        observed = state.objects.get(state.current_object)
+        if state.current_object not in members and not (
+            observed is not None and not observed.supported
+        ):
             state.current_object = members[0] if members else ""
         if state.coverage is not None:
             if state.coverage.region(state.coverage.current_region) is None:
@@ -437,7 +440,7 @@ class DenseReviewSession:
                 item.geometry_confirmed = None
             elif geometry_changed:
                 item.geometry_confirmed = None
-        if bounds_changed:
+        if bounds_changed or (group_changed and not item.supported):
             changed_bounds[item.shape_id] = (
                 item.bounds,
                 bounds,
@@ -677,7 +680,10 @@ class DenseReviewSession:
             return
         self.state.current_batch = batch_id
         members = self.state.member_ids(batch_id)
-        if shape_id in members:
+        observed = self.object(shape_id)
+        if shape_id in members or (
+            observed is not None and not observed.supported
+        ):
             self.state.current_object = shape_id
         elif members:
             self.state.current_object = members[0]

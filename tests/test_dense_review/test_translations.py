@@ -128,7 +128,7 @@ class TestDenseReviewTranslations(unittest.TestCase):
 
         entries = [("LabelingWidget", reason) for reason in REASON_TEXT.values()]
         folder = REPO_ROOT / "anylabeling/views/labeling/dense_review"
-        for filename in ("workspace.py", "config_dialog.py"):
+        for filename in ("workspace.py", "config_dialog.py", "features.py"):
             tree = ast.parse((folder / filename).read_text(encoding="utf-8"))
             for cls in tree.body:
                 if not isinstance(cls, ast.ClassDef):
@@ -143,7 +143,7 @@ class TestDenseReviewTranslations(unittest.TestCase):
                         and isinstance(node.args[0].value, str)
                     ):
                         context = cls.name
-                        if context == "_CardModel":
+                        if context in ("_CardModel", "WorkspaceFeatures"):
                             context = "DenseReviewWorkspace"
                         entries.append((context, node.args[0].value))
         for language in LANGUAGES:

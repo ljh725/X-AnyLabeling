@@ -1,0 +1,134 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 91 items
+
+tests/test_settings/test_controller.py::TestSettingsController::test_canvas_field_validation PASSED [  1%]
+tests/test_settings/test_controller.py::TestSettingsController::test_debounce_save_and_flush PASSED [  2%]
+tests/test_settings/test_controller.py::TestSettingsController::test_deferred_runtime_apply_and_discard PASSED [  3%]
+tests/test_settings/test_controller.py::TestSettingsController::test_deferred_width_preview_reverts_or_persists PASSED [  4%]
+tests/test_settings/test_controller.py::TestSettingsController::test_font_family_accepts_system_default_and_family_name PASSED [  5%]
+tests/test_settings/test_controller.py::TestSettingsController::test_multi_shortcut_conflict PASSED [  6%]
+tests/test_settings/test_controller.py::TestSettingsController::test_numeric_validation_and_apply PASSED [  7%]
+tests/test_settings/test_controller.py::TestSettingsController::test_optional_integer_accepts_none_and_non_negative_values PASSED [  8%]
+tests/test_settings/test_controller.py::TestSettingsController::test_reset_page_and_reset_all PASSED [  9%]
+tests/test_settings/test_controller.py::TestSettingsController::test_shape_field_validation PASSED [ 10%]
+tests/test_settings/test_controller.py::TestSettingsController::test_shortcut_clear_behavior PASSED [ 12%]
+tests/test_settings/test_controller.py::TestSettingsController::test_shortcut_conflict_and_whitelist PASSED [ 13%]
+tests/test_settings/test_controller.py::TestSettingsController::test_shortcut_list_value_uses_first_entry PASSED [ 14%]
+tests/test_settings/test_controller_persistence.py::test_general_save_keeps_digit_mapping_saved_earlier PASSED [ 15%]
+tests/test_settings/test_controller_persistence.py::test_save_submits_only_fields_modified_in_this_draft PASSED [ 16%]
+tests/test_settings/test_controller_persistence.py::test_conflicting_external_change_is_reported_and_draft_kept PASSED [ 17%]
+tests/test_settings/test_controller_persistence.py::test_failed_write_keeps_draft_and_retry_succeeds PASSED [ 18%]
+tests/test_settings/test_controller_persistence.py::test_no_modified_fields_does_not_touch_the_file PASSED [ 19%]
+tests/test_settings/test_controller_persistence.py::test_refresh_keeps_draft_values_and_updates_untouched_fields PASSED [ 20%]
+tests/test_settings/test_controller_persistence.py::test_runtime_apply_failure_keeps_the_saved_document PASSED [ 21%]
+tests/test_settings/test_controller_persistence.py::test_retry_apply_reports_a_persistent_failure PASSED [ 23%]
+tests/test_settings/test_controller_persistence.py::test_dialog_reports_a_runtime_apply_failure_as_saved PASSED [ 24%]
+tests/test_settings/test_controller_persistence.py::test_reload_session_rereads_a_file_written_elsewhere PASSED [ 25%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_canvas_label_font_size_editor_uses_supported_range PASSED [ 26%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_canvas_uses_same_viewport_gap PASSED [ 27%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_close_discards_unsaved_changes PASSED [ 28%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_elided_label_only_shows_tooltip_when_text_is_truncated PASSED [ 29%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_general_font_selector_lists_available_font_families PASSED [ 30%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_general_optional_integer_shows_qt_default_value PASSED [ 31%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_general_titles_remain_english_while_descriptions_translate PASSED [ 32%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_general_uses_viewport_gap_and_fixed_bottom_height PASSED [ 34%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_last_primary_selection_keeps_all_navigation_visible PASSED [ 35%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_line_width_editors_use_half_pixel_steps PASSED [ 36%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_shape_uses_same_viewport_gap PASSED [ 37%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_shortcuts_reset_handles_transient_conflict PASSED [ 38%]
+tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_shortcuts_reset_viewport_margins PASSED [ 39%]
+tests/test_settings/test_digit_shortcut_flow.py::test_failed_commit_keeps_the_dialog_open_and_the_input PASSED [ 40%]
+tests/test_settings/test_digit_shortcut_flow.py::test_successful_commit_closes_the_dialog_and_updates_the_parent PASSED [ 41%]
+tests/test_settings/test_digit_shortcut_flow.py::test_commit_uses_the_dialog_baseline_not_the_live_mapping PASSED [ 42%]
+tests/test_settings/test_digit_shortcut_flow.py::test_widget_commit_merges_untouched_digits PASSED [ 43%]
+tests/test_settings/test_digit_shortcut_flow.py::test_widget_commit_reports_a_same_digit_conflict PASSED [ 45%]
+tests/test_settings/test_digit_shortcut_flow.py::test_widget_commit_keeps_a_digit_changed_while_the_dialog_was_open PASSED [ 46%]
+tests/test_settings/test_digit_shortcut_flow.py::test_widget_commit_can_clear_a_digit PASSED [ 47%]
+tests/test_settings/test_persistence_review_regressions.py::test_ui_can_save_a_default_field_absent_from_the_document PASSED [ 48%]
+tests/test_settings/test_persistence_review_regressions.py::test_ui_can_replace_one_transient_value_without_persisting_the_rest PASSED [ 49%]
+tests/test_settings/test_persistence_review_regressions.py::test_peer_update_then_unrelated_save_advances_the_untouched_baseline[False] PASSED [ 50%]
+tests/test_settings/test_persistence_review_regressions.py::test_peer_update_then_unrelated_save_advances_the_untouched_baseline[True] PASSED [ 51%]
+tests/test_settings/test_persistence_review_regressions.py::test_a_modified_draft_keeps_its_original_persistent_baseline PASSED [ 52%]
+tests/test_settings/test_persistence_review_regressions.py::test_unrelated_save_and_reopening_keep_a_runtime_failure_until_retry PASSED [ 53%]
+tests/test_settings/test_persistence_review_regressions.py::test_reloading_an_unchanged_file_rolls_back_a_live_preview PASSED [ 54%]
+tests/test_settings/test_persistence_review_regressions.py::test_reload_removes_deleted_fields_and_uses_template_defaults[digit] PASSED [ 56%]
+tests/test_settings/test_persistence_review_regressions.py::test_reload_removes_deleted_fields_and_uses_template_defaults[mapping] PASSED [ 57%]
+tests/test_settings/test_persistence_review_regressions.py::test_reload_removes_deleted_fields_and_uses_template_defaults[file] PASSED [ 58%]
+tests/test_settings/test_persistence_review_regressions.py::test_adopted_shortcut_reaches_the_real_qaction[save] PASSED [ 59%]
+tests/test_settings/test_persistence_review_regressions.py::test_adopted_shortcut_reaches_the_real_qaction[reload] PASSED [ 60%]
+tests/test_settings/test_persistence_review_regressions.py::test_adopted_shortcut_reaches_the_real_qaction[peer_save] PASSED [ 61%]
+tests/test_settings/test_persistence_window_integration.py::test_real_entries_interleave_restart_and_keep_drawing_bindings PASSED [ 62%]
+tests/test_settings/test_persistence_window_integration.py::test_main_window_digit_failure_preserves_input_for_retry PASSED [ 63%]
+tests/test_settings/test_runtime_applier.py::TestSettingsRuntimeApplier::test_font_family_applies_and_restores_without_restart SKIPPED [ 64%]
+tests/test_settings/test_runtime_applier.py::TestSettingsRuntimeApplier::test_label_font_size_applies_without_restart PASSED [ 65%]
+tests/test_settings/test_runtime_applier.py::TestSettingsRuntimeApplier::test_width_previews_use_pending_values PASSED [ 67%]
+tests/test_settings/test_runtime_applier.py::TestMagicWandSettingsRuntimeApplier::test_magic_wand_defaults_refresh_when_preview_is_inactive PASSED [ 68%]
+tests/test_settings/test_runtime_applier.py::TestMagicWandSettingsRuntimeApplier::test_magic_wand_settings_apply_without_restart PASSED [ 69%]
+tests/test_settings/test_schema.py::TestSettingsSchema::test_defaults_cover_all_keys PASSED [ 70%]
+tests/test_settings/test_schema.py::TestSettingsSchema::test_field_count PASSED [ 71%]
+tests/test_settings/test_schema.py::TestSettingsSchema::test_fields_for_primary PASSED [ 72%]
+tests/test_settings/test_schema.py::TestSettingsSchema::test_included_and_excluded_keys PASSED [ 73%]
+tests/test_settings/test_schema.py::TestSettingsSchema::test_primary_and_key_sets PASSED [ 74%]
+tests/test_settings/test_schema.py::TestSettingsSchema::test_shortcut_and_non_shortcut_count PASSED [ 75%]
+tests/test_settings/test_schema.py::TestSettingsSchema::test_visible_non_shortcut_fields_have_descriptions PASSED [ 76%]
+tests/test_settings/test_shape_colors.py::TestShapeColors::test_default_label_palette_is_preserved PASSED [ 78%]
+tests/test_settings/test_shape_colors.py::TestShapeColors::test_each_override_survives_recolor_and_new_shape_and_reset
+tests/test_settings/test_shape_colors.py::TestShapeColors::test_each_override_survives_recolor_and_new_shape_and_reset PASSED [ 79%]
+tests/test_settings/test_shape_colors.py::TestShapeColors::test_normal_and_selected_fill_render_independently PASSED [ 80%]
+tests/test_settings/test_shape_colors.py::TestShapeColors::test_strategy_changes_preserve_overrides_and_label_list_colors
+tests/test_settings/test_shape_colors.py::TestShapeColors::test_strategy_changes_preserve_overrides_and_label_list_colors PASSED [ 81%]
+tests/test_settings/test_two_window_persistence.py::test_digits_and_shortcut_saved_in_second_window_survive_first PASSED [ 82%]
+tests/test_settings/test_two_window_persistence.py::test_cancel_in_one_window_keeps_the_other_windows_changes PASSED [ 83%]
+tests/test_settings/test_two_window_persistence.py::test_conflict_between_two_windows_keeps_first_value PASSED [ 84%]
+tests/test_settings/test_two_window_persistence.py::test_restart_after_two_windows_sees_every_saved_field PASSED [ 85%]
+tests/test_settings/test_two_window_persistence.py::test_old_draft_cannot_replace_a_field_written_externally PASSED [ 86%]
+tests/test_settings/test_two_window_persistence.py::test_untouched_field_can_be_edited_after_a_save PASSED [ 87%]
+tests/test_settings/test_two_window_persistence.py::test_conflict_reload_reads_the_file_again PASSED [ 89%]
+tests/test_settings/test_wheel_gesture_strings.py::test_rectangle_wheel_setting_describes_the_alt_gesture PASSED [ 90%]
+tests/test_settings/test_wheel_gesture_strings.py::test_catalog_has_a_finished_translation[en_US] PASSED [ 91%]
+tests/test_settings/test_wheel_gesture_strings.py::test_catalog_has_a_finished_translation[zh_CN] PASSED [ 92%]
+tests/test_settings/test_wheel_gesture_strings.py::test_catalog_has_a_finished_translation[ja_JP] PASSED [ 93%]
+tests/test_settings/test_wheel_gesture_strings.py::test_catalog_has_a_finished_translation[ko_KR] PASSED [ 94%]
+tests/test_settings/test_wheel_gesture_strings.py::test_embedded_catalog_matches_the_disk_catalog[en_US] PASSED [ 95%]
+tests/test_settings/test_wheel_gesture_strings.py::test_embedded_catalog_matches_the_disk_catalog[zh_CN] PASSED [ 96%]
+tests/test_settings/test_wheel_gesture_strings.py::test_embedded_catalog_matches_the_disk_catalog[ja_JP] PASSED [ 97%]
+tests/test_settings/test_wheel_gesture_strings.py::test_embedded_catalog_matches_the_disk_catalog[ko_KR] PASSED [ 98%]
+tests/test_settings/test_wheel_gesture_strings.py::test_user_guides_describe_the_current_gestures PASSED [100%]
+
+============================ slowest 30 durations =============================
+8.68s call     tests/test_settings/test_persistence_window_integration.py::test_real_entries_interleave_restart_and_keep_drawing_bindings
+3.57s call     tests/test_settings/test_persistence_window_integration.py::test_main_window_digit_failure_preserves_input_for_retry
+1.10s call     tests/test_settings/test_persistence_review_regressions.py::test_peer_update_then_unrelated_save_advances_the_untouched_baseline[False]
+1.01s call     tests/test_settings/test_two_window_persistence.py::test_digits_and_shortcut_saved_in_second_window_survive_first
+0.75s call     tests/test_settings/test_two_window_persistence.py::test_restart_after_two_windows_sees_every_saved_field
+0.71s call     tests/test_settings/test_persistence_review_regressions.py::test_ui_can_replace_one_transient_value_without_persisting_the_rest
+0.69s call     tests/test_settings/test_digit_shortcut_flow.py::test_commit_uses_the_dialog_baseline_not_the_live_mapping
+0.51s call     tests/test_settings/test_digit_shortcut_flow.py::test_widget_commit_merges_untouched_digits
+0.50s call     tests/test_settings/test_digit_shortcut_flow.py::test_widget_commit_can_clear_a_digit
+0.49s call     tests/test_settings/test_persistence_review_regressions.py::test_unrelated_save_and_reopening_keep_a_runtime_failure_until_retry
+0.48s call     tests/test_settings/test_persistence_review_regressions.py::test_peer_update_then_unrelated_save_advances_the_untouched_baseline[True]
+0.45s call     tests/test_settings/test_two_window_persistence.py::test_conflict_reload_reads_the_file_again
+0.44s call     tests/test_settings/test_digit_shortcut_flow.py::test_widget_commit_keeps_a_digit_changed_while_the_dialog_was_open
+0.43s call     tests/test_settings/test_digit_shortcut_flow.py::test_widget_commit_reports_a_same_digit_conflict
+0.42s call     tests/test_settings/test_two_window_persistence.py::test_untouched_field_can_be_edited_after_a_save
+0.41s call     tests/test_settings/test_two_window_persistence.py::test_old_draft_cannot_replace_a_field_written_externally
+0.41s call     tests/test_settings/test_two_window_persistence.py::test_conflict_between_two_windows_keeps_first_value
+0.38s call     tests/test_settings/test_two_window_persistence.py::test_cancel_in_one_window_keeps_the_other_windows_changes
+0.34s call     tests/test_settings/test_persistence_review_regressions.py::test_adopted_shortcut_reaches_the_real_qaction[save]
+0.33s call     tests/test_settings/test_persistence_review_regressions.py::test_a_modified_draft_keeps_its_original_persistent_baseline
+0.33s call     tests/test_settings/test_controller_persistence.py::test_save_submits_only_fields_modified_in_this_draft
+0.31s call     tests/test_settings/test_persistence_review_regressions.py::test_adopted_shortcut_reaches_the_real_qaction[peer_save]
+0.30s call     tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_shortcuts_reset_handles_transient_conflict
+0.30s call     tests/test_settings/test_controller_persistence.py::test_general_save_keeps_digit_mapping_saved_earlier
+0.29s call     tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_canvas_label_font_size_editor_uses_supported_range
+0.26s call     tests/test_settings/test_controller_persistence.py::test_refresh_keeps_draft_values_and_updates_untouched_fields
+0.25s call     tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_line_width_editors_use_half_pixel_steps
+0.23s setup    tests/test_settings/test_two_window_persistence.py::test_old_draft_cannot_replace_a_field_written_externally
+0.23s call     tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_shortcuts_reset_viewport_margins
+0.22s call     tests/test_settings/test_dialog_layout.py::TestSettingsDialogLayout::test_last_primary_selection_keeps_all_navigation_visible
+============== 90 passed, 1 skipped, 9 subtests passed in 33.77s ==============

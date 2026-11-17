@@ -1,0 +1,99 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 9 items
+
+tests/test_dense_review/test_redesign_completion.py::test_point_navigation_keeps_parent_and_edit_identity PASSED [ 11%]
+tests/test_dense_review/test_redesign_completion.py::test_outside_point_crop_and_body_observation FAILED [ 22%]
+tests/test_dense_review/test_redesign_completion.py::test_task_display_strength_survives_roundtrip PASSED [ 33%]
+tests/test_dense_review/test_redesign_completion.py::test_preference_failure_keeps_live_view PASSED [ 44%]
+tests/test_dense_review/test_redesign_completion.py::test_preferences_persist_without_annotation_changes PASSED [ 55%]
+tests/test_dense_review/test_redesign_completion.py::test_overlap_menu_only_changes_target_on_explicit_action PASSED [ 66%]
+tests/test_dense_review/test_redesign_completion.py::test_minimap_has_real_source_and_keeps_plan PASSED [ 77%]
+tests/test_dense_review/test_redesign_completion.py::test_label_layout_avoids_handles_freezes_drag_and_numbers_overflow PASSED [ 88%]
+tests/test_dense_review/test_redesign_completion.py::test_invalid_preferences_normalize_to_supported_values PASSED [100%]
+
+================================== FAILURES ===================================
+________________ test_outside_point_crop_and_body_observation _________________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x000001FF5EE98F50>
+open_window = <function open_window.<locals>._open at 0x000001FF5E9BB240>
+
+    def test_outside_point_crop_and_body_observation(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        point = widget._dense_review_find_shape("kp1")
+        point.points = [QtCore.QPointF(500, 400)]
+        widget._dense_review_sync_from_canvas()
+        item = ws.session.object("rect1")
+>       assert ws._crop_bounds(item) == (40, 40, 500, 400)
+E       assert (0.0, 0.0, 120.0, 140.0) == (40, 40, 500, 400)
+E
+E         At index 0 diff: 0.0 != 40
+E
+E         Full diff:
+E           (
+E         -     40,
+E         -     40,
+E         -     500,
+E         ?     -
+E         +     0.0,
+E         ?      +
+E         +     0.0,
+E         +     120.0,
+E         -     400,
+E         +     140.0,
+E         ?     +  +
+E           )
+
+tests\test_dense_review\test_redesign_completion.py:31: AssertionError
+============================ slowest 30 durations =============================
+3.01s call     tests/test_dense_review/test_redesign_completion.py::test_preferences_persist_without_annotation_changes
+2.93s call     tests/test_dense_review/test_redesign_completion.py::test_outside_point_crop_and_body_observation
+2.86s call     tests/test_dense_review/test_redesign_completion.py::test_task_display_strength_survives_roundtrip
+2.80s call     tests/test_dense_review/test_redesign_completion.py::test_point_navigation_keeps_parent_and_edit_identity
+2.78s call     tests/test_dense_review/test_redesign_completion.py::test_minimap_has_real_source_and_keeps_plan
+2.76s call     tests/test_dense_review/test_redesign_completion.py::test_preference_failure_keeps_live_view
+2.73s call     tests/test_dense_review/test_redesign_completion.py::test_overlap_menu_only_changes_target_on_explicit_action
+0.28s teardown tests/test_dense_review/test_redesign_completion.py::test_point_navigation_keeps_parent_and_edit_identity
+0.27s teardown tests/test_dense_review/test_redesign_completion.py::test_task_display_strength_survives_roundtrip
+0.26s teardown tests/test_dense_review/test_redesign_completion.py::test_outside_point_crop_and_body_observation
+0.25s teardown tests/test_dense_review/test_redesign_completion.py::test_minimap_has_real_source_and_keeps_plan
+0.23s teardown tests/test_dense_review/test_redesign_completion.py::test_overlap_menu_only_changes_target_on_explicit_action
+0.15s teardown tests/test_dense_review/test_redesign_completion.py::test_preferences_persist_without_annotation_changes
+0.04s teardown tests/test_dense_review/test_redesign_completion.py::test_preference_failure_keeps_live_view
+0.01s setup    tests/test_dense_review/test_redesign_completion.py::test_point_navigation_keeps_parent_and_edit_identity
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_task_display_strength_survives_roundtrip
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_outside_point_crop_and_body_observation
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_overlap_menu_only_changes_target_on_explicit_action
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_preferences_persist_without_annotation_changes
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_minimap_has_real_source_and_keeps_plan
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_preference_failure_keeps_live_view
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_invalid_preferences_normalize_to_supported_values
+0.00s setup    tests/test_dense_review/test_redesign_completion.py::test_label_layout_avoids_handles_freezes_drag_and_numbers_overflow
+0.00s teardown tests/test_dense_review/test_redesign_completion.py::test_invalid_preferences_normalize_to_supported_values
+0.00s teardown tests/test_dense_review/test_redesign_completion.py::test_label_layout_avoids_handles_freezes_drag_and_numbers_overflow
+0.00s call     tests/test_dense_review/test_redesign_completion.py::test_label_layout_avoids_handles_freezes_drag_and_numbers_overflow
+0.00s call     tests/test_dense_review/test_redesign_completion.py::test_invalid_preferences_normalize_to_supported_values
+=========================== short test summary info ===========================
+FAILED tests/test_dense_review/test_redesign_completion.py::test_outside_point_crop_and_body_observation - assert (0.0, 0.0, 120.0, 140.0) == (40, 40, 500, 400)
+
+  At index 0 diff: 0.0 != 40
+
+  Full diff:
+    (
+  -     40,
+  -     40,
+  -     500,
+  ?     -
+  +     0.0,
+  ?      +
+  +     0.0,
+  +     120.0,
+  -     400,
+  +     140.0,
+  ?     +  +
+    )
+======================== 1 failed, 8 passed in 22.39s =========================

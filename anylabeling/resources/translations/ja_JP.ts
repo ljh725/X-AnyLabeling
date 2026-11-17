@@ -3223,6 +3223,150 @@ Review the prompt before generating.</source>
         <source>还有 {count} 个查漏区域未完成</source>
         <translation>漏れ確認の領域 {count} 件が未完了です</translation>
     </message>
+    <message>
+        <source>主体观察</source>
+        <translation>主体を表示</translation>
+    </message>
+    <message>
+        <source>也可在主画布按 Ctrl+Alt 并单击</source>
+        <translation>メインキャンバスで Ctrl+Alt を押しながらクリックできます</translation>
+    </message>
+    <message>
+        <source>关联待确认：选择观察主框不修改正式分组</source>
+        <translation>関連は未確定：表示用の親枠を選んでも保存済みグループは変わりません</translation>
+    </message>
+    <message>
+        <source>关联点 {n} · 点审核待支持</source>
+        <translation>関連点 {n} · 点の審査は未対応</translation>
+    </message>
+    <message>
+        <source>关联点与未关联对象</source>
+        <translation>関連点と未関連オブジェクト</translation>
+    </message>
+    <message>
+        <source>关联点超出人物范围</source>
+        <translation>関連点が対象範囲外にあります</translation>
+    </message>
+    <message>
+        <source>关联线</source>
+        <translation>関連線</translation>
+    </message>
+    <message>
+        <source>关联观察主框</source>
+        <translation>関連点の表示用親枠</translation>
+    </message>
+    <message>
+        <source>其他对象</source>
+        <translation>その他の対象</translation>
+    </message>
+    <message>
+        <source>受面板宽度限制，可拉宽或浮动面板</source>
+        <translation>パネル幅が制限です。幅を広げるかフロートしてください</translation>
+    </message>
+    <message>
+        <source>在主画布查看</source>
+        <translation>メインキャンバスで表示</translation>
+    </message>
+    <message>
+        <source>填充</source>
+        <translation>塗りつぶし</translation>
+    </message>
+    <message>
+        <source>复核偏好保存失败：{error}</source>
+        <translation>審査設定を保存できません：{error}</translation>
+    </message>
+    <message>
+        <source>属性</source>
+        <translation>属性</translation>
+    </message>
+    <message>
+        <source>当前对象</source>
+        <translation>現在の対象</translation>
+    </message>
+    <message>
+        <source>文字底板</source>
+        <translation>文字の背景</translation>
+    </message>
+    <message>
+        <source>本批对象</source>
+        <translation>このバッチの対象</translation>
+    </message>
+    <message>
+        <source>查看全部关联点</source>
+        <translation>すべての関連点を表示</translation>
+    </message>
+    <message>
+        <source>点标记</source>
+        <translation>点マーカー</translation>
+    </message>
+    <message>
+        <source>类别文字</source>
+        <translation>クラス名</translation>
+    </message>
+    <message>
+        <source>编辑手柄</source>
+        <translation>編集ハンドル</translation>
+    </message>
+    <message>
+        <source>轮廓</source>
+        <translation>輪郭</translation>
+    </message>
+    <message>
+        <source>选择对象以定位</source>
+        <translation>移動する対象を選択</translation>
+    </message>
+    <message>
+        <source>选择重叠对象</source>
+        <translation>重なった対象を選択</translation>
+    </message>
+    <message>
+        <source>遮罩</source>
+        <translation>マスク</translation>
+    </message>
+    <message>
+        <source>重试图块</source>
+        <translation>サムネイルを再試行</translation>
+    </message>
+    <message>
+        <source>对象坐标无效</source>
+        <translation>対象の座標が無効です</translation>
+    </message>
+    <message>
+        <source> · 策略收起 {n}</source>
+        <translation> · 表示設定で非表示 {n}</translation>
+    </message>
+    <message>
+        <source>确认范围</source>
+        <translation>確認範囲</translation>
+    </message>
+    <message>
+        <source>可确认</source>
+        <translation>確認可能</translation>
+    </message>
+    <message>
+        <source>关联点超出图像范围</source>
+        <translation>関連点が画像範囲外です</translation>
+    </message>
+    <message>
+        <source>查漏时显示点</source>
+        <translation>領域確認で点を表示</translation>
+    </message>
+    <message>
+        <source>区域计划设置</source>
+        <translation>領域計画の設定</translation>
+    </message>
+    <message>
+        <source>当前审核范围：{dimensions}</source>
+        <translation>現在の審査範囲：{dimensions}</translation>
+    </message>
+    <message>
+        <source> · 矩形 {boxes} · 点 {points} · 当前卡片 {cards}</source>
+        <translation> · 矩形 {boxes} · 点 {points} · 現在のカード {cards}</translation>
+    </message>
+    <message>
+        <source>框</source>
+        <translation>枠</translation>
+    </message>
 </context><context>
     <name>DescriptionEditor</name>
     <message>
@@ -8080,6 +8224,10 @@ This warning will only be shown once. Do you want to continue?</source>
         <source>Candidate association is ambiguous; recheck current objects</source>
         <translation>候補の関連付けが不明確です。現在のオブジェクトを確認してください</translation>
     </message>
+    <message>
+        <source>交接对象已过期，请刷新检查结果。</source>
+        <translation>引き継いだ対象が古くなっています。検査結果を更新してください。</translation>
+    </message>
 </context><context>
     <name>Model</name>
     <message>
@@ -12060,6 +12208,26 @@ Changes will not be saved until you click Save.</source>
     </message>
 <message><source>Inspector: Previous Issue</source><translation>Inspector: 前の問題</translation></message>
 <message><source>Inspector: Next Issue</source><translation>Inspector: 次の問題</translation></message>
+    <message>
+        <source>Dense Review Task</source>
+        <translation>審査タスク</translation>
+    </message>
+    <message>
+        <source>Card Image Height</source>
+        <translation>カード画像の高さ</translation>
+    </message>
+    <message>
+        <source>Card Context</source>
+        <translation>カードの周辺範囲</translation>
+    </message>
+    <message>
+        <source>Show Review Batches</source>
+        <translation>審査バッチを表示</translation>
+    </message>
+    <message>
+        <source>Show Review Cards</source>
+        <translation>審査カードを表示</translation>
+    </message>
 </context><context>
     <name>SettingsRuntimeApplier</name>
     <message>

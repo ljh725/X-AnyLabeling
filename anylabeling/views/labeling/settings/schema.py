@@ -1618,6 +1618,53 @@ def _shortcut_fields() -> list[SettingField]:
 
 def _build_fields() -> tuple[SettingField, ...]:
     fields = _non_shortcut_fields() + _shortcut_fields()
+    fields += [
+        SettingField(
+            "dense_review.task",
+            "Dense Review Task",
+            "enum",
+            "General",
+            "Behavior",
+            "Dense Review",
+            options=("category", "box-points", "coverage"),
+        ),
+        SettingField(
+            "dense_review.image_height",
+            "Card Image Height",
+            "int",
+            "General",
+            "Behavior",
+            "Dense Review",
+            minimum=160,
+            maximum=640,
+        ),
+        SettingField(
+            "dense_review.context",
+            "Card Context",
+            "int",
+            "General",
+            "Behavior",
+            "Dense Review",
+            minimum=0,
+            maximum=150,
+        ),
+        SettingField(
+            "dense_review.batches_visible",
+            "Show Review Batches",
+            "bool",
+            "General",
+            "Behavior",
+            "Dense Review",
+        ),
+        SettingField(
+            "dense_review.cards_visible",
+            "Show Review Cards",
+            "bool",
+            "General",
+            "Behavior",
+            "Dense Review",
+        ),
+    ]
     return tuple(fields)
 
 

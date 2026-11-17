@@ -20,6 +20,8 @@ from ..utils.style import blend_hex, get_dialog_style, get_workbench_qss
 from ..utils.theme import get_theme
 from .config_dialog import DenseReviewConfigDialog
 from .thumbnails import ThumbnailProvider
+from .features import WorkspaceFeatures
+from .layout import WrappingRow
 
 STATUS_COLORS = {
     "done": "success",
@@ -151,6 +153,7 @@ class _CardModel(QtCore.QAbstractListModel):
         self._states: dict[str, Any] = {}
         self._icons: OrderedDict[str, QtGui.QIcon] = OrderedDict()
         self._failed: set[str] = set()
+        self._failure_reasons = {}
         self._placeholder = QtGui.QIcon(self._placeholder_pixmap())
 
     @staticmethod
@@ -248,10 +251,12 @@ class _CardModel(QtCore.QAbstractListModel):
         return len(self._icons)
 
     def set_failed(self, shape_id: str, reason: str) -> None:
+        self._failure_reasons[shape_id] = reason
         self._failed.add(shape_id)
         self._notify_text(shape_id)
 
     def clear_failed(self, shape_id: str) -> None:
+        self._failure_reasons.pop(shape_id, None)
         if shape_id in self._failed:
             self._failed.discard(shape_id)
             self._notify_text(shape_id)
@@ -315,6 +320,7 @@ class _CardModel(QtCore.QAbstractListModel):
             )
             if shape_id in self._failed:
                 text += "\n" + tr("图块加载失败")
+                text += "\n" + self._failure_reasons.get(shape_id, "")
             return text
         if role == QtCore.Qt.ItemDataRole.DecorationRole:
             icon = self.icon_for(shape_id)
@@ -529,6 +535,7 @@ class _CoverageGrid(QtWidgets.QWidget):
         self._plan = None
         self._current = ""
         self._hover = ""
+        self._image = QtGui.QImage()
         self.setMinimumSize(220, 170)
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
         self.setMouseTracking(True)
@@ -551,6 +558,19 @@ class _CoverageGrid(QtWidgets.QWidget):
         if region_id == self._current:
             return
         self._current = region_id
+        self.update()
+
+    def set_image(self, image):
+        """Keep a bounded source overview; status changes never decode it."""
+        if image is None or image.isNull():
+            self._image = QtGui.QImage()
+        else:
+            self._image = image.scaled(
+                1024,
+                1024,
+                QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                QtCore.Qt.TransformationMode.SmoothTransformation,
+            )
         self.update()
 
     def _content_rect(self) -> QtCore.QRectF:
@@ -659,10 +679,15 @@ class _CoverageGrid(QtWidgets.QWidget):
 
         painter.save()
         painter.setClipRect(outer)
+        if not self._image.isNull():
+            painter.drawImage(content, self._image)
         for region in plan.regions:
             rect = self._cell_rect(region, content)
             state = self._state(region)
-            painter.setBrush(self._fill_color(state))
+            color = self._fill_color(state)
+            if not self._image.isNull():
+                color.setAlpha(15 if state == "pending" else 50)
+            painter.setBrush(color)
             selected = region.region_id == self._current
             pen = theme["primary"] if selected else theme["border"]
             painter.setPen(
@@ -849,7 +874,7 @@ class _CompareDialog(QtWidgets.QDialog):
         super().closeEvent(event)
 
 
-class DenseReviewWorkspace(QtWidgets.QDockWidget):
+class DenseReviewWorkspace(WorkspaceFeatures, QtWidgets.QDockWidget):
     """Batch, card and spatial-review controls docked beside the canvas.
 
     The panel is a real dock so the single editable canvas stays visible and
@@ -905,6 +930,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         self._card_model = _CardModel(self, self)
         self._region_items: dict[str, QtWidgets.QListWidgetItem] = {}
         self._failed_ids: set[str] = set()
+        self._retrying_failed_ids: set[str] = set()
         self._card_request_keys: dict[str, tuple] = {}
         self._compare_request_keys: dict[str, tuple] = {}
         self._compare_dialogs: list[_CompareDialog] = []
@@ -947,6 +973,13 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         self._connect()
         self._install_shortcuts()
         self._apply_icons()
+        self._setup_review_accessibility()
+        QtWidgets.QApplication.instance().focusChanged.connect(
+            self._sync_shortcut_context
+        )
+        QtGui.QGuiApplication.instance().screenRemoved.connect(
+            self._screen_removed
+        )
         self.refresh_all(initial=True)
 
     @property
@@ -959,14 +992,17 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         # The dock owns a single inner widget; all existing layout code keeps
         # targeting ``layout`` exactly as before.
         self.content = QtWidgets.QWidget(self)
-        self.setWidget(self.content)
+        self.content_scroll = QtWidgets.QScrollArea(self)
+        self.content_scroll.setWidgetResizable(True)
+        self.content_scroll.setWidget(self.content)
+        self.setWidget(self.content_scroll)
         layout = QtWidgets.QVBoxLayout(self.content)
         layout.setContentsMargins(16, 14, 16, 12)
         layout.setSpacing(8)
 
         toolbar = QtWidgets.QFrame(self)
         toolbar.setObjectName("workbenchToolbar")
-        toolbar_layout = QtWidgets.QHBoxLayout(toolbar)
+        toolbar_layout = WrappingRow(toolbar)
         toolbar_layout.setContentsMargins(10, 8, 10, 8)
         toolbar_layout.setSpacing(10)
 
@@ -976,7 +1012,8 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         self.progress_bar.setTextVisible(False)
         self.progress_bar.setFixedSize(150, 6)
         self.summary_label = QtWidgets.QLabel()
-        self.summary_label.setWordWrap(False)
+        self.summary_label.setWordWrap(True)
+        self.summary_label.setMaximumWidth(500)
         self.start_button = QtWidgets.QPushButton(self.tr("开始/重建本轮"))
         self.config_button = QtWidgets.QPushButton(self.tr("复核配置"))
         self.config_button.setProperty("variant", "quiet")
@@ -986,7 +1023,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         self.close_button.setProperty("variant", "quiet")
 
         toolbar_layout.addWidget(self.progress_bar)
-        toolbar_layout.addWidget(self.summary_label, 1)
+        toolbar_layout.addWidget(self.summary_label)
         toolbar_layout.addWidget(self.start_button)
         toolbar_layout.addWidget(self.config_button)
         toolbar_layout.addWidget(self.refresh_button)
@@ -1043,6 +1080,13 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         outer = QtWidgets.QVBoxLayout(tab)
         outer.setContentsMargins(0, 8, 0, 0)
         outer.setSpacing(8)
+        self.compact_target_label = QtWidgets.QLabel()
+        self.compact_target_label.setWordWrap(True)
+        self.compact_target_label.setVisible(False)
+        outer.addWidget(self.compact_target_label)
+        self.compact_scope_label = QtWidgets.QLabel()
+        self.compact_scope_label.setWordWrap(True)
+        outer.addWidget(self.compact_scope_label)
 
         aux_bar = QtWidgets.QHBoxLayout()
         aux_bar.setSpacing(8)
@@ -1136,9 +1180,9 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         header_row = QtWidgets.QHBoxLayout()
         header_row.setSpacing(8)
         self.current_object_label = QtWidgets.QLabel()
-        self.current_object_label.setWordWrap(False)
+        self.current_object_label.setWordWrap(True)
         self.rule_label = QtWidgets.QLabel()
-        self.rule_label.setWordWrap(False)
+        self.rule_label.setWordWrap(True)
         self.rule_label.setObjectName("fieldLabel")
         header_row.addWidget(self.current_object_label, 1)
         header_row.addWidget(self.rule_label)
@@ -1202,6 +1246,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         height_row.addWidget(self.image_height_slider, 1)
         height_row.addWidget(self.image_height_label)
         right_layout.addLayout(height_row)
+        self._build_observation_controls(right_layout)
 
         self.card_list = QtWidgets.QListView()
         self.card_list.setModel(self._card_model)
@@ -1239,7 +1284,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
 
         action_bar = QtWidgets.QFrame()
         action_bar.setObjectName("workbenchStatus")
-        bar = QtWidgets.QHBoxLayout(action_bar)
+        bar = WrappingRow(action_bar)
         bar.setContentsMargins(10, 6, 10, 6)
         bar.setSpacing(8)
         display_caption = QtWidgets.QLabel(self.tr("画布"))
@@ -1329,6 +1374,17 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         layout = QtWidgets.QVBoxLayout(tab)
         layout.setContentsMargins(0, 6, 0, 0)
         settings_row = QtWidgets.QHBoxLayout()
+        self.grid_settings = QtWidgets.QWidget()
+        self.grid_settings.setLayout(settings_row)
+        self.grid_settings.setVisible(False)
+        self.grid_settings_toggle = QtWidgets.QPushButton(
+            self.tr("区域计划设置")
+        )
+        self.grid_settings_toggle.setCheckable(True)
+        self.grid_settings_toggle.toggled.connect(
+            self.grid_settings.setVisible
+        )
+        layout.addWidget(self.grid_settings_toggle)
         settings_row.addWidget(QtWidgets.QLabel(self.tr("列")))
         self.columns_spin = QtWidgets.QSpinBox()
         self.columns_spin.setRange(1, 24)
@@ -1347,7 +1403,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         )
         settings_row.addWidget(self.rebuild_plan_button)
         settings_row.addStretch(1)
-        layout.addLayout(settings_row)
+        layout.addWidget(self.grid_settings)
         self.coverage_stats_label = QtWidgets.QLabel()
         self.coverage_stats_label.setWordWrap(True)
         layout.addWidget(self.coverage_stats_label)
@@ -1370,7 +1426,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         coverage_split.setStretchFactor(1, 2)
         coverage_split.setSizes([420, 280])
         layout.addWidget(coverage_split, 1)
-        buttons = QtWidgets.QHBoxLayout()
+        buttons = WrappingRow()
         self.complete_region_button = QtWidgets.QPushButton(
             self.tr("完成区域并下一区")
         )
@@ -1417,9 +1473,11 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         self.temporary_show_button.clicked.connect(self._toggle_temporary_show)
         canvas = getattr(self.host, "canvas", None)
         if canvas is not None:
+            canvas.selection_changed.connect(self._on_canvas_review_selection)
             canvas.dense_review_display_changed.connect(
                 self._refresh_exclusion_hint
             )
+            canvas.dense_review_display_changed.connect(self._schedule_action_labels)
         self.batch_list.currentItemChanged.connect(self._on_batch_selected)
         self.batches_toggle_button.clicked.connect(self._on_batches_toggle)
         self.cards_toggle_button.clicked.connect(self._on_cards_toggle)
@@ -1517,7 +1575,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
 
     def _exclusions(self) -> tuple[set[str], set[str], set[str]]:
         manual, filtered = self.host.dense_review_exclusion_ids()
-        return manual, filtered, set(self._failed_ids)
+        return manual, filtered, self._failed_ids | self._retrying_failed_ids
 
     def _scope(self):
         session = self.session
@@ -1597,10 +1655,18 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
 
     def _select_shape_id(self, shape_id: str) -> None:
         row = self._card_model.row_for(shape_id)
+        if row < 0 and self.session is not None:
+            item = self.session.object(shape_id)
+            if item is not None:
+                row = self._card_model.row_for(
+                    self._card_parent(item).shape_id
+                )
         selection = self.card_list.selectionModel()
         if row < 0 or selection is None:
             return
         index = self._card_model.index(row, 0)
+        if selection.currentIndex() == index:
+            return
         selection.setCurrentIndex(
             index,
             QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect,
@@ -1688,7 +1754,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         self._status(message or self.tr("本轮已开始"))
         self._generation += 1
         self.thumbnails.start_generation(self._generation)
-        self._failed_ids.clear()
+        self._reset_failed_context()
         self._compare_request_keys.clear()
         self._close_compare_dialogs()
         self.refresh_all(force_cards=True)
@@ -1703,7 +1769,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         if new_generation:
             self._generation += 1
             self.thumbnails.start_generation(self._generation)
-            self._failed_ids.clear()
+            self._reset_failed_context()
             self._card_request_keys.clear()
         self._compare_request_keys.clear()
         self._close_compare_dialogs()
@@ -1738,10 +1804,11 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
     # -- object review refresh ----------------------------------------
 
     def refresh_all(self, initial: bool = False, force_cards: bool = False):
+        self._observation_group_map = None
         session = self.session
         if self._last_thumb_generation != self.thumbnails.generation:
             self._last_thumb_generation = self.thumbnails.generation
-            self._failed_ids.clear()
+            self._reset_failed_context()
             self._card_request_keys.clear()
         self._updating = True
         try:
@@ -1758,6 +1825,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             self._update_summary()
             self._refresh_batches()
             self._refresh_cards(force=force_cards)
+            self._refresh_observation()
             self._refresh_coverage()
             self._sync_list_enabled()
         finally:
@@ -1777,7 +1845,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             self._update_action_labels()
 
     def _set_empty_state(self) -> None:
-        self._failed_ids.clear()
+        self._reset_failed_context()
         self._card_request_keys.clear()
         self._cards_signature = None
         self.batch_list.clear()
@@ -1854,6 +1922,22 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         )
         coverage = session.state.coverage
         coverage_text = self.tr("查漏尚未开始")
+        self.summary_label.setText(
+            self.summary_label.text()
+            + self.tr(
+                " · 矩形 {boxes} · 点 {points} · 当前卡片 {cards}"
+            ).format(
+                boxes=sum(
+                    obj.shape_type == "rectangle"
+                    for obj in session.state.objects.values()
+                ),
+                points=sum(
+                    obj.shape_type == "point"
+                    for obj in session.state.objects.values()
+                ),
+                cards=len(session.state.member_ids(self._current_batch_id())),
+            )
+        )
         if coverage is not None:
             completed = sum(
                 1 for region in coverage.regions if region.completed
@@ -1924,6 +2008,23 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             ).format(stats=stats or self.tr("无"))
         )
         self._set_controls_enabled(True)
+        self.compact_target_label.setText(self.current_object_label.text())
+        self.compact_target_label.setToolTip(self.current_object_label.text())
+        self.compact_scope_label.setText(
+            self.tr("当前审核范围：{dimensions}").format(
+                dimensions=" + ".join(
+                    self.tr("类别") if name == "category" else self.tr("框")
+                    for name in self._dimensions()
+                )
+            )
+        )
+        for label in (
+            self.summary_label,
+            self.current_object_label,
+            self.rule_label,
+        ):
+            label.setToolTip(label.text())
+            label.setAccessibleName(label.text())
         self._refresh_exclusion_hint()
 
     def _sync_list_enabled(self) -> None:
@@ -2102,6 +2203,8 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             self._card_model.retain_icons(keep)
         else:
             self._card_model.update_states(states, self._failed_ids)
+            if current_shape:
+                self._select_shape_id(current_shape)
         self._update_action_labels()
 
     def _update_action_labels(self) -> None:
@@ -2111,6 +2214,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         scope = self._scope()
         if scope is None:
             return
+        self._presented_scope = scope
         visible = self._visible_candidate_count(scope.candidate_ids)
         offscreen = max(0, len(scope.candidate_ids) - visible)
         self.batch_note_label.setText(
@@ -2123,6 +2227,18 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
                 excluded=scope.excluded_count,
                 offscreen=offscreen,
             )
+        )
+        policy_hidden = sum(
+            1
+            for shape_id in scope.candidate_ids
+            if (
+                self.host.dense_review_display_entry(shape_id) is not None
+                and not self.host.dense_review_display_entry(shape_id).drawable
+            )
+        )
+        self.batch_note_label.setText(
+            self.batch_note_label.text()
+            + self.tr(" · 策略收起 {n}").format(n=policy_hidden)
         )
         self.complete_batch_button.setText(
             self.tr("完成本批并进入下一批（确认 {n}，保留 {m}）").format(
@@ -2139,7 +2255,10 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         self.difficult_button.setEnabled(not current.difficult)
         per_object = self.per_object_checkbox.isChecked()
         self.complete_object_button.setEnabled(
-            per_object and not current.difficult and not current.skipped
+            per_object
+            and current.supported
+            and not current.difficult
+            and not current.skipped
         )
         self.skip_button.setEnabled(per_object and not current.skipped)
         self.add_to_batch_button.setEnabled(
@@ -2149,7 +2268,15 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
     # -- thumbnails ----------------------------------------------------
 
     def _schedule_visible_thumbnails(self, *_args) -> None:
-        QtCore.QTimer.singleShot(0, self._request_visible_thumbnails)
+        if getattr(self, "_thumbnail_tick_pending", False):
+            return
+        self._thumbnail_tick_pending = True
+        QtCore.QTimer.singleShot(0, self._flush_thumbnail_requests)
+
+    def _flush_thumbnail_requests(self):
+        self._thumbnail_tick_pending = False
+        if self.isVisible():
+            self._request_visible_thumbnails()
 
     def _thumbnail_source(self):
         image_path, image_bytes = self.host.dense_review_image_source()
@@ -2182,23 +2309,29 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             item = self.session.object(shape_id)
             if item is None:
                 continue
+            if item.load_failed:
+                self._on_thumbnail_failed(shape_id, self.tr("对象坐标无效"))
+                continue
+            source_version = self._crop_version(item)
             key = self.thumbnails.request_key(
                 shape_id,
                 generation,
-                item.bounds,
+                self._crop_bounds(item),
                 margin,
                 target,
                 source_version,
             )
             if self._card_request_keys.get(shape_id) != key:
                 self.thumbnails.invalidate_shape(shape_id)
+                if shape_id in self._failed_ids:
+                    self._retrying_failed_ids.add(shape_id)
                 self._failed_ids.discard(shape_id)
                 self._card_request_keys[shape_id] = key
                 self._card_model.clear_icon(shape_id)
                 self._card_model.clear_failed(shape_id)
             cached = self.thumbnails.cached_image(
                 shape_id,
-                item.bounds,
+                self._crop_bounds(item),
                 margin,
                 target,
                 source_version,
@@ -2212,7 +2345,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
                 continue
             self.thumbnails.request(
                 shape_id,
-                item.bounds,
+                self._crop_bounds(item),
                 margin,
                 target,
                 image_path,
@@ -2222,6 +2355,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         self._ensure_compare_requests()
 
     def _on_thumbnail_ready(self, shape_id: str, image) -> None:
+        self._retrying_failed_ids.discard(shape_id)
         self._failed_ids.discard(shape_id)
         self._card_model.clear_failed(shape_id)
         self._card_model.set_icon(
@@ -2257,6 +2391,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         self._update_action_labels()
 
     def _on_thumbnail_failed(self, shape_id: str, reason: str) -> None:
+        self._retrying_failed_ids.discard(shape_id)
         self._failed_ids.add(shape_id)
         self._card_model.set_failed(shape_id, reason)
         self._update_compare_dialogs(shape_id, reason=reason)
@@ -2269,10 +2404,10 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         return self.thumbnails.request_key(
             shape_id,
             self.thumbnails.generation,
-            item.bounds,
+            self._crop_bounds(item),
             margin,
             target,
-            source_version,
+            self._crop_version(item),
         )
 
     def _ensure_compare_requests(self) -> None:
@@ -2301,10 +2436,10 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             return
         cached = self.thumbnails.cached_image(
             shape_id,
-            item.bounds,
+            self._crop_bounds(item),
             self.context_spin.value() / 100.0,
-            (360, 240),
-            self.host.dense_review_image_info()[0],
+            self._thumbnail_target_pixels(),
+            self._crop_version(item),
         )
         if cached is not None:
             self._compare_request_keys[shape_id] = key
@@ -2322,12 +2457,12 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         image_path, image_bytes, _, margin, target = self._thumbnail_source()
         image = self.thumbnails.request(
             shape_id,
-            item.bounds,
+            self._crop_bounds(item),
             margin,
             target,
             image_path,
             image_bytes,
-            self.host.dense_review_image_info()[0],
+            self._crop_version(item),
         )
         if image is not None and dialog is not None:
             dialog.set_image(shape_id, image)
@@ -2378,12 +2513,10 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
     def _on_context_changed(self) -> None:
         self._generation += 1
         self.thumbnails.start_generation(self._generation)
-        self._failed_ids.clear()
+        self._reset_failed_context()
         self._compare_request_keys.clear()
-        self._close_compare_dialogs()
         self._refresh_cards(force=True)
         self._request_visible_thumbnails()
-        self._focus_current()
 
     # -- object actions ------------------------------------------------
 
@@ -2434,6 +2567,9 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         session = self.session
         if session is None or self._full_image:
             return
+        if self._task_id == self.TASK_COVERAGE:
+            self._show_current_region()
+            return
         shape_id = self._current_shape_id()
         if shape_id:
             self.host.dense_review_focus_object(shape_id)
@@ -2442,6 +2578,14 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         session = self.session
         if session is None or not shape_id:
             return
+        if self._task_id == self.TASK_COVERAGE:
+            self.set_task(self.TASK_BOX_POINTS, restore_view=False)
+        item = session.object(shape_id)
+        if item is not None and item.supported:
+            for batch in session.state.batches:
+                if shape_id in session.state.member_ids(batch.batch_id):
+                    batch_id = batch.batch_id
+                    break
         session.set_current(batch_id or self._current_batch_id(), shape_id)
         self._cards_signature = None
         self.refresh_all(force_cards=True)
@@ -2449,7 +2593,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
 
     def _complete_batch(self) -> None:
         session = self.session
-        scope = self._scope()
+        scope = getattr(self, "_presented_scope", None) or self._scope()
         if session is None or scope is None:
             return
         manual, filtered, failed = self._exclusions()
@@ -2648,7 +2792,8 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         dialog.setWindowTitle(self.tr("本批成员"))
         dialog.resize(680, 480)
         layout = QtWidgets.QVBoxLayout(dialog)
-        table = QtWidgets.QTableWidget(len(members), 5)
+        table = QtWidgets.QTableWidget(len(members), 6)
+        scope = self._scope()
         table.setHorizontalHeaderLabels(
             [
                 self.tr("短编号"),
@@ -2656,6 +2801,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
                 self.tr("类别"),
                 self.tr("状态"),
                 self.tr("疑难原因"),
+                self.tr("确认范围"),
             ]
         )
         table.verticalHeader().setVisible(False)
@@ -2670,6 +2816,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
                 item.label if item else "",
                 self.tr(item.status_text()) if item else self.tr("缺失"),
                 item.difficulty_reason if item else "",
+                scope.excluded.get(shape_id, self.tr("可确认")),
             )
             for column, value in enumerate(values):
                 table.setItem(
@@ -2706,6 +2853,8 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         return dialog
 
     def retry_compare(self, shape_id: str, dialog) -> None:
+        if shape_id in self._failed_ids:
+            self._retrying_failed_ids.add(shape_id)
         self._failed_ids.discard(shape_id)
         self._card_model.clear_failed(shape_id)
         self._compare_request_keys.pop(shape_id, None)
@@ -2800,6 +2949,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         return self._task_views.setdefault(self._task_view_key(task_id), {})
 
     def _capture_task_view(self, task_id: str) -> None:
+        self._capture_display_preferences()
         state = self._task_state_for(task_id)
         state["viewport"] = self.host.dense_review_capture_view()
         if task_id == self.TASK_COVERAGE:
@@ -2852,6 +3002,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             self._refresh_coverage()
             self._set_display_mode_widget("all")
             self.host.dense_review_apply_task_preset(self.TASK_COVERAGE)
+            self._apply_display_preferences(task_id)
             return
         self._set_display_mode_widget("focus")
         preset = (
@@ -2860,6 +3011,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             else self.TASK_CATEGORY
         )
         self.host.dense_review_apply_task_preset(preset)
+        self._apply_display_preferences(task_id)
 
     def _set_display_mode_widget(self, mode: str) -> None:
         combo = self.display_combo
@@ -2961,6 +3113,11 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         session = self.session
         if session is None:
             return
+        image = getattr(self.host, "image", None)
+        image_key = image.cacheKey() if image is not None else None
+        if image_key != getattr(self, "_overview_image_key", None):
+            self._overview_image_key = image_key
+            self.coverage_grid.set_image(image)
         plan = session.state.coverage
         self.region_list.blockSignals(True)
         self.region_list.clear()
@@ -2972,15 +3129,18 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             self.coverage_grid.set_plan(None)
             self.region_list.blockSignals(False)
             return
-        self.columns_spin.blockSignals(True)
-        self.rows_spin.blockSignals(True)
-        self.overlap_spin.blockSignals(True)
-        self.columns_spin.setValue(plan.columns)
-        self.rows_spin.setValue(plan.rows)
-        self.overlap_spin.setValue(round(plan.overlap * 100))
-        self.columns_spin.blockSignals(False)
-        self.rows_spin.blockSignals(False)
-        self.overlap_spin.blockSignals(False)
+        plan_key = (id(plan), plan.columns, plan.rows, plan.overlap)
+        if plan_key != getattr(self, "_displayed_plan_key", None):
+            self._displayed_plan_key = plan_key
+            self.columns_spin.blockSignals(True)
+            self.rows_spin.blockSignals(True)
+            self.overlap_spin.blockSignals(True)
+            self.columns_spin.setValue(plan.columns)
+            self.rows_spin.setValue(plan.rows)
+            self.overlap_spin.setValue(round(plan.overlap * 100))
+            self.columns_spin.blockSignals(False)
+            self.rows_spin.blockSignals(False)
+            self.overlap_spin.blockSignals(False)
         selected_row = 0
         for row, region in enumerate(plan.regions):
             if region.difficult:
@@ -3181,16 +3341,17 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
                 )
                 continue
             shortcut = QtGui.QShortcut(QtGui.QKeySequence(sequence), self)
-            # Dock-scoped: a panel action fires only while the panel or one
-            # of its children has focus, so the canvas keeps its own keys and
-            # one press can never trigger the action twice (WL-09 tracking;
-            # the full canvas/floating rules stay with task 9.5).
-            shortcut.setContext(
-                QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut
+            # One binding is shared by the canvas and floating dock; the
+            # active-owner and text-input guards keep other contexts intact.
+            shortcut.setContext(QtCore.Qt.ShortcutContext.ApplicationShortcut)
+            shortcut.activated.connect(
+                lambda action=slot: (
+                    action() if self._shortcut_allowed() else None
+                )
             )
-            shortcut.activated.connect(slot)
             shortcut.setEnabled(False)
             self._shortcuts.append(shortcut)
+            existing.add(sequence)
         if self._shortcut_warnings:
             self.status_label.setText("；".join(self._shortcut_warnings))
         self._apply_shortcut_hints()
@@ -3234,6 +3395,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         for button, config_key, default in hints:
             sequence = self.host.dense_review_shortcut(config_key, default)
             if not sequence:
+                button.setToolTip(button.text())
                 continue
             button.setToolTip(
                 self.tr("{action}（{key}）").format(
@@ -3267,6 +3429,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
 
     def set_cards_visible(self, visible: bool) -> None:
         self._cards_visible = bool(visible)
+        self.compact_target_label.setVisible(not self._cards_visible)
         self.cards_panel.setVisible(self._cards_visible)
         self.cards_toggle_button.setChecked(self._cards_visible)
         self.cards_toggle_button.setText(
@@ -3307,6 +3470,9 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         if height == self._card_image_height:
             return
         self._card_image_height = height
+        with QtCore.QSignalBlocker(self.image_height_slider):
+            self.image_height_slider.setValue(height)
+        self.image_height_label.setText(str(height))
         self._relayout_cards()
         self._card_model.layoutChanged.emit()
         self._schedule_visible_thumbnails()
@@ -3342,6 +3508,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._relayout_cards()
+        self._schedule_visible_thumbnails()
 
     def changeEvent(self, event) -> None:  # noqa: N802
         """End a held source-image comparison when focus leaves.
@@ -3352,6 +3519,8 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         if event.type() == QtCore.QEvent.Type.ActivationChange:
             if not self.isActiveWindow():
                 self.host.dense_review_end_hold_on_blur()
+        if event.type() == QtCore.QEvent.Type.DevicePixelRatioChange:
+            self._schedule_visible_thumbnails()
         super().changeEvent(event)
 
     def eventFilter(self, watched, event):
@@ -3374,6 +3543,8 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             return
         if not self._view_ready:
             self._view_ready = True
+            self._restore_review_preferences()
+            self._restore_review_geometry()
             self._refresh_from_host()
             mode = self.display_combo.currentData() or "focus"
             self.host.dense_review_set_display_mode(mode)
@@ -3435,6 +3606,9 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
 
     def _end_review_view(self) -> None:
         """Release temporary review state without touching the session."""
+        if self._view_ready:
+            self._save_review_preferences()
+        self.thumbnails.start_generation(self.thumbnails.generation + 1)
         self.host.dense_review_end_hold_on_blur()
         for shortcut in self._shortcuts:
             shortcut.setEnabled(False)

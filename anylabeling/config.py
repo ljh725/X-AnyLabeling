@@ -122,6 +122,14 @@ def normalize_user_config(config):
     if not isinstance(config, dict):
         return config
     normalized = copy.deepcopy(config)
+    if "dense_review" in normalized:
+        from anylabeling.services.dense_review.preferences import (
+            normalize_preferences,
+        )
+
+        normalized["dense_review"] = normalize_preferences(
+            normalized["dense_review"]
+        )
     for key, target_path in _LEGACY_KEY_MAP.items():
         if key in normalized:
             value = normalized.pop(key)
@@ -517,9 +525,7 @@ def get_config(
             )
 
     if show_msg and disk_data:
-        logger.info(
-            "🔧️ Initializing config from local file: %s", target_path
-        )
+        logger.info("🔧️ Initializing config from local file: %s", target_path)
 
     user_config.begin_session(
         target_path=target_path,

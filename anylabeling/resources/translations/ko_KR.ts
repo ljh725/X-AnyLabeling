@@ -3224,6 +3224,150 @@ Review the prompt before generating.</source>
         <source>还有 {count} 个查漏区域未完成</source>
         <translation>누락 검토 영역 {count}개가 미완료입니다</translation>
     </message>
+    <message>
+        <source>主体观察</source>
+        <translation>본체 보기</translation>
+    </message>
+    <message>
+        <source>也可在主画布按 Ctrl+Alt 并单击</source>
+        <translation>주 캔버스에서 Ctrl+Alt를 누르고 클릭할 수도 있습니다</translation>
+    </message>
+    <message>
+        <source>关联待确认：选择观察主框不修改正式分组</source>
+        <translation>연결 미확정: 관찰용 상자를 선택해도 저장된 그룹은 바뀌지 않습니다</translation>
+    </message>
+    <message>
+        <source>关联点 {n} · 点审核待支持</source>
+        <translation>연결된 점 {n} · 점 검토는 아직 지원되지 않습니다</translation>
+    </message>
+    <message>
+        <source>关联点与未关联对象</source>
+        <translation>연결된 점 및 연결되지 않은 객체</translation>
+    </message>
+    <message>
+        <source>关联点超出人物范围</source>
+        <translation>연결된 점이 객체 범위를 벗어납니다</translation>
+    </message>
+    <message>
+        <source>关联线</source>
+        <translation>연결선</translation>
+    </message>
+    <message>
+        <source>关联观察主框</source>
+        <translation>연결된 점의 관찰용 상자</translation>
+    </message>
+    <message>
+        <source>其他对象</source>
+        <translation>다른 객체</translation>
+    </message>
+    <message>
+        <source>受面板宽度限制，可拉宽或浮动面板</source>
+        <translation>패널 너비로 제한됩니다. 넓히거나 분리하세요</translation>
+    </message>
+    <message>
+        <source>在主画布查看</source>
+        <translation>주 캔버스에서 보기</translation>
+    </message>
+    <message>
+        <source>填充</source>
+        <translation>채우기</translation>
+    </message>
+    <message>
+        <source>复核偏好保存失败：{error}</source>
+        <translation>검토 설정을 저장할 수 없습니다: {error}</translation>
+    </message>
+    <message>
+        <source>属性</source>
+        <translation>속성</translation>
+    </message>
+    <message>
+        <source>当前对象</source>
+        <translation>현재 객체</translation>
+    </message>
+    <message>
+        <source>文字底板</source>
+        <translation>텍스트 배경</translation>
+    </message>
+    <message>
+        <source>本批对象</source>
+        <translation>배치 객체</translation>
+    </message>
+    <message>
+        <source>查看全部关联点</source>
+        <translation>모든 연결된 점 보기</translation>
+    </message>
+    <message>
+        <source>点标记</source>
+        <translation>점 표시</translation>
+    </message>
+    <message>
+        <source>类别文字</source>
+        <translation>클래스 이름</translation>
+    </message>
+    <message>
+        <source>编辑手柄</source>
+        <translation>편집 핸들</translation>
+    </message>
+    <message>
+        <source>轮廓</source>
+        <translation>윤곽선</translation>
+    </message>
+    <message>
+        <source>选择对象以定位</source>
+        <translation>위치를 찾을 객체 선택</translation>
+    </message>
+    <message>
+        <source>选择重叠对象</source>
+        <translation>겹치는 객체 선택</translation>
+    </message>
+    <message>
+        <source>遮罩</source>
+        <translation>마스크</translation>
+    </message>
+    <message>
+        <source>重试图块</source>
+        <translation>썸네일 다시 시도</translation>
+    </message>
+    <message>
+        <source>对象坐标无效</source>
+        <translation>유효하지 않은 객체 좌표</translation>
+    </message>
+    <message>
+        <source> · 策略收起 {n}</source>
+        <translation> · 표시 설정으로 숨김 {n}</translation>
+    </message>
+    <message>
+        <source>确认范围</source>
+        <translation>확인 범위</translation>
+    </message>
+    <message>
+        <source>可确认</source>
+        <translation>확인 가능</translation>
+    </message>
+    <message>
+        <source>关联点超出图像范围</source>
+        <translation>연결된 점이 이미지 범위를 벗어납니다</translation>
+    </message>
+    <message>
+        <source>查漏时显示点</source>
+        <translation>영역 검토 중 점 표시</translation>
+    </message>
+    <message>
+        <source>区域计划设置</source>
+        <translation>영역 계획 설정</translation>
+    </message>
+    <message>
+        <source>当前审核范围：{dimensions}</source>
+        <translation>현재 검토 범위: {dimensions}</translation>
+    </message>
+    <message>
+        <source> · 矩形 {boxes} · 点 {points} · 当前卡片 {cards}</source>
+        <translation> · 사각형 {boxes} · 점 {points} · 현재 카드 {cards}</translation>
+    </message>
+    <message>
+        <source>框</source>
+        <translation>상자</translation>
+    </message>
 </context><context>
     <name>DescriptionEditor</name>
     <message>
@@ -8082,6 +8226,10 @@ This warning will only be shown once. Do you want to continue?</source>
         <source>Candidate association is ambiguous; recheck current objects</source>
         <translation>후보 연결이 모호합니다. 현재 객체를 다시 확인하세요</translation>
     </message>
+    <message>
+        <source>交接对象已过期，请刷新检查结果。</source>
+        <translation>전달된 객체가 오래되었습니다. 검사 결과를 새로 고치세요.</translation>
+    </message>
 </context><context>
     <name>Model</name>
     <message>
@@ -12062,6 +12210,26 @@ Changes will not be saved until you click Save.</source>
     </message>
 <message><source>Inspector: Previous Issue</source><translation>Inspector: 이전 문제</translation></message>
 <message><source>Inspector: Next Issue</source><translation>Inspector: 다음 문제</translation></message>
+    <message>
+        <source>Dense Review Task</source>
+        <translation>검토 작업</translation>
+    </message>
+    <message>
+        <source>Card Image Height</source>
+        <translation>카드 이미지 높이</translation>
+    </message>
+    <message>
+        <source>Card Context</source>
+        <translation>카드 주변 범위</translation>
+    </message>
+    <message>
+        <source>Show Review Batches</source>
+        <translation>검토 배치 표시</translation>
+    </message>
+    <message>
+        <source>Show Review Cards</source>
+        <translation>검토 카드 표시</translation>
+    </message>
 </context><context>
     <name>SettingsRuntimeApplier</name>
     <message>

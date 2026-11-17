@@ -319,6 +319,7 @@ class DisplayContext:
     hovering_id: str = ""
     #: Active review task id; empty means "ordinary canvas behaviour".
     task_id: str = ""
+    hide_task_points: bool = True
 
     def promotes_associated(self) -> bool:
         """Return whether associated points rise with the current object."""
@@ -326,7 +327,7 @@ class DisplayContext:
 
     def hides_points(self) -> bool:
         """Return whether point symbols and point text are suppressed."""
-        return self.task_id in TASKS_HIDING_POINTS
+        return self.hide_task_points and self.task_id in TASKS_HIDING_POINTS
 
     def style_for(self, role: str) -> RoleStyle:
         defaults = default_role_styles()

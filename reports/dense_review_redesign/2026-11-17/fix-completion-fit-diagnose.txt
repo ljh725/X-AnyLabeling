@@ -1,0 +1,54 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 1 item
+
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit] FAILED [100%]
+
+================================== FAILURES ===================================
+______________ test_pending_mode_finishes_real_edit[commit-fit] _______________
+
+window = <anylabeling.views.mainwindow.MainWindow object at 0x000002611A89A530>
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/fix-tests-completion-fit-diagnose/test_pending_mode_finishes_rea0')
+gesture = 'fit', cancel = False
+
+    @pytest.mark.parametrize("gesture", ["edge", "fit"])
+    @pytest.mark.parametrize("cancel", [False, True], ids=["commit", "cancel"])
+    def test_pending_mode_finishes_real_edit(window, tmp_path, gesture, cancel):
+        w = open_rectangles(window, tmp_path)
+        canvas = w.canvas
+        before = canvas.shapes[0].to_dict()
+        if gesture == "edge":
+            canvas.set_rectangle_edge_enabled(True)
+            modifiers = Qt.KeyboardModifier.NoModifier
+            start, end = (100, 150), (90, 150)
+            mouse(canvas, QtCore.QEvent.Type.MouseMove, start)
+        else:
+            modifiers = Qt.KeyboardModifier.ShiftModifier
+            start, end = (210, 150), (220, 140)
+            # A real pointer reaches the candidate before its press; Shift fit
+            # captures the opposite corner from that hover position.
+            mouse(canvas, QtCore.QEvent.Type.MouseMove, start, modifiers,
+                  buttons=Qt.MouseButton.NoButton)
+>           assert canvas._point_fit_pending_box is not None, {
+                "editing": canvas.editing(), "selection": canvas.selected_shapes,
+                "entry": canvas._point_fit_entry, "spent": canvas._point_fit_round_spent,
+                "candidate": canvas._point_fit_selected_rectangle(),
+            }
+E           AssertionError: {'candidate': <anylabeling.views.labeling.shape.Shape object at 0x000002611AF962A0>, 'editing': True, 'entry': None, 'selection': [<anylabeling.views.labeling.shape.Shape object at 0x000002611AF962A0>], ...}
+E           assert None is not None
+E            +  where None = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x000002611A97EA30>._point_fit_pending_box
+
+tests\test_labeling\test_canvas_controls_integration.py:92: AssertionError
+============================ slowest 30 durations =============================
+2.73s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit]
+0.04s call     tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit]
+0.02s teardown tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit]
+=========================== short test summary info ===========================
+FAILED tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit] - AssertionError: {'candidate': <anylabeling.views.labeling.shape.Shape object at 0x000002611AF962A0>, 'editing': True, 'entry': None, 'selection': [<anylabeling.views.labeling.shape.Shape object at 0x000002611AF962A0>], ...}
+assert None is not None
+ +  where None = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x000002611A97EA30>._point_fit_pending_box
+============================== 1 failed in 5.95s ==============================
