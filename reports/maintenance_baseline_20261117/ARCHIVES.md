@@ -47,8 +47,8 @@ DPI 原始目录 32 项、性能 summary 仍在；未移动/删除/改写这些�
 | `smooth-canvas-dragging` | `archive/2026-11-17-smooth-canvas-dragging` | 已归档；`ffd1a0471d1f83054400533e5b07535c67eff112` |
 | `staged-annotation-loading` | `archive/2026-11-17-staged-annotation-loading` | 已归档；`8678f3eb7f94c8864c955d05fe24a19527cf6115` |
 | `fix-user-settings-persistence` | `archive/2026-11-17-fix-user-settings-persistence` | 已归档；`2267cc6c8d9e3b738b69f7b907626e9e87ae7d26` |
-| `fix-digit-rectangle-label-save` | `archive/2026-11-17-fix-digit-rectangle-label-save` | 已归档，随本批提交 |
-| `improve-rectangle-edge-adjustment` | `archive/2026-11-17-improve-rectangle-edge-adjustment` | 预演通过，未执行 |
+| `fix-digit-rectangle-label-save` | `archive/2026-11-17-fix-digit-rectangle-label-save` | 已归档；`5453c11f5947ea687b6488622efc188aaae902eb` |
+| `improve-rectangle-edge-adjustment` | `archive/2026-11-17-improve-rectangle-edge-adjustment` | 已归档，随本批提交 |
 | `fix-rectangle-preview-overlap` | `archive/2026-11-17-fix-rectangle-preview-overlap` | 预演通过，未执行 |
 | `restore-v430-canvas-controls` | `archive/2026-11-17-restore-v430-canvas-controls` | 预演通过，未执行 |
 | `improve-point-fit-algorithm` | `archive/2026-11-17-improve-point-fit-algorithm` | 预演通过，未执行 |
