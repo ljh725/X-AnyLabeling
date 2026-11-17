@@ -162,3 +162,11 @@ restore 本机旧路径实际已按 11-10 manifest 迁移；只读 bundle verify
 保留历史证据、修正当前导航、整目录归档，strict 与差异/暂存检查后本地提交。
 范围、证据和限制见[归档审计](../../reports/maintenance_baseline_20261117/ARCHIVES.md)。
 不运行新的产品测试（生产树及测试树未变），不推送、不开 PR、不合入。
+
+## 2026-11-17 维护归档批次：improve-point-fit-algorithm, add-shift-corner-lock-point-fit, unify-shift-rectangle-point-fit
+
+上一批本地对象 `89e3785ec9a629974fab58d7ee8c3b86683a62ae`。
+本批标题 `docs(openspec): 按依赖同步并归档单点拟合契约`；按 .tmp 预演的相同语义合并，检查所有源 delta，
+保留历史证据、修正当前导航、整目录归档，strict 与差异/暂存检查后本地提交。
+范围、证据和限制见[归档审计](../../reports/maintenance_baseline_20261117/ARCHIVES.md)。
+不运行新的产品测试（生产树及测试树未变），不推送、不开 PR、不合入。

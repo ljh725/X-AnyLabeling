@@ -1,19 +1,16 @@
 # OpenSpec 当前状态与历史记录
 
-更新：2026-11-17；逐份读取源 `tasks.md`。当前 9 个活动目录，
-合计 162/199，未勾 37 项；本页不维护第二套任务勾选。
+更新：2026-11-17；逐份读取源 `tasks.md`。当前 6 个活动目录，
+合计 144/180，未勾 36 项；本页不维护第二套任务勾选。
 
 | 当前变更（源清单） | 勾选 / 总数 | 实际状态 |
 | --- | ---: | --- |
 | [add-annotation-correction-cost-statistics](changes/add-annotation-correction-cost-statistics/tasks.md) | 49/54 | 保留 5 项 GUI/翻译、性能、双人试用及回退验收 |
 | [add-dense-annotation-review-workflow](changes/add-dense-annotation-review-workflow/tasks.md) | 61/66 | 保留 5 项验收缺口；未通过不得归档或发布三份契约 |
 | [add-keypoint-display-presets](changes/add-keypoint-display-presets/tasks.md) | 0/22 | 方案暂停，未实施；不启动 |
-| [add-shift-corner-lock-point-fit](changes/add-shift-corner-lock-point-fit/tasks.md) | 6/6 | 任务全勾；按维护审计与独立证据决定归档 |
-| [improve-point-fit-algorithm](changes/improve-point-fit-algorithm/tasks.md) | 5/5 | 任务全勾；按维护审计与独立证据决定归档 |
 | [migrate-canvas-controls-from-v430](changes/migrate-canvas-controls-from-v430/tasks.md) | 0/0 | 仅移交；待核对 restore 重复发布 |
-| [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 13/18 | 实施中；候选验证已记录，逐批归档与最终核对进行中 |
+| [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 14/18 | 实施中；候选验证已记录，逐批归档与最终核对进行中 |
 | [polish-inspector-dense-review-ui](changes/polish-inspector-dense-review-ui/tasks.md) | 20/20 | 20/20 技术勾选；Ctrl+F 规格与实现不符、人工缺口，保留未归档 |
-| [unify-shift-rectangle-point-fit](changes/unify-shift-rectangle-point-fit/tasks.md) | 8/8 | 任务全勾；按维护审计与独立证据决定归档 |
 
 当前归档与保留依据见[维护候选](../docs/version-management/2026-11-17-maintenance-baseline.md)；
 本轮归档的旧路径映射与证据边界见[归档审计](../reports/maintenance_baseline_20261117/ARCHIVES.md)。

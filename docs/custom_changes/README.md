@@ -38,7 +38,7 @@
 | CUSTOM-011 | 数字键绘制矩形的类别保存与绑定清理 | 11-10 类别优先级修复已提交；11-11 补修放弃绘制时残留绑定 | [实施与复核记录](2026-11-11-digit-rectangle-label-save.md) · [OpenSpec](../../openspec/changes/archive/2026-11-17-fix-digit-rectangle-label-save/tasks.md) |
 | CUSTOM-101/103-显示 | 矩形创建与单点拟合预览的共边显示修复 | 11-06 单点拟合按键刷新与小框防跳修复用户验收通过，132 项隔离 Qt 回归通过；原创建/共边完整屏幕验收另见记录 | [方案与实施记录](2026-11-02-rectangle-preview-overlap-plan.md) · [操作说明](../zh_cn/rectangle_point_fit.md) · [验证](../../openspec/changes/archive/2026-11-17-fix-rectangle-preview-overlap/verification.md) |
 | CUSTOM-101 | 框内单点拟合锁角即时预览与单击确认 | 11-12 单击版已实测，固定对角修订已通过自动化验证 | [实施记录](2026-11-12-point-fit-lock-click.md) · [操作说明](../zh_cn/rectangle_point_fit.md) |
-| CUSTOM-101-统一手势 | Shift 单点拟合统一：框外进框锁角、按下捕获/松开提交、无效落点保留锁角、移除 Shift+Alt 同侧角 | 11-13 已验证，独立规格 87 项全部通过，用户确认人工验收通过 | [实施记录](2026-11-12-point-fit-unify-shift.md) · [操作说明](../zh_cn/rectangle_point_fit.md) · [OpenSpec](../../openspec/changes/unify-shift-rectangle-point-fit/proposal.md) |
+| CUSTOM-101-统一手势 | Shift 单点拟合统一：框外进框锁角、按下捕获/松开提交、无效落点保留锁角、移除 Shift+Alt 同侧角 | 11-13 已验证，独立规格 87 项全部通过，用户确认人工验收通过 | [实施记录](2026-11-12-point-fit-unify-shift.md) · [操作说明](../zh_cn/rectangle_point_fit.md) · [OpenSpec](../../openspec/changes/archive/2026-11-17-unify-shift-rectangle-point-fit/proposal.md) |
 | CUSTOM-010～014、101～108 | 4.2.1上的既有增强/迁移功能 | 已含于历史混合快照，非本轮新增实施 | [完整分类台账](CATALOG-20261030.md) |
 
 现存补充记录（各自原状态不因建索引改变）：
