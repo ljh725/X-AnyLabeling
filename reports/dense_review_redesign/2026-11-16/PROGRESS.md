@@ -1,7 +1,7 @@
 # 密集复核重设计：实施进度与验证记录
 
 本文件记录 `redesign-dense-review-workspace` 的实施批次、验证命令、退出码与未覆盖项。
-规格依据见 `openspec/changes/redesign-dense-review-workspace/`，验收矩阵见其 `acceptance.md`。
+规格依据见 `openspec/changes/archive/2026-11-17-redesign-dense-review-workspace/`，验收矩阵见其 `acceptance.md`。
 
 - 工作分支：`codex/4.2.1/dense-review-redesign-plan`
 - 集成目标：`codex/4.2.1-baseline-organization`

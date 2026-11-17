@@ -19,6 +19,6 @@
 
 ## Impact
 
-- 涉及 PyQt6 画布、标注主界面、用户设置与翻译。密集复核接入复用 [CUSTOM-121 的有效显示与操作优先级](../redesign-dense-review-workspace/specs/dense-review-display-policy/spec.md)。
+- 涉及 PyQt6 画布、标注主界面、用户设置与翻译。密集复核接入复用 [CUSTOM-121 的有效显示与操作优先级](../archive/2026-11-17-redesign-dense-review-workspace/specs/dense-review-display-policy/spec.md)。
 - 作用于显示和对象选择。标注标签、描述、分组、坐标、导出含义和审核状态沿用现有数据契约。
 - 首版验收使用本地 `s1194` 和 `s54` 标注样本。决策来源见 [CUSTOM-122](../../../docs/custom_changes/2026-11-13-keypoint-three-layer-expression.md)。

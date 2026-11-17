@@ -1,12 +1,16 @@
 # OpenSpec 未完成任务清单
 
+## 2026-11-17 用户决定终止归档
+
+[密集复核工作区重设计](changes/archive/2026-11-17-redesign-dense-review-workspace/tasks.md) 已按用户指令停止并归档，从活跃待办移除。最后技术审计 33/91，58 项未闭环条款随停止决定行政关闭，不代表已实施或验证通过；后续部分实现保存于 `a9381688`。五份草案未同步为主规格。详见 [归档决定](changes/archive/2026-11-17-redesign-dense-review-workspace/archive-decision-20261117.md)。
+
 ## 2026-11-16 新增规划
 
 [关键点三层显示](changes/add-keypoint-display-presets/tasks.md) 已整理为独立 OpenSpec 变更，共 **6 组、22 项任务，0 项实施完成**。[验收清单](changes/add-keypoint-display-presets/acceptance.md)覆盖 19 个规格场景，以 `s1194` 和 `s54` 为本地真实样本。详见 [CUSTOM-122](../docs/custom_changes/2026-11-13-keypoint-three-layer-expression.md)。
 
 ## 2026-11-13 新增规划
 
-[密集复核工作区重设计](changes/redesign-dense-review-workspace/tasks.md) 已生成提案、设计、五份规格及验收协议，共 **15 组、91 项任务，0 项实施完成**。本次只完善方案，原密集复核和 Inspector 验收状态保持各自原记录。详见 [CUSTOM-121](../docs/custom_changes/2026-11-13-dense-review-redesign.md)。
+[密集复核工作区重设计](changes/archive/2026-11-17-redesign-dense-review-workspace/tasks.md) 已生成提案、设计、五份规格及验收协议，原规划共 **15 组、91 项任务**；该条为历史规划记录，本变更现已按用户决定终止归档，原密集复核和 Inspector 的独立任务不受影响。详见 [CUSTOM-121](../docs/custom_changes/2026-11-13-dense-review-redesign.md)。
 
 以下保留 2026-11-10 历史汇总，未重新计算其他变更状态；最新进度以各变更的 tasks.md 为准。
 

@@ -1,6 +1,6 @@
 # CUSTOM-121 密集复核工作区重设计
 
-- 状态为实施中（2026-11-17）：任务清单 30/91 已勾选、61 项未勾选；显示、列表、停靠及四项修复已有实现和证据，其余任务及人工验收未完成。逐项依据见 [勾选同步报告](../../reports/dense_review_redesign/2026-11-17/TASK_STATUS_SYNC.md)。
+- 状态：已按用户决定终止并归档（2026-11-17）；最后逐项审计为 33/91，未闭环条款行政关闭并保留原技术状态。当前实现保存于 `a9381688`，尚有失败和未完成验收，详见 [停止记录](2026-11-17-dense-review-stop-archive.md)。
 - 功能分类为原功能修改，涵盖显示、卡片、导航和已有审核流程接入。
 - 创建日期为 2026-11-13，最后更新日期为 2026-11-17，Asia/Shanghai。
 - 规划基线为 `498b59e91142cc85aba24050a166b0671aa3a248`，包含程序节点 `bff5bce0`。
@@ -12,7 +12,7 @@
 
 用户反馈卡片滚轮无效、人物图块太小，以及空间查漏界面难以理解。源码核对发现填充透明度只作用于填充，文字和描边具有独立绘制路径，当前聚焦与过滤的可见性控制交错。目标是让原图、可读标签、当前编辑对象和复核进度能够同时明确呈现。
 
-详细交付材料为 [OpenSpec 提案](../../openspec/changes/redesign-dense-review-workspace/proposal.md)、[技术设计](../../openspec/changes/redesign-dense-review-workspace/design.md)、[实施任务](../../openspec/changes/redesign-dense-review-workspace/tasks.md) 和 [验收矩阵](../../openspec/changes/redesign-dense-review-workspace/acceptance.md)。
+详细交付材料为 [OpenSpec 提案](../../openspec/changes/archive/2026-11-17-redesign-dense-review-workspace/proposal.md)、[技术设计](../../openspec/changes/archive/2026-11-17-redesign-dense-review-workspace/design.md)、[实施任务](../../openspec/changes/archive/2026-11-17-redesign-dense-review-workspace/tasks.md) 和 [验收矩阵](../../openspec/changes/archive/2026-11-17-redesign-dense-review-workspace/acceptance.md)。
 
 ## 修改位置与方法
 

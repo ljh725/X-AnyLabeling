@@ -175,7 +175,7 @@
 
 ## 7. 与现有设计的关系
 
-- CUSTOM-121 已区分正式关键点标记与矩形编辑手柄，见 [技术设计](../../openspec/changes/redesign-dense-review-workspace/design.md) 和 [显示规格](../../openspec/changes/redesign-dense-review-workspace/specs/dense-review-display-policy/spec.md)。本方案补充点符号本身的身份、释义和状态分工。
+- CUSTOM-121 已区分正式关键点标记与矩形编辑手柄，见 [技术设计](../../openspec/changes/archive/2026-11-17-redesign-dense-review-workspace/design.md) 和 [显示规格](../../openspec/changes/archive/2026-11-17-redesign-dense-review-workspace/specs/dense-review-display-policy/spec.md)。本方案补充点符号本身的身份、释义和状态分工。
 - 当前人物、本批人物和其他人物仍由 CUSTOM-121 的显示角色决定。三层表达不另建一套可见性优先级。
 - 人物框确认与关键点核验状态继续分列。点符号升级不改变 CUSTOM-121 的确认范围。
 - CUSTOM-120 是显示档位的早期草案。CUSTOM-121 的有效显隐与命中规格是本方案的依赖。
