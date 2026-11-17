@@ -61,6 +61,7 @@ BOX_RULE_LABELS = {
 }
 SHAPE_TYPE_LABELS = {
     "rectangle": "矩形",
+    "point": "点",
     "polygon": "多边形",
 }
 
@@ -78,6 +79,7 @@ class SampleObject:
     bounds: tuple[int, int, int, int] = ()
     polygon: tuple[tuple[int, int], ...] = ()
     shape_type: str = "rectangle"
+    group_id: int | None = None
     truth_label: str = ""
     difficult: bool = False
     tags: tuple[str, ...] = ()
@@ -86,6 +88,8 @@ class SampleObject:
     def points(self) -> list[list[int]]:
         if self.shape_type == "polygon":
             return [[x, y] for x, y in self.polygon]
+        if self.shape_type == "point":
+            return [[self.bounds[0], self.bounds[1]]]
         left, top, right, bottom = self.bounds
         return [[left, top], [right, top], [right, bottom], [left, bottom]]
 
@@ -857,6 +861,251 @@ def _scene_mixed_shapes() -> Scene:
     )
 
 
+LONG_CLASS_NAME = (
+    "超长人物类别-長い人物クラス-매우-긴-사람-클"
+    "래스-person-with-a-very-long-name-review-target"
+)
+
+
+def _draw_object_markers(handle, scale, objects):
+    colors = tuple(LABEL_COLORS.values())
+    for index, item in enumerate(objects):
+        color = colors[index % len(colors)]
+        if item.shape_type == "rectangle":
+            _draw_rectangle(handle, item.bounds, color, scale)
+        elif item.shape_type == "point":
+            x, y = item.points()[0]
+            radius = 4
+            _draw_ellipse(
+                handle,
+                (x - radius, y - radius, x + radius, y + radius),
+                color,
+                scale,
+            )
+        elif item.shape_type == "polygon":
+            _draw_polygon(handle, item.points(), color, scale)
+
+
+def _scene_stress_300() -> Scene:
+    labels = ("A", "B", "C", "D", "E", "F")
+    objects = []
+    for index in range(300):
+        row, column = divmod(index, 20)
+        left = column * 64 + 2
+        top = row * 48 + 2
+        objects.append(
+            SampleObject(
+                shape_id=f"s300-{index + 1:03d}",
+                label=labels[index % 6],
+                bounds=(left, top, left + 60, top + 44),
+                tags=("stress", "rectangle-300"),
+                note="300 矩形压力场景的固定网格成员",
+            )
+        )
+    scene_objects = tuple(objects)
+    return Scene(
+        key="stress_300",
+        title="300 矩形压力图",
+        purpose="验证大批次导航、虚拟列表、缓存预算与资源稳定性",
+        objects=scene_objects,
+        batches=ALL_BATCHES,
+        box_rules={label: "visible" for label in labels},
+        expected={
+            "outcome": "complete",
+            "object_complete": True,
+            "requires_object_edits": {"category": 0, "geometry": 0},
+            "requires_coverage_regions": 12,
+            "outcome_when_difficult": "pending",
+            "summary": "300 个固定 ID 矩形，六个类别各 50 个。",
+            "steps": ("遍历六批对象并观察资源和导航状态。",),
+            "alternatives": (),
+        },
+        tasks={
+            "redesign-1.4": "300 框压力样本",
+            "redesign-14.2": "大卡片与缓存资源压力",
+        },
+        draw=lambda handle, scale, lookup: _draw_object_markers(
+            handle, scale, scene_objects
+        ),
+    )
+
+
+def _scene_points_1000() -> Scene:
+    rectangle = SampleObject(
+        shape_id="person-001",
+        label="person",
+        bounds=(40, 40, 220, 680),
+        group_id=0,
+        tags=("points-1000",),
+        note="group 0 的唯一矩形主对象",
+    )
+    points = []
+    for index in range(1000):
+        x = 270 + (index % 50) * 19
+        y = 30 + (index // 50) * 34
+        points.append(
+            SampleObject(
+                shape_id=f"kp-{index + 1:04d}",
+                label=f"kp{index % 17}",
+                bounds=(x, y, x, y),
+                shape_type="point",
+                group_id=0,
+                tags=("points-1000",),
+                note="1000 个明确关联点的固定坐标成员",
+            )
+        )
+    scene_objects = (rectangle, *points)
+    return Scene(
+        key="points_1000",
+        title="单矩形与 1000 个关联点",
+        purpose="验证混合大对象账本、关联导航和资源上限",
+        objects=scene_objects,
+        batches=(("person", ("person",)),),
+        box_rules={"person": "visible"},
+        expected={
+            "outcome": "partial",
+            "object_complete": False,
+            "requires_object_edits": {"category": 0, "geometry": 0},
+            "requires_coverage_regions": 12,
+            "outcome_when_difficult": "pending",
+            "summary": "1 个矩形可确认；1000 个点保持独立且待支持。",
+            "steps": ("核对 1001 个原始对象、1 个矩形和 1000 个点。",),
+            "alternatives": (),
+        },
+        tasks={
+            "redesign-1.4": "1000 点混合压力样本",
+            "redesign-14.2": "关联绘制与内存压力",
+        },
+        draw=lambda handle, scale, lookup: _draw_object_markers(
+            handle, scale, scene_objects
+        ),
+    )
+
+
+def _scene_mixed_navigation() -> Scene:
+    objects = [
+        SampleObject(
+            shape_id="rect-001",
+            label="person",
+            bounds=(40, 40, 200, 260),
+            group_id=0,
+            tags=("group-zero",),
+            note="group 0 的唯一主矩形",
+        ),
+        SampleObject(
+            shape_id="rect-002",
+            label="person",
+            bounds=(300, 40, 460, 260),
+            group_id=7,
+            tags=("ambiguous-group",),
+            note="与 rect-003 同组，关联不得猜测",
+        ),
+        SampleObject(
+            shape_id="rect-003",
+            label="person",
+            bounds=(500, 40, 660, 260),
+            group_id=7,
+            tags=("ambiguous-group",),
+            note="与 rect-002 同组，关联不得猜测",
+        ),
+        SampleObject(
+            shape_id="rect-004",
+            label=LONG_CLASS_NAME,
+            bounds=(800, 40, 960, 260),
+            group_id=8,
+            tags=("long-label",),
+            note="中英日韩混排长类名",
+        ),
+        SampleObject(
+            shape_id="kp-001",
+            label="nose",
+            bounds=(100, 100, 100, 100),
+            shape_type="point",
+            group_id=0,
+            note="框内关联点",
+        ),
+        SampleObject(
+            shape_id="kp-002",
+            label="hand",
+            bounds=(180, 200, 180, 200),
+            shape_type="point",
+            group_id=0,
+            note="框内关联点",
+        ),
+        SampleObject(
+            shape_id="kp-003",
+            label="foot",
+            bounds=(1150, 650, 1150, 650),
+            shape_type="point",
+            group_id=0,
+            tags=("outlier",),
+            note="距主框很远但仍明确关联的离群点",
+        ),
+        SampleObject(
+            shape_id="kp-004",
+            label="nose",
+            bounds=(360, 100, 360, 100),
+            shape_type="point",
+            group_id=7,
+            tags=("ambiguous-group",),
+            note="同组多框的歧义点",
+        ),
+        SampleObject(
+            shape_id="kp-005",
+            label="stray",
+            bounds=(250, 500, 250, 500),
+            shape_type="point",
+            tags=("orphan",),
+            note="无分组孤立点",
+        ),
+        SampleObject(
+            shape_id="kp-006",
+            label="stray",
+            bounds=(400, 500, 400, 500),
+            shape_type="point",
+            group_id=9,
+            tags=("point-only-group",),
+            note="只有点的分组",
+        ),
+        SampleObject(
+            shape_id="poly-001",
+            label="lane",
+            shape_type="polygon",
+            polygon=((700, 620), (780, 430), (860, 620)),
+            tags=("unsupported",),
+            note="不支持正式确认的混合形状",
+        ),
+    ]
+    scene_objects = tuple(objects)
+    return Scene(
+        key="mixed_navigation",
+        title="分组、离群点与长类名混合导航图",
+        purpose="验证卡片关联、未关联入口、框外点和完整类名读取",
+        objects=scene_objects,
+        batches=(("person", ("person", LONG_CLASS_NAME)),),
+        box_rules={"person": "visible", LONG_CLASS_NAME: "visible"},
+        expected={
+            "outcome": "partial",
+            "object_complete": False,
+            "requires_object_edits": {"category": 0, "geometry": 0},
+            "requires_coverage_regions": 12,
+            "outcome_when_difficult": "pending",
+            "summary": "4 个矩形、6 个点和 1 个多边形均保持独立身份。",
+            "steps": (
+                "核对 group 0、group 7 歧义、孤立点、离群点和长类名入口。",
+            ),
+            "alternatives": (),
+        },
+        tasks={
+            "redesign-1.4": "完整混合导航样本",
+            "redesign-8.3": "框外点与离群点裁切",
+        },
+        draw=lambda handle, scale, lookup: _draw_object_markers(
+            handle, scale, scene_objects
+        ),
+    )
+
+
 SCENES: tuple[Scene, ...] = (
     _scene_dense_30_six_classes(),
     _scene_all_correct_12(),
@@ -865,6 +1114,9 @@ SCENES: tuple[Scene, ...] = (
     _scene_misclassified_third_batch(),
     _scene_empty(),
     _scene_mixed_shapes(),
+    _scene_stress_300(),
+    _scene_points_1000(),
+    _scene_mixed_navigation(),
 )
 
 
@@ -884,7 +1136,7 @@ def _shape_payload(item: SampleObject) -> dict[str, Any]:
         "label": item.label,
         "score": None,
         "points": item.points(),
-        "group_id": None,
+        "group_id": item.group_id,
         "description": "",
         "difficult": item.difficult,
         "shape_type": item.shape_type,
@@ -984,6 +1236,8 @@ def _manifest_object(item: SampleObject) -> dict[str, Any]:
     }
     if item.shape_type == "polygon":
         entry["points"] = item.points()
+    if item.group_id is not None:
+        entry["group_id"] = item.group_id
     if item.truth_label and item.truth_label != item.label:
         entry["truth_label"] = item.truth_label
     entry["difficult"] = item.difficult

@@ -88,6 +88,9 @@ def test_manifest_matches_regenerated_scenes(manifest, regenerated):
         "misclassified_third_batch",
         "empty",
         "mixed_shapes",
+        "stress_300",
+        "points_1000",
+        "mixed_navigation",
     ]
 
 
@@ -115,7 +118,7 @@ def test_generated_scene_counts_classes_and_ids(manifest, regenerated):
         assert identifiers == [item["id"] for item in scene["objects"]]
         assert len(identifiers) == len(set(identifiers)), "duplicate IDs"
         for identifier in identifiers:
-            assert re.fullmatch(r"[a-z0-9]+-\d{3}", identifier), identifier
+            assert re.fullmatch(r"[a-z0-9]+-\d{3,4}", identifier), identifier
 
         assert dict(Counter(shape["label"] for shape in shapes)) == (
             scene["class_distribution"]
@@ -126,6 +129,7 @@ def test_generated_scene_counts_classes_and_ids(manifest, regenerated):
         for shape, item in zip(shapes, scene["objects"]):
             assert shape["label"] == item["label"]
             assert shape["shape_type"] == item["shape_type"]
+            assert shape.get("group_id") == item.get("group_id")
             points = shape["points"]
             xs = [point[0] for point in points]
             ys = [point[1] for point in points]
@@ -263,3 +267,43 @@ def test_label_version_tracks_application(manifest):
     for scene in manifest["scenes"]:
         payload = _read_label_json(SAMPLES_DIR / scene["label"])
         assert payload["version"] == manifest["label_format_version"]
+
+
+def test_redesign_inventory_covers_stress_and_mixed_navigation(manifest):
+    """The redesign has stable fixtures for every new stress/navigation case."""
+    scenes = {scene["key"]: scene for scene in manifest["scenes"]}
+    assert scenes["dense_30_six_classes"]["object_count"] == 30
+    assert len(scenes["dense_30_six_classes"]["class_distribution"]) == 6
+    assert scenes["stress_300"]["shape_type_distribution"] == {
+        "rectangle": 300
+    }
+    assert scenes["points_1000"]["shape_type_distribution"] == {
+        "point": 1000,
+        "rectangle": 1,
+    }
+    assert scenes["empty"]["object_count"] == 0
+
+    mixed = scenes["mixed_navigation"]
+    tags = {
+        tag
+        for item in mixed["objects"]
+        for tag in item["tags"]
+    }
+    assert {
+        "group-zero",
+        "ambiguous-group",
+        "outlier",
+        "orphan",
+        "point-only-group",
+        "long-label",
+        "unsupported",
+    } <= tags
+    long_label = next(
+        item for item in mixed["objects"] if "long-label" in item["tags"]
+    )
+    assert len(long_label["label"]) >= 60
+    assert mixed["shape_type_distribution"] == {
+        "point": 6,
+        "polygon": 1,
+        "rectangle": 4,
+    }

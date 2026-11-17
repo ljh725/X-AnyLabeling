@@ -232,6 +232,113 @@ def test_session_switch_keeps_lists_enabled(
     assert workspace.batch_list.isEnabled() is True
 
 
+def test_failed_load_retry_reopen_and_image_switch_restore_session(
+    app, open_window, make_workspace, tmp_path, monkeypatch
+):
+    from anylabeling.services.dense_review.models import CoverageSettings
+
+    window, image_path = open_window(_grid_shapes(8))
+    widget = window.labeling_widget.view
+    workspace = make_workspace(widget)
+    monkeypatch.setattr(widget, "error_message", lambda *_args: None)
+
+    assert widget.load_file(image_path)
+    widget.open_dense_review()
+    app.processEvents()
+    old_session = widget.dense_review_session
+    old_session.rebuild_coverage(CoverageSettings())
+    workspace.refresh_all()
+    app.processEvents()
+    assert workspace._card_model.rowCount() == 8
+    assert workspace.region_list.count() == 12
+
+    failed_path = tmp_path / "retry.png"
+    failed_path.write_bytes(b"not an image")
+    assert widget.load_file(str(failed_path)) is False
+    app.processEvents()
+    assert widget.dense_review_session is None
+    assert workspace.batch_list.count() == 0
+    assert workspace._card_model.rowCount() == 0
+    assert workspace.region_list.count() == 0
+    assert not workspace.batch_list.isEnabled()
+    assert not workspace.card_list.isEnabled()
+    assert not workspace.region_list.isEnabled()
+    assert not workspace.complete_batch_button.isEnabled()
+    assert not workspace.complete_object_button.isEnabled()
+
+    workspace._navigate_to("", "id0")
+    workspace._complete_batch()
+    workspace._complete_current_object()
+    assert widget.dense_review_session is None
+
+    Image.new("RGB", (700, 520), color=(180, 190, 200)).save(failed_path)
+    retry_shapes = [
+        _rectangle("A", f"retry-{index}", 30 + index * 70, 40)
+        for index in range(5)
+    ]
+    failed_path.with_suffix(".json").write_text(
+        json.dumps(
+            {
+                "version": "4.2.1",
+                "imageWidth": 700,
+                "imageHeight": 520,
+                "imagePath": failed_path.name,
+                "imageData": None,
+                "shapes": retry_shapes,
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert widget.load_file(str(failed_path))
+    app.processEvents()
+    retry_session = widget.dense_review_session
+    assert retry_session is not None
+    assert retry_session is not old_session
+    assert retry_session.counts()["total"] == 5
+    assert workspace._card_model.shape_ids() == tuple(
+        f"retry-{index}" for index in range(5)
+    )
+    assert workspace.batch_list.isEnabled()
+    assert workspace.card_list.isEnabled()
+    assert retry_session.current_object().shape_id.startswith("retry-")
+
+    workspace.close()
+    app.processEvents()
+    widget.actions.open_dense_review.trigger()
+    app.processEvents()
+    assert widget.dense_review_session is retry_session
+    assert workspace.card_list.isEnabled()
+    assert workspace.batch_list.isEnabled()
+
+    other_path = tmp_path / "other.png"
+    Image.new("RGB", (700, 520), color=(80, 90, 100)).save(other_path)
+    other_path.with_suffix(".json").write_text(
+        json.dumps(
+            {
+                "version": "4.2.1",
+                "imageWidth": 700,
+                "imageHeight": 520,
+                "imagePath": other_path.name,
+                "imageData": None,
+                "shapes": [
+                    _rectangle("A", "other-0", 30, 40),
+                    _rectangle("A", "other-1", 180, 40),
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert widget.load_file(str(other_path))
+    app.processEvents()
+    assert widget.dense_review_session is not retry_session
+    assert workspace._card_model.shape_ids() == ("other-0", "other-1")
+    assert workspace.card_list.isEnabled()
+    assert workspace.batch_list.isEnabled()
+    assert widget.dense_review_session.current_object().shape_id.startswith(
+        "other-"
+    )
+
+
 def test_wheel_and_scrollbar_move_view_without_moving_target(
     app, open_window
 ):

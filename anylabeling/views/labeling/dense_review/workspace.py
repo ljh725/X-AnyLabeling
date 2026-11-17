@@ -900,6 +900,7 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         )
         self._updating = False
         self._generation = 0
+        self._session_active = False
         self._cards_signature = None
         self._card_model = _CardModel(self, self)
         self._region_items: dict[str, QtWidgets.QListWidgetItem] = {}
@@ -1745,8 +1746,15 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         self._updating = True
         try:
             if session is None:
+                if self._session_active:
+                    self._generation += 1
+                    self.thumbnails.start_generation(self._generation)
+                    self._compare_request_keys.clear()
+                    self._close_compare_dialogs()
+                self._session_active = False
                 self._set_empty_state()
                 return
+            self._session_active = True
             self._update_summary()
             self._refresh_batches()
             self._refresh_cards(force=force_cards)
@@ -1769,6 +1777,15 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             self._update_action_labels()
 
     def _set_empty_state(self) -> None:
+        self._failed_ids.clear()
+        self._card_request_keys.clear()
+        self._cards_signature = None
+        self.batch_list.clear()
+        self.compact_batch_combo.clear()
+        self._card_model.set_rows((), ())
+        self.region_list.clear()
+        self._region_items.clear()
+        self.coverage_grid.set_plan(None)
         for widget in (
             self.complete_batch_button,
             self.complete_object_button,
@@ -2422,11 +2439,10 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             self.host.dense_review_focus_object(shape_id)
 
     def _navigate_to(self, batch_id: str, shape_id: str) -> None:
-        if not shape_id:
+        session = self.session
+        if session is None or not shape_id:
             return
-        self.session.set_current(
-            batch_id or self._current_batch_id(), shape_id
-        )
+        session.set_current(batch_id or self._current_batch_id(), shape_id)
         self._cards_signature = None
         self.refresh_all(force_cards=True)
         self._focus_current()

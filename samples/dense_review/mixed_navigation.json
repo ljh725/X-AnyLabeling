@@ -1,0 +1,265 @@
+{
+  "version": "4.2.1",
+  "flags": {},
+  "checked": false,
+  "shapes": [
+    {
+      "xanylabeling_shape_id": "rect-001",
+      "label": "person",
+      "score": null,
+      "points": [
+        [
+          40,
+          40
+        ],
+        [
+          200,
+          40
+        ],
+        [
+          200,
+          260
+        ],
+        [
+          40,
+          260
+        ]
+      ],
+      "group_id": 0,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "rect-002",
+      "label": "person",
+      "score": null,
+      "points": [
+        [
+          300,
+          40
+        ],
+        [
+          460,
+          40
+        ],
+        [
+          460,
+          260
+        ],
+        [
+          300,
+          260
+        ]
+      ],
+      "group_id": 7,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "rect-003",
+      "label": "person",
+      "score": null,
+      "points": [
+        [
+          500,
+          40
+        ],
+        [
+          660,
+          40
+        ],
+        [
+          660,
+          260
+        ],
+        [
+          500,
+          260
+        ]
+      ],
+      "group_id": 7,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "rect-004",
+      "label": "超长人物类别-長い人物クラス-매우-긴-사람-클래스-person-with-a-very-long-name-review-target",
+      "score": null,
+      "points": [
+        [
+          800,
+          40
+        ],
+        [
+          960,
+          40
+        ],
+        [
+          960,
+          260
+        ],
+        [
+          800,
+          260
+        ]
+      ],
+      "group_id": 8,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "kp-001",
+      "label": "nose",
+      "score": null,
+      "points": [
+        [
+          100,
+          100
+        ]
+      ],
+      "group_id": 0,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "kp-002",
+      "label": "hand",
+      "score": null,
+      "points": [
+        [
+          180,
+          200
+        ]
+      ],
+      "group_id": 0,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "kp-003",
+      "label": "foot",
+      "score": null,
+      "points": [
+        [
+          1150,
+          650
+        ]
+      ],
+      "group_id": 0,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "kp-004",
+      "label": "nose",
+      "score": null,
+      "points": [
+        [
+          360,
+          100
+        ]
+      ],
+      "group_id": 7,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "kp-005",
+      "label": "stray",
+      "score": null,
+      "points": [
+        [
+          250,
+          500
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "kp-006",
+      "label": "stray",
+      "score": null,
+      "points": [
+        [
+          400,
+          500
+        ]
+      ],
+      "group_id": 9,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "xanylabeling_shape_id": "poly-001",
+      "label": "lane",
+      "score": null,
+      "points": [
+        [
+          700,
+          620
+        ],
+        [
+          780,
+          430
+        ],
+        [
+          860,
+          620
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "polygon",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "mixed_navigation.png",
+  "imageData": null,
+  "imageHeight": 720,
+  "imageWidth": 1280
+}
