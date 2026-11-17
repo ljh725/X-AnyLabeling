@@ -1,7 +1,7 @@
 # OpenSpec 当前状态与历史记录
 
-更新：2026-11-17；逐份读取源 `tasks.md`。当前 11 个活动目录，
-合计 217/254，未勾 37 项；本页不维护第二套任务勾选。
+更新：2026-11-17；逐份读取源 `tasks.md`。当前 10 个活动目录，
+合计 193/230，未勾 37 项；本页不维护第二套任务勾选。
 
 | 当前变更（源清单） | 勾选 / 总数 | 实际状态 |
 | --- | ---: | --- |
@@ -9,7 +9,6 @@
 | [add-dense-annotation-review-workflow](changes/add-dense-annotation-review-workflow/tasks.md) | 61/66 | 保留 5 项验收缺口；未通过不得归档或发布三份契约 |
 | [add-keypoint-display-presets](changes/add-keypoint-display-presets/tasks.md) | 0/22 | 方案暂停，未实施；不启动 |
 | [add-shift-corner-lock-point-fit](changes/add-shift-corner-lock-point-fit/tasks.md) | 6/6 | 任务全勾；按维护审计与独立证据决定归档 |
-| [fix-rectangle-preview-overlap](changes/fix-rectangle-preview-overlap/tasks.md) | 24/24 | 任务全勾；按维护审计与独立证据决定归档 |
 | [improve-point-fit-algorithm](changes/improve-point-fit-algorithm/tasks.md) | 5/5 | 任务全勾；按维护审计与独立证据决定归档 |
 | [migrate-canvas-controls-from-v430](changes/migrate-canvas-controls-from-v430/tasks.md) | 0/0 | 仅移交；待核对 restore 重复发布 |
 | [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 13/18 | 实施中；候选验证已记录，逐批归档与最终核对进行中 |

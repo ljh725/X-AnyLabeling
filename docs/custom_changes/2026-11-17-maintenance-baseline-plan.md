@@ -146,3 +146,11 @@ restore 本机旧路径实际已按 11-10 manifest 迁移；只读 bundle verify
 保留历史证据、修正当前导航、整目录归档，strict 与差异/暂存检查后本地提交。
 范围、证据和限制见[归档审计](../../reports/maintenance_baseline_20261117/ARCHIVES.md)。
 不运行新的产品测试（生产树及测试树未变），不推送、不开 PR、不合入。
+
+## 2026-11-17 维护归档批次：fix-rectangle-preview-overlap
+
+上一批本地对象 `9caa239e5f8bb0239e6eee3e47696687f6d33eed`。
+本批标题 `docs(openspec): 同步并归档矩形预览显示`；按 .tmp 预演的相同语义合并，检查所有源 delta，
+保留历史证据、修正当前导航、整目录归档，strict 与差异/暂存检查后本地提交。
+范围、证据和限制见[归档审计](../../reports/maintenance_baseline_20261117/ARCHIVES.md)。
+不运行新的产品测试（生产树及测试树未变），不推送、不开 PR、不合入。
