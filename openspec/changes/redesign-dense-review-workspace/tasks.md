@@ -1,6 +1,6 @@
 # 密集复核工作区重设计任务清单
 
-状态为实施中（2026-11-16）。已勾选项表示有对应提交与验证证据，详见 [PROGRESS.md](../../../reports/dense_review_redesign/2026-11-16/PROGRESS.md)；未勾选项仍未实施或未验证。提案和文档校验完成不能替代任一实现任务。
+状态为实施中（2026-11-17），当前 **30/91 项已勾选，61 项未勾选**。已勾选项表示有对应实现或文档工作及验证证据，详见 [PROGRESS.md](../../../reports/dense_review_redesign/2026-11-16/PROGRESS.md)、[最新独立复核](../../../reports/dense_review_redesign/2026-11-17/FIX_VALIDATION.md) 和 [逐项勾选核对](../../../reports/dense_review_redesign/2026-11-17/TASK_STATUS_SYNC.md)。未勾选项表示整条尚未闭环，可能已有部分实现；提案和文档校验不能代替功能验收。过程条款 15.3、15.5 按截至当前已实施批次登记，后续批次仍须继续执行，整个变更未完成。
 
 依据为 [设计](design.md) 和五份 [显示](specs/dense-review-display-policy/spec.md)、[布局](specs/dense-review-workbench-layout/spec.md)、[卡片](specs/dense-review-object-cards/spec.md)、[查漏](specs/dense-review-spatial-navigation/spec.md)、[进度](specs/dense-review-progress-compatibility/spec.md) 规格。场景 ID、测试方法和人工步骤见 [验收矩阵](acceptance.md)。
 
@@ -21,7 +21,7 @@
 - [x] 1.2 环境与基线退出码已记录，写保护 guard 保留
 - [ ] 1.3 在样本副本通过菜单打开工作区，复现列表禁用、滚轮无效、108 像素图块和查漏遮挡画布，记录动作与控件状态，覆盖 WL-05、OC-16。
 - [ ] 1.4 准备可复现样本清单，包含 s1274 的 6 框92点、30框多类别、300框压力、空图、遮挡小目标、长类名、孤立点、group 0、同组多框、离群点和混合不支持形状；私有样本仅在本地副本使用。
-- [ ] 1.5 盘点显隐写入、绘制、标签、命中、快捷键、保存和撤销入口，覆盖 mask、属性、组连线、点拟合预览与 Inspector 交接；在验证记录中列明接入位置。
+- [x] 1.5 盘点显隐写入、绘制、标签、命中、快捷键、保存和撤销入口，覆盖 mask、属性、组连线、点拟合预览与 Inspector 交接；在验证记录中列明接入位置。接入盘点及未完成边界见 [TASK_STATUS_SYNC.md](../../../reports/dense_review_redesign/2026-11-17/TASK_STATUS_SYNC.md) 的任务 1.5 位置表；盘点完成不代表所有接入工作完成。
 - [x] 1.6 已建立 `reports/dense_review_redesign/2026-11-16/PROGRESS.md`，场景与测试对应关系见该记录；CUSTOM-110 原状态未改
 
 ## 2. 列表与会话启用修复
@@ -62,7 +62,7 @@
 - [x] 6.1 `26fed309`；`test_display_text_and_original.py::test_review_label_policy_overrides_ordinary_switch`、`test_review_never_writes_back_the_ordinary_label_settings`
 - [ ] 6.2 实现有限框外锚点避让和短引线，碰撞包括已放置文字与当前编辑手柄；空间不足时显示编号并映射侧栏完整名称，支持准确定位。
 - [ ] 6.3 标签布局按字体、DPI、文本和视口缓存，拖动时固定锚点，结束后重新排布；验证缩放后文字屏幕尺寸及对象身份稳定，满足 DP-06。
-- [x] 6.4 `26fed309` + `47c7018d` + `05b1a26b`：原图对照暂停命中与几何修改；工具栏「按住看原图」真实按键进入，松开/失焦/关闭/切图恢复（`test_display_text_and_original.py::test_hold_original_button_press_and_release`、`test_hold_original_button_ends_on_blur_close_and_image_switch`）；原图模式下标签/底板/引线/属性/遮罩停止绘制（`test_redesign_followup_audit.py::test_original_mode_renders_without_annotation_labels`）（DP-13、DP-14、DP-15）
+- [x] 6.4 `26fed309` + `47c7018d` + `05b1a26b`：原图对照暂停命中与几何修改；工具栏「按住看原图」真实按键进入，松开/失焦/关闭/切图恢复（`test_display_text_and_original.py::test_hold_original_button_press_and_release`、`test_hold_original_button_ends_on_blur_close_and_image_switch`）；原图模式下标签/底板/引线/属性/遮罩停止绘制（`test_display_text_and_original.py::test_original_mode_renders_without_annotation_labels`）（DP-13、DP-14、DP-15）
 - [ ] 6.5 验证当前对象、本批标签回退、关联点名称、长中文及日/韩文本、手柄和键盘焦点；将文字可读性人工步骤加入 M2。
 
 ## 7. 矩形卡与关联点导航
@@ -79,7 +79,7 @@
 - [x] 8.1 `c569a29f`；`test_card_geometry.py::test_card_image_height_defaults_to_320`
 - [ ] 8.2 部分完成 `c569a29f`：高度独立与列数重排已验证（`test_card_geometry.py::test_widening_changes_columns_but_keeps_height`、`test_context_change_keeps_the_selected_height`）；**宽度受限提示与「在主画布查看」入口未实现**，故不勾选
 - [ ] 8.3 裁切包含矩形及明确关联点并集，任一有效框外点即提供提示、主体观察及逐点定位，边界点视为框内；裁切钳制真实图像边界，满足 OC-11、OC-12。
-- [ ] 8.4 部分完成 `c569a29f`：目标像素与 DPR、尺寸进入缓存键已验证（`test_thumbnail_target_follows_size_and_dpr`、`test_height_change_invalidates_cached_crops`）；**比较窗口当前版本未实现**，故不勾选
+- [ ] 8.4 部分完成 `c569a29f`、`5d2d3002`：目标像素与 DPR、尺寸进入缓存键已验证（`test_thumbnail_target_follows_size_and_dpr`、`test_height_change_invalidates_cached_crops`）；比较窗口及冷缓存请求已有实现（`test_workspace_evidence.py::test_compare_cold_cache_requests_updates_and_failures`），但几何、尺寸及上下文变化后的比较图块当前版本联动仍缺完整验证，故不勾选；不再沿用“比较窗口未实现”的旧描述。
 - [ ] 8.5 合并尺寸滑块与布局变化请求，优先可见项和有限预取，保留虚拟列表；为源图、图块、图形资源、在途请求与结果队列登记各自容量或字节预算，满足 OC-18。
 - [ ] 8.6 切图、改目录、调整尺寸和关闭工作区时取消或丢弃旧结果，后台线程仅提交当前代际可用数据；拖动期间遵守现有后台延迟策略。
 - [ ] 8.7 实现明确失败、重试和冷缓存比较，关闭比较窗口后停止更新，成功恢复后按当前范围重算确认候选，满足 OC-19、OC-20、PC-07。
@@ -87,7 +87,7 @@
 
 ## 9. 停靠工作区和任务视图
 
-- [ ] 9.1 将复核内容组件接入既有 dock 体系，默认右侧停靠，支持浮动和再次停靠，复用一个主画布和会话，满足 WL-01、WL-02。
+- [x] 9.1 将复核内容组件接入既有 dock 体系，默认右侧停靠，支持浮动和再次停靠，复用一个主画布和会话，满足 WL-01、WL-02。`5d2d3002` + `a4efb042`；`test_workspace_dock_tasks.py::test_menu_entry_docks_the_panel_beside_the_editable_canvas`、`test_reopening_reuses_dock_canvas_session_and_history`、`test_dock_visibility_events_do_not_rebuild_the_round`；浮动/停靠原图状态见 `test_workspace_review_fixes.py::test_float_keeps_original_display_mode`，均在 [最新全目录回归](../../../reports/dense_review_redesign/2026-11-17/validation-dense.txt) 通过。
 - [ ] 9.2 接入类别核对、框与关键点观察、空间查漏三个任务入口，各自保存对象或区域视口，切换沿用编辑边界，满足 WL-07、WL-08。
 - [ ] 9.3 分别支持批次和卡片收起，窄窗口保留当前对象、计数、审核范围与主要动作，紧凑列表仍有完整类名读取路径，满足 WL-03。
 - [ ] 9.4 持久化面板宽度、浮动位置、展开状态与任务偏好，第二屏移除及不同 DPI 后恢复到可访问区域，满足 WL-04、WL-11。
@@ -133,7 +133,7 @@
 - [ ] 13.4 补小地图、真实画布区域定位、计划重建、失效和保存恢复回归，覆盖 SN-01至SN-15。
 - [ ] 13.5 补实际编辑、确认、撤销、导出往返、外部变化和Inspector交接回归，覆盖 PC-01至PC-20。
 - [ ] 13.6 运行受影响的 `tests/test_dense_review`、`tests/test_canvas`、`tests/test_labeling`、`tests/test_settings`、`tests/test_inspection`，若碰到历史崩溃或失败则同基线定向对照，记录完整通过/失败/跳过/未完成及退出码。
-- [ ] 13.7 运行相关 Python 格式和静态检查、文档链接检查及本变更 OpenSpec strict，翻译修改核对生成来源；在报告明确工具栏布局和Windows不适用点云套件的运行情况。
+- [x] 13.7 运行相关 Python 格式和静态检查、文档链接检查及本变更 OpenSpec strict，翻译修改核对生成来源；在报告明确工具栏布局和Windows不适用点云套件的运行情况。[FIX_IMPLEMENTATION.md](../../../reports/dense_review_redesign/2026-11-17/FIX_IMPLEMENTATION.md)、[FIX_VALIDATION.md](../../../reports/dense_review_redesign/2026-11-17/FIX_VALIDATION.md)：Black/OpenSpec/链接通过，flake8 11 项既有告警与基线一致；四语言编译入口 `scripts/compile_languages.py`、磁盘/嵌入资源由 `test_translations.py::TestDenseReviewTranslations::test_literal_messages_in_all_runtime_contexts_and_resources` 验证；工具栏布局和 Windows 点云均明确未运行。本条不等于 12.4 四语言全界面已完成。
 
 ## 14. 性能与真实屏幕验收
 
@@ -147,8 +147,8 @@
 
 - [ ] 15.1 根据实际功能更新操作说明和真实截图，讲清三个任务、人物卡范围、原图对照、隐藏例外及查漏与正式验收区别；更新 CUSTOM-121 的实际状态。
 - [ ] 15.2 将每项规格场景关联实际测试node ID或人工证据，逐项填写结果及修订号；历史测试记录只作参考，遗留未完成项目逐项保留。
-- [ ] 15.3 按可独立验证最小批次核对暂存区并本地提交，用 `feat|fix|docs|test|perf(scope): 中文说明` 记录，更新功能记录与仓库操作记录的提交和验证范围。
+- [x] 15.3 按可独立验证最小批次核对暂存区并本地提交，用 `feat|fix|docs|test|perf(scope): 中文说明` 记录，更新功能记录与仓库操作记录的提交和验证范围。已实施批次依赖保存 `5d2d3002`、独立修复 `a4efb042`、独立复核 `1c148da5`；CUSTOM-121、操作台账和暂存范围均有记录，详见 [本次勾选核对](../../../reports/dense_review_redesign/2026-11-17/TASK_STATUS_SYNC.md)。后续新批次继续执行本条规则。
 - [ ] 15.4 演练定向回退及依赖检查，使用测试副本重开标注验证对象身份、标签、旧审核字段、扩展元数据及显示恢复，登记恢复点和结果。
-- [ ] 15.5 汇总本地提交、实际验证范围和未决项，重新核对集成目标。按用户已有授权执行推送/PR/合入并核验目标提交号；缺少相应授权时交付本地结果和待授权状态。
+- [x] 15.5 汇总本地提交、实际验证范围和未决项，重新核对集成目标。按用户已有授权执行推送/PR/合入并核验目标提交号；缺少相应授权时交付本地结果和待授权状态。截至当前阶段的提交、验证、全部未决条目和目标节点见 [TASK_STATUS_SYNC.md](../../../reports/dense_review_redesign/2026-11-17/TASK_STATUS_SYNC.md)；当前仅本地交付，未推送/PR/合入，目标仍为 `codex/4.2.1-baseline-organization`。此条不代表其余任务和整体发布完成。
 
 后续完整关键点审核另建变更，先定义类别、位置、人物归属、遮挡与缺点规则、关系签名和历史进度兼容。本任务清单的完成条件以本次五份规格为准。
