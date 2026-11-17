@@ -35,7 +35,7 @@
 | CUSTOM-117 | Ctrl + 左键拖拽多选（部分覆盖即选中） | 已验收并提交同步 GitHub（c58e16b6）；41 项交付专项通过，历史 225 项相关回归通过；11-06 用户实测确认 | [实现、修复与交付记录](2026-11-06-marquee-selection.md) |
 | CUSTOM-118 | 数字键提示条复核修复：图片生命周期禁用、显示设置同步、映射解析统一、打包翻译、刷新精简 | 已实现待验证；专项 87 项通过，受影响目录失败/挂起均已在基线 `f87fdfa8` 复现；真实屏幕人工验收未做 | [实施记录](2026-11-11-digit-key-hints.md) |
 | 配置持久化修复 | 配置按字段保存、冲突处理、数字绑定/设置/显示保持同步、重启恢复 | 27/27；11-09 用户按原终端完成可见保存/重启验收，本轮配置与设置合跑通过；后续归档仍保留历史局限 | [任务与状态](../../openspec/changes/archive/2026-11-17-fix-user-settings-persistence/tasks.md) · [验证](../../openspec/changes/archive/2026-11-17-fix-user-settings-persistence/verification.md) |
-| CUSTOM-011 | 数字键绘制矩形的类别保存与绑定清理 | 11-10 类别优先级修复已提交；11-11 补修放弃绘制时残留绑定 | [实施与复核记录](2026-11-11-digit-rectangle-label-save.md) · [OpenSpec](../../openspec/changes/fix-digit-rectangle-label-save/tasks.md) |
+| CUSTOM-011 | 数字键绘制矩形的类别保存与绑定清理 | 11-10 类别优先级修复已提交；11-11 补修放弃绘制时残留绑定 | [实施与复核记录](2026-11-11-digit-rectangle-label-save.md) · [OpenSpec](../../openspec/changes/archive/2026-11-17-fix-digit-rectangle-label-save/tasks.md) |
 | CUSTOM-101/103-显示 | 矩形创建与单点拟合预览的共边显示修复 | 11-06 单点拟合按键刷新与小框防跳修复用户验收通过，132 项隔离 Qt 回归通过；原创建/共边完整屏幕验收另见记录 | [方案与实施记录](2026-11-02-rectangle-preview-overlap-plan.md) · [操作说明](../zh_cn/rectangle_point_fit.md) · [验证](../../openspec/changes/fix-rectangle-preview-overlap/verification.md) |
 | CUSTOM-101 | 框内单点拟合锁角即时预览与单击确认 | 11-12 单击版已实测，固定对角修订已通过自动化验证 | [实施记录](2026-11-12-point-fit-lock-click.md) · [操作说明](../zh_cn/rectangle_point_fit.md) |
 | CUSTOM-101-统一手势 | Shift 单点拟合统一：框外进框锁角、按下捕获/松开提交、无效落点保留锁角、移除 Shift+Alt 同侧角 | 11-13 已验证，独立规格 87 项全部通过，用户确认人工验收通过 | [实施记录](2026-11-12-point-fit-unify-shift.md) · [操作说明](../zh_cn/rectangle_point_fit.md) · [OpenSpec](../../openspec/changes/unify-shift-rectangle-point-fit/proposal.md) |

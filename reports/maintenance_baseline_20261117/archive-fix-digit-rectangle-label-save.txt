@@ -1,0 +1,26 @@
+✓ change/add-annotation-correction-cost-statistics
+✓ change/add-dense-annotation-review-workflow
+✓ change/add-keypoint-display-presets
+✓ change/add-shift-corner-lock-point-fit
+✓ spec/digit-rectangle-label-save
+✓ spec/duplicate-box-inspection
+✓ change/fix-rectangle-preview-overlap
+✓ change/improve-point-fit-algorithm
+✓ change/improve-rectangle-edge-adjustment
+✓ spec/inspection-execution
+✓ spec/inspection-profiles
+✓ spec/inspection-result-navigation
+✓ spec/inspection-review-handoff
+✓ spec/inspection-review-queue
+✓ spec/inspector-focused-review
+✓ change/migrate-canvas-controls-from-v430
+✓ change/organize-maintenance-baseline
+✓ change/polish-inspector-dense-review-ui
+✓ spec/responsive-canvas-dragging
+✓ change/restore-v430-canvas-controls
+✓ spec/settings-session-consistency
+✓ spec/staged-annotation-loading
+✓ change/unify-shift-rectangle-point-fit
+✓ spec/user-settings-persistence
+Totals: 24 passed, 0 failed (24 items)
+- Validating...
