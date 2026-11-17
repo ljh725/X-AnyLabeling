@@ -1,5 +1,11 @@
 # OpenSpec 未完成任务清单
 
+## 2026-11-17 Inspector 双屏导航人工验收通过并归档
+
+[Inspector 双屏导航简化](changes/archive/2026-11-17-simplify-inspector-dual-screen-navigation/tasks.md) 已按用户“已经通过人工验证 勾选通过”的指示勾选 6.3 并归档，从活跃待办移除，26/26 已勾选。两份新增规格 `inspector-focused-review`、`inspection-result-navigation` 已同步到主规格。
+
+边界：本次没有新增物理双屏截图或逐条操作记录，6.3 的勾选依据是用户的人工实测声明；2026-11-07 那轮自动化截图/点击失败的结论仍保留，没有被追认为通过。详见 [归档决定](changes/archive/2026-11-17-simplify-inspector-dual-screen-navigation/archive-decision-20261117.md) 与 [CUSTOM-123](../docs/custom_changes/2026-11-17-inspector-dual-screen-archive.md)。
+
 ## 2026-11-17 用户决定终止归档
 
 [密集复核工作区重设计](changes/archive/2026-11-17-redesign-dense-review-workspace/tasks.md) 已按用户指令停止并归档，从活跃待办移除。最后技术审计 33/91，58 项未闭环条款随停止决定行政关闭，不代表已实施或验证通过；后续部分实现保存于 `a9381688`。五份草案未同步为主规格。详见 [归档决定](changes/archive/2026-11-17-redesign-dense-review-workspace/archive-decision-20261117.md)。
@@ -30,11 +36,12 @@
 | --- | ---: | ---: | --- |
 | [标注修正成本统计](changes/add-annotation-correction-cost-statistics/tasks.md)（`add-annotation-correction-cost-statistics`） | 1 / 54 | 53 | 开发、接入、测试和人工验收；目前仅完成实施基线记录。 |
 | [密集标注复核工作流](changes/add-dense-annotation-review-workflow/tasks.md)（`add-dense-annotation-review-workflow`） | 61 / 66 | 5 | 真实屏幕及无障碍验收、回归异常排查、双人对照试用、质量复核与交付核对。 |
-| [Inspector 双屏导航简化](changes/simplify-inspector-dual-screen-navigation/tasks.md)（`simplify-inspector-dual-screen-navigation`） | 25 / 26 | 1 | 真实双屏验收及截图、操作记录。 |
+
+> 上表为 2026-11-10 数字；实际以各 `tasks.md` 为准。2026-11-17 更新的当前状态：成本统计 49/54、密集复核 61/66、关键点三层显示 0/22；Inspector 双屏导航已于 2026-11-17 26/26 归档。
 
 ## 2026-11-10 已归档
 
-[Inspector 工作流重构](changes/archive/2026-11-10-refactor-data-inspector-workflow/tasks.md) 已按用户“直接全部勾选并归档”的指示关闭，55/55 已勾选。原剩余 10.3–10.5 三项按用户决定关闭，未新增人工验收证据；五份规格已同步到主规格。详见[归档决定](changes/archive/2026-11-10-refactor-data-inspector-workflow/archive-decision-20261110.md)。后续 Inspector 双屏导航任务保持独立待办。
+[Inspector 工作流重构](changes/archive/2026-11-10-refactor-data-inspector-workflow/tasks.md) 已按用户“直接全部勾选并归档”的指示关闭，55/55 已勾选。原剩余 10.3–10.5 三项按用户决定关闭，未新增人工验收证据；五份规格已同步到主规格。详见[归档决定](changes/archive/2026-11-10-refactor-data-inspector-workflow/archive-decision-20261110.md)。后续 Inspector 双屏导航任务当时保持独立待办，已于 2026-11-17 按用户人工验收声明关闭并归档。
 
 ## 已完成但未归档的变更
 
@@ -161,13 +168,9 @@
 
 - [11.3](changes/add-dense-annotation-review-workflow/tasks.md#L114) 执行OpenSpec严格验证与文档/代码差异检查，确认所有承诺有实现和证据；有未通过行为或性能项时保留未完成任务，不提前归档或宣称上线。补充：`openspec validate ... --strict` 通过；未通过/未验证项保留在原任务中。 **2026-11-04 复核：DR-10：strict 仅证明文档结构，不能证明所有承诺均有实现/证据。待本次实现缺口、当前回归、真实性能口径及人工验收逐项有结果后再完成交付核对；未完成时不归档或宣称上线。** 2026-11-05 进展：代码、逐场景映射和历史/当前证据已更新，strict 与差异检查单列；M1–M5 人工部分和 9.7 未决问题未全部关闭，保留未完成，不归档。
 
-### Inspector 双屏导航简化（1 项）
+### Inspector 双屏导航简化（已归档）
 
-源清单：[`simplify-inspector-dual-screen-navigation`](changes/simplify-inspector-dual-screen-navigation/tasks.md)。
-
-#### 6. 文档、资源与交付验收
-
-- [6.3](changes/simplify-inspector-dual-screen-navigation/tasks.md#L42) 实际双屏验收：主窗口保持完整画布、Inspector 可独立移动／缩放，两边 F1／F2 同步定位且不抢焦点；验证重复框选择删除、保存复查、跨图取消、最小化、第二屏断开和不同缩放下按钮可用，附截图及操作记录。
+第 6.3 项实际双屏验收已于 2026-11-17 按用户“已经通过人工验证 勾选通过”的声明勾选，变更归档至 [`changes/archive/2026-11-17-simplify-inspector-dual-screen-navigation`](changes/archive/2026-11-17-simplify-inspector-dual-screen-navigation/tasks.md)。
 
 ## 刷新方法
 
