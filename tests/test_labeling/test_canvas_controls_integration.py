@@ -73,7 +73,9 @@ def mouse(canvas, kind, xy, modifiers=Qt.KeyboardModifier.NoModifier):
 
 @pytest.mark.parametrize("gesture", ["edge", "fit"])
 @pytest.mark.parametrize("cancel", [False, True], ids=["commit", "cancel"])
-def test_pending_mode_finishes_real_edit(window, tmp_path, gesture, cancel):
+def test_pending_mode_finishes_real_edit(
+    window, tmp_path, monkeypatch, gesture, cancel
+):
     w = open_rectangles(window, tmp_path)
     canvas = w.canvas
     before = canvas.shapes[0].to_dict()
@@ -85,6 +87,15 @@ def test_pending_mode_finishes_real_edit(window, tmp_path, gesture, cancel):
     else:
         modifiers = Qt.KeyboardModifier.ShiftModifier
         start, end = (210, 90), (220, 80)
+        # Fitting starts on a real Shift press at the pointer, rather than
+        # from a modifier flag on a synthetic mouse event alone.
+        local = (
+            QtCore.QPointF(*start) + canvas.offset_to_center()
+        ) * canvas.scale
+        monkeypatch.setattr(
+            canvas, "mapFromGlobal", lambda _pos: local.toPoint()
+        )
+        QtTest.QTest.keyPress(canvas, Qt.Key.Key_Shift)
     mouse(canvas, QtCore.QEvent.Type.MouseButtonPress, start, modifiers)
     assert canvas.interaction_in_progress()
     w.apply_wheel_navigation_mode("traditional")
@@ -96,6 +107,8 @@ def test_pending_mode_finishes_real_edit(window, tmp_path, gesture, cancel):
     else:
         mouse(canvas, QtCore.QEvent.Type.MouseMove, end, modifiers)
     mouse(canvas, QtCore.QEvent.Type.MouseButtonRelease, end, modifiers)
+    if gesture == "fit":
+        QtTest.QTest.keyRelease(canvas, Qt.Key.Key_Shift)
     QtWidgets.QApplication.processEvents()
     assert not canvas.interaction_in_progress()
     assert canvas.wheel_navigation_mode == "traditional"

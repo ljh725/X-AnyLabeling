@@ -1,0 +1,29 @@
+{
+  "name": "fit-fixture",
+  "command": [
+    "C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\python.exe",
+    "-m",
+    "pytest",
+    "tests/test_labeling/test_canvas_controls_integration.py",
+    "-vv",
+    "-o",
+    "faulthandler_timeout=30",
+    "--basetemp=D:\\X-AnyLabeling-4.2.1\\.tmp\\maintenance-fit-fixture",
+    "--junitxml=D:\\X-AnyLabeling-4.2.1\\reports\\maintenance_baseline_20261117\\fit-fixture.xml"
+  ],
+  "cwd": "D:\\X-AnyLabeling-4.2.1",
+  "timeout_seconds": 240,
+  "head": "cdd256607c2e9ef71a8bd8fe78568c1cc6266d00",
+  "source_tree": "01efe6fe526f49a44353ffcbc5efc5e089a1e77f",
+  "python": "3.12.12 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 20:05:38) [MSC v.1929 64 bit (AMD64)]",
+  "qt_platform": "offscreen",
+  "started": "2026-11-17 19:35:37+0800",
+  "packages": {
+    "pytest": "9.0.3",
+    "PyQt6": "6.10.2",
+    "onnxruntime-gpu": "1.24.3"
+  },
+  "exit_code": 0,
+  "timed_out": false,
+  "elapsed_seconds": 126.16
+}
