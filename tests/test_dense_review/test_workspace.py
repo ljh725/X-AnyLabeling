@@ -340,7 +340,14 @@ def test_spatial_review_requires_explicit_region_completion(window, tmp_path):
     assert session.completion_status().supported is False
 
 
-def test_dense_shortcuts_are_window_scoped(window, tmp_path):
+def test_dense_shortcuts_are_dock_scoped(window, tmp_path):
+    """Panel actions are scoped to the dock, not the whole window.
+
+    A window-wide context would let a docked panel action fire while the
+    canvas has focus and, together with the canvas bindings, could run one
+    press twice.  ``WidgetWithChildrenShortcut`` keeps the original
+    in-panel semantics (WL-09 tracking; 9.5 owns full canvas/floating rules).
+    """
     widget = window.labeling_widget.view
     image_path = _prepare_image(tmp_path)
     assert widget.load_file(image_path)
@@ -348,7 +355,9 @@ def test_dense_shortcuts_are_window_scoped(window, tmp_path):
     workspace = widget.dense_review_workspace
     assert workspace._shortcuts
     for shortcut in workspace._shortcuts:
-        assert shortcut.context() == (QtCore.Qt.ShortcutContext.WindowShortcut)
+        assert shortcut.context() == (
+            QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut
+        )
     assert "Ctrl+Return" in workspace.complete_batch_button.toolTip()
     assert "Alt+Return" in workspace.complete_object_button.toolTip()
     for button in (

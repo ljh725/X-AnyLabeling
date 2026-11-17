@@ -849,8 +849,34 @@ class _CompareDialog(QtWidgets.QDialog):
         super().closeEvent(event)
 
 
-class DenseReviewWorkspace(QtWidgets.QDialog):
-    """Batch, card and spatial-review controls over the existing canvas."""
+class DenseReviewWorkspace(QtWidgets.QDockWidget):
+    """Batch, card and spatial-review controls docked beside the canvas.
+
+    The panel is a real dock so the single editable canvas stays visible and
+    the whole thing can float to a second screen and re-dock.  Everything
+    that used to live on the dialog (card model, region panel, thumbnail
+    provider, comparison windows) is unchanged; only the container moved,
+    so ``dense_review_workspace`` keeps its previous call contract
+    (WL-01, WL-02).
+    """
+
+    #: Stable name used by the main window when registering the dock and by
+    #: the layout restore path.
+    DOCK_OBJECT_NAME = "denseReviewDock"
+
+    #: Task ids are stable and independent of the widget order.
+    TASK_CATEGORY = "category"
+    TASK_BOX_POINTS = "box-points"
+    TASK_COVERAGE = "coverage"
+    TASK_IDS = (TASK_CATEGORY, TASK_BOX_POINTS, TASK_COVERAGE)
+    #: Which page of the stacked content each task shows.
+    TASK_PAGE = {TASK_CATEGORY: 0, TASK_BOX_POINTS: 0, TASK_COVERAGE: 1}
+    #: Display preset applied when a task becomes active.
+    TASK_DISPLAY_MODE = {
+        TASK_CATEGORY: "focus",
+        TASK_BOX_POINTS: "focus",
+        TASK_COVERAGE: "coverage",
+    }
 
     #: Card image-area height in logical pixels (OC-07).
     DEFAULT_IMAGE_HEIGHT = 320
@@ -865,7 +891,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         host: Any,
         parent: Optional[QtWidgets.QWidget] = None,
     ) -> None:
-        super().__init__(parent or host)
+        super().__init__(host.tr("密集复核"), parent or host)
         self.host = host
         self.thumbnails = ThumbnailProvider(self)
         self.thumbnails.set_defer_predicate(self._defer_background_cards)
@@ -885,15 +911,36 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self._cards_visible = True
         self._card_image_height = self.DEFAULT_IMAGE_HEIGHT
         self._last_thumb_generation = -1
+        self._view_ready = False
+        #: True while the review view owns the canvas overlay.  Floating and
+        #: re-docking also emit hide/show pairs, so the flag (not the Qt
+        #: visibility event alone) decides whether the overlay must be
+        #: released or re-installed.
+        self._review_view_open = False
+        #: True only while the dock is moving between docked and floating.
+        self._float_transition = False
+        self._switching_task = False
+        self._task_id = self.TASK_CATEGORY
+        # Per-image, per-task lightweight navigation state (memory only).
+        self._task_views: dict[str, dict] = {}
+        self._task_state_image = ""
         self._display_mode = "focus"
         self._full_image = False
         self._shortcuts: list[QtGui.QShortcut] = []
         self._shortcut_warnings: list[str] = []
         self.setWindowTitle(self.tr("Dense Annotation Review"))
-        self.setWindowModality(QtCore.Qt.WindowModality.NonModal)
-        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
-        self.setObjectName("denseReviewWorkspace")
-        self.resize(1280, 860)
+        self.setObjectName(self.DOCK_OBJECT_NAME)
+        self.setAllowedAreas(
+            QtCore.Qt.DockWidgetArea.LeftDockWidgetArea
+            | QtCore.Qt.DockWidgetArea.RightDockWidgetArea
+        )
+        # Movable, closable and floatable: closing the panel must keep the
+        # session and the edit history alive (WL-01, WL-02).
+        self.setFeatures(
+            QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetMovable
+            | QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetClosable
+            | QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetFloatable
+        )
         self._build_ui()
         self.setStyleSheet(get_dialog_style() + get_workbench_qss())
         self._connect()
@@ -908,7 +955,11 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
     # -- UI ------------------------------------------------------------
 
     def _build_ui(self) -> None:
-        layout = QtWidgets.QVBoxLayout(self)
+        # The dock owns a single inner widget; all existing layout code keeps
+        # targeting ``layout`` exactly as before.
+        self.content = QtWidgets.QWidget(self)
+        self.setWidget(self.content)
+        layout = QtWidgets.QVBoxLayout(self.content)
         layout.setContentsMargins(16, 14, 16, 12)
         layout.setSpacing(8)
 
@@ -954,6 +1005,24 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         status_layout.addWidget(self.completion_label)
         status_layout.addWidget(self.config_label, 1)
         layout.addWidget(statusline)
+
+        task_row = QtWidgets.QHBoxLayout()
+        task_row.setSpacing(8)
+        self.task_caption = QtWidgets.QLabel(self.tr("当前任务"))
+        self.task_caption.setObjectName("fieldLabel")
+        self.task_selector = QtWidgets.QComboBox()
+        self.task_selector.setAccessibleName(self.tr("复核任务"))
+        self.task_selector.setToolTip(
+            self.tr("切换任务只改变视图与导航，不改变确认状态。")
+        )
+        self.task_selector.addItem(self.tr("类别核对"), self.TASK_CATEGORY)
+        self.task_selector.addItem(
+            self.tr("框与关键点观察"), self.TASK_BOX_POINTS
+        )
+        self.task_selector.addItem(self.tr("空间查漏"), self.TASK_COVERAGE)
+        task_row.addWidget(self.task_caption)
+        task_row.addWidget(self.task_selector, 1)
+        layout.addLayout(task_row)
 
         self.tabs = QtWidgets.QTabWidget()
         self.tabs.addTab(self._build_object_tab(), self.tr("对象复核"))
@@ -1073,6 +1142,24 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         header_row.addWidget(self.current_object_label, 1)
         header_row.addWidget(self.rule_label)
         right_layout.addLayout(header_row)
+
+        reason_row = QtWidgets.QHBoxLayout()
+        reason_row.setSpacing(6)
+        self.exclusion_reason_label = QtWidgets.QLabel()
+        self.exclusion_reason_label.setObjectName("fieldLabel")
+        self.exclusion_reason_label.setWordWrap(False)
+        self.temporary_show_button = QtWidgets.QPushButton(self.tr("临时显示"))
+        self.temporary_show_button.setProperty("variant", "quiet")
+        self.temporary_show_button.setAccessibleName(
+            self.tr("临时显示当前对象")
+        )
+        self.temporary_show_button.setToolTip(
+            self.tr("仅临时观察被手动隐藏或过滤的当前对象，不改变确认资格。")
+        )
+        self.temporary_show_button.setVisible(False)
+        reason_row.addWidget(self.exclusion_reason_label, 1)
+        reason_row.addWidget(self.temporary_show_button)
+        right_layout.addLayout(reason_row)
 
         context_row = QtWidgets.QHBoxLayout()
         context_row.setSpacing(6)
@@ -1326,6 +1413,12 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.config_button.clicked.connect(self._edit_config)
         self.refresh_button.clicked.connect(self._refresh_from_host)
         self.close_button.clicked.connect(self.close)
+        self.temporary_show_button.clicked.connect(self._toggle_temporary_show)
+        canvas = getattr(self.host, "canvas", None)
+        if canvas is not None:
+            canvas.dense_review_display_changed.connect(
+                self._refresh_exclusion_hint
+            )
         self.batch_list.currentItemChanged.connect(self._on_batch_selected)
         self.batches_toggle_button.clicked.connect(self._on_batches_toggle)
         self.cards_toggle_button.clicked.connect(self._on_cards_toggle)
@@ -1365,6 +1458,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.members_button.clicked.connect(self._show_members)
         self.rebuild_button.clicked.connect(self._rebuild_queue)
         self.compare_button.clicked.connect(self._compare_selected)
+        self.task_selector.currentIndexChanged.connect(self._on_task_selected)
         self.tabs.currentChanged.connect(self._on_tab_changed)
         self.region_list.currentItemChanged.connect(self._on_region_selected)
         self.coverage_grid.region_clicked.connect(self._on_grid_region_clicked)
@@ -1515,6 +1609,55 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible,
         )
 
+    def _toggle_temporary_show(self) -> None:
+        """Reveal or hide the current object for observation only."""
+        shape_id = self._current_shape_id()
+        if not shape_id:
+            return
+        if shape_id in self.host.dense_review_temporary_ids():
+            self.host.dense_review_end_temporary([shape_id])
+        else:
+            self.host.dense_review_show_temporarily([shape_id])
+        self._refresh_exclusion_hint()
+
+    def _refresh_exclusion_hint(self) -> None:
+        """Update only the reason text and its button.
+
+        Bound to ``canvas.dense_review_display_changed``; it must stay cheap
+        and never call ``refresh_all()`` from inside a display signal, or the
+        rebuild would re-enter the same signal (DP-11, DP-12).
+        """
+        label = getattr(self, "exclusion_reason_label", None)
+        button = getattr(self, "temporary_show_button", None)
+        if label is None or button is None:
+            return
+        session = self.session
+        shape_id = self._current_shape_id()
+        if session is None or not shape_id:
+            label.setText("")
+            button.setVisible(False)
+            return
+        display = self.host.dense_review_display_entry(shape_id)
+        reason = self.host.dense_review_exclusion_reason(shape_id)
+        temporary = shape_id in self.host.dense_review_temporary_ids()
+        revealable = bool(
+            display is not None
+            and display.reason in ("manual-hidden", "label-hidden", "filtered")
+        )
+        if display is not None and display.drawable and display.temporary:
+            label.setText(self.tr("已临时显示 · 确认资格仍按排除来源计算"))
+        else:
+            label.setText(
+                self.tr("未显示：{reason}").format(reason=reason)
+                if reason
+                else ""
+            )
+        if temporary:
+            button.setText(self.tr("结束临时显示"))
+        elif revealable:
+            button.setText(self.tr("临时显示"))
+        button.setVisible(temporary or revealable)
+
     def _status(self, text: str) -> None:
         self.status_label.setText(text)
 
@@ -1550,11 +1693,17 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.refresh_all(force_cards=True)
         self._focus_current()
 
-    def _refresh_from_host(self) -> None:
-        self._generation += 1
-        self.thumbnails.start_generation(self._generation)
-        self._failed_ids.clear()
-        self._card_request_keys.clear()
+    def _refresh_from_host(self, *, new_generation: bool = True) -> None:
+        """Re-read host data.
+
+        ``new_generation=False`` keeps the current thumbnail generation, used
+        by re-open/show paths that must not look like a new round (R1).
+        """
+        if new_generation:
+            self._generation += 1
+            self.thumbnails.start_generation(self._generation)
+            self._failed_ids.clear()
+            self._card_request_keys.clear()
         self._compare_request_keys.clear()
         self._close_compare_dialogs()
         self.refresh_all(force_cards=True)
@@ -1610,8 +1759,12 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         # (DP-01, DP-08).
         self.host.refresh_dense_review_display()
         QtCore.QTimer.singleShot(0, self._request_visible_thumbnails)
-        if self.tabs.currentIndex() == 1:
-            self._show_current_region()
+        # One dispatch point: the active task decides the navigation.  A
+        # plain refresh must not move the coverage viewport - the user may be
+        # inspecting a detail inside the region - so only the region overlay
+        # and list highlight are re-synced here (R2, SN-06).
+        if self._task_id == self.TASK_COVERAGE:
+            self._sync_current_region_display()
         if not initial:
             self._update_action_labels()
 
@@ -1648,6 +1801,8 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.config_label.setText("")
         self.current_object_label.setText("")
         self.rule_label.setText("")
+        self.exclusion_reason_label.setText("")
+        self.temporary_show_button.setVisible(False)
         self.batch_note_label.setText("")
         self.coverage_stats_label.setText("")
 
@@ -1752,6 +1907,7 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
             ).format(stats=stats or self.tr("无"))
         )
         self._set_controls_enabled(True)
+        self._refresh_exclusion_hint()
 
     def _sync_list_enabled(self) -> None:
         """Enable the three lists only when their backing content exists.
@@ -2546,8 +2702,15 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
     def _on_display_mode_changed(self, *_args) -> None:
         if self._updating:
             return
+        previous = self._display_mode
         self._display_mode = str(self.display_combo.currentData())
         self.host.dense_review_set_display_mode(self._display_mode)
+        # Switching into or out of the source comparison must not re-centre
+        # the canvas: that would turn a display switch into a navigation and
+        # throw away the user's zoom (DP-13).  Ordinary object navigation
+        # keeps its original entry point.
+        if "original" in (previous, self._display_mode):
+            return
         self._focus_current()
 
     def _begin_hold_original(self) -> None:
@@ -2568,12 +2731,215 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
 
     # -- coverage ------------------------------------------------------
 
+    def _task_for_page(self, index: int) -> str:
+        return self.TASK_COVERAGE if index == 1 else self.TASK_CATEGORY
+
     def _on_tab_changed(self, index) -> None:
-        if index != 1 or self.session is None:
+        """Treat a page click as a task request.
+
+        The tab widget stays as the visible page container, but navigation is
+        driven only by the task entry point so the old tabs and the new
+        selector can never disagree (WL-07).
+        """
+        if self._switching_task or self.session is None:
             return
-        self.session.ensure_coverage()
-        self._refresh_coverage()
-        self._show_current_region()
+        task_id = self._task_for_page(index)
+        if task_id == self._task_id:
+            return
+        target = self.TASK_COVERAGE
+        if task_id != self.TASK_COVERAGE:
+            current = self.task_selector.currentData()
+            target = (
+                current
+                if current in (self.TASK_CATEGORY, self.TASK_BOX_POINTS)
+                else self.TASK_CATEGORY
+            )
+        self.set_task(target)
+
+    def _on_task_selected(self, _index: int) -> None:
+        if self._switching_task:
+            return
+        task_id = self.task_selector.currentData()
+        if not task_id or task_id == self._task_id:
+            return
+        self.set_task(str(task_id))
+
+    # -- task switching ------------------------------------------------
+
+    @property
+    def task_id(self) -> str:
+        """Return the stable id of the active task view."""
+        return self._task_id
+
+    def _task_view_key(self, task_id: str) -> str:
+        return f"{(self.host.filename or '')}|{task_id}"
+
+    def _task_state_for(self, task_id: str) -> dict:
+        """Return the per-image navigation state for one task."""
+        image = self.host.filename or ""
+        if image != self._task_state_image:
+            # A new image must never inherit the previous one's targets.
+            self._task_views = {}
+            self._task_state_image = image
+        return self._task_views.setdefault(self._task_view_key(task_id), {})
+
+    def _capture_task_view(self, task_id: str) -> None:
+        state = self._task_state_for(task_id)
+        state["viewport"] = self.host.dense_review_capture_view()
+        if task_id == self.TASK_COVERAGE:
+            coverage = self.session.state.coverage if self.session else None
+            state["region"] = coverage.current_region if coverage else ""
+            return
+        state["batch"] = self._current_batch_id()
+        state["shape"] = self._current_shape_id()
+
+    def set_task(self, task_id: str, *, restore_view: bool = True) -> bool:
+        """Switch the active task view.
+
+        No edit history, confirmation state or object content changes here:
+        only the view preset and the navigation target.  A pending edit is
+        settled first through the existing boundary, and a rejected settle
+        keeps the previous task and viewport (WL-07, WL-08).
+        """
+        if task_id not in self.TASK_IDS or self.session is None:
+            return False
+        if task_id == self._task_id and self._view_ready:
+            return True
+        if not self._settle_edit_boundary():
+            return False
+        if self._task_id:
+            self._capture_task_view(self._task_id)
+
+        self._switching_task = True
+        try:
+            self._task_id = task_id
+            self._apply_task_display(task_id)
+            self._show_task_page(task_id)
+        finally:
+            self._switching_task = False
+
+        self._restore_task_target(task_id)
+        if restore_view:
+            self._restore_task_viewport(task_id)
+        self._refresh_task_selector()
+        return True
+
+    def _settle_edit_boundary(self) -> bool:
+        """Settle a live edit before the view switches."""
+        self.host._dense_review_cancel_pending_edit()
+        self.host.canvas.suspend_active_editing()
+        return True
+
+    def _apply_task_display(self, task_id: str) -> None:
+        if task_id == self.TASK_COVERAGE:
+            self.session.ensure_coverage()
+            self._refresh_coverage()
+            self._set_display_mode_widget("all")
+            self.host.dense_review_apply_task_preset(self.TASK_COVERAGE)
+            return
+        self._set_display_mode_widget("focus")
+        preset = (
+            self.TASK_BOX_POINTS
+            if task_id == self.TASK_BOX_POINTS
+            else self.TASK_CATEGORY
+        )
+        self.host.dense_review_apply_task_preset(preset)
+
+    def _set_display_mode_widget(self, mode: str) -> None:
+        combo = self.display_combo
+        index = combo.findData(mode)
+        if index < 0:
+            return
+        self._display_mode = mode
+        if combo.currentIndex() == index:
+            self.host.dense_review_set_display_mode(mode)
+            return
+        combo.blockSignals(True)
+        combo.setCurrentIndex(index)
+        combo.blockSignals(False)
+        self.host.dense_review_set_display_mode(mode)
+
+    def _show_task_page(self, task_id: str) -> None:
+        page = self.TASK_PAGE[task_id]
+        if self.tabs.currentIndex() == page:
+            return
+        self.tabs.blockSignals(True)
+        self.tabs.setCurrentIndex(page)
+        self.tabs.blockSignals(False)
+
+    def _refresh_task_selector(self) -> None:
+        index = self.task_selector.findData(self._task_id)
+        if index < 0 or self.task_selector.currentIndex() == index:
+            return
+        self.task_selector.blockSignals(True)
+        self.task_selector.setCurrentIndex(index)
+        self.task_selector.blockSignals(False)
+
+    def _restore_task_target(
+        self, task_id: str, *, focus: bool = True
+    ) -> bool:
+        """Restore a task's target; return whether a stored target existed.
+
+        ``focus`` controls whether the canvas is re-centred on that target.
+        An explicit task switch navigates to it; re-opening the panel after a
+        hide only re-applies the target and leaves the viewport alone (R4).
+        """
+        state = self._task_state_for(task_id)
+        session = self.session
+        if session is None:
+            return False
+        if task_id == self.TASK_COVERAGE:
+            coverage = session.ensure_coverage()
+            region_id = str(state.get("region") or "")
+            if region_id and coverage.region(region_id) is not None:
+                session.set_current_region(region_id)
+                self._refresh_coverage()
+                if focus:
+                    self._show_current_region()
+                else:
+                    self._sync_current_region_display()
+                return True
+            self._refresh_coverage()
+            if focus:
+                self._show_current_region()
+            else:
+                self._sync_current_region_display()
+            return False
+        shape_id = str(state.get("shape") or "")
+        batch_id = str(state.get("batch") or "")
+        if shape_id and session.object(shape_id) is not None:
+            session.set_current(batch_id or self._current_batch_id(), shape_id)
+        # Rebuild the cards once.  Centring on the object is the caller's
+        # decision: an explicit task switch navigates, while re-opening the
+        # panel keeps whatever viewport the user currently has (R4).
+        self._cards_signature = None
+        self.refresh_all(force_cards=True)
+        if focus:
+            self._focus_current()
+        return bool(shape_id and session.object(shape_id) is not None)
+
+    def _restore_task_view(
+        self, *, restore_viewport: bool = True, focus: bool = True
+    ) -> None:
+        """Restore the active task's target (and optionally its viewport)."""
+        task_id = self._task_id
+        self._switching_task = True
+        try:
+            self._apply_task_display(task_id)
+            self._show_task_page(task_id)
+        finally:
+            self._switching_task = False
+        self._restore_task_target(task_id, focus=focus)
+        if restore_viewport:
+            self._restore_task_viewport(task_id)
+        self._refresh_task_selector()
+
+    def _restore_task_viewport(self, task_id: str) -> bool:
+        state = self._task_state_for(task_id)
+        viewport = state.get("viewport")
+        if not viewport:
+            return False
+        return self.host.dense_review_restore_view(viewport)
 
     def _refresh_coverage(self) -> None:
         session = self.session
@@ -2667,6 +3033,28 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         self.session.set_current_region(region_id)
         self.host.dense_review_show_coverage_region(region_id)
         self.coverage_grid.set_current(region_id)
+
+    def _sync_current_region_display(self) -> None:
+        """Re-sync the region overlay and list highlight without moving.
+
+        Keeps the region rectangle drawn while leaving zoom and pan exactly
+        where the user put them (R2).
+        """
+        session = self.session
+        if session is None or session.state.coverage is None:
+            return
+        region_id = session.state.coverage.current_region
+        if not region_id:
+            return
+        region = session.state.coverage.region(region_id)
+        if region is not None:
+            self.host.dense_review_refresh_coverage_region(region.rect)
+        self.coverage_grid.set_current(region_id)
+        item = self._region_items.get(region_id)
+        if item is not None and self.region_list.currentItem() is not item:
+            self.region_list.blockSignals(True)
+            self.region_list.setCurrentItem(item)
+            self.region_list.blockSignals(False)
 
     def _show_current_region(self) -> None:
         session = self.session
@@ -2777,7 +3165,13 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
                 )
                 continue
             shortcut = QtGui.QShortcut(QtGui.QKeySequence(sequence), self)
-            shortcut.setContext(QtCore.Qt.ShortcutContext.WindowShortcut)
+            # Dock-scoped: a panel action fires only while the panel or one
+            # of its children has focus, so the canvas keeps its own keys and
+            # one press can never trigger the action twice (WL-09 tracking;
+            # the full canvas/floating rules stay with task 9.5).
+            shortcut.setContext(
+                QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut
+            )
             shortcut.activated.connect(slot)
             shortcut.setEnabled(False)
             self._shortcuts.append(shortcut)
@@ -2956,24 +3350,72 @@ class DenseReviewWorkspace(QtWidgets.QDialog):
         super().showEvent(event)
         for shortcut in self._shortcuts:
             shortcut.setEnabled(True)
-        self._refresh_from_host()
-        mode = self.display_combo.currentData() or "focus"
-        self.host.dense_review_set_display_mode(mode)
-        if self.tabs.currentIndex() == 1:
-            self._show_current_region()
-        else:
-            self._focus_current()
+        if self._review_view_open:
+            # Float/re-dock cycles also emit show events.  The review view is
+            # already installed, so only re-affirm the active policy instead
+            # of re-navigating or rebuilding the round.
+            self.host.refresh_dense_review_display()
+            return
+        if not self._view_ready:
+            self._view_ready = True
+            self._refresh_from_host()
+            mode = self.display_combo.currentData() or "focus"
+            self.host.dense_review_set_display_mode(mode)
+            if mode == "original":
+                self._review_view_open = True
+                return
+            self._review_view_open = True
+            self._restore_task_view()
+            return
+        # Re-opening after a real hide: the temporary overlay was released,
+        # so the active task preset and its target have to be applied again
+        # (R3, WL-07).  The *viewport* is deliberately not restored here -
+        # the user may have zoomed elsewhere in between, and re-opening must
+        # not silently undo that (R4).
+        self._review_view_open = True
+        # Re-sync the data without bumping the thumbnail generation: a
+        # hide/show pair from floating or re-docking is not a new round, and
+        # re-cropping every card there would be wasted work (R1, WL-02).
+        self._refresh_from_host(new_generation=False)
+        self._restore_task_view(restore_viewport=False, focus=False)
+
+    def hideEvent(self, event) -> None:  # noqa: N802
+        """Release the review overlay when the panel really goes away.
+
+        ``hide()``, closing the panel and a window-level hide all land here.
+        Floating/re-docking emits a hide followed immediately by a show, so
+        the release is idempotent and the following ``showEvent`` restores
+        the same policy (R1, DP-17, WL-12).
+        """
+        super().hideEvent(event)
+        if not self._review_view_open:
+            return
+        self._review_view_open = False
+        self._end_review_view()
 
     def closeEvent(self, event) -> None:
+        """End the review *view*, keeping session and edit history.
+
+        A QDockWidget is hidden rather than destroyed here, and the same
+        handler runs when the user closes the panel and when the layout
+        changes it.  It therefore only releases the temporary review state
+        (held comparison, overlay, comparison windows, panel shortcuts);
+        ``DenseReviewSession``, the card model and the undo history survive
+        so re-opening continues the round (WL-01, WL-02).
+        """
+        self._review_view_open = False
+        self._end_review_view()
+        super().closeEvent(event)
+
+    def _end_review_view(self) -> None:
+        """Release temporary review state without touching the session."""
         self.host.dense_review_end_hold_on_blur()
         for shortcut in self._shortcuts:
             shortcut.setEnabled(False)
         self._close_compare_dialogs()
         self.host.dense_review_workspace_closed()
-        super().closeEvent(event)
 
     def shutdown(self) -> None:
-        for shortcut in self._shortcuts:
-            shortcut.setEnabled(False)
-        self._close_compare_dialogs()
+        """Release worker resources when the main window really exits."""
+        self._end_review_view()
         self.thumbnails.shutdown()

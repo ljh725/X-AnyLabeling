@@ -30,6 +30,10 @@ class LabelingWrapper(QWidget):
             output_dir=output_dir,
         )
 
+        # Expose the real toplevel window so dock registration never has to
+        # guess from the parent chain (the wrapper is not a QMainWindow).
+        self.view.main_window = parent
+
         # Create the main layout and put labeling into
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)

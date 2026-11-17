@@ -2639,6 +2639,54 @@ Review the prompt before generating.</source>
         <translation>누르고 있으면 원본 이미지</translation>
     </message>
     <message>
+        <source>临时显示</source>
+        <translation>임시 표시</translation>
+    </message>
+        <message>
+        <source>密集复核</source>
+        <translation>밀집 검토</translation>
+    </message>
+<message>
+        <source>当前任务</source>
+        <translation>현재 작업</translation>
+    </message>
+    <message>
+        <source>复核任务</source>
+        <translation>검토 작업</translation>
+    </message>
+    <message>
+        <source>切换任务只改变视图与导航，不改变确认状态。</source>
+        <translation>작업을 전환해도 보기와 탐색만 바뀌고 확인 상태는 바뀌지 않습니다.</translation>
+    </message>
+    <message>
+        <source>类别核对</source>
+        <translation>카테고리 확인</translation>
+    </message>
+    <message>
+        <source>框与关键点观察</source>
+        <translation>박스 및 키포인트 확인</translation>
+    </message>
+    <message>
+        <source>结束临时显示</source>
+        <translation>임시 표시 종료</translation>
+    </message>
+    <message>
+        <source>临时显示当前对象</source>
+        <translation>현재 객체 임시 표시</translation>
+    </message>
+    <message>
+        <source>仅临时观察被手动隐藏或过滤的当前对象，不改变确认资格。</source>
+        <translation>수동 숨김 또는 필터로 제외된 현재 객체를 임시로 관찰만 합니다. 확인 자격은 바뀌지 않습니다.</translation>
+    </message>
+    <message>
+        <source>已临时显示 · 确认资格仍按排除来源计算</source>
+        <translation>임시 표시 중 · 확인 자격은 제외 사유를 따릅니다</translation>
+    </message>
+    <message>
+        <source>未显示：{reason}</source>
+        <translation>표시 안 됨: {reason}</translation>
+    </message>
+    <message>
         <source>按住期间只显示原图；松开恢复当前显示策略。</source>
         <translation>누르고 있는 동안 원본 이미지만 표시합니다. 떼면 현재 표시 정책으로 돌아갑니다.</translation>
     </message>
@@ -5604,6 +5652,34 @@ Continue?</source>
     </message>
 </context><context>
     <name>LabelingWidget</name>
+    <message>
+        <source>全局标注显示已关闭</source>
+        <translation>전체 주석 표시가 꺼져 있습니다</translation>
+    </message>
+    <message>
+        <source>正在显示原图对照</source>
+        <translation>원본 이미지 비교가 활성화되어 있습니다</translation>
+    </message>
+    <message>
+        <source>已手动隐藏</source>
+        <translation>수동으로 숨긴 객체입니다</translation>
+    </message>
+    <message>
+        <source>类别已隐藏</source>
+        <translation>카테고리가 숨겨져 있습니다</translation>
+    </message>
+    <message>
+        <source>被类别或分组过滤排除</source>
+        <translation>카테고리 또는 그룹 필터로 제외되었습니다</translation>
+    </message>
+    <message>
+        <source>对象不存在</source>
+        <translation>객체가 존재하지 않습니다</translation>
+    </message>
+    <message>
+        <source>当前不支持复核显示</source>
+        <translation>이 객체는 검토 표시를 지원하지 않습니다</translation>
+    </message>
     <message>
         <source>Save Failed</source>
         <translation>저장 실패</translation>

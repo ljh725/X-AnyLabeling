@@ -9,6 +9,7 @@ the major operations that must keep working after the workspace closes.
 import copy
 import json
 import os
+import threading
 import time
 import uuid
 from unittest.mock import patch
@@ -143,7 +144,9 @@ def app():
 def open_window(app, tmp_path, monkeypatch):
     windows = []
 
-    def _open(shapes, batches=None, rules=(), auto_save=False):
+    def _open(
+        shapes, batches=None, rules=(), auto_save=False, image_size=(640, 480)
+    ):
         monkeypatch.setattr(app_config, "_work_directory", str(tmp_path))
         config_file = tmp_path / "config.yaml"
         config_file.write_text("{}", encoding="utf-8")
@@ -151,11 +154,11 @@ def open_window(app, tmp_path, monkeypatch):
             app_config, "current_config_file", str(config_file)
         )
         image_path = tmp_path / "image.png"
-        Image.new("RGB", (640, 480), color=(210, 210, 210)).save(image_path)
+        Image.new("RGB", image_size, color=(210, 210, 210)).save(image_path)
         annotation = {
             "version": "4.2.1",
-            "imageWidth": 640,
-            "imageHeight": 480,
+            "imageWidth": image_size[0],
+            "imageHeight": image_size[1],
             "imagePath": "image.png",
             "imageData": None,
             "shapes": shapes,
@@ -311,11 +314,12 @@ def test_direct_batch_click_schedules_visible_thumbnails(app, open_window):
     assert set(requested)
 
 
-def test_card_view_virtualizes_and_bounds_resources(app, open_window):
+def test_card_view_virtualizes_and_bounds_resources(app, open_window, monkeypatch):
     window = open_window(
         _grid_shapes(60),
         batches=(("A/B", ("A", "B")),),
         rules=_label_rules("AB"),
+        image_size=(640, 900),
     )
     app.processEvents()
     widget = window.labeling_widget.view
@@ -325,9 +329,8 @@ def test_card_view_virtualizes_and_bounds_resources(app, open_window):
     assert model.rowCount() == 60
     assert model.icon_count() <= 48
 
-    provider._cache.clear()
-    provider._pending.clear()
-    workspace._card_request_keys.clear()
+    provider.start_generation(provider.generation + 1)
+    workspace.refresh_all()
     calls = []
     original_request = provider.request
 
@@ -337,21 +340,93 @@ def test_card_view_virtualizes_and_bounds_resources(app, open_window):
 
     with patch.object(provider, "request", side_effect=_spy):
         workspace._request_visible_thumbnails()
-        app.processEvents()
     assert calls
     assert len(calls) <= 35, "requests must be limited to visible/prefetch"
     last_id = model.shape_ids()[-1]
     assert model.icon_for(last_id) is None
     assert last_id not in workspace._failed_ids
 
-    workspace.card_list.scrollToBottom()
-    app.processEvents()
-    workspace._request_visible_thumbnails()
-    assert _wait_until(
-        app,
-        lambda: model.icon_for(last_id) is not None
-        or last_id in workspace._failed_ids,
-    )
+    # Hold the card seen in the previous combined-run failure while other
+    # visible requests can complete on the second worker.
+    slow_id = "id58"
+    entered = threading.Event()
+    unblock = threading.Event()
+    crop = provider._crop_yielding
+    submit = provider._executor.submit
+    submitted_keys = []
+    request_keys = []
+
+    def delayed_crop(request):
+        if request.shape_id == slow_id:
+            entered.set()
+            if not unblock.wait(15):
+                raise TimeoutError("test did not release the delayed crop")
+        return crop(request)
+
+    def record_submit(fn, request):
+        submitted_keys.append(provider.request_key(
+            request.shape_id, request.generation, request.bounds,
+            request.margin_ratio, request.target_size, request.source_version,
+        ))
+        return submit(fn, request)
+
+    def record_request(shape_id, bounds, margin, size, path, data, version):
+        request_keys.append(provider.request_key(
+            shape_id, provider.generation, bounds, margin, size, version,
+        ))
+        return original_request(shape_id, bounds, margin, size, path, data, version)
+
+    monkeypatch.setattr(provider, "_crop_yielding", delayed_crop)
+    monkeypatch.setattr(provider._executor, "submit", record_submit)
+    monkeypatch.setattr(provider, "request", record_request)
+    try:
+        workspace.card_list.scrollToBottom()
+        app.processEvents()
+        workspace._request_visible_thumbnails()
+        assert _wait_until(
+            app,
+            lambda: entered.is_set() and (
+                model.icon_for(last_id) is not None
+                or last_id in workspace._failed_ids
+            ),
+        )
+        expected = set(workspace._visible_shape_ids(prefetch_rows=1))
+        expected.add(workspace._current_shape_id())
+
+        def visible_requests_settled():
+            return all(
+                shape_id in provider._pending
+                or shape_id in workspace._failed_ids
+                or provider.cached_latest(shape_id) is not None
+                for shape_id in expected
+            )
+
+        assert _wait_until(app, visible_requests_settled)
+        assert slow_id in provider._pending
+        slow_key = workspace._card_request_keys[slow_id]
+        assert submitted_keys.count(slow_key) == 1
+        before = list(submitted_keys)
+        keys_before = dict(workspace._card_request_keys)
+        request_keys.clear()
+
+        session = widget.dense_review_session
+        session.mark_skipped(session.state.current_object)
+        workspace.refresh_all()
+        app.processEvents()
+        print(
+            f"Delayed {slow_id}: requests during text refresh={request_keys!r}, "
+            f"crop submissions before={len(before)}, after={len(submitted_keys)}, "
+            f"key unchanged={workspace._card_request_keys[slow_id] == slow_key}"
+        )
+        assert set(request_keys) <= set(keys_before.values())
+        assert workspace._card_request_keys == keys_before
+        assert submitted_keys == before
+        assert slow_id in provider._pending
+    finally:
+        unblock.set()
+    assert _wait_until(app, lambda: provider.cached_latest(slow_id) is not None)
+    assert submitted_keys.count(slow_key) == 1
+    assert slow_key in provider._cache
     assert model.icon_count() <= 48
     stats = workspace.card_resource_stats()
     assert set(stats) == {
@@ -365,14 +440,6 @@ def test_card_view_virtualizes_and_bounds_resources(app, open_window):
     assert stats["rows"] == 60
     assert stats["icons"] <= 48
 
-    # A text-only state change must not re-crop source pixels.
-    calls.clear()
-    with patch.object(provider, "request", side_effect=_spy):
-        session = widget.dense_review_session
-        session.mark_skipped(session.state.current_object)
-        workspace.refresh_all()
-        app.processEvents()
-    assert calls == []
     assert "暂跳" in model.data(
         model.index(model.row_for(session.state.current_object), 0),
         QtCore.Qt.ItemDataRole.DisplayRole,
@@ -765,10 +832,36 @@ def test_autosave_writes_at_edit_and_confirmation_boundaries(
     assert widget.dirty is False
 
 
-@pytest.mark.parametrize("inward", [False, True])
+def _send_key(canvas, key, modifiers, *, release=False):
+    """Send a real key event through the canvas handler."""
+    event = QtGui.QKeyEvent(
+        (
+            QtCore.QEvent.Type.KeyRelease
+            if release
+            else QtCore.QEvent.Type.KeyPress
+        ),
+        key,
+        modifiers,
+    )
+    if release:
+        canvas.keyReleaseEvent(event)
+    else:
+        canvas.keyPressEvent(event)
+
+
+@pytest.mark.parametrize("with_alt", [False, True])
 def test_closed_workspace_keeps_shift_fit_target_and_undo(
-    app, open_window, inward
+    app, open_window, monkeypatch, with_alt
 ):
+    """Shift point-fit still works after the review workspace closes.
+
+    The previous version only attached a Shift *modifier* to the mouse
+    events.  Without a real Shift key press the round was never entered, so
+    ``_point_fit_ensure_entry()`` rejected the gesture and the test failed on
+    both branches.  The sequence below mirrors ``test_shift_point_fit_
+    interaction``: a deterministic pointer position, a real Shift press, the
+    mouse move/press/release, then the Shift release (DP-16).
+    """
     window = open_window(
         [
             _rectangle("A", "id1", 100, 100, 100, 100),
@@ -783,12 +876,23 @@ def test_closed_workspace_keeps_shift_fit_target_and_undo(
     before = target.bounding_rect()
     neighbour_before = neighbour.bounding_rect()
     canvas.select_shapes([target])
-    point = (
+
+    # Deterministic viewport and pointer so the fit geometry is exact.
+    widget.set_zoom(100)
+    app.processEvents()
+    local = (
         QtCore.QPointF(180, 120) + canvas.offset_to_center()
     ) * canvas.scale
-    modifiers = QtCore.Qt.KeyboardModifier.ShiftModifier
-    if inward:
-        modifiers |= QtCore.Qt.KeyboardModifier.AltModifier
+    monkeypatch.setattr(canvas, "mapFromGlobal", lambda _pos: local.toPoint())
+
+    shift = QtCore.Qt.KeyboardModifier.ShiftModifier
+    alt = QtCore.Qt.KeyboardModifier.AltModifier
+    key_modifiers = shift | (
+        alt if with_alt else QtCore.Qt.KeyboardModifier.NoModifier
+    )
+
+    _send_key(canvas, QtCore.Qt.Key.Key_Shift, key_modifiers)
+    app.processEvents()
     none = QtCore.Qt.MouseButton.NoButton
     left = QtCore.Qt.MouseButton.LeftButton
     for kind, button, buttons in [
@@ -797,12 +901,15 @@ def test_closed_workspace_keeps_shift_fit_target_and_undo(
         (QtCore.QEvent.Type.MouseButtonRelease, left, none),
     ]:
         event = QtGui.QMouseEvent(
-            kind, point, point, button, buttons, modifiers
+            kind, local, local, button, buttons, key_modifiers
         )
         app.sendEvent(canvas, event)
         app.processEvents()
+    _send_key(canvas, QtCore.Qt.Key.Key_Shift, key_modifiers, release=True)
+    app.processEvents()
+
     fitted = target.bounding_rect()
-    assert fitted != before
+    assert fitted == QtCore.QRectF(100, 120, 80, 80)
     assert neighbour.bounding_rect() == neighbour_before
     assert widget.dirty is True
     assert not widget.dense_review_session.object("id1").confirmed_both()

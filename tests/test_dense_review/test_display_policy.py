@@ -9,6 +9,8 @@ DP-12, DP-15, DP-17, DP-18).
 import pytest
 
 from anylabeling.services.dense_review.display import (
+    TASK_BOX_POINTS,
+    TASK_CATEGORY,
     PAINT_ORDER,
     REASON_FILTERED,
     REASON_GLOBAL_OFF,
@@ -77,11 +79,34 @@ def test_role_assignment_covers_current_batch_and_other():
     assert batch.style.handles == 0.0
 
 
-def test_associated_keypoint_follows_current_rectangle():
-    context = _context(associated_ids=frozenset({"kp1"}))
-    display = resolve_shape("kp1", "nose", context)
-    assert display.role == ROLE_CURRENT
-    assert display.style.points > 0.0
+def test_associated_keypoint_follows_current_rectangle_only_in_its_task():
+    """Associated points rise only in the explicit box/keypoint task (R6)."""
+    # No task (or the category task) keeps the point out of the current role.
+    plain = resolve_shape(
+        "kp1", "nose", _context(associated_ids=frozenset({"kp1"}))
+    )
+    assert plain.role != ROLE_CURRENT
+
+    category = resolve_shape(
+        "kp1",
+        "nose",
+        _context(
+            associated_ids=frozenset({"kp1"}),
+            task_id=TASK_CATEGORY,
+        ),
+    )
+    assert category.role != ROLE_CURRENT
+
+    box_points = resolve_shape(
+        "kp1",
+        "nose",
+        _context(
+            associated_ids=frozenset({"kp1"}),
+            task_id=TASK_BOX_POINTS,
+        ),
+    )
+    assert box_points.role == ROLE_CURRENT
+    assert box_points.style.points > 0.0
 
 
 def test_global_off_and_original_only_stop_paint_and_hit():

@@ -2638,6 +2638,54 @@ Review the prompt before generating.</source>
         <translation>押している間は元画像を表示</translation>
     </message>
     <message>
+        <source>临时显示</source>
+        <translation>一時表示</translation>
+    </message>
+        <message>
+        <source>密集复核</source>
+        <translation>密なレビュー</translation>
+    </message>
+<message>
+        <source>当前任务</source>
+        <translation>現在のタスク</translation>
+    </message>
+    <message>
+        <source>复核任务</source>
+        <translation>レビュータスク</translation>
+    </message>
+    <message>
+        <source>切换任务只改变视图与导航，不改变确认状态。</source>
+        <translation>タスクを切り替えても表示とナビゲーションのみが変わり、確認状態は変わりません。</translation>
+    </message>
+    <message>
+        <source>类别核对</source>
+        <translation>カテゴリ確認</translation>
+    </message>
+    <message>
+        <source>框与关键点观察</source>
+        <translation>ボックスとキーポイントの確認</translation>
+    </message>
+    <message>
+        <source>结束临时显示</source>
+        <translation>一時表示を終了</translation>
+    </message>
+    <message>
+        <source>临时显示当前对象</source>
+        <translation>現在のオブジェクトを一時表示</translation>
+    </message>
+    <message>
+        <source>仅临时观察被手动隐藏或过滤的当前对象，不改变确认资格。</source>
+        <translation>手動非表示やフィルタで除外された現在のオブジェクトを一時的に観察するだけです。確認資格は変わりません。</translation>
+    </message>
+    <message>
+        <source>已临时显示 · 确认资格仍按排除来源计算</source>
+        <translation>一時表示中 · 確認資格は除外理由に従います</translation>
+    </message>
+    <message>
+        <source>未显示：{reason}</source>
+        <translation>非表示：{reason}</translation>
+    </message>
+    <message>
         <source>按住期间只显示原图；松开恢复当前显示策略。</source>
         <translation>押している間は元画像のみを表示します。離すと現在の表示方針に戻ります。</translation>
     </message>
@@ -5603,6 +5651,34 @@ Continue?</source>
     </message>
 </context><context>
     <name>LabelingWidget</name>
+    <message>
+        <source>全局标注显示已关闭</source>
+        <translation>アノテーションの全体表示がオフです</translation>
+    </message>
+    <message>
+        <source>正在显示原图对照</source>
+        <translation>元画像との比較を表示しています</translation>
+    </message>
+    <message>
+        <source>已手动隐藏</source>
+        <translation>手動で非表示に設定されています</translation>
+    </message>
+    <message>
+        <source>类别已隐藏</source>
+        <translation>カテゴリが非表示です</translation>
+    </message>
+    <message>
+        <source>被类别或分组过滤排除</source>
+        <translation>カテゴリまたはグループのフィルターで除外されています</translation>
+    </message>
+    <message>
+        <source>对象不存在</source>
+        <translation>オブジェクトが存在しません</translation>
+    </message>
+    <message>
+        <source>当前不支持复核显示</source>
+        <translation>このオブジェクトはレビュー表示に対応していません</translation>
+    </message>
     <message>
         <source>Save Failed</source>
         <translation>保存に失敗しました</translation>

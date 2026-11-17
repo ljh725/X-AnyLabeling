@@ -412,22 +412,15 @@ def test_shift_fit_replaces_edge_hover(canvas: Canvas) -> None:
 
 
 def test_main_window_exposes_translated_edge_toggle(
-    app: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+    app: QtWidgets.QApplication, tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The real window exposes the switch and its default shortcut."""
-    from pathlib import Path
-
-    import yaml
-
+    from anylabeling.config import get_config
     from anylabeling.resources import resources  # noqa: F401
     from anylabeling.services.auto_labeling import model_manager
     from anylabeling.views.labeling import label_widget as module
 
-    config_path = (
-        Path(__file__).parents[2]
-        / "anylabeling/configs/xanylabeling_config.yaml"
-    )
-    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    config = get_config(str(tmp_path / "config.yaml"))
     monkeypatch.setattr(model_manager, "get_config", lambda: config)
     translator = QtCore.QTranslator()
     assert translator.load(":/languages/translations/zh_CN.qm")

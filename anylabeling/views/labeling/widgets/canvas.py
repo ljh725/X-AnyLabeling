@@ -177,6 +177,7 @@ class Canvas(
         # True between a left press and release; background card work yields
         # to direct manipulation while it is set.
         self._pointer_down = False
+        self._blocked_edit_buttons = QtCore.Qt.MouseButton.NoButton
         self.auto_labeling_mode: AutoLabelingMode = None
         self.shapes = []
         self.shapes_backups = []
@@ -249,6 +250,7 @@ class Canvas(
         self.dense_review_region_label = ""
         self._dense_review_displays = None
         self._dense_review_revision = 0
+        self._dense_review_original_only = False
         self.inspection_candidates = []
         self._hide_backround = False
         self.hide_backround = False
@@ -2208,7 +2210,11 @@ class Canvas(
         return self.h_cuboid_face is not None
 
     def can_erase_selected_vertices(self):
-        if not self.editing() or len(self.selected_shapes) != 1:
+        if (
+            self.annotation_editing_paused()
+            or not self.editing()
+            or len(self.selected_shapes) != 1
+        ):
             return False
         shape = self.selected_shapes[0]
         return not shape.locked and shape.shape_type in [
@@ -2510,7 +2516,7 @@ class Canvas(
 
     def _store_rotated_shape(self, shape):
         if shape is None or shape not in self.shapes:
-            return
+            return False
         index = self.shapes.index(shape)
         if (
             self.shapes_backups
@@ -2520,6 +2526,8 @@ class Canvas(
         ):
             self.store_shapes()
             self.shape_rotated.emit()
+            return True
+        return False
 
     def _finish_rotation_handle_drag(self):
         shape = self._rotation_drag_shape
@@ -2756,6 +2764,14 @@ class Canvas(
             ev.accept()
             return
 
+        if self.annotation_editing_paused() or (
+            ev.buttons() & self._blocked_edit_buttons
+        ):
+            self.prev_move_point = pos
+            self.update()
+            ev.accept()
+            return
+
         if self._rectangle_edge_drag_move(pos, ev):
             ev.accept()
             return
@@ -2983,27 +2999,17 @@ class Canvas(
                 self.show_shape.emit(shape_height, shape_width, pos)
             elif self.selected_shapes and self.prev_point:
                 self.h_cuboid_face = None
-                group_shapes = self._active_group_shapes()
-                if group_shapes and any(
-                    shape.locked for shape in group_shapes
-                ):
+                moved = self._move_selected_shapes(pos)
+                if not moved:
                     return
                 self.override_cursor(CURSOR_MOVE)
-                self.bounded_move_shapes(self.selected_shapes, pos)
                 self.update()
-                self.moving_shape = True
-                if self.selected_shapes[-1].shape_type == "rectangle":
-                    p1 = self.selected_shapes[-1][0]
-                    p2 = self.selected_shapes[-1][2]
-                    shape_width = int(abs(p2.x() - p1.x()))
-                    shape_height = int(abs(p2.y() - p1.y()))
-                    self.show_shape.emit(shape_height, shape_width, pos)
-                elif (
-                    self.selected_shapes[-1].shape_type == "cuboid"
-                    and len(self.selected_shapes[-1]) >= 4
+                shape = moved[-1]
+                if shape.shape_type == "rectangle" or (
+                    shape.shape_type == "cuboid" and len(shape) >= 4
                 ):
-                    p1 = self.selected_shapes[-1][0]
-                    p2 = self.selected_shapes[-1][2]
+                    p1 = shape[0]
+                    p2 = shape[2]
                     shape_width = int(abs(p2.x() - p1.x()))
                     shape_height = int(abs(p2.y() - p1.y()))
                     self.show_shape.emit(shape_height, shape_width, pos)
@@ -3382,6 +3388,7 @@ class Canvas(
         """Mouse press event"""
         if self.is_loading:
             return
+        self._blocked_edit_buttons &= ~ev.button()
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             self._begin_left_press()
         self.interaction_started.emit()
@@ -3407,13 +3414,10 @@ class Canvas(
             self._right_pan_start = ev.globalPosition()
             self._right_pan_prev_point = ev.globalPosition()
             self._right_panning = False
+            if self.annotation_editing_paused():
+                self._blocked_edit_buttons |= ev.button()
             ev.accept()
             return
-        pos = self.transform_pos(ev.position())
-
-        if self.is_brush_mode and self._brush_mouse_press(ev, pos):
-            return
-
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             if (
                 self._space_pan_suppress_until_release
@@ -3425,6 +3429,16 @@ class Canvas(
             ):
                 ev.accept()
                 return
+        if self.annotation_editing_paused():
+            self._blocked_edit_buttons |= ev.button()
+            ev.accept()
+            return
+        pos = self.transform_pos(ev.position())
+
+        if self.is_brush_mode and self._brush_mouse_press(ev, pos):
+            return
+
+        if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             if (
                 self.editing()
                 and ev.modifiers()
@@ -3671,6 +3685,8 @@ class Canvas(
     def mouseReleaseEvent(self, ev):
         """Mouse release event"""
         self._pointer_down = False
+        blocked = bool(ev.button() & self._blocked_edit_buttons)
+        self._blocked_edit_buttons &= ~ev.button()
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             if self._marquee_cancelled:
                 self._clear_marquee_selection()
@@ -3709,6 +3725,10 @@ class Canvas(
             self._space_pan_prev_point = None
             self._space_pan_suppress_until_release = False
             self._restore_space_pan_cursor()
+            ev.accept()
+            return
+
+        if blocked or self.annotation_editing_paused():
             ev.accept()
             return
 
@@ -3805,7 +3825,8 @@ class Canvas(
         if self.is_loading:
             return
         if (
-            ev.button() == QtCore.Qt.MouseButton.RightButton
+            self.annotation_editing_paused()
+            or ev.button() == QtCore.Qt.MouseButton.RightButton
             or self._is_pan_gesture(ev)
             or (
                 ev.button() == QtCore.Qt.MouseButton.LeftButton
@@ -3999,12 +4020,18 @@ class Canvas(
     def _overlay_visible(self, shape) -> bool:
         """Return whether an overlay component may paint for ``shape``.
 
-        The drawing loops used to test ``shape.visible`` directly, which the
-        source-image comparison never touches, so labels, plates, leaders,
-        attributes and masks kept painting over the bare image.  Routing them
-        through ``is_visible`` makes every overlay follow the same resolved
-        result as the outline (DP-13, DP-15).
+        When the review table has an entry for the shape, its resolved
+        drawability is authoritative: that is what makes a temporarily
+        revealed manual hide show its label and plate together with the
+        outline instead of the outline alone.  Without an entry (ordinary
+        mode, or a shape added after the table was built) each paint path
+        keeps its previous rule, so nothing regresses outside review
+        (DP-11, DP-13, DP-15).
         """
+        if self._dense_review_displays is not None:
+            display = self.dense_review_display_for(shape)
+            if display is not None:
+                return bool(display.drawable)
         return bool(shape.visible) and self.is_visible(shape)
 
     def annotation_editing_paused(self) -> bool:
@@ -4014,14 +4041,13 @@ class Canvas(
         selected from before the switch, so every geometry entry point has to
         check this: mouse drag, keyboard nudge and rotation, and the existing
         edit previews (DP-13, DP-14).
+
+        The state comes from the installed overlay flag rather than from a
+        scan of per-shape reasons, because a global shutdown reports
+        ``global-off`` and an empty image has no shape to inspect - yet both
+        must pause editing.
         """
-        if self._dense_review_displays is None:
-            return False
-        for shape in self.shapes:
-            display = self.dense_review_display_for(shape)
-            if display is not None and display.reason == "original-only":
-                return True
-        return False
+        return self.dense_review_original_only
 
     def _group_visible_shapes(self, group_shapes):
         """Return the members that may take part in geometry and hits.
@@ -4137,11 +4163,32 @@ class Canvas(
     def _group_shapes(self, group_id):
         return [shape for shape in self.shapes if shape.group_id == group_id]
 
+    def group_move_targets(self):
+        """Return the shapes a group gesture may move right now.
+
+        The members are recomputed at execution time from the selected group
+        id, the real grouping and the current review visibility, so a member
+        hidden *after* the group was selected is excluded instead of being
+        dragged along (DP-11, DP-12).
+
+        Returns ``None`` when the current selection is not a review group
+        gesture, and an (possibly empty) list when it is - an empty list means
+        "this gesture moves nothing", which must not fall back to the stale
+        selection.
+        """
+        if not self.dense_review_active:
+            return self._active_group_shapes() or None
+        if not self.show_groups or self._selected_group_id is None:
+            return None
+        members = self._group_shapes(self._selected_group_id)
+        selected = set(self.selected_shapes)
+        return self._group_editable_shapes(
+            [shape for shape in members if shape in selected]
+        )
+
     def _active_group_shapes(self):
         if not self.show_groups or self._selected_group_id is None:
             return []
-        # Compare against the editable subset so a group whose hidden members
-        # are not selected is still recognised as the active group.
         shapes = self._group_editable_shapes(
             self._group_shapes(self._selected_group_id)
         )
@@ -4702,9 +4749,23 @@ class Canvas(
             shape.move_vertex_by(index, pos - point)
 
     def bounded_move_shapes(self, shapes, pos):
-        """Move shapes. Adjust position to be bounded by pixmap border"""
+        """Move shapes. Adjust position to be bounded by pixmap border.
+
+        The guard here is the last line of defence: a stale selection or an
+        in-progress drag that predates a hide/filter change must not move an
+        object the review no longer shows.  Only live canvas shapes are
+        filtered, so copy previews (which are not in ``shapes`` yet) keep
+        their existing behaviour (DP-11, DP-12).
+        """
         if self.annotation_editing_paused():
             return False
+        if self._dense_review_displays is not None:
+            live = {id(shape) for shape in self.shapes}
+            shapes = [
+                shape
+                for shape in shapes
+                if id(shape) not in live or self.dense_review_drawable(shape)
+            ]
         shapes = [shape for shape in shapes if not shape.locked]
         if not shapes:
             return False
@@ -4969,6 +5030,16 @@ class Canvas(
         p.translate(self.offset_to_center())
 
         p.drawPixmap(0, 0, self.pixmap)
+
+        # Source-image comparison: paint only the image and the navigation
+        # aids (the spatial region outline), then leave the painter balanced.
+        # Annotations, masks, inspection overlays and live edit previews all
+        # stay off (DP-13, DP-15).
+        if self.dense_review_original_only:
+            self._paint_dense_review_region(p)
+            self._paint_crosshair(p)
+            p.end()
+            return
 
         # Draw compare view: left side shows compare image, right side shows original
         # split_position: 0 = all original, 1 = all compare
@@ -5553,24 +5624,7 @@ class Canvas(
             p.restore()
 
         # Draw mouse coordinates
-        if self._native_crosshair_enabled():
-            pen = self._cross_line_pen()
-            rect = self._cross_line_rect()
-            p.setPen(pen)
-            # The crosshair opacity is local to its own two lines: leaving it
-            # applied would dim everything painted after it, including the
-            # point-fit marker and its dashed candidate.
-            previous_opacity = p.opacity()
-            p.setOpacity(self.cross_line_opacity)
-            p.drawLine(
-                QtCore.QPointF(self.prev_move_point.x(), rect.top()),
-                QtCore.QPointF(self.prev_move_point.x(), rect.bottom()),
-            )
-            p.drawLine(
-                QtCore.QPointF(rect.left(), self.prev_move_point.y()),
-                QtCore.QPointF(rect.right(), self.prev_move_point.y()),
-            )
-            p.setOpacity(previous_opacity)
+        self._paint_crosshair(p)
 
         # Draw attributes
         if self.show_attributes:
@@ -6316,19 +6370,25 @@ class Canvas(
             if new_point is not None:
                 shape.points[i] = new_point
 
-    def move_by_keyboard(self, offset):
-        """Move selected shapes by an offset (using keyboard)"""
-        if self.annotation_editing_paused():
-            return
-        if self.selected_shapes:
-            group_shapes = self._active_group_shapes()
-            if group_shapes and any(shape.locked for shape in group_shapes):
-                return
-            self.bounded_move_shapes(
-                self.selected_shapes, self.prev_point + offset
-            )
-            self.repaint()
+    def _move_selected_shapes(self, pos):
+        targets = self.group_move_targets()
+        if targets is None:
+            targets = self.selected_shapes
+        elif any(shape.locked for shape in targets):
+            return []
+        if targets and self.bounded_move_shapes(targets, pos):
             self.moving_shape = True
+            return targets
+        return []
+
+    def move_by_keyboard(self, offset):
+        """Move selected shapes by an offset (using keyboard)."""
+        if (
+            not self.annotation_editing_paused()
+            and self.selected_shapes
+            and self._move_selected_shapes(self.prev_point + offset)
+        ):
+            self.repaint()
 
     def rotate_by_keyboard(self, theta):
         """Rotate selected shapes by an theta (using keyboard)"""
@@ -6343,6 +6403,16 @@ class Canvas(
             if rotating_shape:
                 self.repaint()
                 self.rotating_shape = True
+
+    def _finish_keyboard_rotation(self):
+        if not self.rotating_shape or self._rotation_drag_shape is not None:
+            return
+        self.rotating_shape = False
+        for shape in self.selected_shapes:
+            if shape.shape_type == "rotation" and self._store_rotated_shape(
+                shape
+            ):
+                break
 
     # QT Overload
     def keyPressEvent(self, ev):  # noqa: C901
@@ -6464,31 +6534,8 @@ class Canvas(
             if modifiers == QtCore.Qt.KeyboardModifier.NoModifier:
                 self.snapping = True
         elif self.editing():
-            # NOTE: Temporary fix to avoid ValueError
-            # when the selected shape is not in the shapes list
-            if (
-                (self.moving_shape or self.rotating_shape)
-                and self.selected_shapes
-                and self.selected_shapes[0] in self.shapes
-            ):
-                index = self.shapes.index(self.selected_shapes[0])
-                if (
-                    self.shapes_backups
-                    and index < len(self.shapes_backups[-1])
-                    and self.shapes_backups[-1][index].points
-                    != self.shapes[index].points
-                ):
-                    self.store_shapes()
-                    if self.moving_shape:
-                        self.shape_moved.emit()
-                    if self.rotating_shape:
-                        self.shape_rotated.emit()
-
-                if self.moving_shape:
-                    self.moving_shape = False
-                    self.update()
-                if self.rotating_shape:
-                    self.rotating_shape = False
+            self.store_moving_shape()
+            self._finish_keyboard_rotation()
 
     def set_last_label(self, text, flags, group_id):
         """Set label and flags for last shape"""
@@ -6633,28 +6680,82 @@ class Canvas(
     # the two apart is what lets paint and hit testing agree (DP-07, DP-08).
 
     def set_dense_review_display(
-        self, displays: Optional[Mapping] = None, revision: int = 0
+        self,
+        displays: Optional[Mapping] = None,
+        revision: int = 0,
+        *,
+        original_only: bool = False,
     ) -> None:
         """Install (or clear) the resolved dense-review display table.
 
         ``displays`` maps a shape id to its ``ShapeDisplay``.  ``None``
-        removes the overlay so ordinary labelling behaves exactly as before
+        removes the overlay so ordinary labelling behaves exactly before
         (DP-18, DP-17).
+
+        ``original_only`` is stored explicitly instead of being inferred from
+        the per-shape reasons: a global shutdown produces ``global-off``
+        rather than ``original-only``, and an empty image has no shape to
+        scan at all.  Both cases still have to pause geometry editing
+        (DP-13, DP-14).
         """
         self._dense_review_displays = (
             dict(displays) if displays is not None else None
         )
         self._dense_review_revision = int(revision)
+        self._dense_review_original_only = bool(
+            original_only and displays is not None
+        )
         self.dense_review_display_changed.emit()
         self.update()
 
     def clear_dense_review_display(self) -> None:
         """Remove the overlay and return to ordinary canvas painting."""
         if self._dense_review_displays is None:
+            self._dense_review_original_only = False
             return
         self._dense_review_displays = None
+        self._dense_review_original_only = False
         self.dense_review_display_changed.emit()
         self.update()
+
+    def suspend_active_editing(self) -> None:
+        """Finish or cancel every in-flight edit before the overlay switches.
+
+        Both the dropdown comparison and the held comparison enter through
+        this: a pending polygon draft, a live rectangle-edge drag, a Shift
+        point-fit preview, a rotation gesture and a brush overlay all have to
+        stop, otherwise their release would commit geometry while the canvas
+        only shows the source image (DP-13, DP-14).
+        """
+        if self._pointer_down:
+            self._blocked_edit_buttons |= QtCore.Qt.MouseButton.LeftButton
+        if self.selected_shapes_copy:
+            self._blocked_edit_buttons |= QtCore.Qt.MouseButton.RightButton
+        self.store_moving_shape()
+        if self._rotation_drag_shape is not None:
+            self._finish_rotation_handle_drag()
+        else:
+            self._finish_keyboard_rotation()
+        self._cancel_marquee_selection()
+        self._rectangle_edge_cancel()
+        self._point_fit_cancel_round()
+        if self.current is not None:
+            self.cancel_drawing()
+        if getattr(self, "is_brush_mode", False):
+            self.cancel_brush_mode()
+        if self._magic_wand_active:
+            self._clear_magic_wand_preview()
+        self._vertex_erasing = False
+        self._pending_edge_point = None
+        self.selected_shapes_copy = []
+        self.h_vertex = None
+        self.h_edge = None
+        self.update()
+
+    @property
+    def dense_review_original_only(self) -> bool:
+        """Return whether only the source image is currently shown."""
+        return bool(getattr(self, "_dense_review_original_only", False))
 
     @property
     def dense_review_active(self) -> bool:
@@ -6770,6 +6871,28 @@ class Canvas(
             )
         painter.restore()
 
+    def _paint_crosshair(self, painter) -> None:
+        """Paint the native crosshair, keeping opacity local to its lines."""
+        if not self._native_crosshair_enabled():
+            return
+        pen = self._cross_line_pen()
+        rect = self._cross_line_rect()
+        painter.setPen(pen)
+        # The crosshair opacity is local to its own two lines: leaving it
+        # applied would dim everything painted after it, including the
+        # point-fit marker and its dashed candidate.
+        previous_opacity = painter.opacity()
+        painter.setOpacity(self.cross_line_opacity)
+        painter.drawLine(
+            QtCore.QPointF(self.prev_move_point.x(), rect.top()),
+            QtCore.QPointF(self.prev_move_point.x(), rect.bottom()),
+        )
+        painter.drawLine(
+            QtCore.QPointF(rect.left(), self.prev_move_point.y()),
+            QtCore.QPointF(rect.right(), self.prev_move_point.y()),
+        )
+        painter.setOpacity(previous_opacity)
+
     def _paint_dense_review_region(self, painter):
         rect = self.dense_review_region
         if not rect:
@@ -6844,6 +6967,7 @@ class Canvas(
         self.dense_review_region_label = ""
         self.is_move_editing = False
         self._pointer_down = False
+        self._blocked_edit_buttons = QtCore.Qt.MouseButton.NoButton
         self.compare_pixmap = None
         self._selected_group_id = None
         self._hovered_group_id = None

@@ -2638,6 +2638,54 @@ Review the prompt before generating.</source>
         <translation>按住看原图</translation>
     </message>
     <message>
+        <source>临时显示</source>
+        <translation>临时显示</translation>
+    </message>
+        <message>
+        <source>密集复核</source>
+        <translation>密集复核</translation>
+    </message>
+<message>
+        <source>当前任务</source>
+        <translation>当前任务</translation>
+    </message>
+    <message>
+        <source>复核任务</source>
+        <translation>复核任务</translation>
+    </message>
+    <message>
+        <source>切换任务只改变视图与导航，不改变确认状态。</source>
+        <translation>切换任务只改变视图与导航，不改变确认状态。</translation>
+    </message>
+    <message>
+        <source>类别核对</source>
+        <translation>类别核对</translation>
+    </message>
+    <message>
+        <source>框与关键点观察</source>
+        <translation>框与关键点观察</translation>
+    </message>
+    <message>
+        <source>结束临时显示</source>
+        <translation>结束临时显示</translation>
+    </message>
+    <message>
+        <source>临时显示当前对象</source>
+        <translation>临时显示当前对象</translation>
+    </message>
+    <message>
+        <source>仅临时观察被手动隐藏或过滤的当前对象，不改变确认资格。</source>
+        <translation>仅临时观察被手动隐藏或过滤的当前对象，不改变确认资格。</translation>
+    </message>
+    <message>
+        <source>已临时显示 · 确认资格仍按排除来源计算</source>
+        <translation>已临时显示 · 确认资格仍按排除来源计算</translation>
+    </message>
+    <message>
+        <source>未显示：{reason}</source>
+        <translation>未显示：{reason}</translation>
+    </message>
+    <message>
         <source>按住期间只显示原图；松开恢复当前显示策略。</source>
         <translation>按住期间只显示原图；松开恢复当前显示策略。</translation>
     </message>
@@ -5614,6 +5662,34 @@ Continue?</source>
     </message>
 </context><context>
     <name>LabelingWidget</name>
+    <message>
+        <source>全局标注显示已关闭</source>
+        <translation>全局标注显示已关闭</translation>
+    </message>
+    <message>
+        <source>正在显示原图对照</source>
+        <translation>正在显示原图对照</translation>
+    </message>
+    <message>
+        <source>已手动隐藏</source>
+        <translation>已手动隐藏</translation>
+    </message>
+    <message>
+        <source>类别已隐藏</source>
+        <translation>类别已隐藏</translation>
+    </message>
+    <message>
+        <source>被类别或分组过滤排除</source>
+        <translation>被类别或分组过滤排除</translation>
+    </message>
+    <message>
+        <source>对象不存在</source>
+        <translation>对象不存在</translation>
+    </message>
+    <message>
+        <source>当前不支持复核显示</source>
+        <translation>当前不支持复核显示</translation>
+    </message>
     <message>
         <source>Digit Key Hints</source>
         <translation>数字键提示</translation>

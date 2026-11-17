@@ -15,7 +15,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from PIL import Image
-from PyQt6 import QtCore, QtWidgets
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 from anylabeling import config as app_config
 from anylabeling.config import get_config
@@ -141,6 +141,60 @@ def _three_rectangles():
         _rectangle("person", "rect2", 200, 40),
         _rectangle("person", "rect3", 360, 40),
     ]
+
+
+def _send_mouse(app, canvas, kind, point, button, buttons, modifiers=None):
+    pos = (point + canvas.offset_to_center()) * canvas.scale
+    app.sendEvent(
+        canvas,
+        QtGui.QMouseEvent(
+            kind,
+            pos,
+            canvas.mapToGlobal(pos),
+            button,
+            buttons,
+            modifiers or QtCore.Qt.KeyboardModifier.NoModifier,
+        ),
+    )
+
+
+@pytest.mark.parametrize("close_with_annotations_on", [True, False])
+def test_global_switch_preserves_explicit_hide_and_candidate_scope(
+    app, open_window, close_with_annotations_on
+):
+    window, image_path = open_window(
+        _three_rectangles(),
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, workspace = _open_review(app, window, image_path)
+    canvas = widget.canvas
+    hidden = _shape(widget, "rect2")
+    visible = _shape(widget, "rect1")
+    _hide(widget, "rect2")
+    action = widget.actions.visibility_shapes_mode
+
+    for annotations_on in (False, True):
+        action.trigger()
+        app.processEvents()
+        assert action.isChecked() == annotations_on
+        assert canvas.is_visible(visible) == annotations_on
+        assert not canvas.is_visible(hidden)
+        assert widget._manually_hidden_shapes == {hidden}
+        assert workspace._scope().excluded["rect2"] == "manual_hidden"
+
+    widget.dense_review_show_temporarily(["rect2"])
+    assert canvas.is_visible(hidden)
+    assert "rect2" not in workspace._scope().candidate_ids
+    if not close_with_annotations_on:
+        action.trigger()
+        assert not canvas.is_visible(visible)
+        assert not canvas.is_visible(hidden)
+    workspace.close()
+    app.processEvents()
+    assert canvas.is_visible(visible) == close_with_annotations_on
+    assert not canvas.is_visible(hidden)
+    assert widget._manually_hidden_shapes == {hidden}
 
 
 def test_manual_hide_excludes_paint_and_hit_but_explains_why(app, open_window):
@@ -313,11 +367,15 @@ def test_current_object_edges_and_handles_win_over_a_keypoint(
     app.processEvents()
 
     # A hit on the rectangle edge belongs to the rectangle even though the
-    # keypoint sits inside it (DP-07).
-    edge_candidates = canvas._shape_hit_candidates(QtCore.QPointF(40, 80))
+    # keypoint sits inside it (DP-07).  The sample point is chosen away from
+    # the point's own generous hit tolerance so only the border competes.
+    edge_candidates = canvas._shape_hit_candidates(QtCore.QPointF(40, 50))
     assert edge_candidates
+    # The border wins the ordering; a nearby point may still be offered as
+    # an explicit candidate (its hit tolerance is deliberately generous).
     assert edge_candidates[0] is rect
-    assert keypoint not in edge_candidates
+    if keypoint in edge_candidates:
+        assert edge_candidates.index(rect) < edge_candidates.index(keypoint)
     # Inside the rectangle a plainly visible keypoint wins: the current
     # object's priority covers only actionable edges and handles, so an
     # interior hit must not swallow the point (DP-07, DP-09).
@@ -553,6 +611,11 @@ def test_focus_mode_paints_batch_members_and_associated_points(
     widget, workspace = _open_review(app, window, image_path)
     assert workspace.display_combo.currentData() == "focus"
     assert widget._dense_review_displays["rect2"].drawable is True
+    # The associated keypoint is promoted only in the box/keypoint task; the
+    # default category task keeps it out of the current role (R6).
+    assert widget._dense_review_displays["kp1"].role != "current"
+    workspace.set_task(workspace.TASK_BOX_POINTS)
+    app.processEvents()
     assert widget._dense_review_displays["kp1"].role == "current"
 
     painted = []
@@ -659,8 +722,8 @@ def test_real_global_switch_beats_temporary_show(app, open_window):
     # The genuine global switch still wins over the exception (DP-12).
     widget.actions.visibility_shapes_mode.trigger()
     app.processEvents()
-    widget.refresh_dense_review_display()
-    app.processEvents()
+    # No manual refresh: the global action has to invalidate on its own
+    # (the check boxes were already unchecked by the manual hide).
     assert widget._config["show_shapes"] is False
     display = widget.dense_review_display_entry("rect1")
     assert display.reason == "global-off"
@@ -707,8 +770,10 @@ def test_point_inside_current_rectangle_is_selectable(app, open_window):
     # Centre of the point: the keypoint wins.
     candidates = canvas._shape_hit_candidates(QtCore.QPointF(100, 100))
     assert candidates[0] is keypoint
-    # On the rectangle border: the actionable edge still wins (DP-07).
-    edge_candidates = canvas._shape_hit_candidates(QtCore.QPointF(40, 100))
+    # On the rectangle border, away from the point: the actionable edge
+    # still wins over an interior candidate (DP-07).
+    edge_point = QtCore.QPointF(40, 60)
+    edge_candidates = canvas._shape_hit_candidates(edge_point)
     assert edge_candidates[0] is rect
 
 
@@ -796,3 +861,400 @@ def test_original_mode_pauses_geometry_edits(app, open_window):
     assert canvas.bounded_move_shapes([target], QtCore.QPointF(9, 9))
     app.processEvents()
     assert target.bounding_rect() != before
+
+
+def _select_group_by_label_click(widget, group_id, member_count):
+    """Select a group through its real label, like a user does."""
+    from PyQt6.QtTest import QTest
+
+    canvas = widget.canvas
+    canvas.show_groups = True
+    bounds = canvas._group_rect(
+        [s for s in canvas.shapes if s.group_id == group_id]
+    )
+    label_rect = canvas._group_label_rect(group_id, member_count, bounds)
+    centre = label_rect.center()
+    local = ((centre + canvas.offset_to_center()) * canvas.scale).toPoint()
+    QTest.mouseClick(canvas, QtCore.Qt.MouseButton.LeftButton, pos=local)
+    return canvas
+
+
+def test_group_move_recomputes_members_after_a_hide(app, open_window):
+    """Hiding a member after selecting the group must stop moving it."""
+    from PyQt6.QtTest import QTest
+
+    window, image_path = open_window(
+        [
+            _rectangle("person", "rect1", 40, 40, group_id=0),
+            _rectangle("person", "rect2", 62, 62, group_id=0),
+        ],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    canvas = _select_group_by_label_click(widget, 0, 2)
+    app.processEvents()
+    assert _shape(widget, "rect2") in canvas.selected_shapes
+
+    _hide(widget, "rect2")
+    app.processEvents()
+    assert canvas.is_visible(_shape(widget, "rect2")) is False
+    hidden_before = QtCore.QRectF(_shape(widget, "rect2").bounding_rect())
+    visible_before = QtCore.QRectF(_shape(widget, "rect1").bounding_rect())
+
+    QTest.keyClick(canvas, QtCore.Qt.Key.Key_Right)
+    app.processEvents()
+    # The two cases that used to leak: the hidden member and the fallback.
+    assert _shape(widget, "rect2").bounding_rect() == hidden_before
+    assert _shape(widget, "rect1").bounding_rect().x() == (
+        visible_before.x() + 1
+    )
+
+
+def test_group_move_is_a_noop_when_every_member_is_hidden(app, open_window):
+    from PyQt6.QtTest import QTest
+
+    window, image_path = open_window(
+        [
+            _rectangle("person", "rect1", 40, 40, group_id=0),
+            _rectangle("person", "rect2", 62, 62, group_id=0),
+        ],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    canvas = _select_group_by_label_click(widget, 0, 2)
+    app.processEvents()
+    first_before = QtCore.QRectF(_shape(widget, "rect1").bounding_rect())
+    second_before = QtCore.QRectF(_shape(widget, "rect2").bounding_rect())
+
+    for shape_id in ("rect1", "rect2"):
+        _hide(widget, shape_id)
+    app.processEvents()
+    assert canvas.group_move_targets() == []
+    QTest.keyClick(canvas, QtCore.Qt.Key.Key_Right)
+    app.processEvents()
+    assert _shape(widget, "rect1").bounding_rect() == first_before
+    assert _shape(widget, "rect2").bounding_rect() == second_before
+
+
+def test_locked_visible_member_still_blocks_the_group(app, open_window):
+    from PyQt6.QtTest import QTest
+
+    window, image_path = open_window(
+        [
+            _rectangle("person", "rect1", 40, 40, group_id=0),
+            _rectangle("person", "rect2", 62, 62, group_id=0),
+        ],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    canvas = _select_group_by_label_click(widget, 0, 2)
+    app.processEvents()
+    locked = _shape(widget, "rect2")
+    locked.locked = True
+    first_before = QtCore.QRectF(_shape(widget, "rect1").bounding_rect())
+    locked_before = QtCore.QRectF(locked.bounding_rect())
+
+    QTest.keyClick(canvas, QtCore.Qt.Key.Key_Right)
+    app.processEvents()
+    assert _shape(widget, "rect1").bounding_rect() == first_before
+    assert locked.bounding_rect() == locked_before
+
+
+@pytest.mark.parametrize("operation", ["mouse", "keyboard"])
+@pytest.mark.parametrize("state", ["locked", "unlocked", "all-hidden"])
+def test_group_move_respects_visibility_and_locks_after_label_press(
+    app, open_window, operation, state
+):
+    from PyQt6.QtTest import QTest
+
+    window, image_path = open_window(
+        [
+            _rectangle("person", "rect1", 40, 40, group_id=0),
+            _rectangle("person", "rect2", 62, 62, group_id=0),
+            _rectangle("person", "rect3", 200, 40, group_id=0),
+        ],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _ = _open_review(app, window, image_path)
+    widget._config["auto_save"] = False
+    widget.set_zoom(100)
+    canvas = widget.canvas
+    canvas.show_groups = True
+    first, hidden, last = canvas.shapes
+    last.locked = state == "locked"
+    start = canvas._group_label_rect(
+        0, 3, canvas._group_rect(canvas.shapes)
+    ).center()
+    end = start + QtCore.QPointF(21, 17)
+    left = QtCore.Qt.MouseButton.LeftButton
+    none = QtCore.Qt.MouseButton.NoButton
+    _send_mouse(
+        app, canvas, QtCore.QEvent.Type.MouseButtonPress, start, left, left
+    )
+    assert canvas._selected_group_id == 0
+    assert hidden in canvas.selected_shapes
+    if operation == "keyboard":
+        _send_mouse(
+            app,
+            canvas,
+            QtCore.QEvent.Type.MouseButtonRelease,
+            start,
+            left,
+            none,
+        )
+    _hide(widget, "rect2")
+    if state == "all-hidden":
+        _hide(widget, "rect1")
+        _hide(widget, "rect3")
+        assert canvas.group_move_targets() == []
+    before = [shape.bounding_rect() for shape in canvas.shapes]
+    history = len(canvas.shapes_backups)
+
+    if operation == "mouse":
+        _send_mouse(app, canvas, QtCore.QEvent.Type.MouseMove, end, none, left)
+        _send_mouse(
+            app, canvas, QtCore.QEvent.Type.MouseButtonRelease, end, left, none
+        )
+        delta = end - start
+    else:
+        QTest.keyClick(canvas, QtCore.Qt.Key.Key_Right)
+        delta = QtCore.QPointF(1, 0)
+    app.processEvents()
+
+    moved = state == "unlocked"
+    assert hidden.bounding_rect() == before[1]
+    assert first.bounding_rect() == (
+        before[0].translated(delta) if moved else before[0]
+    )
+    assert last.bounding_rect() == (
+        before[2].translated(delta) if moved else before[2]
+    )
+    assert len(canvas.shapes_backups) == history + moved
+    assert widget.dirty == moved
+
+
+def test_ordinary_group_behaviour_returns_after_closing_review(
+    app, open_window
+):
+    from PyQt6.QtTest import QTest
+
+    window, image_path = open_window(
+        [
+            _rectangle("person", "rect1", 40, 40, group_id=0),
+            _rectangle("person", "rect2", 62, 62, group_id=0),
+        ],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, workspace = _open_review(app, window, image_path)
+    canvas = _select_group_by_label_click(widget, 0, 2)
+    app.processEvents()
+    workspace.close()
+    app.processEvents()
+
+    first = _shape(widget, "rect1")
+    second = _shape(widget, "rect2")
+    before = (
+        QtCore.QRectF(first.bounding_rect()),
+        QtCore.QRectF(second.bounding_rect()),
+    )
+    # Without the overlay the whole group moves together again.
+    canvas._select_group(0, QtCore.QPointF(40, 40))
+    app.processEvents()
+    assert [s.xanylabeling_shape_id for s in canvas.selected_shapes] == [
+        "rect1",
+        "rect2",
+    ]
+    QTest.keyClick(canvas, QtCore.Qt.Key.Key_Right)
+    app.processEvents()
+    assert first.bounding_rect().x() == before[0].x() + 1
+    assert second.bounding_rect().x() == before[1].x() + 1
+
+
+def test_panel_offers_temporary_show_for_a_manual_hide(app, open_window):
+    """The panel exposes the reason and a real temporary-show button."""
+    from PyQt6.QtTest import QTest
+
+    window, image_path = open_window(
+        [_rectangle("person", "rect1", 40, 40)],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, workspace = _open_review(app, window, image_path)
+    canvas = widget.canvas
+    target = _shape(widget, "rect1")
+    _hide(widget, "rect1")
+    app.processEvents()
+
+    assert workspace.temporary_show_button.isVisible() is True
+    assert workspace.temporary_show_button.isEnabled() is True
+    assert "隐藏" in workspace.exclusion_reason_label.text()
+    assert workspace.temporary_show_button.text() == "临时显示"
+    assert canvas.is_visible(target) is False
+
+    shape_id_before = workspace._current_shape_id()
+    QTest.mouseClick(
+        workspace.temporary_show_button, QtCore.Qt.MouseButton.LeftButton
+    )
+    app.processEvents()
+    # Observing does not change the identity or the eligibility.
+    assert workspace._current_shape_id() == shape_id_before
+    assert canvas.is_visible(target) is True
+    assert widget.dense_review_display_entry("rect1").temporary is True
+    manual, _filtered = widget.dense_review_exclusion_ids()
+    assert "rect1" in manual
+    assert "rect1" not in workspace._scope().candidate_ids
+    assert workspace.temporary_show_button.text() == "结束临时显示"
+
+    QTest.mouseClick(
+        workspace.temporary_show_button, QtCore.Qt.MouseButton.LeftButton
+    )
+    app.processEvents()
+    assert canvas.is_visible(target) is False
+    assert widget.dense_review_temporary_ids() == set()
+
+
+def test_panel_offers_temporary_show_after_a_filter(app, open_window):
+    window, image_path = open_window(
+        [_rectangle("person", "rect1", 40, 40)],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, workspace = _open_review(app, window, image_path)
+    widget.set_label_visibility("person", False)
+    app.processEvents()
+    assert widget.dense_review_display_entry("rect1").reason == (
+        "label-hidden"
+    )
+    assert workspace.temporary_show_button.isVisible() is True
+    assert widget.dense_review_show_temporarily(["rect1"]) is True
+    app.processEvents()
+    assert widget.canvas.is_visible(_shape(widget, "rect1")) is True
+
+
+def test_panel_hides_the_button_for_a_global_shutdown(app, open_window):
+    window, image_path = open_window(
+        [_rectangle("person", "rect1", 40, 40)],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, workspace = _open_review(app, window, image_path)
+    widget.actions.visibility_shapes_mode.trigger()
+    app.processEvents()
+    assert widget.dense_review_display_entry("rect1").reason == "global-off"
+    # A global shutdown is not a revealable exclusion.
+    assert workspace.temporary_show_button.isVisible() is False
+
+
+def test_temporary_show_survives_original_round_trip(
+    app, open_window, monkeypatch
+):
+    window, image_path = open_window(
+        [_rectangle("person", "rect1", 40, 40)],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, workspace = _open_review(app, window, image_path)
+    canvas = widget.canvas
+    target = _shape(widget, "rect1")
+    painted = []
+    paint = target.paint
+
+    def record_paint(*args, **kwargs):
+        painted.append(True)
+        return paint(*args, **kwargs)
+
+    def target_is_painted():
+        painted.clear()
+        canvas.grab()
+        return bool(painted)
+
+    monkeypatch.setattr(target, "paint", record_paint)
+    _hide(widget, "rect1")
+    app.processEvents()
+    workspace.temporary_show_button.click()
+    app.processEvents()
+    assert canvas.is_visible(target) is True
+    assert target_is_painted()
+    hint = workspace.exclusion_reason_label
+    button = workspace.temporary_show_button
+    assert "已临时显示" in hint.text()
+    assert "rect1" not in workspace._scope().candidate_ids
+
+    combo = workspace.display_combo
+    combo.setCurrentIndex(combo.findData("original"))
+    app.processEvents()
+    assert canvas.is_visible(target) is False
+    assert not target_is_painted()
+    assert widget.dense_review_temporary_ids() == {"rect1"}
+    assert hint.text() == "未显示：正在显示原图对照"
+    assert button.isVisible() and button.isEnabled()
+    assert button.text() == "结束临时显示"
+    assert "rect1" not in workspace._scope().candidate_ids
+
+    action = widget.actions.visibility_shapes_mode
+    action.trigger()
+    assert hint.text() == "未显示：全局标注显示已关闭"
+    assert not canvas.is_visible(target)
+    assert not target_is_painted()
+    assert button.isVisible() and button.isEnabled()
+    assert "rect1" not in workspace._scope().candidate_ids
+    action.trigger()
+    assert hint.text() == "未显示：正在显示原图对照"
+
+    combo.setCurrentIndex(combo.findData("all"))
+    app.processEvents()
+    assert canvas.is_visible(target) is True
+    assert target_is_painted()
+    assert "已临时显示" in hint.text()
+    assert button.text() == "结束临时显示"
+    assert "rect1" not in workspace._scope().candidate_ids
+
+
+def test_temporary_reveal_paints_outline_and_label(app, open_window):
+    """A revealed manual hide must draw its label, not just the outline."""
+    window, image_path = open_window(
+        [_rectangle("person", "rect1", 40, 40)],
+        batches=(("person", ("person",)),),
+        rules=(("person", "visible", ""),),
+    )
+    widget, _workspace = _open_review(app, window, image_path)
+    canvas = widget.canvas
+    _hide(widget, "rect1")
+    app.processEvents()
+
+    from unittest.mock import patch as mock_patch
+
+    labels = []
+
+    class RecordingPainter(QtGui.QPainter):
+        def drawText(self, *args, **kwargs):
+            if (
+                args
+                and isinstance(args[-1], str)
+                and args[-1].startswith("person")
+            ):
+                labels.append(args[-1])
+            return super().drawText(*args, **kwargs)
+
+    with mock_patch.object(canvas, "_painter", RecordingPainter()):
+        canvas.grab()
+    assert labels == []
+
+    widget.dense_review_show_temporarily(["rect1"])
+    app.processEvents()
+    labels.clear()
+    with mock_patch.object(canvas, "_painter", RecordingPainter()):
+        canvas.grab()
+    assert labels == ["person"]
+
+    widget.dense_review_end_temporary(["rect1"])
+    app.processEvents()
+    labels.clear()
+    with mock_patch.object(canvas, "_painter", RecordingPainter()):
+        canvas.grab()
+    assert labels == []

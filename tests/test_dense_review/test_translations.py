@@ -124,8 +124,9 @@ class TestDenseReviewTranslations(unittest.TestCase):
     def test_literal_messages_in_all_runtime_contexts_and_resources(self):
         """Check actual source contexts, not just representative messages."""
         from anylabeling.resources import resources  # noqa: F401
+        from anylabeling.services.dense_review.display import REASON_TEXT
 
-        entries = []
+        entries = [("LabelingWidget", reason) for reason in REASON_TEXT.values()]
         folder = REPO_ROOT / "anylabeling/views/labeling/dense_review"
         for filename in ("workspace.py", "config_dialog.py"):
             tree = ast.parse((folder / filename).read_text(encoding="utf-8"))
@@ -179,6 +180,8 @@ class TestDenseReviewTranslations(unittest.TestCase):
                     finally:
                         app.removeTranslator(disk)
                     self.assertTrue(translated)
+                    if language != "zh_CN" and source in REASON_TEXT.values():
+                        self.assertNotEqual(translated, source)
                     app.installTranslator(embedded)
                     try:
                         actual = app.translate(context, source)

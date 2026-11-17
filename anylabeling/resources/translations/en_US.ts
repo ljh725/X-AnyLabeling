@@ -2639,6 +2639,54 @@ Review the prompt before generating.</translation>
         <translation>Hold to see image only</translation>
     </message>
     <message>
+        <source>临时显示</source>
+        <translation>Show temporarily</translation>
+    </message>
+        <message>
+        <source>密集复核</source>
+        <translation>Dense review</translation>
+    </message>
+<message>
+        <source>当前任务</source>
+        <translation>Current task</translation>
+    </message>
+    <message>
+        <source>复核任务</source>
+        <translation>Review task</translation>
+    </message>
+    <message>
+        <source>切换任务只改变视图与导航，不改变确认状态。</source>
+        <translation>Switching tasks changes only the view and navigation, never the confirmation state.</translation>
+    </message>
+    <message>
+        <source>类别核对</source>
+        <translation>Category check</translation>
+    </message>
+    <message>
+        <source>框与关键点观察</source>
+        <translation>Box and keypoint inspection</translation>
+    </message>
+    <message>
+        <source>结束临时显示</source>
+        <translation>End temporary show</translation>
+    </message>
+    <message>
+        <source>临时显示当前对象</source>
+        <translation>Show the current object temporarily</translation>
+    </message>
+    <message>
+        <source>仅临时观察被手动隐藏或过滤的当前对象，不改变确认资格。</source>
+        <translation>Temporarily observe the current hidden or filtered object only; confirmation eligibility is unchanged.</translation>
+    </message>
+    <message>
+        <source>已临时显示 · 确认资格仍按排除来源计算</source>
+        <translation>Temporarily shown · confirmation eligibility still follows the exclusion source</translation>
+    </message>
+    <message>
+        <source>未显示：{reason}</source>
+        <translation>Not shown: {reason}</translation>
+    </message>
+    <message>
         <source>按住期间只显示原图；松开恢复当前显示策略。</source>
         <translation>Hold to show the source image only; release to restore the current display policy.</translation>
     </message>
@@ -5671,6 +5719,34 @@ Continue?</translation>
     </message>
 </context><context>
     <name>LabelingWidget</name>
+    <message>
+        <source>全局标注显示已关闭</source>
+        <translation>Global annotation display is off</translation>
+    </message>
+    <message>
+        <source>正在显示原图对照</source>
+        <translation>Original-image comparison is active</translation>
+    </message>
+    <message>
+        <source>已手动隐藏</source>
+        <translation>Hidden manually</translation>
+    </message>
+    <message>
+        <source>类别已隐藏</source>
+        <translation>Category is hidden</translation>
+    </message>
+    <message>
+        <source>被类别或分组过滤排除</source>
+        <translation>Excluded by the category or group filter</translation>
+    </message>
+    <message>
+        <source>对象不存在</source>
+        <translation>Object does not exist</translation>
+    </message>
+    <message>
+        <source>当前不支持复核显示</source>
+        <translation>Review display is unavailable for this object</translation>
+    </message>
     <message>
         <source>Save Failed</source>
         <translation>Save Failed</translation>

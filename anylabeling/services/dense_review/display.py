@@ -25,6 +25,20 @@ ROLE_CURRENT = "current"
 ROLE_BATCH = "batch"
 ROLE_OTHER = "other"
 
+#: Review task ids, mirroring the workspace task selector.
+TASK_CATEGORY = "category"
+TASK_BOX_POINTS = "box-points"
+TASK_COVERAGE = "coverage"
+
+#: Only an explicit person/keypoint task promotes a rectangle's associated
+#: points to the current role.  Category checking keeps the rectangle in
+#: focus, and the coverage pass deliberately drops point symbols and labels
+#: so the source image stays readable (D1, SN-05).
+TASKS_PROMOTING_ASSOCIATED = (TASK_BOX_POINTS,)
+
+#: Tasks that hide point symbols and point text entirely.
+TASKS_HIDING_POINTS = (TASK_COVERAGE,)
+
 #: Display roles in paint order; later roles sit above earlier ones.
 PAINT_ORDER = (ROLE_OTHER, ROLE_BATCH, ROLE_CURRENT)
 
@@ -303,6 +317,16 @@ class DisplayContext:
     unsupported: frozenset = frozenset()
     temporary_ids: frozenset = frozenset()
     hovering_id: str = ""
+    #: Active review task id; empty means "ordinary canvas behaviour".
+    task_id: str = ""
+
+    def promotes_associated(self) -> bool:
+        """Return whether associated points rise with the current object."""
+        return self.task_id in TASKS_PROMOTING_ASSOCIATED
+
+    def hides_points(self) -> bool:
+        """Return whether point symbols and point text are suppressed."""
+        return self.task_id in TASKS_HIDING_POINTS
 
     def style_for(self, role: str) -> RoleStyle:
         defaults = default_role_styles()
@@ -336,9 +360,9 @@ def _exclusion_reason(
 def _role_for(shape_id: str, context: DisplayContext) -> str:
     if shape_id and shape_id == context.current_id:
         return ROLE_CURRENT
-    if shape_id in context.associated_ids:
-        # Associated keypoints rise with their current rectangle so the
-        # frame-and-keypoint task stays readable (D2 step 5).
+    if shape_id in context.associated_ids and context.promotes_associated():
+        # Associated keypoints rise with their current rectangle only in the
+        # explicit box/keypoint task (D2 step 5, WL-07).
         return ROLE_CURRENT
     if shape_id in context.batch_ids:
         return ROLE_BATCH
@@ -351,10 +375,13 @@ def resolve_shape(
     context: DisplayContext,
     *,
     locked: bool = False,
+    shape_type: str = "",
 ) -> ShapeDisplay:
     """Resolve one shape's effective display result."""
     labels = {shape_id: label} if label is not None else {}
-    return _resolve(shape_id, labels, context, locked=locked)
+    return _resolve(
+        shape_id, labels, context, locked=locked, shape_type=shape_type
+    )
 
 
 def _resolve(
@@ -363,6 +390,7 @@ def _resolve(
     context: DisplayContext,
     *,
     locked: bool = False,
+    shape_type: str = "",
 ) -> ShapeDisplay:
     reason = _exclusion_reason(shape_id, labels, context)
     temporary = False
@@ -376,6 +404,17 @@ def _resolve(
 
     role = _role_for(shape_id, context)
     style = context.style_for(role)
+    if shape_type == "point" and context.hides_points():
+        # The coverage pass hides point symbols and point text without
+        # touching the rectangle outlines it is inspecting (SN-05, R6).
+        style = RoleStyle(
+            **{
+                **style.to_dict(),
+                "points": 0.0,
+                "text": 0.0,
+                "text_plate": 0.0,
+            }
+        ).normalized()
     drawable = not reason and style.visible
     label_visible = bool(drawable and style.text > 0.0)
     return ShapeDisplay(
@@ -419,6 +458,7 @@ def resolve_all(
             label_of(shape),
             context,
             locked=bool(getattr(shape, "locked", False)),
+            shape_type=str(getattr(shape, "shape_type", "") or ""),
         )
     return resolved
 
