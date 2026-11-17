@@ -1,16 +1,16 @@
 # CUSTOM-124：维护基线整理与 agent 执行交接
 
-- 状态：实施中；候选、入口与验证记录已建立，完整回归复验和规格归档继续按源任务执行。
+- 状态：已验证（维护整理），18/18；完整回归仍有失败，候选未达稳定，不代表产品或人工验收全通过。
 - 功能分类：工程配套。
 - 创建日期、最后更新日期：2026-11-17（Asia/Shanghai）。
 - 原始版本与基线提交：X-AnyLabeling 4.2.1，`8d87a93b`。
-- 实现提交 / PR：无产品实现；交接方案见本次本地文档提交，无 PR。
+- 实现提交 / PR：本轮不改生产代码；测试修正见 `efb172b9`、`8d9ab779`，被测测试树保存于 `77f9ced5`；归档提交逐项见维护报告，无 PR。
 - 工作分支：`codex/4.2.1/maintenance-baseline-plan`；约定集成目标：`codex/4.2.1-baseline-organization`，尚未合入。
 - 工作区已有修改：其他任务的 `.gitignore`、`docs/development/`，以及用户提供的未跟踪审计报告，均保留。
 
 ## 问题与目标
 
-用户接受暂停功能扩展并按四步整理，要求可交给其他 agent 执行。本轮将执行顺序、完成标准、验证要求和授权范围落到现有 OpenSpec，避免只靠会话记忆交接。
+用户接受暂停功能扩展并按四步整理。本记录同时保留方案建立和本次执行：固定候选、整理当前入口、建立真实验证基线、逐批同步并归档符合条件的既有变更。未恢复停止任务。
 
 ## 修改位置与方法
 
@@ -23,11 +23,11 @@
 
 ## 兼容与数据影响
 
-本轮仅文档交接，不改生产代码、配置、标注数据或资源。协调变更使用 skip_specs，不发明新的产品规格；后续既有产品契约的归档必须单独核对。
+方案建立时仅文档交接；执行阶段最小修正三个旧测试文件，生产代码、配置 schema、标注格式和资源不变。协调变更自身使用 skip_specs；本轮既有产品契约另行逐项核对后同步，不借此跳过独立契约。
 
-## 验证
+## 方案建立时的验证（历史）
 
-实际：`openspec validate --all --strict` 为 23 passed / 0 failed；`openspec status --change organize-maintenance-baseline` 显示 proposal/design/tasks 已备齐，specs 按文档协调范围 skipped。检查本轮新文档 9 条本地 Markdown 链接，0 条失效；18 项执行任务全部未勾选。`git diff --check` 通过，提交前核对显式暂存范围。不为纯交接文档重跑 Qt 功能测试；本轮未运行工具栏布局或点云套件。
+当时实际：`openspec validate --all --strict` 为 23 passed / 0 failed；`openspec status --change organize-maintenance-baseline` 显示 proposal/design/tasks 已备齐，specs 按文档协调范围 skipped。检查本轮新文档 9 条本地 Markdown 链接，0 条失效；18 项执行任务全部未勾选。`git diff --check` 通过，提交前核对显式暂存范围。不为纯交接文档重跑 Qt 功能测试；本轮未运行工具栏布局或点云套件。
 
 ## 迁移与回退
 
@@ -190,3 +190,24 @@ restore 本机旧路径实际已按 11-10 manifest 迁移；只读 bundle verify
 不将子集拼成完整通过。代码/测试仍与被测 77f9ced5 相同。
 证据见[维护报告](../../reports/maintenance_baseline_20261117/REPORT.md)与归档审计。
 本地提交 `docs(maintenance): 汇总归档与证据完整性核对`；无推送、PR 或合入。
+
+## 2026-11-17 维护收尾：完整实测与四步交付
+
+前批提交 `414e079b`。第二轮完整执行 2679 主用例，pytest 输出
+20 failed / 2632 passed / 29 skipped / 1015 subtests passed，1511.58s；
+其中失败为 18 主用例 + 2 子测试，退出码 1，无超时；第一轮挂起和中间原生退出保留。
+测试起点 77f9ced5，生产树 01efe6fe、测试树 b33383b8 与交付相同；
+后续全为文档/规格/归档变更。任务 3.4 勾选表示完整执行/记录完成，不是回归通过。
+未跑工具栏布局和 Windows 点云，29 skip 不作通过；其他人工/性能缺口保留。
+OpenSpec strict 26/0，当前导航及新报告 231 条本地链接 0 失效；
+197 份既有工件字节/Git blob 不变，7 份只改导航，2 份协调状态更新，无丢失或意外改写。
+11 个目录按 9 批归档，旧新路径/实际提交/语义映射见
+[归档审计](../../reports/maintenance_baseline_20261117/ARCHIVES.md)。
+原密集复核、成本统计、关键点暂停和 P2 规格不一致继续保留；协调 18/18 不自动归档。
+活跃 5 目录合计 148/180，32 项均为原产品待验收/暂停任务，未强行清零。
+代码/文档定向空白检查通过；pytest 原始 .log/.xml 的行尾空白按内容保留、单列告警。
+本地固定标签仍指向 aebb1804f2199ca47f342d8f485d37cae0214d8e。
+暂存仅本任务；其他 .gitignore、开发资料、审计输入保留，不推送、不开 PR、不合入。
+最后本地提交标题 `docs(maintenance): 完成四步整理并保留验证缺口`，
+实际交付 HEAD 由最终回复给出；集成目标仍仅登记 codex/4.2.1-baseline-organization。
+完整结果与逐项失败见[维护报告](../../reports/maintenance_baseline_20261117/REPORT.md)。

@@ -1,0 +1,112 @@
+{
+  "collected": 2679,
+  "primary_failed": 18,
+  "failed_subtests": 2,
+  "passed": 2632,
+  "skipped": 29,
+  "subtests_passed": 1015,
+  "pytest_summary": "20 failed, 2632 passed, 29 skipped, 1015 subtests passed in 1511.58s (0:25:11)",
+  "failures": [
+    {
+      "kind": "FAILED",
+      "node": "tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_prediction_forwards_selected_classes",
+      "message": "PermissionError: [Errno 13] Permission denied: 'C:\\\\Users\\\\20441\\\\AppData\\\\Local\\\\Temp\\\\tmpgw7v1mus.jpg'"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_selecting_all_classes_sends_empty_filter_override",
+      "message": "PermissionError: [Errno 13] Permission denied: 'C:\\\\Users\\\\20441\\\\AppData\\\\Local\\\\Temp\\\\tmpit7qg349.jpg'"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_auto_training/test_dataset.py::test_dataset_preparation_reports_invalid_yaml_path",
+      "message": "Failed: Invalid regex pattern provided to 'match': bad escape \\X at position 2"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_auto_training/test_environment.py::test_expand_training_path_supports_tilde_and_unicode",
+      "message": "AssertionError: assert 'C:\\\\Users\\\\20441\\\\训练环境\\\\bin\\\\python' == 'D:\\\\X-AnyLabeling-4.2.1\\\\.tmp\\\\maintenance-full-recheck\\\\test_expand_training_path_supp1\\\\用户目录\\\\训练环境\\\\bin\\\\python'"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately",
+      "message": "assert not True"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable",
+      "message": "assert False"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_batch_edit_resets_only_shapes_with_changed_labels",
+      "message": "AttributeError: 'types.SimpleNamespace' object has no attribute 'copy'"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_save_attributes_uses_standard_shape_serialization",
+      "message": "AttributeError: 'types.SimpleNamespace' object has no attribute '_metadata_generation'"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_window_title_includes_annotation_checked_status",
+      "message": "AssertionError: 'X-AnyLabeling - D:\\\\tmp\\\\image.jpg [Check Passed] [640x480] [2/10]' != 'X-AnyLabeling - /tmp/image.jpg [Check Passed] [640x480] [2/10]'"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_labeling/test_shape_filter.py::TestFilterApplication::test_combined_filter_drives_visibility",
+      "message": "AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_labeling/test_shape_filter.py::TestFilterApplication::test_invert_flag_is_forwarded",
+      "message": "AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_labeling/test_shape_filter.py::TestFilterApplication::test_manual_hidden_shapes_stay_hidden",
+      "message": "AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_labeling/test_shape_filter.py::TestFilterApplication::test_manual_hide_is_recorded_from_the_item_checkbox",
+      "message": "AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'"
+    },
+    {
+      "kind": "SUBFAILED(initially_enabled=False)",
+      "node": "tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_upload_preserves_auto_switch_signal_state",
+      "message": "AssertionError: False is not true"
+    },
+    {
+      "kind": "SUBFAILED(initially_enabled=True)",
+      "node": "tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_upload_preserves_auto_switch_signal_state",
+      "message": "AssertionError: False is not true"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_valid_upload_rebuilds_open_attribute_panel",
+      "message": "AssertionError: unexpectedly identical: <PyQt6.QtWidgets.QWidget object at 0x00000144C96A25D0>"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_streamed_body_contains_complete_video_data",
+      "message": "PermissionError: [Errno 13] Permission denied: 'C:\\\\Users\\\\20441\\\\AppData\\\\Local\\\\Temp\\\\tmpw8xos66q.mp4'"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_streaming_stops_when_cancelled",
+      "message": "PermissionError: [Errno 13] Permission denied: 'C:\\\\Users\\\\20441\\\\AppData\\\\Local\\\\Temp\\\\tmp7ske7s2y.mp4'"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_widgets/test_canvas_adjustment.py::TestCanvasAdjustmentWidget::test_brightness_contrast_updates_are_throttled",
+      "message": "AssertionError: 0 != 1"
+    },
+    {
+      "kind": "FAILED",
+      "node": "tests/test_widgets/test_canvas_adjustment.py::TestCanvasAdjustmentWidget::test_defaults_and_tooltips_describe_adjustment_targets",
+      "message": "AssertionError: 'shapes' not found in 'Scale the transparency of annotation fills. Borders, vertices and label text remain fully visible.'"
+    }
+  ],
+  "result": "完整执行结束但未通过；不是稳定基线"
+}

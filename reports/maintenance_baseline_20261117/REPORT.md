@@ -1,6 +1,6 @@
 # 维护候选验证 · 2026-11-17
 
-状态：执行中，尚无最终全绿结论。候选源码为 `aebb1804`；前两批维护文档
+状态：维护整理已实施，完整回归已结束但未通过；候选未达稳定基线。候选源码为 `aebb1804`；前两批维护文档
 提交不改变代码，实际运行 HEAD、源码树、命令、解释器、版本、超时和退出码
 保存在每批 JSON；完整 stdout/stderr 为同名 log，成功生成的 JUnit 为 xml。
 
@@ -13,7 +13,7 @@
 与本目录本轮实测分别记录。真实屏幕/字体/DPI、双人试用、性能和回退演练
 不能由 offscreen 替代；工具栏布局及 Windows 点云另列覆盖情况。
 
-## 本轮结果（同一源码树）
+## 分批实测记录（同一生产源码树）
 
 两批运行 HEAD `cdd256607c2e9ef71a8bd8fe78568c1cc6266d00`，
 源码树 `01efe6fe526f49a44353ffcbc5efc5e089a1e77f`，与固定候选一致。
@@ -49,7 +49,7 @@ flake8 基线与修正后各 14 条既有 F811，退出码 1，不宣称静态�
 
 工作台合跑的唯一失败为上述停止快照交接用例；Inspector 主用例全部通过。
 本次合跑未出现原生退出，不等于所有系统、测试顺序或真实屏幕都已验证。
-全 Windows 回归正在另跑，主命令为 JSON 中全范围 `tests`，
+工作台合跑后另行执行全 Windows 回归，主命令为 JSON 中全范围 `tests`，
 显式排除 `tests/test_widgets/test_toolbar_layout.py` 与 `tests/test_pointcloud`；
 工具栏布局本轮未执行，点云不适用于本机 Windows，均不计为通过。
 
@@ -84,8 +84,8 @@ flake8 基线与修正后各 14 条既有 F811，退出码 1，不宣称静态�
 堆栈 `LabelingWidget.error_message → persist_user_preferences → set_canvas_params → MainWindow`。
 最小复现保留原始 No active configuration session 错误，不屏蔽弹窗，见
 [启动修正](STARTUP_FIX.md)。修正已提交 `8d9ab779`，两个文件最终 15 passed。
-本报告提交同时仅换行新启动参数，AST 相同；之后重新执行完整 Windows 范围。
-源任务 3.4 暂不勾选，等待真正完整运行；本轮其余独立整理按交接继续。
+第三批证据提交时仅换行新启动参数，AST 相同；之后重新执行完整 Windows 范围。
+首轮记录时源任务 3.4 未勾选，等待真正完整运行；其余独立整理按交接继续。
 
 首轮日志能观察到 2429 个 PASSED 和 16 个 FAILED 主节点，另有子测试失败；
 这是中断日志提取，**不是最终 pytest 总计**，不能以 2679 减去这些数字断言跳过数。
@@ -118,8 +118,66 @@ flake8 基线与修正后各 14 条既有 F811，退出码 1，不宣称静态�
 两项分别为 `test_canvas_adjustment::TestCanvasAdjustmentWidget::test_brightness_contrast_updates_are_throttled`
 的 `0 != 1`（未定责时序问题），以及 `test_defaults_and_tooltips_describe_adjustment_targets`
 要求英文包含 shapes 而现文案使用 annotation fills（断言与当前文案不一致）。
-不将这些失败删除或改成跳过，等待第二轮完整结果单独统计。
+未将这些失败删除或改成跳过；第二轮完整结果已在下节单独统计。
 
 规格归档及历史证据完整性已单独通过，不代表这些回归失败已解决；见
 [归档审计](ARCHIVES.md)。第二轮完整 Windows 回归以 77f9ced5 为测试起点，
-后续仅文档提交，生产/测试树均不变，3.4 在完成前仍不勾选。
+后续仅文档提交，生产/测试树均不变；该阶段 3.4 保持未勾，最终执行结果见下节。
+
+## 最终完整回归与交付结论
+
+第二轮完整 Windows 范围已结束，**不是通过**：
+
+> 20 failed, 2632 passed, 29 skipped, 1015 subtests passed in 1511.58s (0:25:11)
+
+这 20 项失败包括 **18 个主用例和 2 个失败子测试**；2679 个主用例的对应为
+2632 通过 + 29 跳过 + 18 失败，不把子测试计成额外主用例。
+完整[命令/环境/退出码](full-recheck.json)、[原始日志](full-recheck.log)、
+[JUnit](full-recheck.xml)、[逐项失败清单](full-recheck-summary.json)均保留。
+总超时 2400s、无输出超时 180s 均未触发，外层 1515.69s，pytest 退出码 1。
+没有本轮完整运行的原生退出，不追认为全部历史 native 问题已定责或消失。
+
+测试起点 `77f9ced5369729313ef10060d9c68459149785b2`，
+生产树 `01efe6fe526f49a44353ffcbc5efc5e089a1e77f`，
+测试树 `b33383b8fba80fbbcd2648507a0bde66a212d0c2`，runtime diff 为空。
+后续只有维护文档/规格/归档提交，以上两树与最终交付相同。
+工具栏布局与点云均未运行；29 个 skip 的具体理由在 JUnit，未将它们视为通过。
+
+全部失败均落在前述已记录范围：Windows 文件共享/路径断言、旧测试桩缺接口、
+停止快照交接、训练停止时序及两个画布调整断言；不以测试失败数直接等同产品缺陷数。
+本轮只修正三个旧测试文件的真实输入/配置会话/清理，生产代码未修改，配置写保护未放宽，
+失败没有删除、skip 或 xfail。原密集复核、成本统计、关键点暂停和 P2 契约不一致的
+状态继续保留，不启动功能扩展或恢复停止任务。
+
+四步维护成果可交付，**候选不能标为已验证稳定版**。任务 3.4 的勾选表示完整
+执行与记录已经完成，不表示 20 个失败解决；基础产品验收和人工缺口仍按原任务管理。
+11 目录分批归档、21 主规格和历史证据保全的实际结果见[归档审计](ARCHIVES.md)。
+本地提交及固定备份已保存；未推送、未开 PR、未合入约定目标。
+
+## 收尾前的本地提交
+
+```text
+0e5472cb docs(maintenance): 固定候选基线与本地备份
+cdd25660 docs(maintenance): 重算任务状态并修复当前导航
+efb172b9 test(maintenance): 补齐拟合集成用例真实按键事件
+6c9af4dc docs(maintenance): 更正静态检查并补全原始日志
+8d9ab779 test(maintenance): 修正旧窗口测试启动与清理
+77f9ced5 docs(maintenance): 建立当前验证证据与失败分类
+4a2f7cce docs(maintenance): 核实归档资格与场景语义映射
+ffd1a047 docs(openspec): 同步并归档平滑拖动变更
+15153e76 docs(openspec): 修正分批归档导航时序
+8678f3eb docs(openspec): 同步并归档分阶段标注加载
+2267cc6c docs(openspec): 同步并归档用户设置持久化
+5453c11f docs(openspec): 同步并归档数字矩形类别保存
+9caa239e docs(openspec): 同步并归档矩形拖边调整
+57dc5979 docs(openspec): 同步并归档矩形预览显示
+89e3785e docs(openspec): 发布并归档画布能力恢复契约
+4ec0a3cd docs(openspec): 按依赖同步并归档单点拟合契约
+a5486ba7 docs(openspec): 核对重复契约并归档迁移脚手架
+414e079b docs(maintenance): 汇总归档与证据完整性核对
+```
+
+收尾提交以本报告后的最终 HEAD 为准；以上均为本地提交，无推送、PR 或合入。
+
+维护清单最终 **18/18**，活动目录 **5**、合计 **148/180**、原产品未勾 **32**；
+这是维护整理完成，候选仍有上述失败，未达到稳定交付。

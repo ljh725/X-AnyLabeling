@@ -1,0 +1,27 @@
+{
+  "explicit_paths": [
+    "docs/custom_changes/2026-11-17-maintenance-baseline-plan.md",
+    "docs/custom_changes/README.md",
+    "docs/version-management/2026-11-17-maintenance-baseline.md",
+    "docs/version-management/操作记录.md",
+    "openspec/PENDING_TASKS.md",
+    "openspec/changes/organize-maintenance-baseline/HANDOFF.md",
+    "openspec/changes/organize-maintenance-baseline/tasks.md",
+    "reports/maintenance_baseline_20261117/ARCHIVES.md",
+    "reports/maintenance_baseline_20261117/REPORT.md",
+    "reports/maintenance_baseline_20261117/final-audit.json",
+    "reports/maintenance_baseline_20261117/final-strict.txt",
+    "reports/maintenance_baseline_20261117/full-recheck-summary.json",
+    "reports/maintenance_baseline_20261117/full-recheck.json",
+    "reports/maintenance_baseline_20261117/full-recheck.log",
+    "reports/maintenance_baseline_20261117/full-recheck.xml"
+  ],
+  "unexpected_paths": [],
+  "raw_diff_check_exit": 2,
+  "raw_warning_files": [
+    "reports/maintenance_baseline_20261117/full-recheck.log",
+    "reports/maintenance_baseline_20261117/full-recheck.xml"
+  ],
+  "code_docs_json_txt_diff_check_exit": 0,
+  "policy": "原始日志/XML保留输出行尾空白；仅将这些原始证据的告警单列，不更改原始输出。"
+}
