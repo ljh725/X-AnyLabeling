@@ -1,0 +1,33 @@
+{
+  "name": "priority",
+  "command": [
+    "C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\python.exe",
+    "-m",
+    "pytest",
+    "tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable",
+    "tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit]",
+    "tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-fit]",
+    "tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty",
+    "tests/test_labeling/test_label_locks.py::TestLabelLocks::test_category_checkbox_controls_all_matching_shapes",
+    "-vv",
+    "-o",
+    "faulthandler_timeout=30",
+    "--basetemp=D:\\X-AnyLabeling-4.2.1\\.tmp\\maintenance-priority",
+    "--junitxml=D:\\X-AnyLabeling-4.2.1\\reports\\maintenance_baseline_20261117\\priority.xml"
+  ],
+  "cwd": "D:\\X-AnyLabeling-4.2.1",
+  "timeout_seconds": 180,
+  "head": "cdd256607c2e9ef71a8bd8fe78568c1cc6266d00",
+  "source_tree": "01efe6fe526f49a44353ffcbc5efc5e089a1e77f",
+  "python": "3.12.12 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 20:05:38) [MSC v.1929 64 bit (AMD64)]",
+  "qt_platform": "offscreen",
+  "started": "2026-11-17 19:26:29+0800",
+  "packages": {
+    "pytest": "9.0.3",
+    "PyQt6": "6.10.2",
+    "onnxruntime-gpu": "1.24.3"
+  },
+  "exit_code": 1,
+  "timed_out": false,
+  "elapsed_seconds": 13.45
+}

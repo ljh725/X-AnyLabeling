@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="12" time="9.863" timestamp="2026-11-17T19:26:32.883724+08:00" hostname="DESKTOP-RBDJ37M"><testcase classname="tests.test_dense_review.test_redesign_interactions" name="test_handoff_keeps_cross_batch_objects_and_associated_point_reachable" time="3.096"><failure message="assert False">app = &lt;PyQt6.QtWidgets.QApplication object at 0x0000027F165262B0&gt;
+open_window = &lt;function open_window.&lt;locals&gt;._open at 0x0000027F16525F80&gt;
+
+    def test_handoff_keeps_cross_batch_objects_and_associated_point_reachable(app, open_window):
+        from dataclasses import replace
+        from anylabeling.services.inspection.handoff import HandoffRequest
+        from .test_workspace_dock_tasks import _rectangle, _point, _open_review
+        window, path = open_window([
+            _rectangle("person", "rect1", 40, 40, group_id=0),
+            _rectangle("vehicle", "rect2", 300, 40, group_id=1),
+            _point("nose", "kp1", 80, 80, group_id=0),
+        ], batches=(("person", ("person",)), ("vehicle", ("vehicle",))),
+           rules=(("person", "visible", ""), ("vehicle", "visible", "")))
+        widget, ws = _open_review(app, window, path)
+        request = HandoffRequest("issue", "family", widget.inspection_dataset_root(),
+                                 widget.inspection_output_dir(), widget.inspection_current_relative_path(),
+                                 object_ids=("rect1", "rect2"))
+&gt;       assert widget.inspection_handoff_to_dense_review(request)[0]
+E       assert False
+
+tests\test_dense_review\test_redesign_interactions.py:24: AssertionError</failure></testcase><testcase classname="tests.test_labeling.test_canvas_controls_integration" name="test_pending_mode_finishes_real_edit[commit-fit]" time="2.778"><failure message="assert False&#10; +  where False = interaction_in_progress()&#10; +    where interaction_in_progress = &lt;anylabeling.views.labeling.widgets.canvas.Canvas object at 0x0000027F17EF3E30&gt;.interaction_in_progress">window = &lt;anylabeling.views.mainwindow.MainWindow object at 0x0000027F17CE0A50&gt;
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/maintenance-priority/test_pending_mode_finishes_rea0')
+gesture = 'fit', cancel = False
+
+    @pytest.mark.parametrize("gesture", ["edge", "fit"])
+    @pytest.mark.parametrize("cancel", [False, True], ids=["commit", "cancel"])
+    def test_pending_mode_finishes_real_edit(window, tmp_path, gesture, cancel):
+        w = open_rectangles(window, tmp_path)
+        canvas = w.canvas
+        before = canvas.shapes[0].to_dict()
+        if gesture == "edge":
+            canvas.set_rectangle_edge_enabled(True)
+            modifiers = Qt.KeyboardModifier.NoModifier
+            start, end = (100, 150), (90, 150)
+            mouse(canvas, QtCore.QEvent.Type.MouseMove, start)
+        else:
+            modifiers = Qt.KeyboardModifier.ShiftModifier
+            start, end = (210, 90), (220, 80)
+        mouse(canvas, QtCore.QEvent.Type.MouseButtonPress, start, modifiers)
+&gt;       assert canvas.interaction_in_progress()
+E       assert False
+E        +  where False = interaction_in_progress()
+E        +    where interaction_in_progress = &lt;anylabeling.views.labeling.widgets.canvas.Canvas object at 0x0000027F17EF3E30&gt;.interaction_in_progress
+
+tests\test_labeling\test_canvas_controls_integration.py:89: AssertionError</failure></testcase><testcase classname="tests.test_labeling.test_canvas_controls_integration" name="test_pending_mode_finishes_real_edit[cancel-fit]" time="2.791"><failure message="assert False&#10; +  where False = interaction_in_progress()&#10; +    where interaction_in_progress = &lt;anylabeling.views.labeling.widgets.canvas.Canvas object at 0x0000027F17F28D70&gt;.interaction_in_progress">window = &lt;anylabeling.views.mainwindow.MainWindow object at 0x0000027F1B07C5F0&gt;
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/maintenance-priority/test_pending_mode_finishes_rea1')
+gesture = 'fit', cancel = True
+
+    @pytest.mark.parametrize("gesture", ["edge", "fit"])
+    @pytest.mark.parametrize("cancel", [False, True], ids=["commit", "cancel"])
+    def test_pending_mode_finishes_real_edit(window, tmp_path, gesture, cancel):
+        w = open_rectangles(window, tmp_path)
+        canvas = w.canvas
+        before = canvas.shapes[0].to_dict()
+        if gesture == "edge":
+            canvas.set_rectangle_edge_enabled(True)
+            modifiers = Qt.KeyboardModifier.NoModifier
+            start, end = (100, 150), (90, 150)
+            mouse(canvas, QtCore.QEvent.Type.MouseMove, start)
+        else:
+            modifiers = Qt.KeyboardModifier.ShiftModifier
+            start, end = (210, 90), (220, 80)
+        mouse(canvas, QtCore.QEvent.Type.MouseButtonPress, start, modifiers)
+&gt;       assert canvas.interaction_in_progress()
+E       assert False
+E        +  where False = interaction_in_progress()
+E        +    where interaction_in_progress = &lt;anylabeling.views.labeling.widgets.canvas.Canvas object at 0x0000027F17F28D70&gt;.interaction_in_progress
+
+tests\test_labeling\test_canvas_controls_integration.py:89: AssertionError</failure></testcase><testcase classname="tests.test_canvas.test_rectangle_preview_overlap" name="test_nudge_preview_preserves_host_dirty[16777234-False-False]" time="0.007" /><testcase classname="tests.test_canvas.test_rectangle_preview_overlap" name="test_nudge_preview_preserves_host_dirty[16777234-False-True]" time="0.008" /><testcase classname="tests.test_canvas.test_rectangle_preview_overlap" name="test_nudge_preview_preserves_host_dirty[16777234-True-False]" time="0.006" /><testcase classname="tests.test_canvas.test_rectangle_preview_overlap" name="test_nudge_preview_preserves_host_dirty[16777234-True-True]" time="0.009" /><testcase classname="tests.test_canvas.test_rectangle_preview_overlap" name="test_nudge_preview_preserves_host_dirty[16777236-False-False]" time="0.006" /><testcase classname="tests.test_canvas.test_rectangle_preview_overlap" name="test_nudge_preview_preserves_host_dirty[16777236-False-True]" time="0.008" /><testcase classname="tests.test_canvas.test_rectangle_preview_overlap" name="test_nudge_preview_preserves_host_dirty[16777236-True-False]" time="0.006" /><testcase classname="tests.test_canvas.test_rectangle_preview_overlap" name="test_nudge_preview_preserves_host_dirty[16777236-True-True]" time="0.010" /><testcase classname="tests.test_labeling.test_label_locks.TestLabelLocks" name="test_category_checkbox_controls_all_matching_shapes" time="0.051" /></testsuite></testsuites>

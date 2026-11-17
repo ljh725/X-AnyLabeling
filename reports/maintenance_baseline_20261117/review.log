@@ -1,0 +1,598 @@
+[1m============================= test session starts =============================[0m
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+[1mcollecting ... [0mcollected 526 items
+
+tests/test_dense_review/test_canvas_display_overlay.py::test_overlay_is_inactive_by_default [32mPASSED[0m[32m [  0%][0m
+tests/test_dense_review/test_canvas_display_overlay.py::test_installed_overlay_gates_paint_and_hit_together [32mPASSED[0m[32m [  0%][0m
+tests/test_dense_review/test_canvas_display_overlay.py::test_handles_follow_role_while_formal_points_stay [32mPASSED[0m[32m [  0%][0m
+tests/test_dense_review/test_canvas_display_overlay.py::test_zero_strength_role_paints_nothing [32mPASSED[0m[32m [  0%][0m
+tests/test_dense_review/test_canvas_display_overlay.py::test_clearing_the_overlay_restores_normal_mode [32mPASSED[0m[32m [  0%][0m
+tests/test_dense_review/test_canvas_display_overlay.py::test_unknown_shape_stays_interactive_until_resync [32mPASSED[0m[32m [  1%][0m
+tests/test_dense_review/test_canvas_display_overlay.py::test_painting_with_a_display_style_does_not_raise [32mPASSED[0m[32m [  1%][0m
+tests/test_dense_review/test_canvas_display_overlay.py::test_other_role_style_paints_no_fill [32mPASSED[0m[32m [  1%][0m
+tests/test_dense_review/test_canvas_display_overlay.py::test_paint_event_applies_the_table [32mPASSED[0m[32m [  1%][0m
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_defaults_to_320 [32mPASSED[0m[32m [  1%][0m
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_adjustable[160] [32mPASSED[0m[32m [  2%][0m
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_adjustable[480] [32mPASSED[0m[32m [  2%][0m
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_adjustable[640] [32mPASSED[0m[32m [  2%][0m
+tests/test_dense_review/test_card_geometry.py::test_card_image_height_is_clamped [32mPASSED[0m[32m [  2%][0m
+tests/test_dense_review/test_card_geometry.py::test_widening_changes_columns_but_keeps_height [32mPASSED[0m[32m [  2%][0m
+tests/test_dense_review/test_card_geometry.py::test_context_change_keeps_the_selected_height [32mPASSED[0m[32m [  3%][0m
+tests/test_dense_review/test_card_geometry.py::test_thumbnail_target_follows_size_and_dpr [32mPASSED[0m[32m [  3%][0m
+tests/test_dense_review/test_card_geometry.py::test_height_change_invalidates_cached_crops [32mPASSED[0m[32m [  3%][0m
+tests/test_dense_review/test_config_dialog.py::test_config_dialog_round_trip_and_validation [32mPASSED[0m[32m [  3%][0m
+tests/test_dense_review/test_config_dialog.py::test_config_dialog_coverage_settings [32mPASSED[0m[32m [  3%][0m
+tests/test_dense_review/test_coverage_grid.py::test_content_rect_keeps_image_aspect_ratio [32mPASSED[0m[32m [  3%][0m
+tests/test_dense_review/test_coverage_grid.py::test_cell_rects_follow_region_geometry [32mPASSED[0m[32m [  4%][0m
+tests/test_dense_review/test_coverage_grid.py::test_state_colors_use_theme_tokens [32mPASSED[0m[32m [  4%][0m
+tests/test_dense_review/test_coverage_grid.py::test_current_region_gets_accent_border [32mPASSED[0m[32m [  4%][0m
+tests/test_dense_review/test_coverage_grid.py::test_click_emits_region_id [32mPASSED[0m[32m [  4%][0m
+tests/test_dense_review/test_coverage_grid.py::test_overlapping_regions_pick_last_drawn [32mPASSED[0m[32m [  4%][0m
+tests/test_dense_review/test_coverage_grid.py::test_empty_plan_renders_hint_without_error [32mPASSED[0m[32m [  5%][0m
+tests/test_dense_review/test_coverage_plan.py::test_plan_covers_whole_image_and_has_overlap [32mPASSED[0m[32m [  5%][0m
+tests/test_dense_review/test_coverage_plan.py::test_complete_region_records_baseline [32mPASSED[0m[32m [  5%][0m
+tests/test_dense_review/test_coverage_plan.py::test_move_invalidates_old_and_new_regions_only [32mPASSED[0m[32m [  5%][0m
+tests/test_dense_review/test_coverage_plan.py::test_delete_without_old_bounds_withdraws_everything [32mPASSED[0m[32m [  5%][0m
+tests/test_dense_review/test_coverage_plan.py::test_region_difficult_and_skipped_are_not_completed [32mPASSED[0m[32m [  6%][0m
+tests/test_dense_review/test_coverage_plan.py::test_different_grid_settings_produce_different_plan_identity [32mPASSED[0m[32m [  6%][0m
+tests/test_dense_review/test_delay_injection.py::test_fast_image_switch_drops_late_card_result [32mPASSED[0m[32m [  6%][0m
+tests/test_dense_review/test_delay_injection.py::test_fast_output_directory_switch_drops_late_result [32mPASSED[0m[32m [  6%][0m
+tests/test_dense_review/test_delay_injection.py::test_late_old_bounds_result_is_dropped [32mPASSED[0m[32m [  6%][0m
+tests/test_dense_review/test_delay_injection.py::test_late_failure_does_not_mark_new_card_failed [32mPASSED[0m[32m [  7%][0m
+tests/test_dense_review/test_delay_injection.py::test_stale_scan_backfill_is_dropped_after_switch [32mPASSED[0m[32m [  7%][0m
+tests/test_dense_review/test_delay_injection.py::test_delayed_results_never_pollute_window_state [32mPASSED[0m[32m [  7%][0m
+tests/test_dense_review/test_display_consistency.py::test_global_switch_preserves_explicit_hide_and_candidate_scope[True] [32mPASSED[0m[32m [  7%][0m
+tests/test_dense_review/test_display_consistency.py::test_global_switch_preserves_explicit_hide_and_candidate_scope[False] [32mPASSED[0m[32m [  7%][0m
+tests/test_dense_review/test_display_consistency.py::test_manual_hide_excludes_paint_and_hit_but_explains_why [32mPASSED[0m[32m [  7%][0m
+tests/test_dense_review/test_display_consistency.py::test_temporary_show_lifts_visibility_not_eligibility [32mPASSED[0m[32m [  8%][0m
+tests/test_dense_review/test_display_consistency.py::test_temporary_show_ends_on_target_change [32mPASSED[0m[32m [  8%][0m
+tests/test_dense_review/test_display_consistency.py::test_temporary_show_does_not_survive_an_image_switch [32mPASSED[0m[32m [  8%][0m
+tests/test_dense_review/test_display_consistency.py::test_original_mode_hides_overlay_and_hits [32mPASSED[0m[32m [  8%][0m
+tests/test_dense_review/test_display_consistency.py::test_closing_review_restores_latest_user_settings [32mPASSED[0m[32m [  8%][0m
+tests/test_dense_review/test_display_consistency.py::test_current_object_edges_and_handles_win_over_a_keypoint [32mPASSED[0m[32m [  9%][0m
+tests/test_dense_review/test_display_consistency.py::test_dragging_keeps_its_start_target [32mPASSED[0m[32m [  9%][0m
+tests/test_dense_review/test_display_consistency.py::test_painted_order_never_changes_saved_order [32mPASSED[0m[32m [  9%][0m
+tests/test_dense_review/test_display_consistency.py::test_closed_workspace_keeps_regular_canvas_after_visibility_edit [32mPASSED[0m[32m [  9%][0m
+tests/test_dense_review/test_display_consistency.py::test_original_comparison_blocks_group_paint_and_hit [32mPASSED[0m[32m [  9%][0m
+tests/test_dense_review/test_display_consistency.py::test_original_comparison_disables_rotation_handles [32mPASSED[0m[32m [ 10%][0m
+tests/test_dense_review/test_display_consistency.py::test_temporary_show_reaches_paint_and_hit [32mPASSED[0m[32m [ 10%][0m
+tests/test_dense_review/test_display_consistency.py::test_original_comparison_wins_over_temporary_show [32mPASSED[0m[32m [ 10%][0m
+tests/test_dense_review/test_display_consistency.py::test_focus_mode_paints_batch_members_and_associated_points [32mPASSED[0m[32m [ 10%][0m
+tests/test_dense_review/test_display_consistency.py::test_current_object_paints_last_without_reordering_data [32mPASSED[0m[32m [ 10%][0m
+tests/test_dense_review/test_display_consistency.py::test_single_manual_hide_is_not_a_global_shutdown [32mPASSED[0m[32m [ 11%][0m
+tests/test_dense_review/test_display_consistency.py::test_hiding_every_object_by_hand_is_not_a_global_shutdown [32mPASSED[0m[32m [ 11%][0m
+tests/test_dense_review/test_display_consistency.py::test_real_global_switch_beats_temporary_show [32mPASSED[0m[32m [ 11%][0m
+tests/test_dense_review/test_display_consistency.py::test_original_mode_outranks_temporary_show_reason [32mPASSED[0m[32m [ 11%][0m
+tests/test_dense_review/test_display_consistency.py::test_point_inside_current_rectangle_is_selectable [32mPASSED[0m[32m [ 11%][0m
+tests/test_dense_review/test_display_consistency.py::test_group_gesture_skips_hidden_and_locked_members [32mPASSED[0m[32m [ 11%][0m
+tests/test_dense_review/test_display_consistency.py::test_original_mode_pauses_geometry_edits [32mPASSED[0m[32m [ 12%][0m
+tests/test_dense_review/test_display_consistency.py::test_group_move_recomputes_members_after_a_hide [32mPASSED[0m[32m [ 12%][0m
+tests/test_dense_review/test_display_consistency.py::test_group_move_is_a_noop_when_every_member_is_hidden [32mPASSED[0m[32m [ 12%][0m
+tests/test_dense_review/test_display_consistency.py::test_locked_visible_member_still_blocks_the_group [32mPASSED[0m[32m [ 12%][0m
+tests/test_dense_review/test_display_consistency.py::test_group_move_respects_visibility_and_locks_after_label_press[locked-mouse] [32mPASSED[0m[32m [ 12%][0m
+tests/test_dense_review/test_display_consistency.py::test_group_move_respects_visibility_and_locks_after_label_press[locked-keyboard] [32mPASSED[0m[32m [ 13%][0m
+tests/test_dense_review/test_display_consistency.py::test_group_move_respects_visibility_and_locks_after_label_press[unlocked-mouse] [32mPASSED[0m[32m [ 13%][0m
+tests/test_dense_review/test_display_consistency.py::test_group_move_respects_visibility_and_locks_after_label_press[unlocked-keyboard] [32mPASSED[0m[32m [ 13%][0m
+tests/test_dense_review/test_display_consistency.py::test_group_move_respects_visibility_and_locks_after_label_press[all-hidden-mouse] [32mPASSED[0m[32m [ 13%][0m
+tests/test_dense_review/test_display_consistency.py::test_group_move_respects_visibility_and_locks_after_label_press[all-hidden-keyboard] [32mPASSED[0m[32m [ 13%][0m
+tests/test_dense_review/test_display_consistency.py::test_ordinary_group_behaviour_returns_after_closing_review [32mPASSED[0m[32m [ 14%][0m
+tests/test_dense_review/test_display_consistency.py::test_panel_offers_temporary_show_for_a_manual_hide [32mPASSED[0m[32m [ 14%][0m
+tests/test_dense_review/test_display_consistency.py::test_panel_offers_temporary_show_after_a_filter [32mPASSED[0m[32m [ 14%][0m
+tests/test_dense_review/test_display_consistency.py::test_panel_hides_the_button_for_a_global_shutdown [32mPASSED[0m[32m [ 14%][0m
+tests/test_dense_review/test_display_consistency.py::test_temporary_show_survives_original_round_trip [32mPASSED[0m[32m [ 14%][0m
+tests/test_dense_review/test_display_consistency.py::test_temporary_reveal_paints_outline_and_label [32mPASSED[0m[32m [ 15%][0m
+tests/test_dense_review/test_display_consistency.py::test_display_cache_invalidates_on_real_changes_not_hover [32mPASSED[0m[32m [ 15%][0m
+tests/test_dense_review/test_display_consistency.py::test_view_only_changes_keep_stable_batch_confirmation_scope [32mPASSED[0m[32m [ 15%][0m
+tests/test_dense_review/test_display_policy.py::test_roles_default_fill_to_zero_and_scale_by_role [32mPASSED[0m[32m [ 15%][0m
+tests/test_dense_review/test_display_policy.py::test_role_assignment_covers_current_batch_and_other [32mPASSED[0m[32m [ 15%][0m
+tests/test_dense_review/test_display_policy.py::test_associated_keypoint_follows_current_rectangle_only_in_its_task [32mPASSED[0m[32m [ 15%][0m
+tests/test_dense_review/test_display_policy.py::test_global_off_and_original_only_stop_paint_and_hit [32mPASSED[0m[32m [ 16%][0m
+tests/test_dense_review/test_display_policy.py::test_manual_hide_and_filters_exclude_but_explain [32mPASSED[0m[32m [ 16%][0m
+tests/test_dense_review/test_display_policy.py::test_temporary_show_lifts_only_user_exclusions [32mPASSED[0m[32m [ 16%][0m
+tests/test_dense_review/test_display_policy.py::test_zero_strength_role_removes_paint_and_hit_together [32mPASSED[0m[32m [ 16%][0m
+tests/test_dense_review/test_display_policy.py::test_point_only_style_stays_hittable_without_handles [32mPASSED[0m[32m [ 16%][0m
+tests/test_dense_review/test_display_policy.py::test_unsupported_shapes_stay_visible_but_outside_review_range [32mPASSED[0m[32m [ 17%][0m
+tests/test_dense_review/test_display_policy.py::test_paint_order_is_other_batch_current [32mPASSED[0m[32m [ 17%][0m
+tests/test_dense_review/test_display_policy.py::test_exclusion_summary_counts_reasons [32mPASSED[0m[32m [ 17%][0m
+tests/test_dense_review/test_display_policy.py::test_role_style_normalizes_out_of_range_values [32mPASSED[0m[32m [ 17%][0m
+tests/test_dense_review/test_display_policy.py::test_locked_object_stays_visible_and_marked [32mPASSED[0m[32m [ 17%][0m
+tests/test_dense_review/test_display_policy.py::test_hover_does_not_change_the_current_object [32mPASSED[0m[32m [ 18%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_review_label_policy_overrides_ordinary_switch[True] [32mPASSED[0m[32m [ 18%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_review_label_policy_overrides_ordinary_switch[False] [32mPASSED[0m[32m [ 18%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_review_never_writes_back_the_ordinary_label_settings [32mPASSED[0m[32m [ 18%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_other_objects_keep_no_text_at_default_strength [32mPASSED[0m[32m [ 18%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_source_comparison_pauses_annotation_hits [32mPASSED[0m[32m [ 19%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_source_comparison_ends_when_the_image_changes [32mPASSED[0m[32m [ 19%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_source_comparison_ends_when_the_workspace_closes [32mPASSED[0m[32m [ 19%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_hold_original_restores_previous_mode_on_release [32mPASSED[0m[32m [ 19%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_hold_original_ends_on_blur_and_image_switch [32mPASSED[0m[32m [ 19%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_hold_original_requires_an_active_workspace [32mPASSED[0m[32m [ 19%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_hold_original_button_press_and_release [32mPASSED[0m[32m [ 20%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_hold_original_button_ends_on_blur_close_and_image_switch [32mPASSED[0m[32m [ 20%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_original_mode_renders_without_annotation_labels [32mPASSED[0m[32m [ 20%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_global_off_then_source_mode_pauses_keyboard_edits [32mPASSED[0m[32m [ 20%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_source_mode_blocks_polygon_draft_on_empty_image [32mPASSED[0m[32m [ 20%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_dropdown_comparison_round_trip_keeps_the_viewport[False] [32mPASSED[0m[32m [ 21%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_dropdown_comparison_round_trip_keeps_the_viewport[True] [32mPASSED[0m[32m [ 21%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_close_dropdown_comparison_starts_fresh_on_reopen [32mPASSED[0m[32m [ 21%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_original_blocks_alt_drag_vertex_eraser [32mPASSED[0m[32m [ 21%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_enter_original_commits_in_flight_geometry_once[move] [32mPASSED[0m[32m [ 21%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_enter_original_commits_in_flight_geometry_once[rotate] [32mPASSED[0m[32m [ 22%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_enter_original_commits_in_flight_geometry_once[keyboard-rotate] [32mPASSED[0m[32m [ 22%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_held_comparison_round_trip_restores_the_same_viewport [32mPASSED[0m[32m [ 22%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_comparison_snapshot_does_not_leak_to_another_image [32mPASSED[0m[32m [ 22%][0m
+tests/test_dense_review/test_display_text_and_original.py::test_source_mode_blocks_polygon_draft_on_a_loaded_image [32mPASSED[0m[32m [ 22%][0m
+tests/test_dense_review/test_export_roundtrip.py::test_saved_file_keeps_progress_out_of_shapes [32mPASSED[0m[32m [ 23%][0m
+tests/test_dense_review/test_export_roundtrip.py::test_legacy_fields_and_shape_extensions_survive_round_trip [32mPASSED[0m[32m [ 23%][0m
+tests/test_dense_review/test_export_roundtrip.py::test_training_export_contains_only_training_fields [32mPASSED[0m[32m [ 23%][0m
+tests/test_dense_review/test_export_roundtrip.py::test_old_program_rewrite_without_namespace_does_not_restore [32mPASSED[0m[32m [ 23%][0m
+tests/test_dense_review/test_export_roundtrip.py::test_old_program_edit_invalidates_confirmations_and_coverage [32mPASSED[0m[32m [ 23%][0m
+tests/test_dense_review/test_group_association_sync.py::test_pure_group_edit_updates_association_immediately [32mPASSED[0m[32m [ 23%][0m
+tests/test_dense_review/test_performance_smoke.py::test_benchmark_harness_smoke [32mPASSED[0m[32m [ 24%][0m
+tests/test_dense_review/test_persistence.py::test_payload_round_trip_keeps_valid_confirmations [32mPASSED[0m[32m [ 24%][0m
+tests/test_dense_review/test_persistence.py::test_equivalent_rectangle_order_keeps_confirmation [32mPASSED[0m[32m [ 24%][0m
+tests/test_dense_review/test_persistence.py::test_small_coordinate_change_invalidates_after_reload [32mPASSED[0m[32m [ 24%][0m
+tests/test_dense_review/test_persistence.py::test_image_change_clears_confirmations_and_coverage [32mPASSED[0m[32m [ 24%][0m
+tests/test_dense_review/test_persistence.py::test_external_move_invalidates_old_and_new_regions_on_reload [32mPASSED[0m[32m [ 25%][0m
+tests/test_dense_review/test_persistence.py::test_external_delete_invalidates_only_old_regions [32mPASSED[0m[32m [ 25%][0m
+tests/test_dense_review/test_persistence.py::test_rule_change_on_reload_invalidates [32mPASSED[0m[32m [ 25%][0m
+tests/test_dense_review/test_persistence.py::test_unknown_version_is_rejected [32mPASSED[0m[32m [ 25%][0m
+tests/test_dense_review/test_persistence.py::test_invalid_object_bounds_persist_as_unrenderable_pending [32mPASSED[0m[32m [ 25%][0m
+tests/test_dense_review/test_persistence.py::test_load_payload_rejects_non_mapping [32mPASSED[0m[32m [ 26%][0m
+tests/test_dense_review/test_persistence.py::test_annotation_state_detects_external_edit [32mPASSED[0m[32m [ 26%][0m
+tests/test_dense_review/test_persistence.py::test_config_round_trip_and_atomic_save [32mPASSED[0m[32m [ 26%][0m
+tests/test_dense_review/test_persistence.py::test_conflicting_config_is_not_saved [32mPASSED[0m[32m [ 26%][0m
+tests/test_dense_review/test_persistence.py::test_image_fingerprint_is_content_based [32mPASSED[0m[32m [ 26%][0m
+tests/test_dense_review/test_persistence.py::test_payload_uses_versioned_namespace_and_preserves_other_data [32mPASSED[0m[32m [ 26%][0m
+tests/test_dense_review/test_redesign_completion.py::test_point_navigation_keeps_parent_and_edit_identity [32mPASSED[0m[32m [ 27%][0m
+tests/test_dense_review/test_redesign_completion.py::test_outside_point_crop_and_body_observation [32mPASSED[0m[32m [ 27%][0m
+tests/test_dense_review/test_redesign_completion.py::test_task_display_strength_survives_roundtrip [32mPASSED[0m[32m [ 27%][0m
+tests/test_dense_review/test_redesign_completion.py::test_preference_failure_keeps_live_view [32mPASSED[0m[32m [ 27%][0m
+tests/test_dense_review/test_redesign_completion.py::test_preferences_persist_without_annotation_changes [32mPASSED[0m[32m [ 27%][0m
+tests/test_dense_review/test_redesign_completion.py::test_overlap_menu_only_changes_target_on_explicit_action [32mPASSED[0m[32m [ 28%][0m
+tests/test_dense_review/test_redesign_completion.py::test_minimap_has_real_source_and_keeps_plan [32mPASSED[0m[32m [ 28%][0m
+tests/test_dense_review/test_redesign_completion.py::test_label_layout_avoids_handles_freezes_drag_and_numbers_overflow [32mPASSED[0m[32m [ 28%][0m
+tests/test_dense_review/test_redesign_completion.py::test_invalid_preferences_normalize_to_supported_values [32mPASSED[0m[32m [ 28%][0m
+tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable [31mFAILED[0m[31m [ 28%][0m
+tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[False] [32mPASSED[0m[31m [ 29%][0m
+tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True] [32mPASSED[0m[31m [ 29%][0m
+tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input [32mPASSED[0m[31m [ 29%][0m
+tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed [32mPASSED[0m[31m [ 29%][0m
+tests/test_dense_review/test_redesign_interactions.py::test_ambiguous_observation_owner_preserves_saved_group [32mPASSED[0m[31m [ 29%][0m
+tests/test_dense_review/test_redesign_interactions.py::test_retry_excludes_known_failure_until_current_success [32mPASSED[0m[31m [ 30%][0m
+tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen [32mPASSED[0m[31m [ 30%][0m
+tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results [32mPASSED[0m[31m [ 30%][0m
+tests/test_dense_review/test_redesign_interactions.py::test_grid_draft_survives_refresh_until_explicit_rebuild [32mPASSED[0m[31m [ 30%][0m
+tests/test_dense_review/test_redesign_rendering.py::test_review_render_preserves_source_and_current_outline[#202020-1] [32mPASSED[0m[31m [ 30%][0m
+tests/test_dense_review/test_redesign_rendering.py::test_review_render_preserves_source_and_current_outline[#202020-2] [32mPASSED[0m[31m [ 30%][0m
+tests/test_dense_review/test_redesign_rendering.py::test_review_render_preserves_source_and_current_outline[#eeeeee-1] [32mPASSED[0m[31m [ 31%][0m
+tests/test_dense_review/test_redesign_rendering.py::test_review_render_preserves_source_and_current_outline[#eeeeee-2] [32mPASSED[0m[31m [ 31%][0m
+tests/test_dense_review/test_samples.py::test_manifest_matches_regenerated_scenes [32mPASSED[0m[31m [ 31%][0m
+tests/test_dense_review/test_samples.py::test_generated_scene_counts_classes_and_ids [32mPASSED[0m[31m [ 31%][0m
+tests/test_dense_review/test_samples.py::test_label_files_load_without_identity_repair [32mPASSED[0m[31m [ 31%][0m
+tests/test_dense_review/test_samples.py::test_checked_in_label_files_load [32mPASSED[0m[31m [ 32%][0m
+tests/test_dense_review/test_samples.py::test_generation_is_deterministic [32mPASSED[0m[31m [ 32%][0m
+tests/test_dense_review/test_samples.py::test_generate_requires_force_to_overwrite [32mPASSED[0m[31m [ 32%][0m
+tests/test_dense_review/test_samples.py::test_manifest_matches_review_ledger [32mPASSED[0m[31m [ 32%][0m
+tests/test_dense_review/test_samples.py::test_label_version_tracks_application [32mPASSED[0m[31m [ 32%][0m
+tests/test_dense_review/test_samples.py::test_redesign_inventory_covers_stress_and_mixed_navigation [32mPASSED[0m[31m [ 33%][0m
+tests/test_dense_review/test_session.py::test_all_objects_enter_stable_batches [32mPASSED[0m[31m [ 33%][0m
+tests/test_dense_review/test_session.py::test_relabel_keeps_batch_position_and_geometry_confirmation [32mPASSED[0m[31m [ 33%][0m
+tests/test_dense_review/test_session.py::test_geometry_move_invalidates_both_and_intersecting_coverage [32mPASSED[0m[31m [ 33%][0m
+tests/test_dense_review/test_session.py::test_repeated_batch_confirmation_is_idempotent [32mPASSED[0m[31m [ 33%][0m
+tests/test_dense_review/test_session.py::test_pure_relabel_does_not_withdraw_coverage [32mPASSED[0m[31m [ 34%][0m
+tests/test_dense_review/test_session.py::test_new_pending_delete_and_undo_restores_identity [32mPASSED[0m[31m [ 34%][0m
+tests/test_dense_review/test_session.py::test_reused_identity_with_new_content_does_not_inherit_confirmation [32mPASSED[0m[31m [ 34%][0m
+tests/test_dense_review/test_session.py::test_candidate_scope_excludes_unresolved_and_conflicts_are_rejected [32mPASSED[0m[31m [ 34%][0m
+tests/test_dense_review/test_session.py::test_dimension_only_confirmation_and_completion [32mPASSED[0m[31m [ 34%][0m
+tests/test_dense_review/test_session.py::test_empty_image_still_requires_spatial_review [32mPASSED[0m[31m [ 34%][0m
+tests/test_dense_review/test_session.py::test_non_rectangle_image_reports_partial_review_only [32mPASSED[0m[31m [ 35%][0m
+tests/test_dense_review/test_session.py::test_difficult_skipped_and_new_pending_block_completion [32mPASSED[0m[31m [ 35%][0m
+tests/test_dense_review/test_session.py::test_locked_object_can_be_confirmed [32mPASSED[0m[31m [ 35%][0m
+tests/test_dense_review/test_session.py::test_undo_progress_and_content_edit [32mPASSED[0m[31m [ 35%][0m
+tests/test_dense_review/test_session.py::test_manual_edit_back_to_same_content_keeps_canvas_undo_first [32mPASSED[0m[31m [ 35%][0m
+tests/test_dense_review/test_session.py::test_progress_history_limit_keeps_matching_snapshots[50] [32mPASSED[0m[31m [ 36%][0m
+tests/test_dense_review/test_session.py::test_progress_history_limit_keeps_matching_snapshots[51] [32mPASSED[0m[31m [ 36%][0m
+tests/test_dense_review/test_session.py::test_progress_history_limit_keeps_matching_snapshots[99] [32mPASSED[0m[31m [ 36%][0m
+tests/test_dense_review/test_session.py::test_progress_history_limit_keeps_matching_snapshots[100] [32mPASSED[0m[31m [ 36%][0m
+tests/test_dense_review/test_session.py::test_progress_history_limit_keeps_matching_snapshots[101] [32mPASSED[0m[31m [ 36%][0m
+tests/test_dense_review/test_session.py::test_progress_history_limit_keeps_matching_snapshots[151] [32mPASSED[0m[31m [ 37%][0m
+tests/test_dense_review/test_session.py::test_mixed_history_limit_restores_each_transaction_state [32mPASSED[0m[31m [ 37%][0m
+tests/test_dense_review/test_session.py::test_canvas_only_undo_keeps_review_content_transaction [32mPASSED[0m[31m [ 37%][0m
+tests/test_dense_review/test_session.py::test_two_progress_commands_can_be_undone_consecutively [32mPASSED[0m[31m [ 37%][0m
+tests/test_dense_review/test_session.py::test_config_rule_change_invalidates_and_batch_change_does_not [32mPASSED[0m[31m [ 37%][0m
+tests/test_dense_review/test_session.py::test_incompatible_version_and_identity_repair_do_not_inherit [32mPASSED[0m[31m [ 38%][0m
+tests/test_dense_review/test_session.py::test_conflicting_config_cannot_start [32mPASSED[0m[31m [ 38%][0m
+tests/test_dense_review/test_session.py::test_redo_progress_restores_confirmation_and_cursor [32mPASSED[0m[31m [ 38%][0m
+tests/test_dense_review/test_session.py::test_redo_after_canvas_restores_review_state [32mPASSED[0m[31m [ 38%][0m
+tests/test_dense_review/test_session.py::test_new_progress_action_clears_redo [32mPASSED[0m[31m [ 38%][0m
+tests/test_dense_review/test_session.py::test_noop_confirm_keeps_redo_stream [32mPASSED[0m[31m [ 38%][0m
+tests/test_dense_review/test_session.py::test_mixed_undo_then_redo_restores_every_transaction [32mPASSED[0m[31m [ 39%][0m
+tests/test_dense_review/test_signatures.py::test_rectangle_vertex_order_and_numeric_spelling_are_equivalent [32mPASSED[0m[31m [ 39%][0m
+tests/test_dense_review/test_signatures.py::test_tiny_coordinate_change_is_detected [32mPASSED[0m[31m [ 39%][0m
+tests/test_dense_review/test_signatures.py::test_unknown_box_rule_includes_label_in_geometry_signature [32mPASSED[0m[31m [ 39%][0m
+tests/test_dense_review/test_signatures.py::test_category_note_changes_category_only [32mPASSED[0m[31m [ 39%][0m
+tests/test_dense_review/test_signatures.py::test_box_rule_change_changes_geometry_signature [32mPASSED[0m[31m [ 40%][0m
+tests/test_dense_review/test_signatures.py::test_content_hash_ignores_visibility_and_lock_but_tracks_content [32mPASSED[0m[31m [ 40%][0m
+tests/test_dense_review/test_thumbnail_lifecycle.py::test_real_executor_bounds_backlog_and_recovers_after_switch [32mPASSED[0m[31m [ 40%][0m
+tests/test_dense_review/test_thumbnail_lifecycle.py::test_shutdown_interrupts_worker_waiting_for_drag [32mPASSED[0m[31m [ 40%][0m
+tests/test_dense_review/test_thumbnails.py::test_crop_thumbnail_clamps_to_image_edges [32mPASSED[0m[31m [ 40%][0m
+tests/test_dense_review/test_thumbnails.py::test_crop_thumbnail_rejects_outside_bounds [32mPASSED[0m[31m [ 41%][0m
+tests/test_dense_review/test_thumbnails.py::test_crop_thumbnail_requires_source [32mPASSED[0m[31m [ 41%][0m
+tests/test_dense_review/test_thumbnails.py::test_cache_is_keyed_by_bounds_and_source_version [32mPASSED[0m[31m [ 41%][0m
+tests/test_dense_review/test_thumbnails.py::test_stale_same_id_result_is_ignored [32mPASSED[0m[31m [ 41%][0m
+tests/test_dense_review/test_thumbnails.py::test_drain_defers_finished_cards_while_interacting [32mPASSED[0m[31m [ 41%][0m
+tests/test_dense_review/test_thumbnails.py::test_crop_yielding_waits_until_interaction_ends [32mPASSED[0m[31m [ 42%][0m
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_dense_review_strings_are_translated_for_chinese 
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_dense_review_strings_are_translated_for_chinese [32mPASSED[0m[31m [ 42%][0m
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_en_us_keeps_source_text [32mPASSED[0m[31m [ 42%][0m
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_every_language_loads 
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_every_language_loads [32mPASSED[0m[31m [ 42%][0m
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_literal_messages_in_all_runtime_contexts_and_resources 
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_literal_messages_in_all_runtime_contexts_and_resources [32mPASSED[0m[31m [ 42%][0m
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_new_strings_are_finished_in_chinese [32mPASSED[0m[31m [ 42%][0m
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_redo_strings_are_translated 
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_redo_strings_are_translated [32mPASSED[0m[31m [ 43%][0m
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_runtime_states_and_rules_are_localized [32mPASSED[0m[31m [ 43%][0m
+tests/test_dense_review/test_translations.py::TestDenseReviewTranslations::test_workspace_messages_are_finished_in_chinese [32mPASSED[0m[31m [ 43%][0m
+tests/test_dense_review/test_workspace.py::test_open_confirm_and_save_round_trip [32mPASSED[0m[31m [ 43%][0m
+tests/test_dense_review/test_workspace.py::test_batch_confirmation_is_one_undo_without_touching_labels [32mPASSED[0m[31m [ 43%][0m
+tests/test_dense_review/test_workspace.py::test_batch_confirmation_redo_restores_progress [32mPASSED[0m[31m [ 44%][0m
+tests/test_dense_review/test_workspace.py::test_canvas_edit_redo_restores_bounds_and_review_state [32mPASSED[0m[31m [ 44%][0m
+tests/test_dense_review/test_workspace.py::test_new_edit_clears_redo [32mPASSED[0m[31m [ 44%][0m
+tests/test_dense_review/test_workspace.py::test_relabel_move_and_undo_invalidate_progress [32mPASSED[0m[31m [ 44%][0m
+tests/test_dense_review/test_workspace.py::test_spatial_review_requires_explicit_region_completion [32mPASSED[0m[31m [ 44%][0m
+tests/test_dense_review/test_workspace.py::test_dense_shortcuts_share_the_active_canvas_and_dock [32mPASSED[0m[31m [ 45%][0m
+tests/test_dense_review/test_workspace.py::test_coverage_grid_click_selects_matching_region [32mPASSED[0m[31m [ 45%][0m
+tests/test_dense_review/test_workspace.py::test_external_change_is_detected_before_save [32mPASSED[0m[31m [ 45%][0m
+tests/test_dense_review/test_workspace.py::test_configured_batches_keep_membership_after_relabel [32mPASSED[0m[31m [ 45%][0m
+tests/test_dense_review/test_workspace.py::test_new_copy_enters_pending_without_inheriting [32mPASSED[0m[31m [ 45%][0m
+tests/test_dense_review/test_workspace.py::test_hidden_and_filtered_objects_are_excluded_but_focus_is_not [32mPASSED[0m[31m [ 46%][0m
+tests/test_dense_review/test_workspace.py::test_main_window_undo_reverts_latest_move_after_manual_roundtrip [32mPASSED[0m[31m [ 46%][0m
+tests/test_dense_review/test_workspace.py::test_changed_bounds_request_fresh_card [32mPASSED[0m[31m [ 46%][0m
+tests/test_dense_review/test_workspace.py::test_full_image_roundtrip_restores_user_zoom [32mPASSED[0m[31m [ 46%][0m
+tests/test_dense_review/test_workspace.py::test_quick_difficult_shortcut_marks_without_dialog [32mPASSED[0m[31m [ 46%][0m
+tests/test_dense_review/test_workspace.py::test_closing_workspace_restores_canvas_and_writes_nothing [32mPASSED[0m[31m [ 46%][0m
+tests/test_dense_review/test_workspace.py::test_display_modes_and_full_image_restore [32mPASSED[0m[31m [ 47%][0m
+tests/test_dense_review/test_workspace.py::test_output_directory_keeps_independent_progress [32mPASSED[0m[31m [ 47%][0m
+tests/test_dense_review/test_workspace.py::test_unknown_progress_is_preserved_until_explicit_rebuild [32mPASSED[0m[31m [ 47%][0m
+tests/test_dense_review/test_workspace.py::test_save_failure_keeps_memory_progress [32mPASSED[0m[31m [ 47%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_menu_entry_docks_the_panel_beside_the_editable_canvas [32mPASSED[0m[31m [ 47%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_reopening_reuses_dock_canvas_session_and_history [32mPASSED[0m[31m [ 48%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_floating_then_reopening_keeps_it_floating [32mPASSED[0m[31m [ 48%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_closing_and_reopening_keeps_the_session_and_history [32mPASSED[0m[31m [ 48%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_dock_visibility_events_do_not_rebuild_the_round [32mPASSED[0m[31m [ 48%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_default_task_is_category_check [32mPASSED[0m[31m [ 48%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_box_points_task_promotes_associated_keypoints [32mPASSED[0m[31m [ 49%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_task_round_trip_restores_object_and_coverage_targets [32mPASSED[0m[31m [ 49%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_task_switch_never_changes_content_dirty_or_history [32mPASSED[0m[31m [ 49%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_coverage_task_falls_back_when_plan_is_empty [32mPASSED[0m[31m [ 49%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_deleted_target_falls_back_to_a_valid_object [32mPASSED[0m[31m [ 49%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_navigation_snapshot_does_not_cross_images [32mPASSED[0m[31m [ 50%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_task_switch_settles_a_live_edit_first [32mPASSED[0m[31m [ 50%][0m
+tests/test_dense_review/test_workspace_dock_tasks.py::test_editing_still_works_on_the_canvas_while_docked [32mPASSED[0m[31m [ 50%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_cross_batch_completion_keeps_views_in_sync[batch] [32mPASSED[0m[31m [ 50%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_cross_batch_completion_keeps_views_in_sync[object] [32mPASSED[0m[31m [ 50%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_cross_batch_completion_keeps_views_in_sync[skip] [32mPASSED[0m[31m [ 50%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_direct_batch_click_schedules_visible_thumbnails [32mPASSED[0m[31m [ 51%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_card_view_virtualizes_and_bounds_resources [32mPASSED[0m[31m [ 51%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_small_window_can_collapse_each_auxiliary_panel [32mPASSED[0m[31m [ 51%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_compare_cold_cache_requests_updates_and_failures [32mPASSED[0m[31m [ 51%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_spatial_region_state_restores_after_save_and_reopen [32mPASSED[0m[31m [ 51%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_workspace_closed_keeps_editing_navigation_and_save [32mPASSED[0m[31m [ 52%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_external_conflict_from_save_entry[cancel] [32mPASSED[0m[31m [ 52%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_external_conflict_from_save_entry[reload] [32mPASSED[0m[31m [ 52%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_external_conflict_from_save_entry[save] [32mPASSED[0m[31m [ 52%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_autosave_writes_at_edit_and_confirmation_boundaries [32mPASSED[0m[31m [ 52%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_closed_workspace_keeps_shift_fit_target_and_undo[False] [32mPASSED[0m[31m [ 53%][0m
+tests/test_dense_review/test_workspace_evidence.py::test_closed_workspace_keeps_shift_fit_target_and_undo[True] [32mPASSED[0m[31m [ 53%][0m
+tests/test_dense_review/test_workspace_lists.py::test_empty_state_then_session_enables_all_lists [32mPASSED[0m[31m [ 53%][0m
+tests/test_dense_review/test_workspace_lists.py::test_session_switch_keeps_lists_enabled [32mPASSED[0m[31m [ 53%][0m
+tests/test_dense_review/test_workspace_lists.py::test_failed_load_retry_reopen_and_image_switch_restore_session [32mPASSED[0m[31m [ 53%][0m
+tests/test_dense_review/test_workspace_lists.py::test_wheel_and_scrollbar_move_view_without_moving_target [32mPASSED[0m[31m [ 53%][0m
+tests/test_dense_review/test_workspace_lists.py::test_background_refresh_does_not_force_scroll_back [32mPASSED[0m[31m [ 54%][0m
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_keypoints_remain_observable_and_editable [32mPASSED[0m[31m [ 54%][0m
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_group_zero_associates_points_with_its_only_rectangle [32mPASSED[0m[31m [ 54%][0m
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_ambiguous_group_does_not_guess_an_owner [32mPASSED[0m[31m [ 54%][0m
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_ungrouped_point_is_not_associated [32mPASSED[0m[31m [ 54%][0m
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_batch_confirmation_never_confirms_keypoints [32mPASSED[0m[31m [ 55%][0m
+tests/test_dense_review/test_workspace_mixed_shapes.py::test_keypoint_can_still_be_edited_through_existing_commands [32mPASSED[0m[31m [ 55%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_hide_dock_removes_review_overlay [32mPASSED[0m[31m [ 55%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_hide_then_show_restores_the_review_overlay [32mPASSED[0m[31m [ 55%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_background_refresh_keeps_coverage_viewport [32mPASSED[0m[31m [ 55%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_explicit_region_navigation_still_moves_the_canvas [32mPASSED[0m[31m [ 56%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_reapplies_coverage_preset [32mPASSED[0m[31m [ 56%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False] [32mPASSED[0m[31m [ 56%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[True] [32mPASSED[0m[31m [ 56%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_text_switch [32mPASSED[0m[31m [ 56%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_label_switch [32mPASSED[0m[31m [ 57%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_hides_associated_keypoint_symbols [32mPASSED[0m[31m [ 57%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_category_does_not_promote_associated_points [32mPASSED[0m[31m [ 57%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_box_points_promotes_associated_points [32mPASSED[0m[31m [ 57%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_zoom_control_and_canvas_size [32mPASSED[0m[31m [ 57%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_fit_width_mode [32mPASSED[0m[31m [ 57%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_has_no_rendered_pixels [32mPASSED[0m[31m [ 58%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_is_not_hittable [32mPASSED[0m[31m [ 58%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_keeps_latest_current_object [32mPASSED[0m[31m [ 58%][0m
+tests/test_dense_review/test_workspace_review_fixes.py::test_float_keeps_original_display_mode [32mPASSED[0m[31m [ 58%][0m
+tests/test_inspection/test_candidates.py::test_candidate_import_validates_region_and_label [32mPASSED[0m[31m [ 58%][0m
+tests/test_inspection/test_candidates.py::test_candidate_dimension_mismatch_is_rejected [32mPASSED[0m[31m [ 59%][0m
+tests/test_inspection/test_candidates.py::test_duplicate_basenames_are_ambiguous [32mPASSED[0m[31m [ 59%][0m
+tests/test_inspection/test_candidates.py::test_candidate_store_and_accept_intent [32mPASSED[0m[31m [ 59%][0m
+tests/test_inspection/test_candidates_gui.py::test_candidate_overlay_is_separate_and_cleared_on_close [32mPASSED[0m[31m [ 59%][0m
+tests/test_inspection/test_candidates_gui.py::test_accept_adjusted_selects_new_object_and_rejects_cross_file [32mPASSED[0m[31m [ 59%][0m
+tests/test_inspection/test_candidates_gui.py::test_batch_accept_previews_exact_set [32mPASSED[0m[31m [ 60%][0m
+tests/test_inspection/test_candidates_gui.py::test_reopen_recovery_does_not_replay_accepted_candidate [32mPASSED[0m[31m [ 60%][0m
+tests/test_inspection/test_candidates_gui.py::test_handoff_request_rejects_other_file_and_missing_snapshot [32mPASSED[0m[31m [ 60%][0m
+tests/test_inspection/test_candidates_gui.py::test_handoff_unavailable_reports_honest_status [32mPASSED[0m[31m [ 60%][0m
+tests/test_inspection/test_candidates_gui.py::test_handoff_button_uses_workspace_and_returns_to_queue [32mPASSED[0m[31m [ 60%][0m
+tests/test_inspection/test_candidates_gui.py::test_handoff_unavailable_shows_fallback_and_does_not_call_window [32mPASSED[0m[31m [ 61%][0m
+tests/test_inspection/test_completion_regressions.py::test_snapshot_sync_removes_objects_without_scanning_unchanged_pairs [32mPASSED[0m[31m [ 61%][0m
+tests/test_inspection/test_completion_regressions.py::test_changed_scope_compares_image_orientation [32mPASSED[0m[31m [ 61%][0m
+tests/test_inspection/test_completion_regressions.py::test_report_identity_cannot_be_overwritten [32mPASSED[0m[31m [ 61%][0m
+tests/test_inspection/test_completion_regressions.py::test_report_page_does_not_materialize_or_cache_whole_report [32mPASSED[0m[31m [ 61%][0m
+tests/test_inspection/test_completion_regressions.py::test_first_issue_appears_after_editing_a_clean_image [32mPASSED[0m[31m [ 61%][0m
+tests/test_inspection/test_completion_regressions.py::test_saved_candidate_undo_redo_tracks_document_not_stale_disk [32mPASSED[0m[31m [ 62%][0m
+tests/test_inspection/test_completion_regressions.py::test_failed_acceptance_sidecar_does_not_allow_duplicate_object [32mPASSED[0m[31m [ 62%][0m
+tests/test_inspection/test_completion_regressions.py::test_corrupt_candidate_intents_are_not_treated_as_empty [32mPASSED[0m[31m [ 62%][0m
+tests/test_inspection/test_completion_regressions.py::test_adjusted_candidate_cancel_does_not_create_object [32mPASSED[0m[31m [ 62%][0m
+tests/test_inspection/test_completion_regressions.py::test_adjusted_candidate_is_edited_before_acceptance [32mPASSED[0m[31m [ 62%][0m
+tests/test_inspection/test_completion_regressions.py::test_imported_builtin_cannot_replace_shipped_template [32mPASSED[0m[31m [ 63%][0m
+tests/test_inspection/test_completion_regressions.py::test_gui_pages_bound_rows_and_restore_a_distant_issue [32mPASSED[0m[31m [ 63%][0m
+tests/test_inspection/test_completion_regressions.py::test_alternative_report_save_preserves_recoverable_manifest [32mPASSED[0m[31m [ 63%][0m
+tests/test_inspection/test_completion_regressions.py::test_inspector_shortcuts_are_configurable_and_do_not_steal_canvas_keys [32mPASSED[0m[31m [ 63%][0m
+tests/test_inspection/test_completion_regressions.py::test_candidate_rejects_same_size_image_replaced_since_import [32mPASSED[0m[31m [ 63%][0m
+tests/test_inspection/test_completion_regressions.py::test_tiny_geometry_change_does_not_keep_a_report_current [32mPASSED[0m[31m [ 64%][0m
+tests/test_inspection/test_completion_regressions.py::test_committed_field_edit_updates_inspector_without_canvas_move [32mPASSED[0m[31m [ 64%][0m
+tests/test_inspection/test_completion_regressions.py::test_real_dense_review_handoff_and_return_keep_queue_context [32mPASSED[0m[31m [ 64%][0m
+tests/test_inspection/test_completion_regressions.py::test_dense_scan_stops_collecting_at_its_explicit_limit [32mPASSED[0m[31m [ 64%][0m
+tests/test_inspection/test_completion_regressions.py::test_candidate_overlay_clears_on_image_change [32mPASSED[0m[31m [ 64%][0m
+tests/test_inspection/test_completion_regressions.py::test_candidate_import_allows_a_valid_image_without_annotation [32mPASSED[0m[31m [ 65%][0m
+tests/test_inspection/test_completion_regressions.py::test_new_ui_strings_are_shipped_in_all_compiled_languages [32mPASSED[0m[31m [ 65%][0m
+tests/test_inspection/test_completion_regressions.py::test_alternative_report_location_can_be_reopened [32mPASSED[0m[31m [ 65%][0m
+tests/test_inspection/test_completion_regressions.py::test_damaged_candidate_record_is_reported_without_overwrite [32mPASSED[0m[31m [ 65%][0m
+tests/test_inspection/test_completion_regressions.py::test_incremental_pair_budget_is_explicit_and_recovers_after_delete [32mPASSED[0m[31m [ 65%][0m
+tests/test_inspection/test_completion_regressions.py::test_one_file_recheck_keeps_manifest_for_other_queue_files [32mPASSED[0m[31m [ 65%][0m
+tests/test_inspection/test_completion_regressions.py::test_feedback_conflict_preserves_both_processes [32mPASSED[0m[31m [ 66%][0m
+tests/test_inspection/test_completion_regressions.py::test_global_issue_budget_marks_unpublished_source_coverage [32mPASSED[0m[31m [ 66%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_click_navigation_single_object_and_programmatic_refresh [32mPASSED[0m[31m [ 66%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_full_queue_cross_page_and_anchor [32mPASSED[0m[31m [ 66%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_failure_keeps_cursor_and_busy_guard [32mPASSED[0m[31m [ 66%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_state_projection[current-confirmed_error-pending] [32mPASSED[0m[31m [ 67%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_state_projection[current-acceptable-ignored] [32mPASSED[0m[31m [ 67%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_state_projection[current-false_positive-ignored] [32mPASSED[0m[31m [ 67%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_state_projection[not_detected_on_successful_recheck-confirmed_error-resolved] [32mPASSED[0m[31m [ 67%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_state_projection[stale-acceptable-pending] [32mPASSED[0m[31m [ 67%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_state_projection[pending_recheck-false_positive-pending] [32mPASSED[0m[31m [ 68%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_state_projection[unverifiable-acceptable-pending] [32mPASSED[0m[31m [ 68%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_save_failure_and_deleted_object_recheck [32mPASSED[0m[31m [ 68%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_window_keys_runtime_update_close_and_reopen [32mPASSED[0m[31m [ 68%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_geometry_restores_disconnected_screen [32mPASSED[0m[31m [ 68%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_saved_recheck_successor_and_manual_anchor[True-True-False] [32mPASSED[0m[31m [ 69%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_saved_recheck_successor_and_manual_anchor[False-True-False] [32mPASSED[0m[31m [ 69%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_saved_recheck_successor_and_manual_anchor[True-False-False] [32mPASSED[0m[31m [ 69%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_saved_recheck_successor_and_manual_anchor[True-True-True] [32mPASSED[0m[31m [ 69%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_cross_image_cancel_missing_identity_and_load_failure [32mPASSED[0m[31m [ 69%][0m
+tests/test_inspection/test_dual_screen_navigation.py::test_compact_layout_evidence [32mPASSED[0m[31m [ 69%][0m
+tests/test_inspection/test_duplicate_core.py::test_identical_rectangles_are_high_risk [32mPASSED[0m[31m [ 70%][0m
+tests/test_inspection/test_duplicate_core.py::test_non_overlapping_rectangles_are_not_candidates [32mPASSED[0m[31m [ 70%][0m
+tests/test_inspection/test_duplicate_core.py::test_threshold_validation_rejects_inverted_order [32mPASSED[0m[31m [ 70%][0m
+tests/test_inspection/test_duplicate_core.py::test_full_scan_cancellation_is_not_an_empty_success [32mPASSED[0m[31m [ 70%][0m
+tests/test_inspection/test_duplicate_core.py::test_incremental_detector_matches_full_scan [32mPASSED[0m[31m [ 70%][0m
+tests/test_inspection/test_duplicate_core.py::test_rectangle_snapshot_rejects_invalid_geometry [32mPASSED[0m[31m [ 71%][0m
+tests/test_inspection/test_duplicate_core.py::test_legacy_rule_keeps_same_group_edges_only [32mPASSED[0m[31m [ 71%][0m
+tests/test_inspection/test_duplicate_core.py::test_metrics_are_stable_for_contained_rectangles [32mPASSED[0m[31m [ 71%][0m
+tests/test_inspection/test_duplicate_core.py::test_chain_overlap_keeps_pairs_without_merging_entities [32mPASSED[0m[31m [ 71%][0m
+tests/test_inspection/test_duplicate_core.py::test_contained_rectangle_is_a_candidate_not_a_deletion [32mPASSED[0m[31m [ 71%][0m
+tests/test_inspection/test_handoff.py::test_dense_review_is_available [32mPASSED[0m[31m [ 72%][0m
+tests/test_inspection/test_handoff.py::test_status_separates_issue_handling_from_other_dimensions [32mPASSED[0m[31m [ 72%][0m
+tests/test_inspection/test_handoff.py::test_issue_context_and_handoff_keep_rule_evidence [32mPASSED[0m[31m [ 72%][0m
+tests/test_inspection/test_importers.py::test_import_tsv_resolves_and_reports_ambiguity [32mPASSED[0m[31m [ 72%][0m
+tests/test_inspection/test_importers.py::test_import_json_list_and_missing_path [32mPASSED[0m[31m [ 72%][0m
+tests/test_inspection/test_importers.py::test_export_complete_report_and_lossy_tsv [32mPASSED[0m[31m [ 73%][0m
+tests/test_inspection/test_importers.py::test_native_report_round_trip_preserves_issue_identity [32mPASSED[0m[31m [ 73%][0m
+tests/test_inspection/test_importers.py::test_native_report_round_trip_keeps_every_source_and_context [32mPASSED[0m[31m [ 73%][0m
+tests/test_inspection/test_importers.py::test_unknown_report_schema_is_not_downgraded_to_rows [32mPASSED[0m[31m [ 73%][0m
+tests/test_inspection/test_importers.py::test_tsv_import_is_marked_lossy [32mPASSED[0m[31m [ 73%][0m
+tests/test_inspection/test_incremental.py::test_incremental_edit_matches_full_scan [32mPASSED[0m[31m [ 73%][0m
+tests/test_inspection/test_incremental.py::test_cross_image_same_ids_do_not_share_state [32mPASSED[0m[31m [ 74%][0m
+tests/test_inspection/test_incremental.py::test_threshold_change_rescans_every_file [32mPASSED[0m[31m [ 74%][0m
+tests/test_inspection/test_incremental.py::test_recheck_file_detects_out_of_band_change [32mPASSED[0m[31m [ 74%][0m
+tests/test_inspection/test_incremental.py::test_tracker_uses_profile_thresholds [32mPASSED[0m[31m [ 74%][0m
+tests/test_inspection/test_inspector_dialog.py::test_inspector_entry_and_current_image_run [32mPASSED[0m[31m [ 74%][0m
+tests/test_inspection/test_inspector_dialog.py::test_feedback_and_navigation_keep_states_separate [32mPASSED[0m[31m [ 75%][0m
+tests/test_inspection/test_inspector_dialog.py::test_delete_only_removes_canvas_selected_issue_object [32mPASSED[0m[31m [ 75%][0m
+tests/test_inspection/test_inspector_dialog.py::test_resume_marks_changed_annotation_as_stale [32mPASSED[0m[31m [ 75%][0m
+tests/test_inspection/test_inspector_dialog.py::test_resume_keeps_unsaved_canvas_edit_pending [32mPASSED[0m[31m [ 75%][0m
+tests/test_inspection/test_inspector_dialog.py::test_run_respects_profile_selected_after_binding [32mPASSED[0m[31m [ 75%][0m
+tests/test_inspection/test_inspector_dialog.py::test_dataset_run_delete_and_recheck_marks_not_detected [32mPASSED[0m[31m [ 76%][0m
+tests/test_inspection/test_inspector_dialog.py::test_candidate_accept_uses_formal_shape_identity [32mPASSED[0m[31m [ 76%][0m
+tests/test_inspection/test_inspector_dialog.py::test_detail_sections_follow_theme [32mPASSED[0m[31m [ 76%][0m
+tests/test_inspection/test_inspector_dialog.py::test_english_translations_cover_workbench [32mPASSED[0m[31m [ 76%][0m
+tests/test_inspection/test_inspector_dialog.py::test_batch_delete_previews_exact_set_and_can_be_undone [32mPASSED[0m[31m [ 76%][0m
+tests/test_inspection/test_inspector_dialog.py::test_keep_both_and_defer_do_not_modify_shapes [32mPASSED[0m[31m [ 76%][0m
+tests/test_inspection/test_inspector_dialog.py::test_batch_relabel_previews_and_keeps_unrelated_objects [32mPASSED[0m[31m [ 77%][0m
+tests/test_inspection/test_inspector_dialog.py::test_canvas_edit_updates_duplicate_issues_incrementally [32mPASSED[0m[31m [ 77%][0m
+tests/test_inspection/test_inspector_dialog.py::test_profile_management_keeps_builtin_read_only [32mPASSED[0m[31m [ 77%][0m
+tests/test_inspection/test_inspector_dialog.py::test_profile_edit_keeps_history_report_snapshot [32mPASSED[0m[31m [ 77%][0m
+tests/test_inspection/test_inspector_dialog.py::test_inspector_shortcuts_scope_and_start [32mPASSED[0m[31m [ 77%][0m
+tests/test_inspection/test_inspector_dialog.py::test_cross_file_same_object_id_cannot_authorize_delete [32mPASSED[0m[31m [ 78%][0m
+tests/test_inspection/test_inspector_dialog.py::test_late_run_result_is_archived_not_applied [32mPASSED[0m[31m [ 78%][0m
+tests/test_inspection/test_inspector_dialog.py::test_reopened_inspector_restores_frozen_profile_and_reports_bad_json [32mPASSED[0m[31m [ 78%][0m
+tests/test_inspection/test_inspector_dialog.py::test_navigation_resolves_unloaded_file_region_and_load_failure [32mPASSED[0m[31m [ 78%][0m
+tests/test_inspection/test_lifecycle.py::test_cancelled_partial_recheck_keeps_previous_queue [32mPASSED[0m[31m [ 78%][0m
+tests/test_inspection/test_lifecycle.py::test_rule_disabled_recheck_does_not_clear_issue [32mPASSED[0m[31m [ 79%][0m
+tests/test_inspection/test_lifecycle.py::test_undo_redo_marks_queue_pending_not_current [32mPASSED[0m[31m [ 79%][0m
+tests/test_inspection/test_lifecycle.py::test_external_file_change_invalidates_restored_report [32mPASSED[0m[31m [ 79%][0m
+tests/test_inspection/test_lifecycle.py::test_cross_window_feedback_conflict_keeps_draft [32mPASSED[0m[31m [ 79%][0m
+tests/test_inspection/test_manifest.py::test_missing_annotation_is_explicit [32mPASSED[0m[31m [ 79%][0m
+tests/test_inspection/test_manifest.py::test_malformed_annotation_is_explicit [32mPASSED[0m[31m [ 80%][0m
+tests/test_inspection/test_manifest.py::test_duplicate_identity_gets_ephemeral_snapshot_id [32mPASSED[0m[31m [ 80%][0m
+tests/test_inspection/test_manifest.py::test_memory_snapshot_is_unsaved_and_has_digest [32mPASSED[0m[31m [ 80%][0m
+tests/test_inspection/test_manifest.py::test_manifest_and_changed_paths [32mPASSED[0m[31m [ 80%][0m
+tests/test_inspection/test_manifest.py::test_malformed_points_are_reported_not_trimmed [32mPASSED[0m[31m [ 80%][0m
+tests/test_inspection/test_manifest.py::test_changed_scope_sees_new_missing_annotation_and_image_change [32mPASSED[0m[31m [ 80%][0m
+tests/test_inspection/test_manifest.py::test_excluded_files_are_recorded_with_reason [32mPASSED[0m[31m [ 81%][0m
+tests/test_inspection/test_manifest.py::test_memory_snapshot_fixes_image_identity [32mPASSED[0m[31m [ 81%][0m
+tests/test_inspection/test_models.py::test_profile_round_trip_and_fingerprint_is_stable [32mPASSED[0m[31m [ 81%][0m
+tests/test_inspection/test_models.py::test_profile_rejects_unknown_stage [32mPASSED[0m[31m [ 81%][0m
+tests/test_inspection/test_models.py::test_profile_requires_identifier_and_name [32mPASSED[0m[31m [ 81%][0m
+tests/test_inspection/test_models.py::test_issue_round_trip_preserves_independent_states [32mPASSED[0m[31m [ 82%][0m
+tests/test_inspection/test_models.py::test_canonical_relation_key_is_order_independent [32mPASSED[0m[31m [ 82%][0m
+tests/test_inspection/test_performance.py::test_dense_candidates_complete_with_recorded_scale [32mPASSED[0m[31m [ 82%][0m
+tests/test_inspection/test_performance.py::test_cancellation_is_observed_quickly_on_dense_input [32mPASSED[0m[31m [ 82%][0m
+tests/test_inspection/test_performance.py::test_max_pairs_limit_marks_partial_and_truncated [32mPASSED[0m[31m [ 82%][0m
+tests/test_inspection/test_profiles.py::test_builtin_profiles_cover_three_scenarios [32mPASSED[0m[31m [ 83%][0m
+tests/test_inspection/test_profiles.py::test_copy_builtin_is_independent_and_round_trips [32mPASSED[0m[31m [ 83%][0m
+tests/test_inspection/test_profiles.py::test_effective_snapshot_freezes_rule_versions [32mPASSED[0m[31m [ 83%][0m
+tests/test_inspection/test_profiles.py::test_prepare_profile_disables_only_missing_rules [32mPASSED[0m[31m [ 83%][0m
+tests/test_inspection/test_profiles.py::test_rule_config_rejects_malformed_payload [32mPASSED[0m[31m [ 83%][0m
+tests/test_inspection/test_profiles.py::test_parameter_ranges_and_unknown_fields_are_rejected [32mPASSED[0m[31m [ 84%][0m
+tests/test_inspection/test_profiles.py::test_cross_field_and_threshold_parameters_are_validated [32mPASSED[0m[31m [ 84%][0m
+tests/test_inspection/test_profiles.py::test_profile_with_invalid_parameter_cannot_run [32mPASSED[0m[31m [ 84%][0m
+tests/test_inspection/test_profiles.py::test_rule_metadata_exposes_dependencies_and_parameter_docs [32mPASSED[0m[31m [ 84%][0m
+tests/test_inspection/test_profiles.py::test_effective_snapshot_digest_is_stable_across_runs [32mPASSED[0m[31m [ 84%][0m
+tests/test_inspection/test_progress_and_rule_access.py::test_scan_progress_covers_success_and_read_failure [32mPASSED[0m[31m [ 84%][0m
+tests/test_inspection/test_progress_and_rule_access.py::test_cancelled_scan_never_claims_all_files_read [32mPASSED[0m[31m [ 85%][0m
+tests/test_inspection/test_progress_and_rule_access.py::test_controller_delivers_scan_and_check_as_distinct_phases [32mPASSED[0m[31m [ 85%][0m
+tests/test_inspection/test_progress_and_rule_access.py::test_rules_visible_and_preview_cannot_save_builtin [32mPASSED[0m[31m [ 85%][0m
+tests/test_inspection/test_progress_and_rule_access.py::test_progress_is_legible_and_stale_scan_is_ignored [32mPASSED[0m[31m [ 85%][0m
+tests/test_inspection/test_review_queue.py::test_successful_recheck_marks_not_detected_and_keeps_other_files [32mPASSED[0m[31m [ 85%][0m
+tests/test_inspection/test_review_queue.py::test_cancelled_recheck_is_unverifiable_and_never_clears_queue [32mPASSED[0m[31m [ 86%][0m
+tests/test_inspection/test_review_queue.py::test_truncated_or_unrun_rule_cannot_prove_disappearance [32mPASSED[0m[31m [ 86%][0m
+tests/test_inspection/test_review_queue.py::test_multi_source_keeps_unresolved_source_active [32mPASSED[0m[31m [ 86%][0m
+tests/test_inspection/test_review_queue.py::test_disabled_rule_or_changed_version_is_unverifiable [32mPASSED[0m[31m [ 86%][0m
+tests/test_inspection/test_review_queue.py::test_redetected_after_not_detected_returns_to_pending [32mPASSED[0m[31m [ 86%][0m
+tests/test_inspection/test_review_queue.py::test_recheck_of_still_present_issue_keeps_human_decision [32mPASSED[0m[31m [ 87%][0m
+tests/test_inspection/test_review_queue.py::test_apply_feedback_binds_config_and_input_digest [32mPASSED[0m[31m [ 87%][0m
+tests/test_inspection/test_review_queue.py::test_apply_feedback_does_not_resurrect_not_detected_for_current_issue [32mPASSED[0m[31m [ 87%][0m
+tests/test_inspection/test_review_queue.py::test_apply_feedback_ignores_foreign_dataset_record [32mPASSED[0m[31m [ 87%][0m
+tests/test_inspection/test_review_queue.py::test_canvas_edit_invalidates_not_detected_history [32mPASSED[0m[31m [ 87%][0m
+tests/test_inspection/test_review_queue.py::test_action_guard_blocks_cross_file_same_id_and_root_mismatch [32mPASSED[0m[31m [ 88%][0m
+tests/test_inspection/test_rules.py::test_shape_type_binding_reports_mismatch [32mPASSED[0m[31m [ 88%][0m
+tests/test_inspection/test_rules.py::test_group_id_required_reports_missing_group [32mPASSED[0m[31m [ 88%][0m
+tests/test_inspection/test_rules.py::test_corner_completeness_reports_missing_and_duplicate [32mPASSED[0m[31m [ 88%][0m
+tests/test_inspection/test_rules.py::test_corner_completeness_uses_explicit_occlusion_exception [32mPASSED[0m[31m [ 88%][0m
+tests/test_inspection/test_rules.py::test_corner_completeness_does_not_cancel_missing_and_extra_across_groups [32mPASSED[0m[31m [ 88%][0m
+tests/test_inspection/test_rules.py::test_corner_completeness_without_mapping_is_not_applicable [32mPASSED[0m[31m [ 89%][0m
+tests/test_inspection/test_rules.py::test_classroom_relation_respects_mutual_exclusion [32mPASSED[0m[31m [ 89%][0m
+tests/test_inspection/test_rules.py::test_classroom_relation_allows_configured_coexistence [32mPASSED[0m[31m [ 89%][0m
+tests/test_inspection/test_rules.py::test_count_and_group_completeness_report_quantity_errors [32mPASSED[0m[31m [ 89%][0m
+tests/test_inspection/test_rules.py::test_profile_validation_detects_relation_conflict [32mPASSED[0m[31m [ 89%][0m
+tests/test_inspection/test_rules.py::test_profile_validation_reports_missing_rule [32mPASSED[0m[31m [ 90%][0m
+tests/test_inspection/test_runner.py::test_completed_run_has_explicit_coverage [32mPASSED[0m[31m [ 90%][0m
+tests/test_inspection/test_runner.py::test_missing_annotation_is_partial_not_success [32mPASSED[0m[31m [ 90%][0m
+tests/test_inspection/test_runner.py::test_malformed_annotation_is_partial_with_failure [32mPASSED[0m[31m [ 90%][0m
+tests/test_inspection/test_runner.py::test_empty_scope_fails_instead_of_zero_issue_success [32mPASSED[0m[31m [ 90%][0m
+tests/test_inspection/test_runner.py::test_cancel_keeps_partial_evidence_and_remaining_coverage [32mPASSED[0m[31m [ 91%][0m
+tests/test_inspection/test_runner.py::test_missing_rule_requires_explicit_partial_mode [32mPASSED[0m[31m [ 91%][0m
+tests/test_inspection/test_runner.py::test_manifest_error_counts_as_requested_and_failed [32mPASSED[0m[31m [ 91%][0m
+tests/test_inspection/test_runner.py::test_invalid_dimensions_are_kept_as_failed_file [32mPASSED[0m[31m [ 91%][0m
+tests/test_inspection/test_runner.py::test_summary_counts_objects_per_file_and_images [32mPASSED[0m[31m [ 91%][0m
+tests/test_inspection/test_runner.py::test_duplicate_pair_evidence_is_merged_across_rules [32mPASSED[0m[31m [ 92%][0m
+tests/test_inspection/test_runner.py::test_manifest_errors_without_successful_files_keep_counts [32mPASSED[0m[31m [ 92%][0m
+tests/test_inspection/test_runner.py::test_excluded_files_are_counted_and_visible [32mPASSED[0m[31m [ 92%][0m
+tests/test_inspection/test_runner.py::test_cancelled_scan_reports_cancelled_not_completed [32mPASSED[0m[31m [ 92%][0m
+tests/test_inspection/test_runner.py::test_rule_timeout_isolated_as_failure [32mPASSED[0m[31m [ 92%][0m
+tests/test_inspection/test_storage.py::test_report_store_round_trip_and_index [32mPASSED[0m[31m [ 92%][0m
+tests/test_inspection/test_storage.py::test_report_manifest_sidecar_round_trip [32mPASSED[0m[31m [ 93%][0m
+tests/test_inspection/test_storage.py::test_report_store_rejects_unknown_and_bad_schema [32mPASSED[0m[31m [ 93%][0m
+tests/test_inspection/test_storage.py::test_feedback_revision_conflict_preserves_both [32mPASSED[0m[31m [ 93%][0m
+tests/test_inspection/test_storage.py::test_session_revision_is_checked [32mPASSED[0m[31m [ 93%][0m
+tests/test_inspection/test_storage.py::test_project_binding_is_isolated_by_output_root [32mPASSED[0m[31m [ 93%][0m
+tests/test_inspection/test_storage.py::test_storage_facade_and_preferred_root [32mPASSED[0m[31m [ 94%][0m
+tests/test_inspection/test_storage.py::test_storage_root_uses_output_directory [32mPASSED[0m[31m [ 94%][0m
+tests/test_inspection/test_storage.py::test_report_store_batches_issues_and_round_trips [32mPASSED[0m[31m [ 94%][0m
+tests/test_inspection/test_storage.py::test_report_store_pagination_is_bounded [32mPASSED[0m[31m [ 94%][0m
+tests/test_inspection/test_storage.py::test_report_store_cache_is_bounded [32mPASSED[0m[31m [ 94%][0m
+tests/test_inspection/test_storage.py::test_report_store_alternative_location_and_write_failure [32mPASSED[0m[31m [ 95%][0m
+tests/test_inspection/test_storage.py::test_report_store_rejects_report_over_resource_limit [32mPASSED[0m[31m [ 95%][0m
+tests/test_inspection/test_storage.py::test_same_output_directory_isolates_datasets [32mPASSED[0m[31m [ 95%][0m
+tests/test_inspection/test_storage.py::test_feedback_never_reuses_another_dataset_record [32mPASSED[0m[31m [ 95%][0m
+tests/test_inspection/test_storage.py::test_legacy_shared_root_without_owner_is_not_activated [32mPASSED[0m[31m [ 95%][0m
+tests/test_inspection/test_storage.py::test_legacy_shared_root_with_matching_owner_is_migrated [32mPASSED[0m[31m [ 96%][0m
+tests/test_inspection/test_translations.py::test_new_inspector_strings_are_in_the_translation_catalogs [32mPASSED[0m[31m [ 96%][0m
+tests/test_inspection/test_translations.py::test_shortcut_hint_and_scope_do_not_take_canvas_keys [32mPASSED[0m[31m [ 96%][0m
+tests/test_inspection/test_translations.py::test_small_window_with_long_chinese_labels_stays_usable [32mPASSED[0m[31m [ 96%][0m
+tests/test_inspection/test_verification.py::test_unchanged_report_context_is_current [32mPASSED[0m[31m [ 96%][0m
+tests/test_inspection/test_verification.py::test_changed_annotation_marks_file_stale [32mPASSED[0m[31m [ 96%][0m
+tests/test_inspection/test_verification.py::test_changed_profile_marks_config_stale [32mPASSED[0m[31m [ 97%][0m
+tests/test_inspection/test_verification.py::test_matching_memory_snapshot_keeps_context_current [32mPASSED[0m[31m [ 97%][0m
+tests/test_inspection/test_verification.py::test_missing_identity_does_not_cause_false_pending [32mPASSED[0m[31m [ 97%][0m
+tests/test_inspection/test_verification.py::test_unsaved_memory_change_is_pending_not_stale [32mPASSED[0m[31m [ 97%][0m
+tests/test_inspection/test_verification.py::test_disk_change_still_wins_when_memory_matches_report [32mPASSED[0m[31m [ 97%][0m
+tests/test_inspection/test_verification.py::test_missing_manifest_is_explicit [32mPASSED[0m[31m [ 98%][0m
+tests/test_inspection/test_verification.py::test_explicit_output_root_cleared_back_to_default_is_detected [32mPASSED[0m[31m [ 98%][0m
+tests/test_inspection/test_verification.py::test_memory_report_detects_same_size_image_replacement [32mPASSED[0m[31m [ 98%][0m
+tests/test_inspection/test_verification.py::test_report_without_image_identity_is_not_trusted [32mPASSED[0m[31m [ 98%][0m
+tests/test_inspection/test_verification.py::test_memory_report_requires_matching_canvas_snapshot [32mPASSED[0m[31m [ 98%][0m
+tests/test_inspection/test_verification.py::test_save_normalization_keeps_report_current [32mPASSED[0m[31m [ 99%][0m
+tests/test_inspection/test_verification.py::test_external_annotation_modification_is_detected [32mPASSED[0m[31m [ 99%][0m
+tests/test_inspection/test_verification.py::test_exif_orientation_change_is_detected [32mPASSED[0m[31m [ 99%][0m
+tests/test_inspection/test_verification.py::test_context_summary_lists_boundary_and_versions [32mPASSED[0m[31m [ 99%][0m
+tests/test_inspection/test_zz_debug.py::test_batch_delete_records_one_undo_step [32mPASSED[0m[31m [ 99%][0m
+tests/test_inspection/test_zz_diag.py::test_diag [32mPASSED[0m[31m                  [100%][0m
+
+================================== FAILURES ===================================
+[31m[1m____ test_handoff_keeps_cross_batch_objects_and_associated_point_reachable ____[0m
+
+app = <PyQt6.QtWidgets.QApplication object at 0x000001E2E5172FD0>
+open_window = <function open_window.<locals>._open at 0x000001E2EFF3BA60>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_handoff_keeps_cross_batch_objects_and_associated_point_reachable[39;49;00m(app, open_window):[90m[39;49;00m
+        [94mfrom[39;49;00m[90m [39;49;00m[04m[96mdataclasses[39;49;00m[90m [39;49;00m[94mimport[39;49;00m replace[90m[39;49;00m
+        [94mfrom[39;49;00m[90m [39;49;00m[04m[96manylabeling[39;49;00m[04m[96m.[39;49;00m[04m[96mservices[39;49;00m[04m[96m.[39;49;00m[04m[96minspection[39;49;00m[04m[96m.[39;49;00m[04m[96mhandoff[39;49;00m[90m [39;49;00m[94mimport[39;49;00m HandoffRequest[90m[39;49;00m
+        [94mfrom[39;49;00m[90m [39;49;00m[04m[96m.[39;49;00m[04m[96mtest_workspace_dock_tasks[39;49;00m[90m [39;49;00m[94mimport[39;49;00m _rectangle, _point, _open_review[90m[39;49;00m
+        window, path = open_window([[90m[39;49;00m
+            _rectangle([33m"[39;49;00m[33mperson[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mrect1[39;49;00m[33m"[39;49;00m, [94m40[39;49;00m, [94m40[39;49;00m, group_id=[94m0[39;49;00m),[90m[39;49;00m
+            _rectangle([33m"[39;49;00m[33mvehicle[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mrect2[39;49;00m[33m"[39;49;00m, [94m300[39;49;00m, [94m40[39;49;00m, group_id=[94m1[39;49;00m),[90m[39;49;00m
+            _point([33m"[39;49;00m[33mnose[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mkp1[39;49;00m[33m"[39;49;00m, [94m80[39;49;00m, [94m80[39;49;00m, group_id=[94m0[39;49;00m),[90m[39;49;00m
+        ], batches=(([33m"[39;49;00m[33mperson[39;49;00m[33m"[39;49;00m, ([33m"[39;49;00m[33mperson[39;49;00m[33m"[39;49;00m,)), ([33m"[39;49;00m[33mvehicle[39;49;00m[33m"[39;49;00m, ([33m"[39;49;00m[33mvehicle[39;49;00m[33m"[39;49;00m,))),[90m[39;49;00m
+           rules=(([33m"[39;49;00m[33mperson[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mvisible[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m"[39;49;00m), ([33m"[39;49;00m[33mvehicle[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mvisible[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m"[39;49;00m)))[90m[39;49;00m
+        widget, ws = _open_review(app, window, path)[90m[39;49;00m
+        request = HandoffRequest([33m"[39;49;00m[33missue[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mfamily[39;49;00m[33m"[39;49;00m, widget.inspection_dataset_root(),[90m[39;49;00m
+                                 widget.inspection_output_dir(), widget.inspection_current_relative_path(),[90m[39;49;00m
+                                 object_ids=([33m"[39;49;00m[33mrect1[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mrect2[39;49;00m[33m"[39;49;00m))[90m[39;49;00m
+>       [94massert[39;49;00m widget.inspection_handoff_to_dense_review(request)[[94m0[39;49;00m][90m[39;49;00m
+[1m[31mE       assert False[0m
+
+[1m[31mtests\test_dense_review\test_redesign_interactions.py[0m:24: AssertionError
+- generated xml file: D:\X-AnyLabeling-4.2.1\reports\maintenance_baseline_20261117\review.xml -
+============================ slowest 30 durations =============================
+9.92s call     tests/test_dense_review/test_performance_smoke.py::test_benchmark_harness_smoke
+4.36s call     tests/test_dense_review/test_redesign_completion.py::test_task_display_strength_survives_roundtrip
+3.75s call     tests/test_dense_review/test_redesign_interactions.py::test_close_discards_delayed_workspace_results
+3.70s call     tests/test_dense_review/test_workspace_evidence.py::test_external_conflict_from_save_entry[save]
+3.62s call     tests/test_dense_review/test_redesign_interactions.py::test_disconnected_screen_geometry_returns_to_accessible_screen
+3.53s call     tests/test_dense_review/test_display_consistency.py::test_ordinary_group_behaviour_returns_after_closing_review
+3.53s call     tests/test_dense_review/test_workspace_evidence.py::test_workspace_closed_keeps_editing_navigation_and_save
+3.51s call     tests/test_dense_review/test_workspace_evidence.py::test_spatial_region_state_restores_after_save_and_reopen
+3.49s call     tests/test_dense_review/test_redesign_interactions.py::test_one_shortcut_serves_canvas_and_floating_panel[True]
+3.49s call     tests/test_dense_review/test_display_text_and_original.py::test_hold_original_button_ends_on_blur_close_and_image_switch
+3.47s call     tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_keeps_latest_current_object
+3.39s call     tests/test_dense_review/test_redesign_interactions.py::test_conflicting_or_empty_bindings_are_not_installed
+3.36s call     tests/test_dense_review/test_workspace_lists.py::test_failed_load_retry_reopen_and_image_switch_restore_session
+3.34s call     tests/test_dense_review/test_redesign_interactions.py::test_review_shortcut_does_not_steal_spinbox_input
+3.32s call     tests/test_dense_review/test_redesign_completion.py::test_preferences_persist_without_annotation_changes
+3.32s call     tests/test_dense_review/test_redesign_rendering.py::test_review_render_preserves_source_and_current_outline[#eeeeee-1]
+3.31s call     tests/test_dense_review/test_workspace_mixed_shapes.py::test_batch_confirmation_never_confirms_keypoints
+3.30s call     tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_text_switch
+3.29s call     tests/test_dense_review/test_display_text_and_original.py::test_close_dropdown_comparison_starts_fresh_on_reopen
+3.28s call     tests/test_dense_review/test_display_text_and_original.py::test_review_never_writes_back_the_ordinary_label_settings
+3.27s call     tests/test_dense_review/test_display_consistency.py::test_global_switch_preserves_explicit_hide_and_candidate_scope[False]
+3.27s call     tests/test_dense_review/test_display_consistency.py::test_temporary_show_survives_original_round_trip
+3.26s call     tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False]
+3.26s call     tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable
+3.26s call     tests/test_dense_review/test_display_consistency.py::test_panel_hides_the_button_for_a_global_shutdown
+3.26s call     tests/test_dense_review/test_workspace_dock_tasks.py::test_closing_and_reopening_keeps_the_session_and_history
+3.25s call     tests/test_dense_review/test_workspace_review_fixes.py::test_hide_then_show_restores_the_review_overlay
+3.23s call     tests/test_dense_review/test_display_consistency.py::test_global_switch_preserves_explicit_hide_and_candidate_scope[True]
+3.22s call     tests/test_dense_review/test_workspace_evidence.py::test_card_view_virtualizes_and_bounds_resources
+3.21s call     tests/test_dense_review/test_workspace_lists.py::test_background_refresh_does_not_force_scroll_back
+[36m[1m=========================== short test summary info ===========================[0m
+[31mFAILED[0m tests/test_dense_review/test_redesign_interactions.py::[1mtest_handoff_keeps_cross_batch_objects_and_associated_point_reachable[0m - assert False
+[31m======= [31m[1m1 failed[0m, [32m525 passed[0m, [32m842 subtests passed[0m[31m in 833.55s (0:13:53)[0m[31m ========[0m

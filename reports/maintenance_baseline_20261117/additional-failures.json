@@ -1,0 +1,36 @@
+{
+  "name": "additional-failures",
+  "command": [
+    "C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\python.exe",
+    "-m",
+    "pytest",
+    "tests/test_labeling/test_label_widget_attributes.py",
+    "tests/test_labeling/test_label_widget_metrics.py",
+    "tests/test_labeling/test_shape_filter.py",
+    "tests/test_labeling/test_upload_shape_attributes.py",
+    "tests/test_labeling/test_video_classifier_workers.py",
+    "--tb=short",
+    "-vv",
+    "-o",
+    "faulthandler_timeout=30",
+    "--basetemp=D:\\X-AnyLabeling-4.2.1\\.tmp\\maintenance-additional-failures",
+    "--junitxml=D:\\X-AnyLabeling-4.2.1\\reports\\maintenance_baseline_20261117\\additional-failures.xml"
+  ],
+  "cwd": "D:\\X-AnyLabeling-4.2.1",
+  "timeout_seconds": 180,
+  "head": "6c9af4dc9d0d9d9da1d6fd5bf541467fb12b10f3",
+  "source_tree": "01efe6fe526f49a44353ffcbc5efc5e089a1e77f",
+  "python": "3.12.12 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 20:05:38) [MSC v.1929 64 bit (AMD64)]",
+  "qt_platform": "offscreen",
+  "started": "2026-11-17 20:21:02+0800",
+  "packages": {
+    "pytest": "9.0.3",
+    "PyQt6": "6.10.2",
+    "onnxruntime-gpu": "1.24.3"
+  },
+  "test_tree": "e878fb2e2b2c5a31861680d7f546e32f41fe1f95",
+  "runtime_diff": [],
+  "exit_code": 1,
+  "timed_out": false,
+  "elapsed_seconds": 5.69
+}

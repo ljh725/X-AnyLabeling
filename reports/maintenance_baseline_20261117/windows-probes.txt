@@ -1,0 +1,3 @@
+NamedTemporaryFile reopen: PermissionError errno=13
+ntpath.expanduser uses USERPROFILE while HOME differs: True
+No image/config/model writes; probe tempfile automatically closed/deleted.

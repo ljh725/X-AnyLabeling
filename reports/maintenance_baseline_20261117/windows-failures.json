@@ -1,0 +1,36 @@
+{
+  "name": "windows-failures",
+  "command": [
+    "C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\python.exe",
+    "-m",
+    "pytest",
+    "tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_prediction_forwards_selected_classes",
+    "tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_selecting_all_classes_sends_empty_filter_override",
+    "tests/test_auto_training/test_dataset.py::test_dataset_preparation_reports_invalid_yaml_path",
+    "tests/test_auto_training/test_environment.py::test_expand_training_path_supports_tilde_and_unicode",
+    "tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately",
+    "--tb=short",
+    "-vv",
+    "-o",
+    "faulthandler_timeout=30",
+    "--basetemp=D:\\X-AnyLabeling-4.2.1\\.tmp\\maintenance-windows-failures",
+    "--junitxml=D:\\X-AnyLabeling-4.2.1\\reports\\maintenance_baseline_20261117\\windows-failures.xml"
+  ],
+  "cwd": "D:\\X-AnyLabeling-4.2.1",
+  "timeout_seconds": 180,
+  "head": "6c9af4dc9d0d9d9da1d6fd5bf541467fb12b10f3",
+  "source_tree": "01efe6fe526f49a44353ffcbc5efc5e089a1e77f",
+  "python": "3.12.12 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 20:05:38) [MSC v.1929 64 bit (AMD64)]",
+  "qt_platform": "offscreen",
+  "started": "2026-11-17 19:50:36+0800",
+  "packages": {
+    "pytest": "9.0.3",
+    "PyQt6": "6.10.2",
+    "onnxruntime-gpu": "1.24.3"
+  },
+  "test_tree": "e878fb2e2b2c5a31861680d7f546e32f41fe1f95",
+  "runtime_diff": [],
+  "exit_code": 1,
+  "timed_out": false,
+  "elapsed_seconds": 10.19
+}

@@ -1,0 +1,55 @@
+{
+  "original_prefix": ".local/canvas-implementation-20261105",
+  "current_prefix": ".local/workspace-archive/20261110/local-work/canvas-implementation-20261105",
+  "transfer_manifest": ".local/workspace-archive/20261110/manifest.json",
+  "bundle_sha256": "1085305f2fc649befe49b99c344ac70352bbf92a11f7b501ba05ea500efe05f4",
+  "bundle_matches_receipt": true,
+  "recovered_head": "7097504691159af10cade7bf3fc09339b6fa4a0c",
+  "head_matches_receipt": true,
+  "file_fingerprints": [
+    {
+      "path": "anylabeling/views/labeling/widgets/toolbar.py",
+      "matches": true
+    },
+    {
+      "path": "anylabeling/views/labeling/label_widget.py",
+      "matches": true
+    },
+    {
+      "path": "anylabeling/views/labeling/settings/dialog.py",
+      "matches": true
+    },
+    {
+      "path": "tests/test_labeling/test_toolbar_display_actions.py",
+      "matches": true
+    },
+    {
+      "path": "tests/test_canvas/test_fill_opacity.py",
+      "matches": true
+    },
+    {
+      "path": "tests/test_labeling/test_canvas_controls_integration.py",
+      "matches": true
+    },
+    {
+      "path": "openspec/changes/restore-v430-canvas-controls/tasks.md",
+      "matches": true
+    },
+    {
+      "path": "openspec/changes/restore-v430-canvas-controls/verification.md",
+      "matches": true
+    },
+    {
+      "path": "openspec/changes/restore-v430-canvas-controls/implementation-20261105.md",
+      "matches": true
+    },
+    {
+      "path": "docs/custom_changes/2026-11-04-canvas-controls-restore.md",
+      "matches": true
+    }
+  ],
+  "current_tests_replayed": false,
+  "scope": "本轮只重建历史保存点与核对10个文件；23 passed 为原回执历史结果，未重跑历史Qt。",
+  "dpi_raw_files": 32,
+  "performance_summary_exists": true
+}

@@ -1,0 +1,80 @@
+[1m============================= test session starts =============================[0m
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+[1mcollecting ... [0mcollected 5 items
+
+tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_prediction_forwards_selected_classes [31mFAILED[0m[31m [ 20%][0m
+tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_selecting_all_classes_sends_empty_filter_override [31mFAILED[0m[31m [ 40%][0m
+tests/test_auto_training/test_dataset.py::test_dataset_preparation_reports_invalid_yaml_path [31mFAILED[0m[31m [ 60%][0m
+tests/test_auto_training/test_environment.py::test_expand_training_path_supports_tilde_and_unicode [31mFAILED[0m[31m [ 80%][0m
+tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately [31mFAILED[0m[31m [100%][0m
+
+================================== FAILURES ===================================
+[31m[1m____ TestRemoteServerClassFilter.test_prediction_forwards_selected_classes ____[0m
+[1m[31mtests\test_auto_labeling\test_remote_server.py[0m:50: in test_prediction_forwards_selected_classes
+    [0m[96mself[39;49;00m.model.predict_shapes([96mobject[39;49;00m(), image_file.name)[90m[39;49;00m
+[1m[31manylabeling\services\auto_labeling\remote_server.py[0m:179: in predict_shapes
+    [0m[94mwith[39;49;00m [96mopen[39;49;00m(image_path, [33m"[39;49;00m[33mrb[39;49;00m[33m"[39;49;00m) [94mas[39;49;00m f:[90m[39;49;00m
+         ^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE   PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmpoe7u78kt.jpg'[0m
+[31m[1m_ TestRemoteServerClassFilter.test_selecting_all_classes_sends_empty_filter_override _[0m
+[1m[31mtests\test_auto_labeling\test_remote_server.py[0m:68: in test_selecting_all_classes_sends_empty_filter_override
+    [0m[96mself[39;49;00m.model.predict_shapes([96mobject[39;49;00m(), image_file.name)[90m[39;49;00m
+[1m[31manylabeling\services\auto_labeling\remote_server.py[0m:179: in predict_shapes
+    [0m[94mwith[39;49;00m [96mopen[39;49;00m(image_path, [33m"[39;49;00m[33mrb[39;49;00m[33m"[39;49;00m) [94mas[39;49;00m f:[90m[39;49;00m
+         ^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE   PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmputjtn92y.jpg'[0m
+[31m[1m_____________ test_dataset_preparation_reports_invalid_yaml_path ______________[0m
+[1m[31mtests\test_auto_training\test_dataset.py[0m:88: in test_dataset_preparation_reports_invalid_yaml_path
+    [0m[94mwith[39;49;00m pytest.raises([96mValueError[39;49;00m, match=[96mstr[39;49;00m(data_path)):[90m[39;49;00m
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mC:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\raises.py[0m:622: in __init__
+    [0m[96msuper[39;49;00m().[92m__init__[39;49;00m(match=match, check=check)[90m[39;49;00m
+[1m[31mC:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\raises.py[0m:399: in __init__
+    [0mfail([33mf[39;49;00m[33m"[39;49;00m[33mInvalid regex pattern provided to [39;49;00m[33m'[39;49;00m[33mmatch[39;49;00m[33m'[39;49;00m[33m: [39;49;00m[33m{[39;49;00mre_error[33m}[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+[1m[31mE   Failed: Invalid regex pattern provided to 'match': bad escape \X at position 2[0m
+[31m[1m____________ test_expand_training_path_supports_tilde_and_unicode _____________[0m
+[1m[31mtests\test_auto_training\test_environment.py[0m:56: in test_expand_training_path_supports_tilde_and_unicode
+    [0m[94massert[39;49;00m expand_training_path([33m"[39;49;00m[33m$TRAINING_HOME/bin/python[39;49;00m[33m"[39;49;00m) == [96mstr[39;49;00m([90m[39;49;00m
+[1m[31mE   AssertionError: assert 'C:\\Users\\20441\\训练环境\\bin\\python' == 'D:\\X-AnyLabeling-4.2.1\\.tmp\\maintenance-windows-failures\\test_expand_training_path_supp0\\用户目录\\训练环境\\bin\\python'[0m
+[1m[31mE     [0m
+[1m[31mE     [0m[91m- D:\X-AnyLabeling-4.2.1\.tmp\maintenance-windows-failures\test_expand_training_path_supp0\用户目录\训练环境\bin\python[39;49;00m[90m[39;49;00m[0m
+[1m[31mE     [92m+ C:\Users\20441\训练环境\bin\python[39;49;00m[90m[39;49;00m[0m
+[31m[1m__________ test_stop_training_terminates_silent_process_immediately ___________[0m
+[1m[31mtests\test_auto_training\test_trainer.py[0m:108: in test_stop_training_terminates_silent_process_immediately
+    [0m[94massert[39;49;00m [95mnot[39;49;00m training_thread.is_alive()[90m[39;49;00m
+[1m[31mE   assert not True[0m
+[1m[31mE    +  where True = is_alive()[0m
+[1m[31mE    +    where is_alive = <Thread(Thread-1 (_run_training), started 48780)>.is_alive[0m
+- generated xml file: D:\X-AnyLabeling-4.2.1\reports\maintenance_baseline_20261117\windows-failures.xml -
+============================ slowest 30 durations =============================
+3.03s call     tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately
+0.03s setup    tests/test_auto_training/test_environment.py::test_expand_training_path_supports_tilde_and_unicode
+0.03s teardown tests/test_auto_training/test_dataset.py::test_dataset_preparation_reports_invalid_yaml_path
+0.02s setup    tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately
+0.01s setup    tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_prediction_forwards_selected_classes
+0.00s setup    tests/test_auto_training/test_dataset.py::test_dataset_preparation_reports_invalid_yaml_path
+0.00s call     tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_selecting_all_classes_sends_empty_filter_override
+0.00s call     tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_prediction_forwards_selected_classes
+0.00s call     tests/test_auto_training/test_dataset.py::test_dataset_preparation_reports_invalid_yaml_path
+0.00s call     tests/test_auto_training/test_environment.py::test_expand_training_path_supports_tilde_and_unicode
+0.00s setup    tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_selecting_all_classes_sends_empty_filter_override
+0.00s teardown tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_prediction_forwards_selected_classes
+0.00s teardown tests/test_auto_training/test_environment.py::test_expand_training_path_supports_tilde_and_unicode
+0.00s teardown tests/test_auto_labeling/test_remote_server.py::TestRemoteServerClassFilter::test_selecting_all_classes_sends_empty_filter_override
+0.00s teardown tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately
+[36m[1m=========================== short test summary info ===========================[0m
+[31mFAILED[0m tests/test_auto_labeling/test_remote_server.py::[1mTestRemoteServerClassFilter::test_prediction_forwards_selected_classes[0m - PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmpoe7u78kt.jpg'
+[31mFAILED[0m tests/test_auto_labeling/test_remote_server.py::[1mTestRemoteServerClassFilter::test_selecting_all_classes_sends_empty_filter_override[0m - PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmputjtn92y.jpg'
+[31mFAILED[0m tests/test_auto_training/test_dataset.py::[1mtest_dataset_preparation_reports_invalid_yaml_path[0m - Failed: Invalid regex pattern provided to 'match': bad escape \X at position 2
+[31mFAILED[0m tests/test_auto_training/test_environment.py::[1mtest_expand_training_path_supports_tilde_and_unicode[0m - AssertionError: assert 'C:\\Users\\20441\\训练环境\\bin\\python' == 'D:\\X-AnyLabeling-4.2.1\\.tmp\\maintenance-windows-failures\\test_expand_training_path_supp0\\用户目录\\训练环境\\bin\\python'
+  
+  [0m[91m- D:\X-AnyLabeling-4.2.1\.tmp\maintenance-windows-failures\test_expand_training_path_supp0\用户目录\训练环境\bin\python[39;49;00m[90m[39;49;00m
+  [92m+ C:\Users\20441\训练环境\bin\python[39;49;00m[90m[39;49;00m
+[31mFAILED[0m tests/test_auto_training/test_trainer.py::[1mtest_stop_training_terminates_silent_process_immediately[0m - assert not True
+ +  where True = is_alive()
+ +    where is_alive = <Thread(Thread-1 (_run_training), started 48780)>.is_alive
+[31m============================== [31m[1m5 failed[0m[31m in 6.38s[0m[31m ==============================[0m

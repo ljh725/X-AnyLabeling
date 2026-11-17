@@ -57,7 +57,13 @@ def test_output_switch_reads_current_then_background(tmp_path):
     app.setQuitOnLastWindowClosed(False)
     config = app_config.get_config(
         str(tmp_path / "config.yaml"),
-        dict(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False, file_list_checkbox_editable=True),
+        dict(
+            theme="light",
+            auto_save=False,
+            keep_prev=False,
+            exif_scan_enabled=False,
+            file_list_checkbox_editable=True,
+        ),
     )
     window = MainWindow(app, config=config)
     window.show()
@@ -262,7 +268,12 @@ def test_rapid_output_switch_discards_late_results(tmp_path, monkeypatch):
     app.setQuitOnLastWindowClosed(False)
     config = app_config.get_config(
         str(tmp_path / "config.yaml"),
-        dict(theme="light", auto_save=False, keep_prev=True, exif_scan_enabled=False),
+        dict(
+            theme="light",
+            auto_save=False,
+            keep_prev=True,
+            exif_scan_enabled=False,
+        ),
     )
     window = MainWindow(app, config=config)
     window.show()
@@ -376,7 +387,12 @@ def test_first_image_opens_before_full_list_is_built(tmp_path):
     app.setQuitOnLastWindowClosed(False)
     config = app_config.get_config(
         str(tmp_path / "config.yaml"),
-        dict(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False),
+        dict(
+            theme="light",
+            auto_save=False,
+            keep_prev=False,
+            exif_scan_enabled=False,
+        ),
     )
     window = MainWindow(app, config=config)
     window.show()
@@ -434,7 +450,12 @@ def test_navigation_waits_and_manual_selection_cancels(tmp_path, monkeypatch):
     app.setQuitOnLastWindowClosed(False)
     config = app_config.get_config(
         str(tmp_path / "config.yaml"),
-        dict(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False),
+        dict(
+            theme="light",
+            auto_save=False,
+            keep_prev=False,
+            exif_scan_enabled=False,
+        ),
     )
     window = MainWindow(app, config=config)
     window.show()
@@ -489,7 +510,12 @@ def test_rapid_attribute_search_discards_blocked_old_request(tmp_path, monkeypat
     app.setQuitOnLastWindowClosed(False)
     config = app_config.get_config(
         str(tmp_path / "config.yaml"),
-        dict(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False),
+        dict(
+            theme="light",
+            auto_save=False,
+            keep_prev=False,
+            exif_scan_enabled=False,
+        ),
     )
     window = MainWindow(app, config=config)
     window.show()
@@ -552,7 +578,12 @@ def test_save_wins_against_blocked_old_worker_result(tmp_path, monkeypatch):
     app.setQuitOnLastWindowClosed(False)
     config = app_config.get_config(
         str(tmp_path / "config.yaml"),
-        dict(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False),
+        dict(
+            theme="light",
+            auto_save=False,
+            keep_prev=False,
+            exif_scan_enabled=False,
+        ),
     )
     window = MainWindow(app, config=config)
     window.show()
@@ -598,7 +629,12 @@ def test_first_image_does_not_wait_for_per_file_delays(tmp_path, monkeypatch):
     app.setQuitOnLastWindowClosed(False)
     config = app_config.get_config(
         str(tmp_path / "config.yaml"),
-        dict(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False),
+        dict(
+            theme="light",
+            auto_save=False,
+            keep_prev=False,
+            exif_scan_enabled=False,
+        ),
     )
     window = MainWindow(app, config=config)
     window.show()

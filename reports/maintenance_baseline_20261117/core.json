@@ -1,0 +1,41 @@
+{
+  "name": "core",
+  "command": [
+    "C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\python.exe",
+    "-m",
+    "pytest",
+    "tests/test_canvas",
+    "tests/test_config",
+    "tests/test_settings",
+    "tests/test_labeling/test_label_file_load.py",
+    "tests/test_labeling/test_label_file_save.py",
+    "tests/test_labeling/test_image_switch.py",
+    "tests/test_labeling/test_digit_rectangle_save.py",
+    "tests/test_labeling/test_edit_mode_shortcut.py",
+    "tests/test_labeling/test_editing_command_scope.py",
+    "tests/test_labeling/test_drag_commit.py",
+    "tests/test_correction_metrics/test_navigation.py",
+    "tests/test_correction_metrics/test_transactions.py",
+    "tests/test_correction_metrics/test_rollback.py",
+    "-vv",
+    "-o",
+    "faulthandler_timeout=30",
+    "--basetemp=D:\\X-AnyLabeling-4.2.1\\.tmp\\maintenance-core",
+    "--junitxml=D:\\X-AnyLabeling-4.2.1\\reports\\maintenance_baseline_20261117\\core.xml"
+  ],
+  "cwd": "D:\\X-AnyLabeling-4.2.1",
+  "timeout_seconds": 900,
+  "head": "cdd256607c2e9ef71a8bd8fe78568c1cc6266d00",
+  "source_tree": "01efe6fe526f49a44353ffcbc5efc5e089a1e77f",
+  "python": "3.12.12 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 20:05:38) [MSC v.1929 64 bit (AMD64)]",
+  "qt_platform": "offscreen",
+  "started": "2026-11-17 19:27:12+0800",
+  "packages": {
+    "pytest": "9.0.3",
+    "PyQt6": "6.10.2",
+    "onnxruntime-gpu": "1.24.3"
+  },
+  "exit_code": 0,
+  "timed_out": false,
+  "elapsed_seconds": 211.88
+}

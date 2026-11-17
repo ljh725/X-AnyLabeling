@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="5" time="6.343" timestamp="2026-11-17T19:50:37.272969+08:00" hostname="DESKTOP-RBDJ37M"><testcase classname="tests.test_auto_labeling.test_remote_server.TestRemoteServerClassFilter" name="test_prediction_forwards_selected_classes" time="0.016"><failure message="PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmpoe7u78kt.jpg'">tests\test_auto_labeling\test_remote_server.py:50: in test_prediction_forwards_selected_classes
+    self.model.predict_shapes(object(), image_file.name)
+anylabeling\services\auto_labeling\remote_server.py:179: in predict_shapes
+    with open(image_path, "rb") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^
+E   PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmpoe7u78kt.jpg'</failure></testcase><testcase classname="tests.test_auto_labeling.test_remote_server.TestRemoteServerClassFilter" name="test_selecting_all_classes_sends_empty_filter_override" time="0.005"><failure message="PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmputjtn92y.jpg'">tests\test_auto_labeling\test_remote_server.py:68: in test_selecting_all_classes_sends_empty_filter_override
+    self.model.predict_shapes(object(), image_file.name)
+anylabeling\services\auto_labeling\remote_server.py:179: in predict_shapes
+    with open(image_path, "rb") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^
+E   PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmputjtn92y.jpg'</failure></testcase><testcase classname="tests.test_auto_training.test_dataset" name="test_dataset_preparation_reports_invalid_yaml_path" time="0.038"><failure message="Failed: Invalid regex pattern provided to 'match': bad escape \X at position 2">tests\test_auto_training\test_dataset.py:88: in test_dataset_preparation_reports_invalid_yaml_path
+    with pytest.raises(ValueError, match=str(data_path)):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\raises.py:622: in __init__
+    super().__init__(match=match, check=check)
+C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\raises.py:399: in __init__
+    fail(f"Invalid regex pattern provided to 'match': {re_error}")
+E   Failed: Invalid regex pattern provided to 'match': bad escape \X at position 2</failure></testcase><testcase classname="tests.test_auto_training.test_environment" name="test_expand_training_path_supports_tilde_and_unicode" time="0.036"><failure message="AssertionError: assert 'C:\\Users\\20441\\训练环境\\bin\\python' == 'D:\\X-AnyLabeling-4.2.1\\.tmp\\maintenance-windows-failures\\test_expand_training_path_supp0\\用户目录\\训练环境\\bin\\python'&#10;  &#10;  #x1B[0m#x1B[91m- D:\X-AnyLabeling-4.2.1\.tmp\maintenance-windows-failures\test_expand_training_path_supp0\用户目录\训练环境\bin\python#x1B[39;49;00m#x1B[90m#x1B[39;49;00m&#10;  #x1B[92m+ C:\Users\20441\训练环境\bin\python#x1B[39;49;00m#x1B[90m#x1B[39;49;00m">tests\test_auto_training\test_environment.py:56: in test_expand_training_path_supports_tilde_and_unicode
+    assert expand_training_path("$TRAINING_HOME/bin/python") == str(
+E   AssertionError: assert 'C:\\Users\\20441\\训练环境\\bin\\python' == 'D:\\X-AnyLabeling-4.2.1\\.tmp\\maintenance-windows-failures\\test_expand_training_path_supp0\\用户目录\\训练环境\\bin\\python'
+E     
+E     #x1B[0m#x1B[91m- D:\X-AnyLabeling-4.2.1\.tmp\maintenance-windows-failures\test_expand_training_path_supp0\用户目录\训练环境\bin\python#x1B[39;49;00m#x1B[90m#x1B[39;49;00m
+E     #x1B[92m+ C:\Users\20441\训练环境\bin\python#x1B[39;49;00m#x1B[90m#x1B[39;49;00m</failure></testcase><testcase classname="tests.test_auto_training.test_trainer" name="test_stop_training_terminates_silent_process_immediately" time="3.049"><failure message="assert not True&#10; +  where True = is_alive()&#10; +    where is_alive = &lt;Thread(Thread-1 (_run_training), started 48780)&gt;.is_alive">tests\test_auto_training\test_trainer.py:108: in test_stop_training_terminates_silent_process_immediately
+    assert not training_thread.is_alive()
+E   assert not True
+E    +  where True = is_alive()
+E    +    where is_alive = &lt;Thread(Thread-1 (_run_training), started 48780)&gt;.is_alive</failure></testcase></testsuite></testsuites>

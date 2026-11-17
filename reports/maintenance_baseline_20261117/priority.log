@@ -1,0 +1,140 @@
+[1m============================= test session starts =============================[0m
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+[1mcollecting ... [0mcollected 12 items
+
+tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable [31mFAILED[0m[31m [  8%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit] [31mFAILED[0m[31m [ 16%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-fit] [31mFAILED[0m[31m [ 25%][0m
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-False] [32mPASSED[0m[31m [ 33%][0m
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-True] [32mPASSED[0m[31m [ 41%][0m
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-False] [32mPASSED[0m[31m [ 50%][0m
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-True] [32mPASSED[0m[31m [ 58%][0m
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-False] [32mPASSED[0m[31m [ 66%][0m
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-True] [32mPASSED[0m[31m [ 75%][0m
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-False] [32mPASSED[0m[31m [ 83%][0m
+tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-True] [32mPASSED[0m[31m [ 91%][0m
+tests/test_labeling/test_label_locks.py::TestLabelLocks::test_category_checkbox_controls_all_matching_shapes [32mPASSED[0m[31m [100%][0m
+
+================================== FAILURES ===================================
+[31m[1m____ test_handoff_keeps_cross_batch_objects_and_associated_point_reachable ____[0m
+
+app = <PyQt6.QtWidgets.QApplication object at 0x0000027F165262B0>
+open_window = <function open_window.<locals>._open at 0x0000027F16525F80>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_handoff_keeps_cross_batch_objects_and_associated_point_reachable[39;49;00m(app, open_window):[90m[39;49;00m
+        [94mfrom[39;49;00m[90m [39;49;00m[04m[96mdataclasses[39;49;00m[90m [39;49;00m[94mimport[39;49;00m replace[90m[39;49;00m
+        [94mfrom[39;49;00m[90m [39;49;00m[04m[96manylabeling[39;49;00m[04m[96m.[39;49;00m[04m[96mservices[39;49;00m[04m[96m.[39;49;00m[04m[96minspection[39;49;00m[04m[96m.[39;49;00m[04m[96mhandoff[39;49;00m[90m [39;49;00m[94mimport[39;49;00m HandoffRequest[90m[39;49;00m
+        [94mfrom[39;49;00m[90m [39;49;00m[04m[96m.[39;49;00m[04m[96mtest_workspace_dock_tasks[39;49;00m[90m [39;49;00m[94mimport[39;49;00m _rectangle, _point, _open_review[90m[39;49;00m
+        window, path = open_window([[90m[39;49;00m
+            _rectangle([33m"[39;49;00m[33mperson[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mrect1[39;49;00m[33m"[39;49;00m, [94m40[39;49;00m, [94m40[39;49;00m, group_id=[94m0[39;49;00m),[90m[39;49;00m
+            _rectangle([33m"[39;49;00m[33mvehicle[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mrect2[39;49;00m[33m"[39;49;00m, [94m300[39;49;00m, [94m40[39;49;00m, group_id=[94m1[39;49;00m),[90m[39;49;00m
+            _point([33m"[39;49;00m[33mnose[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mkp1[39;49;00m[33m"[39;49;00m, [94m80[39;49;00m, [94m80[39;49;00m, group_id=[94m0[39;49;00m),[90m[39;49;00m
+        ], batches=(([33m"[39;49;00m[33mperson[39;49;00m[33m"[39;49;00m, ([33m"[39;49;00m[33mperson[39;49;00m[33m"[39;49;00m,)), ([33m"[39;49;00m[33mvehicle[39;49;00m[33m"[39;49;00m, ([33m"[39;49;00m[33mvehicle[39;49;00m[33m"[39;49;00m,))),[90m[39;49;00m
+           rules=(([33m"[39;49;00m[33mperson[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mvisible[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m"[39;49;00m), ([33m"[39;49;00m[33mvehicle[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mvisible[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m"[39;49;00m)))[90m[39;49;00m
+        widget, ws = _open_review(app, window, path)[90m[39;49;00m
+        request = HandoffRequest([33m"[39;49;00m[33missue[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mfamily[39;49;00m[33m"[39;49;00m, widget.inspection_dataset_root(),[90m[39;49;00m
+                                 widget.inspection_output_dir(), widget.inspection_current_relative_path(),[90m[39;49;00m
+                                 object_ids=([33m"[39;49;00m[33mrect1[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mrect2[39;49;00m[33m"[39;49;00m))[90m[39;49;00m
+>       [94massert[39;49;00m widget.inspection_handoff_to_dense_review(request)[[94m0[39;49;00m][90m[39;49;00m
+[1m[31mE       assert False[0m
+
+[1m[31mtests\test_dense_review\test_redesign_interactions.py[0m:24: AssertionError
+[31m[1m______________ test_pending_mode_finishes_real_edit[commit-fit] _______________[0m
+
+window = <anylabeling.views.mainwindow.MainWindow object at 0x0000027F17CE0A50>
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/maintenance-priority/test_pending_mode_finishes_rea0')
+gesture = 'fit', cancel = False
+
+    [0m[37m@pytest[39;49;00m.mark.parametrize([33m"[39;49;00m[33mgesture[39;49;00m[33m"[39;49;00m, [[33m"[39;49;00m[33medge[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mfit[39;49;00m[33m"[39;49;00m])[90m[39;49;00m
+    [37m@pytest[39;49;00m.mark.parametrize([33m"[39;49;00m[33mcancel[39;49;00m[33m"[39;49;00m, [[94mFalse[39;49;00m, [94mTrue[39;49;00m], ids=[[33m"[39;49;00m[33mcommit[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mcancel[39;49;00m[33m"[39;49;00m])[90m[39;49;00m
+    [94mdef[39;49;00m[90m [39;49;00m[92mtest_pending_mode_finishes_real_edit[39;49;00m(window, tmp_path, gesture, cancel):[90m[39;49;00m
+        w = open_rectangles(window, tmp_path)[90m[39;49;00m
+        canvas = w.canvas[90m[39;49;00m
+        before = canvas.shapes[[94m0[39;49;00m].to_dict()[90m[39;49;00m
+        [94mif[39;49;00m gesture == [33m"[39;49;00m[33medge[39;49;00m[33m"[39;49;00m:[90m[39;49;00m
+            canvas.set_rectangle_edge_enabled([94mTrue[39;49;00m)[90m[39;49;00m
+            modifiers = Qt.KeyboardModifier.NoModifier[90m[39;49;00m
+            start, end = ([94m100[39;49;00m, [94m150[39;49;00m), ([94m90[39;49;00m, [94m150[39;49;00m)[90m[39;49;00m
+            mouse(canvas, QtCore.QEvent.Type.MouseMove, start)[90m[39;49;00m
+        [94melse[39;49;00m:[90m[39;49;00m
+            modifiers = Qt.KeyboardModifier.ShiftModifier[90m[39;49;00m
+            start, end = ([94m210[39;49;00m, [94m90[39;49;00m), ([94m220[39;49;00m, [94m80[39;49;00m)[90m[39;49;00m
+        mouse(canvas, QtCore.QEvent.Type.MouseButtonPress, start, modifiers)[90m[39;49;00m
+>       [94massert[39;49;00m canvas.interaction_in_progress()[90m[39;49;00m
+[1m[31mE       assert False[0m
+[1m[31mE        +  where False = interaction_in_progress()[0m
+[1m[31mE        +    where interaction_in_progress = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x0000027F17EF3E30>.interaction_in_progress[0m
+
+[1m[31mtests\test_labeling\test_canvas_controls_integration.py[0m:89: AssertionError
+[31m[1m______________ test_pending_mode_finishes_real_edit[cancel-fit] _______________[0m
+
+window = <anylabeling.views.mainwindow.MainWindow object at 0x0000027F1B07C5F0>
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/maintenance-priority/test_pending_mode_finishes_rea1')
+gesture = 'fit', cancel = True
+
+    [0m[37m@pytest[39;49;00m.mark.parametrize([33m"[39;49;00m[33mgesture[39;49;00m[33m"[39;49;00m, [[33m"[39;49;00m[33medge[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mfit[39;49;00m[33m"[39;49;00m])[90m[39;49;00m
+    [37m@pytest[39;49;00m.mark.parametrize([33m"[39;49;00m[33mcancel[39;49;00m[33m"[39;49;00m, [[94mFalse[39;49;00m, [94mTrue[39;49;00m], ids=[[33m"[39;49;00m[33mcommit[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mcancel[39;49;00m[33m"[39;49;00m])[90m[39;49;00m
+    [94mdef[39;49;00m[90m [39;49;00m[92mtest_pending_mode_finishes_real_edit[39;49;00m(window, tmp_path, gesture, cancel):[90m[39;49;00m
+        w = open_rectangles(window, tmp_path)[90m[39;49;00m
+        canvas = w.canvas[90m[39;49;00m
+        before = canvas.shapes[[94m0[39;49;00m].to_dict()[90m[39;49;00m
+        [94mif[39;49;00m gesture == [33m"[39;49;00m[33medge[39;49;00m[33m"[39;49;00m:[90m[39;49;00m
+            canvas.set_rectangle_edge_enabled([94mTrue[39;49;00m)[90m[39;49;00m
+            modifiers = Qt.KeyboardModifier.NoModifier[90m[39;49;00m
+            start, end = ([94m100[39;49;00m, [94m150[39;49;00m), ([94m90[39;49;00m, [94m150[39;49;00m)[90m[39;49;00m
+            mouse(canvas, QtCore.QEvent.Type.MouseMove, start)[90m[39;49;00m
+        [94melse[39;49;00m:[90m[39;49;00m
+            modifiers = Qt.KeyboardModifier.ShiftModifier[90m[39;49;00m
+            start, end = ([94m210[39;49;00m, [94m90[39;49;00m), ([94m220[39;49;00m, [94m80[39;49;00m)[90m[39;49;00m
+        mouse(canvas, QtCore.QEvent.Type.MouseButtonPress, start, modifiers)[90m[39;49;00m
+>       [94massert[39;49;00m canvas.interaction_in_progress()[90m[39;49;00m
+[1m[31mE       assert False[0m
+[1m[31mE        +  where False = interaction_in_progress()[0m
+[1m[31mE        +    where interaction_in_progress = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x0000027F17F28D70>.interaction_in_progress[0m
+
+[1m[31mtests\test_labeling\test_canvas_controls_integration.py[0m:89: AssertionError
+- generated xml file: D:\X-AnyLabeling-4.2.1\reports\maintenance_baseline_20261117\priority.xml -
+============================ slowest 30 durations =============================
+2.75s call     tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable
+2.74s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-fit]
+2.73s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit]
+0.33s teardown tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable
+0.05s call     tests/test_labeling/test_label_locks.py::TestLabelLocks::test_category_checkbox_controls_all_matching_shapes
+0.03s call     tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit]
+0.03s call     tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-fit]
+0.02s teardown tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit]
+0.02s teardown tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-fit]
+0.01s setup    tests/test_dense_review/test_redesign_interactions.py::test_handoff_keeps_cross_batch_objects_and_associated_point_reachable
+0.01s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-True]
+0.01s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-True]
+0.01s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-True]
+0.01s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-True]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-False]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-False]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-False]
+0.00s call     tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-False]
+0.00s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-False]
+0.00s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-False]
+0.00s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-False]
+0.00s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-False]
+0.00s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-True]
+0.00s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-True]
+0.00s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-True]
+0.00s setup    tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-True]
+0.00s teardown tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-True-True]
+0.00s teardown tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-False-True]
+0.00s teardown tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777236-False-True]
+0.00s teardown tests/test_canvas/test_rectangle_preview_overlap.py::test_nudge_preview_preserves_host_dirty[16777234-True-False]
+[36m[1m=========================== short test summary info ===========================[0m
+[31mFAILED[0m tests/test_dense_review/test_redesign_interactions.py::[1mtest_handoff_keeps_cross_batch_objects_and_associated_point_reachable[0m - assert False
+[31mFAILED[0m tests/test_labeling/test_canvas_controls_integration.py::[1mtest_pending_mode_finishes_real_edit[commit-fit][0m - assert False
+ +  where False = interaction_in_progress()
+ +    where interaction_in_progress = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x0000027F17EF3E30>.interaction_in_progress
+[31mFAILED[0m tests/test_labeling/test_canvas_controls_integration.py::[1mtest_pending_mode_finishes_real_edit[cancel-fit][0m - assert False
+ +  where False = interaction_in_progress()
+ +    where interaction_in_progress = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x0000027F17F28D70>.interaction_in_progress
+[31m========================= [31m[1m3 failed[0m, [32m9 passed[0m[31m in 9.91s[0m[31m =========================[0m

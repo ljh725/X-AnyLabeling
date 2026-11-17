@@ -1,0 +1,212 @@
+[1m============================= test session starts =============================[0m
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+[1mcollecting ... [0mcollected 52 items
+
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_attribute_widget_changes_refresh_canvas_once 
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_attribute_widget_changes_refresh_canvas_once [32mPASSED[0m[32m [  1%][0m
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_batch_edit_resets_only_shapes_with_changed_labels [31mFAILED[0m[31m [  3%][0m
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_edit_label_preserves_attributes_for_same_label [32mPASSED[0m[31m [  5%][0m
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_radio_buttons_remain_exclusive_across_rows [32mPASSED[0m[31m [  7%][0m
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_reset_attribute_preserves_empty_values [32mPASSED[0m[31m [  9%][0m
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_reset_attribute_preserves_scalar_value [32mPASSED[0m[31m [ 11%][0m
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_reset_attribute_uses_first_option [32mPASSED[0m[31m [ 13%][0m
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_save_attributes_uses_standard_shape_serialization [31mFAILED[0m[31m [ 15%][0m
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_selecting_known_value_clears_compatibility_warning [32mPASSED[0m[31m [ 17%][0m
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_unchecked_radio_button_does_not_refresh_canvas [32mPASSED[0m[31m [ 19%][0m
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_unknown_values_are_shown_without_mutating_shape_or_config 
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_unknown_values_are_shown_without_mutating_shape_or_config [32mPASSED[0m[31m [ 21%][0m
+tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_update_attributes_does_not_save_unchanged_shape [32mPASSED[0m[31m [ 23%][0m
+tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_canvas_lock_action_uses_checkbox_without_icon [32mPASSED[0m[31m [ 25%][0m
+tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_checked_state_sync_refreshes_window_title [32mPASSED[0m[31m [ 26%][0m
+tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_file_selection_uses_hover_colors_in_each_mode [32mPASSED[0m[31m [ 28%][0m
+tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_format_label_list_text_includes_group_id [32mPASSED[0m[31m [ 30%][0m
+tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_locked_item_uses_svg_icon [32mPASSED[0m[31m [ 32%][0m
+tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_measure_text_width_falls_back_to_width [32mPASSED[0m[31m [ 34%][0m
+tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_measure_text_width_matches_horizontal_advance [32mPASSED[0m[31m [ 36%][0m
+tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_right_click_requests_lock_for_selected_items [32mPASSED[0m[31m [ 38%][0m
+tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_right_double_click_does_not_emit_item_double_clicked [32mPASSED[0m[31m [ 40%][0m
+tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_selected_object_keeps_label_background_in_each_mode [32mPASSED[0m[31m [ 42%][0m
+tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_unchecked_review_status_icon_is_hollow_circle [32mPASSED[0m[31m [ 44%][0m
+tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_window_title_includes_annotation_checked_status [31mFAILED[0m[31m [ 46%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterRules::test_group_filter_matches_numeric_and_string_ids [32mPASSED[0m[31m [ 48%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterRules::test_invert_flips_only_while_a_filter_is_active [32mPASSED[0m[31m [ 50%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterRules::test_label_and_group_filters_combine [32mPASSED[0m[31m [ 51%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterRules::test_label_filter_matches_and_hides_the_rest [32mPASSED[0m[31m [ 53%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterRules::test_label_visibility_wins_over_filter [32mPASSED[0m[31m [ 55%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterRules::test_manual_hide_wins_over_filter_and_invert [32mPASSED[0m[31m [ 57%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterRules::test_no_filter_keeps_everything_visible [32mPASSED[0m[31m [ 59%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterApplication::test_bulk_visibility_resets_manual_memory [32mPASSED[0m[31m [ 61%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterApplication::test_combined_filter_drives_visibility [31mFAILED[0m[31m [ 63%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterApplication::test_invert_action_is_disabled_and_cleared_without_filter [32mPASSED[0m[31m [ 65%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterApplication::test_invert_action_tracks_filter_state [32mPASSED[0m[31m [ 67%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterApplication::test_invert_flag_is_forwarded [31mFAILED[0m[31m [ 69%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterApplication::test_manual_hidden_shapes_stay_hidden [31mFAILED[0m[31m [ 71%][0m
+tests/test_labeling/test_shape_filter.py::TestFilterApplication::test_manual_hide_is_recorded_from_the_item_checkbox [31mFAILED[0m[31m [ 73%][0m
+tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_invalid_upload_preserves_active_configuration [32mPASSED[0m[31m [ 75%][0m
+tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_upload_preserves_auto_switch_signal_state 
+tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_upload_preserves_auto_switch_signal_state [32mPASSED[0m[31m [ 76%][0m
+tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_valid_upload_rebuilds_open_attribute_panel [31mFAILED[0m[31m [ 78%][0m
+tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_validate_shape_attributes_config_accepts_supported_widgets [32mPASSED[0m[31m [ 80%][0m
+tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_validate_shape_attributes_config_rejects_invalid_structures 
+tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_validate_shape_attributes_config_rejects_invalid_structures [32mPASSED[0m[31m [ 82%][0m
+tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_ai_video_limits_are_checked_before_upload [32mPASSED[0m[31m [ 84%][0m
+tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_cancel_closes_active_media_resources [32mPASSED[0m[31m [ 86%][0m
+tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_rejected_extracted_segment_is_removed [32mPASSED[0m[31m [ 88%][0m
+tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_streamed_body_contains_complete_video_data [31mFAILED[0m[31m [ 90%][0m
+tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_streaming_stops_when_cancelled [31mFAILED[0m[31m [ 92%][0m
+tests/test_labeling/test_video_classifier_workers.py::TestVideoMediaWorkers::test_invalid_sidecar_does_not_replace_loaded_video_state [32mPASSED[0m[31m [ 94%][0m
+tests/test_labeling/test_video_classifier_workers.py::TestVideoMediaWorkers::test_load_worker_runs_probe_and_thumbnails_off_ui_path [32mPASSED[0m[31m [ 96%][0m
+tests/test_labeling/test_video_classifier_workers.py::TestVideoMediaWorkers::test_probe_process_is_terminated_on_cancel [32mPASSED[0m[31m [ 98%][0m
+tests/test_labeling/test_video_classifier_workers.py::TestVideoMediaWorkers::test_segment_export_falls_back_to_background_reencode [32mPASSED[0m[31m [100%][0m
+
+================================== FAILURES ===================================
+[31m[1m_ TestLabelWidgetAttributes.test_batch_edit_resets_only_shapes_with_changed_labels _[0m
+[1m[31mtests\test_labeling\test_label_widget_attributes.py[0m:248: in test_batch_edit_resets_only_shapes_with_changed_labels
+    [0mLabelingWidget.batch_edit_labels([90m[39;49;00m
+[1m[31manylabeling\views\labeling\label_widget.py[0m:7290: in batch_edit_labels
+    [0mchanged = [96mself[39;49;00m._apply_field_patch(targets, values, touched)[90m[39;49;00m
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mtests\test_labeling\test_label_widget_attributes.py[0m:243: in <lambda>
+    [0m[94mlambda[39;49;00m target, values, touched: LabelingWidget._apply_field_patch([90m[39;49;00m
+[1m[31manylabeling\views\labeling\label_widget.py[0m:7299: in _apply_field_patch
+    [0mchanged = apply_field_changes([90m[39;49;00m
+[1m[31manylabeling\views\labeling\editing_commands.py[0m:63: in apply_field_changes
+    [0mresolved_shape = shape.copy()[90m[39;49;00m
+                     ^^^^^^^^^^[90m[39;49;00m
+[1m[31mE   AttributeError: 'types.SimpleNamespace' object has no attribute 'copy'[0m
+[31m[1m_ TestLabelWidgetAttributes.test_save_attributes_uses_standard_shape_serialization _[0m
+[1m[31mtests\test_labeling\test_label_widget_attributes.py[0m:95: in test_save_attributes_uses_standard_shape_serialization
+    [0mresult = LabelingWidget.save_attributes(widget, [shape])[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31manylabeling\views\labeling\label_widget.py[0m:7979: in save_attributes
+    [0m[94mif[39;49;00m [96mself[39;49;00m._metadata_generation [95mis[39;49;00m [95mnot[39;49;00m [94mNone[39;49;00m [95mand[39;49;00m [96mself[39;49;00m.filename:[90m[39;49;00m
+       ^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE   AttributeError: 'types.SimpleNamespace' object has no attribute '_metadata_generation'[0m
+[31m[1m_ TestLabelWidgetMetrics.test_window_title_includes_annotation_checked_status _[0m
+[1m[31mtests\test_labeling\test_label_widget_metrics.py[0m:194: in test_window_title_includes_annotation_checked_status
+    [0m[96mself[39;49;00m.assertEqual([90m[39;49;00m
+[1m[31mE   AssertionError: 'X-AnyLabeling - D:\\tmp\\image.jpg [Check Passed] [640x480] [2/10]' != 'X-AnyLabeling - /tmp/image.jpg [Check Passed] [640x480] [2/10]'[0m
+[1m[31mE   - X-AnyLabeling - D:\tmp\image.jpg [Check Passed] [640x480] [2/10][0m
+[1m[31mE   ?                 ^^^   ^[0m
+[1m[31mE   + X-AnyLabeling - /tmp/image.jpg [Check Passed] [640x480] [2/10][0m
+[1m[31mE   ?                 ^   ^[0m
+[31m[1m________ TestFilterApplication.test_combined_filter_drives_visibility _________[0m
+[1m[31mtests\test_labeling\test_shape_filter.py[0m:132: in test_combined_filter_drives_visibility
+    [0mpredicate = [96mself[39;49;00m.predicate_for(host)[90m[39;49;00m
+                ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mtests\test_labeling\test_shape_filter.py[0m:126: in predicate_for
+    [0mLabelingWidget._apply_shape_filter_visibility(host)[90m[39;49;00m
+[1m[31manylabeling\views\labeling\label_widget.py[0m:8311: in _apply_shape_filter_visibility
+    [0mreview_active = [96mself[39;49;00m.dense_review_active()[90m[39;49;00m
+                    ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE   AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'[0m
+[31m[1m_____________ TestFilterApplication.test_invert_flag_is_forwarded _____________[0m
+[1m[31mtests\test_labeling\test_shape_filter.py[0m:144: in test_invert_flag_is_forwarded
+    [0mpredicate = [96mself[39;49;00m.predicate_for(host)[90m[39;49;00m
+                ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mtests\test_labeling\test_shape_filter.py[0m:126: in predicate_for
+    [0mLabelingWidget._apply_shape_filter_visibility(host)[90m[39;49;00m
+[1m[31manylabeling\views\labeling\label_widget.py[0m:8311: in _apply_shape_filter_visibility
+    [0mreview_active = [96mself[39;49;00m.dense_review_active()[90m[39;49;00m
+                    ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE   AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'[0m
+[31m[1m_________ TestFilterApplication.test_manual_hidden_shapes_stay_hidden _________[0m
+[1m[31mtests\test_labeling\test_shape_filter.py[0m:152: in test_manual_hidden_shapes_stay_hidden
+    [0mpredicate = [96mself[39;49;00m.predicate_for(host)[90m[39;49;00m
+                ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mtests\test_labeling\test_shape_filter.py[0m:126: in predicate_for
+    [0mLabelingWidget._apply_shape_filter_visibility(host)[90m[39;49;00m
+[1m[31manylabeling\views\labeling\label_widget.py[0m:8311: in _apply_shape_filter_visibility
+    [0mreview_active = [96mself[39;49;00m.dense_review_active()[90m[39;49;00m
+                    ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE   AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'[0m
+[31m[1m__ TestFilterApplication.test_manual_hide_is_recorded_from_the_item_checkbox __[0m
+[1m[31mtests\test_labeling\test_shape_filter.py[0m:165: in test_manual_hide_is_recorded_from_the_item_checkbox
+    [0mLabelingWidget.label_item_changed(host, item)[90m[39;49;00m
+[1m[31manylabeling\views\labeling\label_widget.py[0m:8627: in label_item_changed
+    [0m[94mif[39;49;00m [96mself[39;49;00m.dense_review_active():[90m[39;49;00m
+       ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE   AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'[0m
+[31m[1m_ TestUploadShapeAttributes.test_upload_preserves_auto_switch_signal_state (initially_enabled=False) _[0m
+[1m[31mtests\test_labeling\test_upload_shape_attributes.py[0m:319: in test_upload_preserves_auto_switch_signal_state
+    [0m[96mself[39;49;00m.assertTrue([90m[39;49;00m
+[1m[31mE   AssertionError: False is not true[0m
+[31m[1m_ TestUploadShapeAttributes.test_upload_preserves_auto_switch_signal_state (initially_enabled=True) _[0m
+[1m[31mtests\test_labeling\test_upload_shape_attributes.py[0m:319: in test_upload_preserves_auto_switch_signal_state
+    [0m[96mself[39;49;00m.assertTrue([90m[39;49;00m
+[1m[31mE   AssertionError: False is not true[0m
+[31m[1m__ TestUploadShapeAttributes.test_valid_upload_rebuilds_open_attribute_panel __[0m
+[1m[31mtests\test_labeling\test_upload_shape_attributes.py[0m:261: in test_valid_upload_rebuilds_open_attribute_panel
+    [0m[96mself[39;49;00m.assertIsNot(widget.grid_layout_container, old_container)[90m[39;49;00m
+[1m[31mE   AssertionError: unexpectedly identical: <PyQt6.QtWidgets.QWidget object at 0x00000127199F0690>[0m
+---------------------------- Captured stderr call -----------------------------
+2026-11-17 20:21:08,345 | ERROR   | upload:upload_shape_attrs_file:1887 Error occurred while uploading shape attributes file: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmpfp7xnce8.json'
+[31m[1m___ TestStreamingVideoBody.test_streamed_body_contains_complete_video_data ____[0m
+[1m[31mtests\test_labeling\test_video_classifier_workers.py[0m:34: in test_streamed_body_contains_complete_video_data
+    [0mpayload = [33mb[39;49;00m[33m"[39;49;00m[33m"[39;49;00m.join(body)[90m[39;49;00m
+              ^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31manylabeling\views\labeling\widgets\video_classifier_dialog.py[0m:228: in __iter__
+    [0m[94mwith[39;49;00m [96mopen[39;49;00m([96mself[39;49;00m.source_path, [33m"[39;49;00m[33mrb[39;49;00m[33m"[39;49;00m) [94mas[39;49;00m stream:[90m[39;49;00m
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE   PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmp8fw74nwq.mp4'[0m
+[31m[1m_________ TestStreamingVideoBody.test_streaming_stops_when_cancelled __________[0m
+[1m[31mtests\test_labeling\test_video_classifier_workers.py[0m:60: in test_streaming_stops_when_cancelled
+    [0m[96mnext[39;49;00m(chunks)[90m[39;49;00m
+[1m[31manylabeling\views\labeling\widgets\video_classifier_dialog.py[0m:228: in __iter__
+    [0m[94mwith[39;49;00m [96mopen[39;49;00m([96mself[39;49;00m.source_path, [33m"[39;49;00m[33mrb[39;49;00m[33m"[39;49;00m) [94mas[39;49;00m stream:[90m[39;49;00m
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE   PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmpce1vft5y.mp4'[0m
+- generated xml file: D:\X-AnyLabeling-4.2.1\reports\maintenance_baseline_20261117\additional-failures.xml -
+============================ slowest 30 durations =============================
+0.04s call     tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_radio_buttons_remain_exclusive_across_rows
+0.02s call     tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_upload_preserves_auto_switch_signal_state
+0.02s call     tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_right_click_requests_lock_for_selected_items
+0.01s call     tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_attribute_widget_changes_refresh_canvas_once
+0.01s setup    tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_attribute_widget_changes_refresh_canvas_once
+0.00s call     tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_unknown_values_are_shown_without_mutating_shape_or_config
+0.00s call     tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_selected_object_keeps_label_background_in_each_mode
+0.00s call     tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_locked_item_uses_svg_icon
+0.00s call     tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_valid_upload_rebuilds_open_attribute_panel
+0.00s call     tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_invalid_upload_preserves_active_configuration
+0.00s call     tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_validate_shape_attributes_config_rejects_invalid_structures
+0.00s call     tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_canvas_lock_action_uses_checkbox_without_icon
+0.00s call     tests/test_labeling/test_video_classifier_workers.py::TestVideoMediaWorkers::test_segment_export_falls_back_to_background_reencode
+0.00s call     tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_right_double_click_does_not_emit_item_double_clicked
+0.00s call     tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_selecting_known_value_clears_compatibility_warning
+0.00s call     tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_streaming_stops_when_cancelled
+0.00s call     tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_save_attributes_uses_standard_shape_serialization
+0.00s call     tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_streamed_body_contains_complete_video_data
+0.00s call     tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_rejected_extracted_segment_is_removed
+0.00s call     tests/test_labeling/test_video_classifier_workers.py::TestStreamingVideoBody::test_ai_video_limits_are_checked_before_upload
+0.00s setup    tests/test_labeling/test_shape_filter.py::TestFilterRules::test_label_visibility_wins_over_filter
+0.00s call     tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_edit_label_preserves_attributes_for_same_label
+0.00s setup    tests/test_labeling/test_label_widget_metrics.py::TestLabelWidgetMetrics::test_canvas_lock_action_uses_checkbox_without_icon
+0.00s setup    tests/test_labeling/test_shape_filter.py::TestFilterRules::test_group_filter_matches_numeric_and_string_ids
+0.00s setup    tests/test_labeling/test_label_widget_attributes.py::TestLabelWidgetAttributes::test_selecting_known_value_clears_compatibility_warning
+0.00s setup    tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_invalid_upload_preserves_active_configuration
+0.00s setup    tests/test_labeling/test_video_classifier_workers.py::TestVideoMediaWorkers::test_invalid_sidecar_does_not_replace_loaded_video_state
+0.00s setup    tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_valid_upload_rebuilds_open_attribute_panel
+0.00s teardown tests/test_labeling/test_shape_filter.py::TestFilterApplication::test_manual_hide_is_recorded_from_the_item_checkbox
+0.00s teardown tests/test_labeling/test_upload_shape_attributes.py::TestUploadShapeAttributes::test_valid_upload_rebuilds_open_attribute_panel
+[36m[1m=========================== short test summary info ===========================[0m
+[31mFAILED[0m tests/test_labeling/test_label_widget_attributes.py::[1mTestLabelWidgetAttributes::test_batch_edit_resets_only_shapes_with_changed_labels[0m - AttributeError: 'types.SimpleNamespace' object has no attribute 'copy'
+[31mFAILED[0m tests/test_labeling/test_label_widget_attributes.py::[1mTestLabelWidgetAttributes::test_save_attributes_uses_standard_shape_serialization[0m - AttributeError: 'types.SimpleNamespace' object has no attribute '_metadata_generation'
+[31mFAILED[0m tests/test_labeling/test_label_widget_metrics.py::[1mTestLabelWidgetMetrics::test_window_title_includes_annotation_checked_status[0m - AssertionError: 'X-AnyLabeling - D:\\tmp\\image.jpg [Check Passed] [640x480] [2/10]' != 'X-AnyLabeling - /tmp/image.jpg [Check Passed] [640x480] [2/10]'
+- X-AnyLabeling - D:\tmp\image.jpg [Check Passed] [640x480] [2/10]
+?                 ^^^   ^
++ X-AnyLabeling - /tmp/image.jpg [Check Passed] [640x480] [2/10]
+?                 ^   ^
+[31mFAILED[0m tests/test_labeling/test_shape_filter.py::[1mTestFilterApplication::test_combined_filter_drives_visibility[0m - AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'
+[31mFAILED[0m tests/test_labeling/test_shape_filter.py::[1mTestFilterApplication::test_invert_flag_is_forwarded[0m - AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'
+[31mFAILED[0m tests/test_labeling/test_shape_filter.py::[1mTestFilterApplication::test_manual_hidden_shapes_stay_hidden[0m - AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'
+[31mFAILED[0m tests/test_labeling/test_shape_filter.py::[1mTestFilterApplication::test_manual_hide_is_recorded_from_the_item_checkbox[0m - AttributeError: 'types.SimpleNamespace' object has no attribute 'dense_review_active'
+[31mSUBFAILED(initially_enabled=False)[0m tests/test_labeling/test_upload_shape_attributes.py::[1mTestUploadShapeAttributes::test_upload_preserves_auto_switch_signal_state[0m - AssertionError: False is not true
+[31mSUBFAILED(initially_enabled=True)[0m tests/test_labeling/test_upload_shape_attributes.py::[1mTestUploadShapeAttributes::test_upload_preserves_auto_switch_signal_state[0m - AssertionError: False is not true
+[31mFAILED[0m tests/test_labeling/test_upload_shape_attributes.py::[1mTestUploadShapeAttributes::test_valid_upload_rebuilds_open_attribute_panel[0m - AssertionError: unexpectedly identical: <PyQt6.QtWidgets.QWidget object at 0x00000127199F0690>
+[31mFAILED[0m tests/test_labeling/test_video_classifier_workers.py::[1mTestStreamingVideoBody::test_streamed_body_contains_complete_video_data[0m - PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmp8fw74nwq.mp4'
+[31mFAILED[0m tests/test_labeling/test_video_classifier_workers.py::[1mTestStreamingVideoBody::test_streaming_stops_when_cancelled[0m - PermissionError: [Errno 13] Permission denied: 'C:\\Users\\20441\\AppData\\Local\\Temp\\tmpce1vft5y.mp4'
+[31m============== [31m[1m12 failed[0m, [32m42 passed[0m, [32m19 subtests passed[0m[31m in 4.69s[0m[31m ==============[0m
