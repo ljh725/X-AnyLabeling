@@ -49,8 +49,8 @@ DPI 原始目录 32 项、性能 summary 仍在；未移动/删除/改写这些�
 | `fix-user-settings-persistence` | `archive/2026-11-17-fix-user-settings-persistence` | 已归档；`2267cc6c8d9e3b738b69f7b907626e9e87ae7d26` |
 | `fix-digit-rectangle-label-save` | `archive/2026-11-17-fix-digit-rectangle-label-save` | 已归档；`5453c11f5947ea687b6488622efc188aaae902eb` |
 | `improve-rectangle-edge-adjustment` | `archive/2026-11-17-improve-rectangle-edge-adjustment` | 已归档；`9caa239e5f8bb0239e6eee3e47696687f6d33eed` |
-| `fix-rectangle-preview-overlap` | `archive/2026-11-17-fix-rectangle-preview-overlap` | 已归档，随本批提交 |
-| `restore-v430-canvas-controls` | `archive/2026-11-17-restore-v430-canvas-controls` | 预演通过，未执行 |
+| `fix-rectangle-preview-overlap` | `archive/2026-11-17-fix-rectangle-preview-overlap` | 已归档；`57dc597903ab7147967a32bf75e2f301c3f43d7b` |
+| `restore-v430-canvas-controls` | `archive/2026-11-17-restore-v430-canvas-controls` | 已归档，随本批提交 |
 | `improve-point-fit-algorithm` | `archive/2026-11-17-improve-point-fit-algorithm` | 预演通过，未执行 |
 | `add-shift-corner-lock-point-fit` | `archive/2026-11-17-add-shift-corner-lock-point-fit` | 预演通过，未执行 |
 | `unify-shift-rectangle-point-fit` | `archive/2026-11-17-unify-shift-rectangle-point-fit` | 预演通过，未执行 |

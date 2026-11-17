@@ -4,7 +4,7 @@
 
 已确认：当前 `toolbar.py` 与 `canvas_adjustment.py` 的 Git 对象和官方 v4.2.1 相同；原迁移专项测试缺失；历史复验记录描述的是未提交实现。2026-11-03 14:54:52 的 reflog 存在 reset，但无法据此证明具体命令选项或唯一丢失原因，交付记录不得将推测写成事实。
 
-以下本地 Git blob 已与 [历史复验报告](../../../reports/migrate_canvas_controls_20261102/review/P2-RECHECK.md) 的 SHA-256 完全匹配：
+以下本地 Git blob 已与 [历史复验报告](../../../../reports/migrate_canvas_controls_20261102/review/P2-RECHECK.md) 的 SHA-256 完全匹配：
 
 | 文件 | Git blob | SHA-256 |
 | --- | --- | --- |
@@ -46,7 +46,7 @@
 ### 3. 沿用原迁移交互决策并补齐已知边界
 
 - 工具栏复用现有 QAction，恢复八类显示开关、适应窗口/宽度、成组/解组及横向溢出浏览；菜单、设置与快捷键共用状态。
-- 导航沿用原 [设计](../migrate-canvas-controls-from-v430/design.md) 的明确映射：裸滚轮按模式导航，Ctrl 缩放，Alt 调笔刷或允许编辑的单个未锁定矩形，Alt+Shift 调对比分割。一次事件只执行一个行为，保留 pixel/angle 增量边界。
+- 导航沿用原 [设计](../../migrate-canvas-controls-from-v430/design.md) 的明确映射：裸滚轮按模式导航，Ctrl 缩放，Alt 调笔刷或允许编辑的单个未锁定矩形，Alt+Shift 调对比分割。一次事件只执行一个行为，保留 pixel/angle 增量边界。
 - 模式切换以图像坐标中心和倍率为快照，传统模式仅按边界夹紧；拖动、拟合、四极值草稿、绘制和平移期间延迟到结束/取消后应用最新请求。
 - 三态审核面板复用图片顶层 `checked`、既有保存及元数据版本保护，不覆盖密集审核进度或对象审核字段。
 - 透明度只作为临时填充 alpha 乘数，普通填充与掩码各应用一次；边框、文字、交互提示和原颜色数据不变。
