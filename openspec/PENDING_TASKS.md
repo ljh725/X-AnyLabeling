@@ -1,4 +1,42 @@
-# OpenSpec 未完成任务清单
+# OpenSpec 当前状态与历史记录
+
+更新：2026-11-17。统计直接读取活动 `tasks.md`；本页无独立任务勾选。
+当前 16 个变更：11 个任务全勾待归档、3 个产品待验证/暂停、1 个维护协调、
+1 个已移交目录。合计 304/347，剩余 43 项（产品 32、维护 11）。
+任务全勾不等于交付验收；归档资格还需核对验证与依赖。
+
+| 当前变更（源清单） | 勾选 / 总数 | 实际状态 |
+| --- | ---: | --- |
+| [add-annotation-correction-cost-statistics](changes/add-annotation-correction-cost-statistics/tasks.md) | 49/54 | 待真实 GUI、性能、双人试用与回退等验收，保留 5 项 |
+| [add-dense-annotation-review-workflow](changes/add-dense-annotation-review-workflow/tasks.md) | 61/66 | 原工作流待验收；保留 5 项，未通过不得归档 |
+| [add-keypoint-display-presets](changes/add-keypoint-display-presets/tasks.md) | 0/22 | 方案暂停，0 项实施；不自动启动 |
+| [add-shift-corner-lock-point-fit](changes/add-shift-corner-lock-point-fit/tasks.md) | 6/6 | 任务全勾，待本轮独立核对归档资格 |
+| [fix-digit-rectangle-label-save](changes/fix-digit-rectangle-label-save/tasks.md) | 10/10 | 任务全勾，待本轮独立核对归档资格 |
+| [fix-rectangle-preview-overlap](changes/fix-rectangle-preview-overlap/tasks.md) | 24/24 | 任务全勾，待本轮独立核对归档资格 |
+| [fix-user-settings-persistence](changes/fix-user-settings-persistence/tasks.md) | 27/27 | 任务全勾，待本轮独立核对归档资格 |
+| [improve-point-fit-algorithm](changes/improve-point-fit-algorithm/tasks.md) | 5/5 | 任务全勾，待本轮独立核对归档资格 |
+| [improve-rectangle-edge-adjustment](changes/improve-rectangle-edge-adjustment/tasks.md) | 6/6 | 任务全勾，待本轮独立核对归档资格 |
+| [migrate-canvas-controls-from-v430](changes/migrate-canvas-controls-from-v430/tasks.md) | 0/0 | 历史任务已移交 restore；0/0 不是完成证明 |
+| [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 7/18 | 维护实施中；候选固定与入口整理完成 |
+| [polish-inspector-dense-review-ui](changes/polish-inspector-dense-review-ui/tasks.md) | 20/20 | 任务全勾，待本轮独立核对归档资格 |
+| [restore-v430-canvas-controls](changes/restore-v430-canvas-controls/tasks.md) | 31/31 | 任务全勾，待本轮独立核对归档资格 |
+| [smooth-canvas-dragging](changes/smooth-canvas-dragging/tasks.md) | 19/19 | 任务全勾，待本轮独立核对归档资格 |
+| [staged-annotation-loading](changes/staged-annotation-loading/tasks.md) | 31/31 | 任务全勾，待本轮独立核对归档资格 |
+| [unify-shift-rectangle-point-fit](changes/unify-shift-rectangle-point-fit/tasks.md) | 8/8 | 任务全勾，待本轮独立核对归档资格 |
+
+已停止的密集复核重设计不在活动任务中：最后技术审计 33/91，58 项随用户决定
+行政关闭，五份草案未发布；保留代码及失败证据，不重启。
+见[停止决定](changes/archive/2026-11-17-redesign-dense-review-workspace/archive-decision-20261117.md)。
+Inspector 重构 55/55 为含 3 项行政关闭的历史状态，不补造人工证据；
+双屏导航 26/26 中人工项依据用户 2026-11-17 声明通过，未新增截图。
+数字提示条 CUSTOM-118 与数字矩形类别保存 CUSTOM-011 为不同工作。
+当前验证与归档结论入口：[维护候选](../docs/version-management/2026-11-17-maintenance-baseline.md)。
+
+---
+
+以下原文为历史记录；数字、当时路径和结论按各自日期理解，不作当前待办。
+
+# 历史：OpenSpec 未完成任务清单
 
 ## 2026-11-17 Inspector 双屏导航人工验收通过并归档
 

@@ -26,9 +26,9 @@
 | CUSTOM-003 | 大数据集拖动响应优化 | 已实施，历史回归与用户体验确认见修复记录 | [修复记录](2026-10-30-canvas-dragging.md) |
 | CUSTOM-119 | 标签缩放测试截图裁剪修复 | 已验证 | [修复记录](2026-11-13-shape-label-zoom-test.md) |
 | CUSTOM-121 | 密集复核工作区重设计 | 已按用户决定终止并归档；代码与失败/中止证据已保存，未完成验收不再继续 | [停止记录](2026-11-17-dense-review-stop-archive.md) · [归档决定](../../openspec/changes/archive/2026-11-17-redesign-dense-review-workspace/archive-decision-20261117.md) |
-| CUSTOM-122 | 关键点三层表达与画布符号 | 方案，未实施，已形成规格、任务与验收清单 | [方案与示意图](2026-11-13-keypoint-three-layer-expression.md) · [OpenSpec 任务](../../openspec/changes/add-keypoint-display-presets/tasks.md) |
+| CUSTOM-122 | 关键点三层表达与画布符号 | 方案暂停，0/22 未实施，保留规格与验收清单 | [方案与示意图](2026-11-13-keypoint-three-layer-expression.md) · [OpenSpec 任务](../../openspec/changes/add-keypoint-display-presets/tasks.md) |
 | CUSTOM-123 | Inspector 双屏导航简化（问题队列 + F1／F2 + 保存并复查） | 已验证：代码与自动化有证据；6.3 实际双屏按用户 2026-11-17 声明通过（仓库内未附截图）；已归档 | [实施与归档记录](2026-11-17-inspector-dual-screen-archive.md) · [归档变更](../../openspec/changes/archive/2026-11-17-simplify-inspector-dual-screen-navigation/tasks.md) · [操作说明](../zh_cn/inspector.md) |
-| CUSTOM-109 | Inspector 检查与复核工作流 | 11-05 已提交保存；代码/自动化 52/55，人工验收 3 项待做 | [实施记录](2026-11-02-inspector-workflow.md) · [操作说明](../zh_cn/inspector.md) · [验证](../../openspec/changes/archive/2026-11-10-refactor-data-inspector-workflow/verification.md) |
+| CUSTOM-109 | Inspector 检查与复核工作流 | 11-10 按用户决定行政关闭并归档 55/55；原代码/自动化 52/55，另 3 项无新增人工证据 | [实施记录](2026-11-02-inspector-workflow.md) · [行政归档依据](../../openspec/changes/archive/2026-11-10-refactor-data-inspector-workflow/archive-decision-20261110.md) · [操作说明](../zh_cn/inspector.md) · [验证](../../openspec/changes/archive/2026-11-10-refactor-data-inspector-workflow/verification.md) |
 | CUSTOM-110 | 密集标注复核工作流 | 11-05 已提交保存；功能/性能专项有通过证据，人工试用与完整组合回归仍待验收 | [最新实施结果](../../openspec/changes/add-dense-annotation-review-workflow/implementation-20261105.md) · [实施记录](2026-11-02-dense-annotation-review-workflow.md) · [任务](../../openspec/changes/add-dense-annotation-review-workflow/tasks.md) |
 | CUSTOM-111 | 修正成本统计 | 任务 49/54；菜单入口已接入启用设置和右侧栏面板；语言资源、真实屏幕 GUI 回归与性能、人工试用及回退验收待完成 | [状态记录](2026-11-03-correction-cost-statistics.md) · [任务](../../openspec/changes/add-annotation-correction-cost-statistics/tasks.md) · [验证](../../openspec/changes/add-annotation-correction-cost-statistics/verification.md) |
 | CUSTOM-112～116 | v4.3.0 五项画布能力恢复（工具栏、滚轮导航、三态审核、仅填充透明度、显示参数保持） | 11-05 已提交保存；专项与配置自动联测通过，性能/真实屏幕等验收未全部完成 | [恢复记录](2026-11-04-canvas-controls-restore.md) · [最新实施结果](../../openspec/changes/restore-v430-canvas-controls/implementation-20261105.md) · [验证](../../openspec/changes/restore-v430-canvas-controls/verification.md) |
@@ -40,6 +40,13 @@
 | CUSTOM-101 | 框内单点拟合锁角即时预览与单击确认 | 11-12 单击版已实测，固定对角修订已通过自动化验证 | [实施记录](2026-11-12-point-fit-lock-click.md) · [操作说明](../zh_cn/rectangle_point_fit.md) |
 | CUSTOM-101-统一手势 | Shift 单点拟合统一：框外进框锁角、按下捕获/松开提交、无效落点保留锁角、移除 Shift+Alt 同侧角 | 11-13 已验证，独立规格 87 项全部通过，用户确认人工验收通过 | [实施记录](2026-11-12-point-fit-unify-shift.md) · [操作说明](../zh_cn/rectangle_point_fit.md) · [OpenSpec](../../openspec/changes/unify-shift-rectangle-point-fit/proposal.md) |
 | CUSTOM-010～014、101～108 | 4.2.1上的既有增强/迁移功能 | 已含于历史混合快照，非本轮新增实施 | [完整分类台账](CATALOG-20261030.md) |
+
+现存补充记录（各自原状态不因建索引改变）：
+
+- [矩形交互原方案](2026-10-30-rectangle-interaction-plan.md)、[Shift 锁角对齐](2026-11-11-point-fit-shift-corner-alignment.md)、[Alt 锚点设计历史](2026-11-11-point-fit-alt-anchor-design.md)。
+- [项目变更审计](2026-11-06-project-change-audit.md)为当日快照。
+- [停止前修复记录](2026-11-17-dense-review-followup-fixes.md)与[重设计原方案](2026-11-13-dense-review-redesign.md)为 CUSTOM-121 历史，不重启。
+- CUSTOM-118 是数字键提示条，CUSTOM-011 是矩形类别保存与绑定；互不代替验收。
 
 ## 已有相关材料
 
