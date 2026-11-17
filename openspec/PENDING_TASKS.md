@@ -1,7 +1,7 @@
 # OpenSpec 当前状态与历史记录
 
-更新：2026-11-17；逐份读取源 `tasks.md`。当前 15 个活动目录，
-合计 291/328，未勾 37 项；本页不维护第二套任务勾选。
+更新：2026-11-17；逐份读取源 `tasks.md`。当前 14 个活动目录，
+合计 260/297，未勾 37 项；本页不维护第二套任务勾选。
 
 | 当前变更（源清单） | 勾选 / 总数 | 实际状态 |
 | --- | ---: | --- |
@@ -18,7 +18,6 @@
 | [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 13/18 | 实施中；候选验证已记录，逐批归档与最终核对进行中 |
 | [polish-inspector-dense-review-ui](changes/polish-inspector-dense-review-ui/tasks.md) | 20/20 | 20/20 技术勾选；Ctrl+F 规格与实现不符、人工缺口，保留未归档 |
 | [restore-v430-canvas-controls](changes/restore-v430-canvas-controls/tasks.md) | 31/31 | 任务全勾；按维护审计与独立证据决定归档 |
-| [staged-annotation-loading](changes/staged-annotation-loading/tasks.md) | 31/31 | 任务全勾；按维护审计与独立证据决定归档 |
 | [unify-shift-rectangle-point-fit](changes/unify-shift-rectangle-point-fit/tasks.md) | 8/8 | 任务全勾；按维护审计与独立证据决定归档 |
 
 当前归档与保留依据见[维护候选](../docs/version-management/2026-11-17-maintenance-baseline.md)；

@@ -56,4 +56,4 @@
 
 [2026-11-02 十字线定位、代码分类与工具卡顿诊断](../../reports/tool_scan_diagnosis_20261102/REPORT.md)：区分原始/个人 beta.4 和当前 4.2.1 的十字线颜色来源；按上游已有文件修改、新增扩展模块、测试工程、生成翻译导出当前代码快照；对 14003 张真实共享盘图片对应标注完成只读分段测量。该次未改运行源码，未实施 CUSTOM-001。
 
-[分阶段标注加载报告](../../reports/staged_annotation_loading/REPORT.md)记录了此前目录加载工作的实现、测量及复核；对应 [OpenSpec 变更](../../openspec/changes/staged-annotation-loading/proposal.md)。本次仅建立引用，没有重新核验或追认其实现状态；迁移时应一并检查该功能与工具扫描的交互。
+[分阶段标注加载报告](../../reports/staged_annotation_loading/REPORT.md)记录了此前目录加载工作的实现、测量及复核；对应 [OpenSpec 变更](../../openspec/changes/archive/2026-11-17-staged-annotation-loading/proposal.md)。本次仅建立引用，没有重新核验或追认其实现状态；迁移时应一并检查该功能与工具扫描的交互。
