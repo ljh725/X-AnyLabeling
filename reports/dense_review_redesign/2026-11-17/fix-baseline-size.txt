@@ -1,0 +1,48 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 1 item
+
+tests/test_canvas/test_rectangle_size.py::test_action_switch_updates_canvas_and_config FAILED [100%]
+
+================================== FAILURES ===================================
+________________ test_action_switch_updates_canvas_and_config _________________
+
+    def test_action_switch_updates_canvas_and_config():
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+
+        host = SimpleNamespace(
+            _config={},
+            canvas=SimpleNamespace(
+                show_rectangle_pixels=False, update=Mock()
+            ),
+        )
+
+>       LabelingWidget.set_canvas_params(host, "show_rectangle_pixels", True)
+
+tests\test_canvas\test_rectangle_size.py:492:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = namespace(_config={}, canvas=namespace(show_rectangle_pixels=True, update=<Mock id='2255925995824'>))
+key = 'show_rectangle_pixels', value = True
+
+    def set_canvas_params(self, key, value):
+        assert hasattr(self.canvas, key), f"Canvas has no attribute {key}"
+        setattr(self.canvas, key, value)
+        self.canvas.update()
+>       if not self.update_user_preference(key, value):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'update_user_preference'
+
+.tmp\dense-review-fix-20261117\before\label_widget.py:9239: AttributeError
+============================ slowest 30 durations =============================
+0.01s setup    tests/test_canvas/test_rectangle_size.py::test_action_switch_updates_canvas_and_config
+0.00s call     tests/test_canvas/test_rectangle_size.py::test_action_switch_updates_canvas_and_config
+0.00s teardown tests/test_canvas/test_rectangle_size.py::test_action_switch_updates_canvas_and_config
+=========================== short test summary info ===========================
+FAILED tests/test_canvas/test_rectangle_size.py::test_action_switch_updates_canvas_and_config - AttributeError: 'types.SimpleNamespace' object has no attribute 'update_user_preference'
+============================== 1 failed in 3.51s ==============================

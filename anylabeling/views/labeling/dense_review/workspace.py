@@ -3368,8 +3368,8 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
             self._restore_task_view()
             return
         # Re-opening after a real hide: the temporary overlay was released,
-        # so the active task preset and its target have to be applied again
-        # (R3, WL-07).  The *viewport* is deliberately not restored here -
+        # so reapply the active task preset against the live session target
+        # (R3, WL-07). The viewport is deliberately not restored here -
         # the user may have zoomed elsewhere in between, and re-opening must
         # not silently undo that (R4).
         self._review_view_open = True
@@ -3377,17 +3377,27 @@ class DenseReviewWorkspace(QtWidgets.QDockWidget):
         # hide/show pair from floating or re-docking is not a new round, and
         # re-cropping every card there would be wasted work (R1, WL-02).
         self._refresh_from_host(new_generation=False)
-        self._restore_task_view(restore_viewport=False, focus=False)
+        # Session navigation may have advanced since the last task switch.
+        # Reinstall the policy against that live target, not the old snapshot.
+        self._apply_task_display(self._task_id)
+        self._show_task_page(self._task_id)
+        self._refresh_task_selector()
 
     def hideEvent(self, event) -> None:  # noqa: N802
         """Release the review overlay when the panel really goes away.
 
         ``hide()``, closing the panel and a window-level hide all land here.
-        Floating/re-docking emits a hide followed immediately by a show, so
-        the release is idempotent and the following ``showEvent`` restores
-        the same policy (R1, DP-17, WL-12).
+        Floating/re-docking emits a synchronous hide/show pair. Check at the
+        next event-loop turn so that transition preserves the display mode,
+        target and viewport (R1, DP-17, WL-12). Closing still cleans up inline.
         """
         super().hideEvent(event)
+        QtCore.QTimer.singleShot(0, self._release_hidden_review_view)
+
+    def _release_hidden_review_view(self) -> None:
+        """Release the overlay only if the dock remains hidden."""
+        if self.isVisible():
+            return
         if not self._review_view_open:
             return
         self._review_view_open = False

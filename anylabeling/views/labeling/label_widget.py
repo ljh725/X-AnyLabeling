@@ -4568,31 +4568,28 @@ class LabelingWidget(LabelDialog):
         """Restore a viewport snapshot taken by the task switcher.
 
         Only a snapshot belonging to the same image is applied; a stale one
-        from another image is ignored.  Restoring a fit-to-window view
-        re-enters that mode instead of freezing the current fit as a manual
-        zoom, and a fractional zoom keeps its exact scale (WL-07, R4).
+        from another image is ignored. Both fit modes and fractional manual
+        zoom use the complete comparison-view restoration path, including
+        controls, canvas geometry and remembered view state (WL-07, R4).
         """
         if not snapshot:
             return False
         if snapshot.get("image") != (self.filename or ""):
             return False
-        pan = snapshot.get("pan")
-        if pan is not None:
-            self.canvas.pan_offset = QtCore.QPointF(pan)
-        mode = snapshot.get("zoom_mode", self.MANUAL_ZOOM)
         scale = snapshot.get("scale")
-        if mode == self.FIT_WINDOW:
-            self.zoom_mode = self.FIT_WINDOW
-            self.set_fit_window()
-        elif scale is not None:
-            self.zoom_mode = self.MANUAL_ZOOM
-            self.canvas.scale = float(scale)
-        else:
-            self.set_zoom(snapshot.get("zoom", self.zoom_widget.value()))
-        for orientation, value in (snapshot.get("scroll") or {}).items():
-            self.set_scroll(orientation, value)
-        self.canvas.update()
-        return True
+        return self._dense_review_restore_view(
+            {
+                **snapshot,
+                "zoom": (
+                    float(scale) * 100.0
+                    if scale is not None
+                    else snapshot.get("zoom", self.zoom_widget.value())
+                ),
+                "zoom_mode": snapshot.get("zoom_mode", self.MANUAL_ZOOM),
+                "pan": snapshot.get("pan", self.canvas.pan_offset),
+                "scroll": snapshot.get("scroll") or {},
+            }
+        )
 
     def dense_review_apply_task_preset(self, task_id: str) -> None:
         """Apply the display preset of one review task.

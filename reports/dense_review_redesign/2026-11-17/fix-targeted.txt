@@ -1,0 +1,59 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 18 items
+
+tests/test_dense_review/test_workspace_review_fixes.py::test_hide_dock_removes_review_overlay PASSED [  5%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_hide_then_show_restores_the_review_overlay PASSED [ 11%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_background_refresh_keeps_coverage_viewport PASSED [ 16%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_explicit_region_navigation_still_moves_the_canvas PASSED [ 22%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_reapplies_coverage_preset PASSED [ 27%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False] PASSED [ 33%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[True] PASSED [ 38%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_text_switch PASSED [ 44%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_label_switch PASSED [ 50%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_hides_associated_keypoint_symbols PASSED [ 55%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_category_does_not_promote_associated_points PASSED [ 61%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_box_points_promotes_associated_points PASSED [ 66%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_zoom_control_and_canvas_size PASSED [ 72%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_fit_width_mode PASSED [ 77%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_has_no_rendered_pixels PASSED [ 83%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_is_not_hittable PASSED [ 88%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_keeps_latest_current_object PASSED [ 94%]
+tests/test_dense_review/test_workspace_review_fixes.py::test_float_keeps_original_display_mode PASSED [100%]
+
+============================ slowest 30 durations =============================
+3.04s call     tests/test_dense_review/test_workspace_review_fixes.py::test_explicit_region_navigation_still_moves_the_canvas
+2.99s call     tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_label_switch
+2.90s call     tests/test_dense_review/test_workspace_review_fixes.py::test_float_keeps_original_display_mode
+2.86s call     tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_reapplies_coverage_preset
+2.84s call     tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_has_no_rendered_pixels
+2.84s call     tests/test_dense_review/test_workspace_review_fixes.py::test_hide_then_show_restores_the_review_overlay
+2.83s call     tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_text_switch
+2.83s call     tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_is_not_hittable
+2.82s call     tests/test_dense_review/test_workspace_review_fixes.py::test_background_refresh_keeps_coverage_viewport
+2.82s call     tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_fit_width_mode
+2.81s call     tests/test_dense_review/test_workspace_review_fixes.py::test_box_points_promotes_associated_points
+2.80s call     tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[True]
+2.79s call     tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_zoom_control_and_canvas_size
+2.74s call     tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_keeps_latest_current_object
+2.72s call     tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_hides_associated_keypoint_symbols
+2.70s call     tests/test_dense_review/test_workspace_review_fixes.py::test_hide_dock_removes_review_overlay
+2.70s call     tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False]
+2.68s call     tests/test_dense_review/test_workspace_review_fixes.py::test_category_does_not_promote_associated_points
+0.04s teardown tests/test_dense_review/test_workspace_review_fixes.py::test_float_keeps_original_display_mode
+0.04s teardown tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_point_is_not_hittable
+0.04s teardown tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[True]
+0.04s teardown tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_fit_width_mode
+0.04s teardown tests/test_dense_review/test_workspace_review_fixes.py::test_task_snapshot_restores_zoom_control_and_canvas_size
+0.03s teardown tests/test_dense_review/test_workspace_review_fixes.py::test_coverage_does_not_change_ordinary_text_switch
+0.03s teardown tests/test_dense_review/test_workspace_review_fixes.py::test_category_does_not_promote_associated_points
+0.03s teardown tests/test_dense_review/test_workspace_review_fixes.py::test_explicit_region_navigation_still_moves_the_canvas
+0.03s teardown tests/test_dense_review/test_workspace_review_fixes.py::test_box_points_promotes_associated_points
+0.03s teardown tests/test_dense_review/test_workspace_review_fixes.py::test_hide_then_show_restores_the_review_overlay
+0.03s teardown tests/test_dense_review/test_workspace_review_fixes.py::test_reopen_keeps_latest_current_object
+0.03s teardown tests/test_dense_review/test_workspace_review_fixes.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False]
+============================= 18 passed in 51.77s =============================

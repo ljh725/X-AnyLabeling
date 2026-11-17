@@ -405,14 +405,12 @@ def _resolve(
     role = _role_for(shape_id, context)
     style = context.style_for(role)
     if shape_type == "point" and context.hides_points():
-        # The coverage pass hides point symbols and point text without
-        # touching the rectangle outlines it is inspecting (SN-05, R6).
+        # A point's outline also paints its symbol. Suppress every component
+        # and its hit target, retaining rectangle outlines (SN-05, DP-02).
         style = RoleStyle(
             **{
-                **style.to_dict(),
-                "points": 0.0,
-                "text": 0.0,
-                "text_plate": 0.0,
+                name: value if name == "outline_width" else 0.0
+                for name, value in style.to_dict().items()
             }
         ).normalized()
     drawable = not reason and style.visible

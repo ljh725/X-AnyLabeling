@@ -1,0 +1,11 @@
+.tmp/dense-review-fix-20261117/before/label_widget.py:5827:5: C901 'LabelingWidget.inspection_navigate_to' is too complex (21)
+.tmp/dense-review-fix-20261117/before/label_widget.py:6061:5: C901 'LabelingWidget.inspection_accept_candidate' is too complex (19)
+.tmp/dense-review-fix-20261117/before/label_widget.py:7160:17: F841 local variable 'blocker' is assigned to but never used
+.tmp/dense-review-fix-20261117/before/label_widget.py:7173:17: F841 local variable 'blocker' is assigned to but never used
+.tmp/dense-review-fix-20261117/before/label_widget.py:7512:5: C901 'LabelingWidget.update_attributes' is too complex (46)
+.tmp/dense-review-fix-20261117/before/label_widget.py:7783:29: F841 local variable 'blocker' is assigned to but never used
+.tmp/dense-review-fix-20261117/before/label_widget.py:7905:9: F841 local variable 'metrics_token' is assigned to but never used
+.tmp/dense-review-fix-20261117/before/label_widget.py:8586:5: C901 'LabelingWidget.new_shape' is too complex (19)
+.tmp/dense-review-fix-20261117/before/label_widget.py:9571:21: F541 f-string is missing placeholders
+.tmp/dense-review-fix-20261117/before/label_widget.py:10001:5: C901 'LabelingWidget.closeEvent' is too complex (20)
+.tmp/dense-review-fix-20261117/before/label_widget.py:10872:5: C901 'LabelingWidget._poll_view' is too complex (22)

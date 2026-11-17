@@ -15,7 +15,7 @@ promotion.
 # flake8: noqa: F811
 
 import pytest
-from PyQt6 import QtCore
+from PyQt6 import QtCore, QtGui
 
 # Fixtures (``app``, ``open_window``) come from the dock-task module; they are
 # imported by name so pytest can resolve them for this file.
@@ -96,13 +96,16 @@ def test_explicit_region_navigation_still_moves_the_canvas(app, open_window):
     session = widget.dense_review_session
     plan = session.state.coverage
     region_id = plan.regions[-1].region_id
-    before = widget.canvas.scale
+    widget.set_zoom(75)
+    widget.canvas.pan_offset = QtCore.QPointF(17, 23)
+    before = (widget.canvas.scale, QtCore.QPointF(widget.canvas.pan_offset))
 
     workspace._on_grid_region_clicked(region_id)
     app.processEvents()
     # An explicit navigation is still allowed to fit the region.
     assert session.state.coverage.current_region == region_id
-    assert widget.canvas.scale != pytest.approx(before, rel=1e-6) or True
+    after = (widget.canvas.scale, QtCore.QPointF(widget.canvas.pan_offset))
+    assert after != before
 
 
 # -- R3: re-opening restores the task preset -----------------------------
@@ -202,3 +205,77 @@ def test_box_points_promotes_associated_points(app, open_window):
     display = widget.dense_review_display_entry(associated[0])
     assert display.role == "current"
     assert display.style.points > 0.0
+
+
+# -- F1-F4: independent follow-up behavior checks -----------------------
+
+
+def test_task_snapshot_restores_zoom_control_and_canvas_size(app, open_window):
+    _, widget, ws = _open(app, open_window)
+    widget.set_zoom(126.4)
+    app.processEvents()
+    before = (widget.zoom_widget.value(), widget.canvas.size())
+    ws.set_task(ws.TASK_COVERAGE)
+    ws.set_task(ws.TASK_CATEGORY)
+    app.processEvents()
+    assert (widget.zoom_widget.value(), widget.canvas.size()) == before
+
+
+def test_task_snapshot_restores_fit_width_mode(app, open_window):
+    _, widget, ws = _open(app, open_window)
+    widget.set_fit_width()
+    app.processEvents()
+    assert widget.zoom_mode == widget.FIT_WIDTH
+    ws.set_task(ws.TASK_COVERAGE)
+    ws.set_task(ws.TASK_CATEGORY)
+    app.processEvents()
+    assert widget.zoom_mode == widget.FIT_WIDTH
+
+
+def test_coverage_point_has_no_rendered_pixels(app, open_window):
+    _, widget, ws = _open(app, open_window)
+    ws.set_task(ws.TASK_COVERAGE)
+    shape = widget._dense_review_find_shape("kp1")
+    display = widget.dense_review_display_entry("kp1")
+    before = QtGui.QImage(200, 200, QtGui.QImage.Format.Format_ARGB32)
+    before.fill(QtCore.Qt.GlobalColor.white)
+    after = before.copy()
+    painter = QtGui.QPainter(after)
+    shape.paint(painter, display_style=display.paint_style)
+    painter.end()
+    assert after == before
+
+
+def test_coverage_point_is_not_hittable(app, open_window):
+    _, widget, ws = _open(app, open_window)
+    ws.set_task(ws.TASK_COVERAGE)
+    shape = widget._dense_review_find_shape("kp1")
+    assert shape not in widget.canvas._shape_hit_candidates(shape.points[0])
+
+
+def test_reopen_keeps_latest_current_object(app, open_window):
+    _, widget, ws = _open(app, open_window)
+    ws.set_task(ws.TASK_COVERAGE)
+    ws.set_task(ws.TASK_CATEGORY)
+    ws._navigate_to(ws._current_batch_id(), "rect2")
+    assert ws.session.current_object().shape_id == "rect2"
+    ws.close()
+    app.processEvents()
+    widget.open_dense_review()
+    app.processEvents()
+    assert ws.session.current_object().shape_id == "rect2"
+
+
+def test_float_keeps_original_display_mode(app, open_window):
+    _, widget, ws = _open(app, open_window)
+    index = ws.display_combo.findData("original")
+    ws.display_combo.setCurrentIndex(index)
+    app.processEvents()
+    assert widget.canvas.annotation_editing_paused()
+    current = ws.session.current_object().shape_id
+    for floating in (True, False):
+        ws.setFloating(floating)
+        app.processEvents()
+        assert widget._dense_review_display_mode == "original"
+        assert widget.canvas.annotation_editing_paused()
+        assert ws.session.current_object().shape_id == current
