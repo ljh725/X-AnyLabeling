@@ -1,6 +1,6 @@
 ## Context
 
-动机与范围见 [proposal.md](../archive/2026-11-17-migrate-canvas-controls-from-v430/proposal.md)。这是针对本地 4.2.1 定制分支的选择性迁移，不是升级整套应用。参考源固定为上游 v4.3.0 提交 `74407f633b61a8ff6adc0e7eafbafa6856825759`；本地方案基线为 `5767933892cb1d0bc37049bdd2e26f5a71418518`。
+动机与范围见 [proposal.md](proposal.md)。这是针对本地 4.2.1 定制分支的选择性迁移，不是升级整套应用。参考源固定为上游 v4.3.0 提交 `74407f633b61a8ff6adc0e7eafbafa6856825759`；本地方案基线为 `5767933892cb1d0bc37049bdd2e26f5a71418518`。
 
 现有基础与关键约束：
 
