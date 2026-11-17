@@ -1,0 +1,57 @@
+[1m============================= test session starts =============================[0m
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+[1mcollecting ... [0mcollected 1 item
+
+tests/test_staged_output_window.py::test_output_switch_reads_current_then_background 2026-11-17 20:19:50,055 | WARNING | label_widget:persist_user_preferences:9349 Failed to save user preferences: No active configuration session; start the application or call begin_session() first.
+ORIGINAL ERROR MESSAGE: ('Save Failed', 'No active configuration session; start the application or call begin_session() first.') {}
+Timeout (0:00:30)!
+Thread 0x00016bbc (most recent call first):
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\labeling\label_widget.py", line 10728 in error_message
+  File "D:\X-AnyLabeling-4.2.1\.tmp\maintenance_modal_observer.py", line 10 in observed
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\labeling\label_widget.py", line 9350 in persist_user_preferences
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\labeling\label_widget.py", line 9391 in update_user_preference
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\labeling\label_widget.py", line 9294 in set_canvas_params
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\labeling\label_widget.py", line 1640 in <lambda>
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\labeling\utils\qt.py", line 176 in new_action
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\labeling\label_widget.py", line 1638 in __init__
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\labeling\label_wrapper.py", line 24 in __init__
+  File "D:\X-AnyLabeling-4.2.1\anylabeling\views\mainwindow.py", line 43 in __init__
+  File "D:\X-AnyLabeling-4.2.1\tests\test_staged_output_window.py", line 54 in test_output_switch_reads_current_then_background
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\python.py", line 166 in pytest_pyfunc_call
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_callers.py", line 121 in _multicall
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_manager.py", line 120 in _hookexec
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_hooks.py", line 512 in __call__
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\python.py", line 1720 in runtest
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\runner.py", line 179 in pytest_runtest_call
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_callers.py", line 121 in _multicall
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_manager.py", line 120 in _hookexec
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_hooks.py", line 512 in __call__
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\runner.py", line 245 in <lambda>
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\runner.py", line 353 in from_call
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\runner.py", line 244 in call_and_report
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\runner.py", line 137 in runtestprotocol
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\runner.py", line 118 in pytest_runtest_protocol
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_callers.py", line 121 in _multicall
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_manager.py", line 120 in _hookexec
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_hooks.py", line 512 in __call__
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\main.py", line 396 in pytest_runtestloop
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_callers.py", line 121 in _multicall
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_manager.py", line 120 in _hookexec
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_hooks.py", line 512 in __call__
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\main.py", line 372 in _main
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\main.py", line 318 in wrap_session
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\main.py", line 365 in pytest_cmdline_main
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_callers.py", line 121 in _multicall
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_manager.py", line 120 in _hookexec
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pluggy\_hooks.py", line 512 in __call__
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\config\__init__.py", line 199 in main
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\config\__init__.py", line 223 in console_main
+  File "C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\pytest\__main__.py", line 9 in <module>
+  File "<frozen runpy>", line 88 in _run_code
+  File "<frozen runpy>", line 198 in _run_module_as_main
+
+OUTER HARD TIMEOUT: 60 seconds

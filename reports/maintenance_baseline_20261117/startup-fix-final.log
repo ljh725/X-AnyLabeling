@@ -1,0 +1,57 @@
+[1m============================= test session starts =============================[0m
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+[1mcollecting ... [0mcollected 15 items
+
+tests/test_staged_output_window.py::test_output_switch_reads_current_then_background [32mPASSED[0m[32m [  6%][0m
+tests/test_staged_output_window.py::test_cancelled_switch_keeps_directory [32mPASSED[0m[32m [ 13%][0m
+tests/test_staged_output_window.py::test_close_waits_without_destroying_running_worker [32mPASSED[0m[32m [ 20%][0m
+tests/test_staged_output_window.py::test_review_navigation_retries_unreadable_candidate [32mPASSED[0m[32m [ 26%][0m
+tests/test_staged_output_window.py::test_close_waits_for_exif_without_forcing_thread [32mPASSED[0m[32m [ 33%][0m
+tests/test_staged_output_window.py::test_rapid_output_switch_discards_late_results [32mPASSED[0m[32m [ 40%][0m
+tests/test_staged_output_window.py::test_switch_saves_old_target_and_blocks_failed_save [32mPASSED[0m[32m [ 46%][0m
+tests/test_staged_output_window.py::test_first_image_opens_before_full_list_is_built [32mPASSED[0m[32m [ 53%][0m
+tests/test_staged_output_window.py::test_empty_and_missing_directory_show_distinct_status [32mPASSED[0m[32m [ 60%][0m
+tests/test_staged_output_window.py::test_navigation_waits_and_manual_selection_cancels [32mPASSED[0m[32m [ 66%][0m
+tests/test_staged_output_window.py::test_rapid_attribute_search_discards_blocked_old_request [32mPASSED[0m[32m [ 73%][0m
+tests/test_staged_output_window.py::test_save_wins_against_blocked_old_worker_result [32mPASSED[0m[32m [ 80%][0m
+tests/test_staged_output_window.py::test_first_image_does_not_wait_for_per_file_delays [32mPASSED[0m[32m [ 86%][0m
+tests/test_ui_density_extremes_repair.py::test_density_uses_outer_window_size [32mPASSED[0m[32m [ 93%][0m
+tests/test_ui_density_extremes_repair.py::test_four_extremes_commit_and_cancel [32mPASSED[0m[32m [100%][0m
+
+- generated xml file: D:\X-AnyLabeling-4.2.1\reports\maintenance_baseline_20261117\startup-fix-final.xml -
+============================ slowest 30 durations =============================
+4.32s call     tests/test_staged_output_window.py::test_first_image_does_not_wait_for_per_file_delays
+3.78s call     tests/test_staged_output_window.py::test_rapid_attribute_search_discards_blocked_old_request
+3.73s call     tests/test_staged_output_window.py::test_close_waits_for_exif_without_forcing_thread
+3.58s call     tests/test_staged_output_window.py::test_switch_saves_old_target_and_blocks_failed_save
+3.51s call     tests/test_staged_output_window.py::test_first_image_opens_before_full_list_is_built
+3.51s call     tests/test_staged_output_window.py::test_close_waits_without_destroying_running_worker
+3.49s setup    tests/test_ui_density_extremes_repair.py::test_four_extremes_commit_and_cancel
+3.41s call     tests/test_staged_output_window.py::test_output_switch_reads_current_then_background
+3.29s call     tests/test_staged_output_window.py::test_save_wins_against_blocked_old_worker_result
+3.28s call     tests/test_staged_output_window.py::test_navigation_waits_and_manual_selection_cancels
+3.27s call     tests/test_staged_output_window.py::test_empty_and_missing_directory_show_distinct_status
+3.20s setup    tests/test_ui_density_extremes_repair.py::test_density_uses_outer_window_size
+3.16s call     tests/test_staged_output_window.py::test_rapid_output_switch_discards_late_results
+3.10s call     tests/test_staged_output_window.py::test_review_navigation_retries_unreadable_candidate
+3.05s call     tests/test_staged_output_window.py::test_cancelled_switch_keeps_directory
+0.07s call     tests/test_ui_density_extremes_repair.py::test_four_extremes_commit_and_cancel
+0.04s teardown tests/test_staged_output_window.py::test_first_image_does_not_wait_for_per_file_delays
+0.04s teardown tests/test_staged_output_window.py::test_close_waits_for_exif_without_forcing_thread
+0.03s teardown tests/test_staged_output_window.py::test_switch_saves_old_target_and_blocks_failed_save
+0.03s teardown tests/test_staged_output_window.py::test_navigation_waits_and_manual_selection_cancels
+0.02s teardown tests/test_ui_density_extremes_repair.py::test_density_uses_outer_window_size
+0.02s teardown tests/test_ui_density_extremes_repair.py::test_four_extremes_commit_and_cancel
+0.02s setup    tests/test_staged_output_window.py::test_output_switch_reads_current_then_background
+0.01s teardown tests/test_staged_output_window.py::test_first_image_opens_before_full_list_is_built
+0.00s setup    tests/test_staged_output_window.py::test_close_waits_without_destroying_running_worker
+0.00s setup    tests/test_staged_output_window.py::test_close_waits_for_exif_without_forcing_thread
+0.00s setup    tests/test_staged_output_window.py::test_rapid_attribute_search_discards_blocked_old_request
+0.00s setup    tests/test_staged_output_window.py::test_cancelled_switch_keeps_directory
+0.00s setup    tests/test_staged_output_window.py::test_review_navigation_retries_unreadable_candidate
+0.00s setup    tests/test_staged_output_window.py::test_navigation_waits_and_manual_selection_cancels
+[32m============================= [32m[1m15 passed[0m[32m in 54.30s[0m[32m =============================[0m

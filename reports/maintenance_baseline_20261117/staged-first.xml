@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="6.417" timestamp="2026-11-17T20:24:31.139828+08:00" hostname="DESKTOP-RBDJ37M"><testcase classname="tests.test_staged_output_window" name="test_output_switch_reads_current_then_background" time="3.639"><failure message="AssertionError: assert (&lt;ItemFlag.ItemIsSelectable|ItemIsEnabled: 33&gt; &amp; &lt;ItemFlag.ItemIsUserCheckable: 16&gt;)&#10; +  where &lt;ItemFlag.ItemIsSelectable|ItemIsEnabled: 33&gt; = &lt;built-in method flags of QListWidgetItem object at 0x0000016A416CEA30&gt;()&#10; +    where &lt;built-in method flags of QListWidgetItem object at 0x0000016A416CEA30&gt; = &lt;PyQt6.QtWidgets.QListWidgetItem object at 0x0000016A416CEA30&gt;.flags&#10; +      where &lt;PyQt6.QtWidgets.QListWidgetItem object at 0x0000016A416CEA30&gt; = &lt;built-in method item of FileListWidget object at 0x0000016A3FBAC9B0&gt;(1)&#10; +        where &lt;built-in method item of FileListWidget object at 0x0000016A3FBAC9B0&gt; = &lt;anylabeling.views.labeling.label_widget.FileListWidget object at 0x0000016A3FBAC9B0&gt;.item&#10; +          where &lt;anylabeling.views.labeling.label_widget.FileListWidget object at 0x0000016A3FBAC9B0&gt; = &lt;anylabeling.views.labeling.label_widget.LabelingWidget object at 0x0000016A3FB2BCF0&gt;.file_list_widget&#10; +  and   &lt;ItemFlag.ItemIsUserCheckable: 16&gt; = &lt;flag 'ItemFlag'&gt;.ItemIsUserCheckable&#10; +    where &lt;flag 'ItemFlag'&gt; = &lt;class 'PyQt6.QtCore.Qt'&gt;.ItemFlag&#10; +      where &lt;class 'PyQt6.QtCore.Qt'&gt; = QtCore.Qt">tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/maintenance-staged-first/test_output_switch_reads_curre0')
+
+    def test_output_switch_reads_current_then_background(tmp_path):
+        app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+        app.setQuitOnLastWindowClosed(False)
+        config = app_config.get_config(str(tmp_path / "config.yaml"), None)
+        config.update(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False, file_list_checkbox_editable=True)
+        window = MainWindow(app, config=config)
+        window.show()
+        images = tmp_path / "images"
+        labels = tmp_path / "labels"
+        images.mkdir()
+        labels.mkdir()
+        for i in range(3):
+            image = QtGui.QImage(32, 32, QtGui.QImage.Format.Format_RGB32)
+            image.fill(QtGui.QColor("white"))
+            assert image.save(str(images / f"{i}.png"))
+            (labels / f"{i}.json").write_text(json.dumps({
+                "version": "4.2.1", "shapes": [], "imagePath": f"{i}.png",
+                "imageData": None, "imageHeight": 32, "imageWidth": 32,
+                "checked": i == 1,
+            }), encoding="utf-8")
+        widget = window.labeling_widget.view
+        widget.import_image_folder(str(images))
+        _wait(lambda: not widget._view_timer.isActive())
+        first = widget.filename
+        changed, update_threads = [], []
+        original_update = widget._set_file_item_checked
+    
+        def record_update(item, checked):
+            update_threads.append(QtCore.QThread.currentThread())
+            return original_update(item, checked)
+    
+        with patch.object(widget, "_set_file_item_checked", side_effect=record_update), patch.object(QtWidgets.QFileDialog, "getExistingDirectory", return_value=str(labels)):
+            widget.change_output_dir_dialog()
+            assert widget.filename == first
+            assert Path(widget.label_file.filename) == labels / "0.json"
+            widget.file_list_widget.itemChanged.connect(lambda item: changed.append(item.text()))
+            _wait(lambda: not widget._metadata_timer.isActive())
+        assert update_threads and all(thread is app.thread() for thread in update_threads)
+        assert not changed
+        assert widget.file_list_widget.item(1).data(QtCore.Qt.ItemDataRole.UserRole) is True
+&gt;       assert widget.file_list_widget.item(1).flags() &amp; QtCore.Qt.ItemFlag.ItemIsUserCheckable
+E       AssertionError: assert (&lt;ItemFlag.ItemIsSelectable|ItemIsEnabled: 33&gt; &amp; &lt;ItemFlag.ItemIsUserCheckable: 16&gt;)
+E        +  where &lt;ItemFlag.ItemIsSelectable|ItemIsEnabled: 33&gt; = &lt;built-in method flags of QListWidgetItem object at 0x0000016A416CEA30&gt;()
+E        +    where &lt;built-in method flags of QListWidgetItem object at 0x0000016A416CEA30&gt; = &lt;PyQt6.QtWidgets.QListWidgetItem object at 0x0000016A416CEA30&gt;.flags
+E        +      where &lt;PyQt6.QtWidgets.QListWidgetItem object at 0x0000016A416CEA30&gt; = &lt;built-in method item of FileListWidget object at 0x0000016A3FBAC9B0&gt;(1)
+E        +        where &lt;built-in method item of FileListWidget object at 0x0000016A3FBAC9B0&gt; = &lt;anylabeling.views.labeling.label_widget.FileListWidget object at 0x0000016A3FBAC9B0&gt;.item
+E        +          where &lt;anylabeling.views.labeling.label_widget.FileListWidget object at 0x0000016A3FBAC9B0&gt; = &lt;anylabeling.views.labeling.label_widget.LabelingWidget object at 0x0000016A3FB2BCF0&gt;.file_list_widget
+E        +  and   &lt;ItemFlag.ItemIsUserCheckable: 16&gt; = &lt;flag 'ItemFlag'&gt;.ItemIsUserCheckable
+E        +    where &lt;flag 'ItemFlag'&gt; = &lt;class 'PyQt6.QtCore.Qt'&gt;.ItemFlag
+E        +      where &lt;class 'PyQt6.QtCore.Qt'&gt; = QtCore.Qt
+
+tests\test_staged_output_window.py:87: AssertionError</failure></testcase></testsuite></testsuites>

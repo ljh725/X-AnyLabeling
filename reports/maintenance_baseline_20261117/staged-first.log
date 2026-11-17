@@ -1,0 +1,84 @@
+[1m============================= test session starts =============================[0m
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+[1mcollecting ... [0mcollected 1 item
+
+tests/test_staged_output_window.py::test_output_switch_reads_current_then_background [31mFAILED[0m
+
+================================== FAILURES ===================================
+[31m[1m______________ test_output_switch_reads_current_then_background _______________[0m
+
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/maintenance-staged-first/test_output_switch_reads_curre0')
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_output_switch_reads_current_then_background[39;49;00m(tmp_path):[90m[39;49;00m
+        app = QtWidgets.QApplication.instance() [95mor[39;49;00m QtWidgets.QApplication([])[90m[39;49;00m
+        app.setQuitOnLastWindowClosed([94mFalse[39;49;00m)[90m[39;49;00m
+        config = app_config.get_config([96mstr[39;49;00m(tmp_path / [33m"[39;49;00m[33mconfig.yaml[39;49;00m[33m"[39;49;00m), [94mNone[39;49;00m)[90m[39;49;00m
+        config.update(theme=[33m"[39;49;00m[33mlight[39;49;00m[33m"[39;49;00m, auto_save=[94mFalse[39;49;00m, keep_prev=[94mFalse[39;49;00m, exif_scan_enabled=[94mFalse[39;49;00m, file_list_checkbox_editable=[94mTrue[39;49;00m)[90m[39;49;00m
+        window = MainWindow(app, config=config)[90m[39;49;00m
+        window.show()[90m[39;49;00m
+        images = tmp_path / [33m"[39;49;00m[33mimages[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        labels = tmp_path / [33m"[39;49;00m[33mlabels[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        images.mkdir()[90m[39;49;00m
+        labels.mkdir()[90m[39;49;00m
+        [94mfor[39;49;00m i [95min[39;49;00m [96mrange[39;49;00m([94m3[39;49;00m):[90m[39;49;00m
+            image = QtGui.QImage([94m32[39;49;00m, [94m32[39;49;00m, QtGui.QImage.Format.Format_RGB32)[90m[39;49;00m
+            image.fill(QtGui.QColor([33m"[39;49;00m[33mwhite[39;49;00m[33m"[39;49;00m))[90m[39;49;00m
+            [94massert[39;49;00m image.save([96mstr[39;49;00m(images / [33mf[39;49;00m[33m"[39;49;00m[33m{[39;49;00mi[33m}[39;49;00m[33m.png[39;49;00m[33m"[39;49;00m))[90m[39;49;00m
+            (labels / [33mf[39;49;00m[33m"[39;49;00m[33m{[39;49;00mi[33m}[39;49;00m[33m.json[39;49;00m[33m"[39;49;00m).write_text(json.dumps({[90m[39;49;00m
+                [33m"[39;49;00m[33mversion[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33m4.2.1[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mshapes[39;49;00m[33m"[39;49;00m: [], [33m"[39;49;00m[33mimagePath[39;49;00m[33m"[39;49;00m: [33mf[39;49;00m[33m"[39;49;00m[33m{[39;49;00mi[33m}[39;49;00m[33m.png[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+                [33m"[39;49;00m[33mimageData[39;49;00m[33m"[39;49;00m: [94mNone[39;49;00m, [33m"[39;49;00m[33mimageHeight[39;49;00m[33m"[39;49;00m: [94m32[39;49;00m, [33m"[39;49;00m[33mimageWidth[39;49;00m[33m"[39;49;00m: [94m32[39;49;00m,[90m[39;49;00m
+                [33m"[39;49;00m[33mchecked[39;49;00m[33m"[39;49;00m: i == [94m1[39;49;00m,[90m[39;49;00m
+            }), encoding=[33m"[39;49;00m[33mutf-8[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+        widget = window.labeling_widget.view[90m[39;49;00m
+        widget.import_image_folder([96mstr[39;49;00m(images))[90m[39;49;00m
+        _wait([94mlambda[39;49;00m: [95mnot[39;49;00m widget._view_timer.isActive())[90m[39;49;00m
+        first = widget.filename[90m[39;49;00m
+        changed, update_threads = [], [][90m[39;49;00m
+        original_update = widget._set_file_item_checked[90m[39;49;00m
+    [90m[39;49;00m
+        [94mdef[39;49;00m[90m [39;49;00m[92mrecord_update[39;49;00m(item, checked):[90m[39;49;00m
+            update_threads.append(QtCore.QThread.currentThread())[90m[39;49;00m
+            [94mreturn[39;49;00m original_update(item, checked)[90m[39;49;00m
+    [90m[39;49;00m
+        [94mwith[39;49;00m patch.object(widget, [33m"[39;49;00m[33m_set_file_item_checked[39;49;00m[33m"[39;49;00m, side_effect=record_update), patch.object(QtWidgets.QFileDialog, [33m"[39;49;00m[33mgetExistingDirectory[39;49;00m[33m"[39;49;00m, return_value=[96mstr[39;49;00m(labels)):[90m[39;49;00m
+            widget.change_output_dir_dialog()[90m[39;49;00m
+            [94massert[39;49;00m widget.filename == first[90m[39;49;00m
+            [94massert[39;49;00m Path(widget.label_file.filename) == labels / [33m"[39;49;00m[33m0.json[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+            widget.file_list_widget.itemChanged.connect([94mlambda[39;49;00m item: changed.append(item.text()))[90m[39;49;00m
+            _wait([94mlambda[39;49;00m: [95mnot[39;49;00m widget._metadata_timer.isActive())[90m[39;49;00m
+        [94massert[39;49;00m update_threads [95mand[39;49;00m [96mall[39;49;00m(thread [95mis[39;49;00m app.thread() [94mfor[39;49;00m thread [95min[39;49;00m update_threads)[90m[39;49;00m
+        [94massert[39;49;00m [95mnot[39;49;00m changed[90m[39;49;00m
+        [94massert[39;49;00m widget.file_list_widget.item([94m1[39;49;00m).data(QtCore.Qt.ItemDataRole.UserRole) [95mis[39;49;00m [94mTrue[39;49;00m[90m[39;49;00m
+>       [94massert[39;49;00m widget.file_list_widget.item([94m1[39;49;00m).flags() & QtCore.Qt.ItemFlag.ItemIsUserCheckable[90m[39;49;00m
+[1m[31mE       AssertionError: assert (<ItemFlag.ItemIsSelectable|ItemIsEnabled: 33> & <ItemFlag.ItemIsUserCheckable: 16>)[0m
+[1m[31mE        +  where <ItemFlag.ItemIsSelectable|ItemIsEnabled: 33> = <built-in method flags of QListWidgetItem object at 0x0000016A416CEA30>()[0m
+[1m[31mE        +    where <built-in method flags of QListWidgetItem object at 0x0000016A416CEA30> = <PyQt6.QtWidgets.QListWidgetItem object at 0x0000016A416CEA30>.flags[0m
+[1m[31mE        +      where <PyQt6.QtWidgets.QListWidgetItem object at 0x0000016A416CEA30> = <built-in method item of FileListWidget object at 0x0000016A3FBAC9B0>(1)[0m
+[1m[31mE        +        where <built-in method item of FileListWidget object at 0x0000016A3FBAC9B0> = <anylabeling.views.labeling.label_widget.FileListWidget object at 0x0000016A3FBAC9B0>.item[0m
+[1m[31mE        +          where <anylabeling.views.labeling.label_widget.FileListWidget object at 0x0000016A3FBAC9B0> = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x0000016A3FB2BCF0>.file_list_widget[0m
+[1m[31mE        +  and   <ItemFlag.ItemIsUserCheckable: 16> = <flag 'ItemFlag'>.ItemIsUserCheckable[0m
+[1m[31mE        +    where <flag 'ItemFlag'> = <class 'PyQt6.QtCore.Qt'>.ItemFlag[0m
+[1m[31mE        +      where <class 'PyQt6.QtCore.Qt'> = QtCore.Qt[0m
+
+[1m[31mtests\test_staged_output_window.py[0m:87: AssertionError
+- generated xml file: D:\X-AnyLabeling-4.2.1\reports\maintenance_baseline_20261117\staged-first.xml -
+============================ slowest 30 durations =============================
+3.62s call     tests/test_staged_output_window.py::test_output_switch_reads_current_then_background
+0.01s setup    tests/test_staged_output_window.py::test_output_switch_reads_current_then_background
+0.00s teardown tests/test_staged_output_window.py::test_output_switch_reads_current_then_background
+[36m[1m=========================== short test summary info ===========================[0m
+[31mFAILED[0m tests/test_staged_output_window.py::[1mtest_output_switch_reads_current_then_background[0m - AssertionError: assert (<ItemFlag.ItemIsSelectable|ItemIsEnabled: 33> & <ItemFlag.ItemIsUserCheckable: 16>)
+ +  where <ItemFlag.ItemIsSelectable|ItemIsEnabled: 33> = <built-in method flags of QListWidgetItem object at 0x0000016A416CEA30>()
+ +    where <built-in method flags of QListWidgetItem object at 0x0000016A416CEA30> = <PyQt6.QtWidgets.QListWidgetItem object at 0x0000016A416CEA30>.flags
+ +      where <PyQt6.QtWidgets.QListWidgetItem object at 0x0000016A416CEA30> = <built-in method item of FileListWidget object at 0x0000016A3FBAC9B0>(1)
+ +        where <built-in method item of FileListWidget object at 0x0000016A3FBAC9B0> = <anylabeling.views.labeling.label_widget.FileListWidget object at 0x0000016A3FBAC9B0>.item
+ +          where <anylabeling.views.labeling.label_widget.FileListWidget object at 0x0000016A3FBAC9B0> = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x0000016A3FB2BCF0>.file_list_widget
+ +  and   <ItemFlag.ItemIsUserCheckable: 16> = <flag 'ItemFlag'>.ItemIsUserCheckable
+ +    where <flag 'ItemFlag'> = <class 'PyQt6.QtCore.Qt'>.ItemFlag
+ +      where <class 'PyQt6.QtCore.Qt'> = QtCore.Qt
+[31m!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!![0m
+[31m============================== [31m[1m1 failed[0m[31m in 6.46s[0m[31m ==============================[0m

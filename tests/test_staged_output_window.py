@@ -1,6 +1,5 @@
 """Real-window checks using only temporary image and annotation files."""
 
-import copy
 import json
 import threading
 import time
@@ -11,12 +10,11 @@ import pytest
 from PyQt6 import QtCore, QtGui, QtTest, QtWidgets
 from anylabeling import config as app_config
 from anylabeling.resources import resources  # noqa: F401
-from anylabeling.views.labeling.settings.schema import load_template_config
 from anylabeling.views.mainwindow import MainWindow
 
 
 @pytest.fixture(autouse=True)
-def isolated_settings(tmp_path, monkeypatch):
+def isolated_settings(tmp_path, monkeypatch, isolated_user_configuration):
     monkeypatch.setattr(app_config, "_work_directory", str(tmp_path))
     monkeypatch.setattr(app_config, "current_config_file", str(tmp_path / "config.yaml"))
     (tmp_path / "config.yaml").write_text("{}", encoding="utf-8")
@@ -27,6 +25,14 @@ def isolated_settings(tmp_path, monkeypatch):
             str(tmp_path / "settings.ini"), settings_class.Format.IniFormat
         ),
     )
+    app = QtWidgets.QApplication.instance()
+    existing_windows = set(app.topLevelWidgets())
+    yield
+    # A failed assertion must not leave an old window processing callbacks
+    # after its isolated configuration session has been torn down.
+    for window in app.topLevelWidgets():
+        if isinstance(window, MainWindow) and window not in existing_windows:
+            _close_window(window, app)
 
 
 def _wait(predicate, seconds=5):
@@ -49,8 +55,10 @@ def _close_window(window, app):
 def test_output_switch_reads_current_then_background(tmp_path):
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False, file_list_checkbox_editable=True)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False, file_list_checkbox_editable=True),
+    )
     window = MainWindow(app, config=config)
     window.show()
     images = tmp_path / "images"
@@ -133,8 +141,10 @@ def test_output_switch_reads_current_then_background(tmp_path):
 
 def test_cancelled_switch_keeps_directory(tmp_path):
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, exif_scan_enabled=False)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, exif_scan_enabled=False),
+    )
     window = MainWindow(app, config=config)
     widget = window.labeling_widget.view
     original = widget.output_dir
@@ -149,8 +159,10 @@ def test_close_waits_without_destroying_running_worker(tmp_path, monkeypatch):
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, exif_scan_enabled=False)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, exif_scan_enabled=False),
+    )
     window = MainWindow(app, config=config)
     window.show()
     image = QtGui.QImage(32, 32, QtGui.QImage.Format.Format_RGB32)
@@ -182,8 +194,10 @@ def test_close_waits_without_destroying_running_worker(tmp_path, monkeypatch):
 def test_review_navigation_retries_unreadable_candidate(tmp_path):
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, exif_scan_enabled=False)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, exif_scan_enabled=False),
+    )
     window = MainWindow(app, config=config)
     window.show()
     for name in ("a.png", "b.png"):
@@ -209,8 +223,10 @@ def test_close_waits_for_exif_without_forcing_thread(tmp_path, monkeypatch):
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, exif_scan_enabled=True)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, exif_scan_enabled=True),
+    )
     window = MainWindow(app, config=config)
     window.show()
     image = QtGui.QImage(32, 32, QtGui.QImage.Format.Format_RGB32)
@@ -244,8 +260,10 @@ def test_rapid_output_switch_discards_late_results(tmp_path, monkeypatch):
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, keep_prev=True, exif_scan_enabled=False)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, keep_prev=True, exif_scan_enabled=False),
+    )
     window = MainWindow(app, config=config)
     window.show()
     images = tmp_path / "images"
@@ -313,8 +331,10 @@ def test_rapid_output_switch_discards_late_results(tmp_path, monkeypatch):
 def test_switch_saves_old_target_and_blocks_failed_save(tmp_path):
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, exif_scan_enabled=False)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, exif_scan_enabled=False),
+    )
     window = MainWindow(app, config=config)
     window.show()
     images = tmp_path / "images"
@@ -354,8 +374,10 @@ def test_switch_saves_old_target_and_blocks_failed_save(tmp_path):
 def test_first_image_opens_before_full_list_is_built(tmp_path):
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False),
+    )
     window = MainWindow(app, config=config)
     window.show()
     image = QtGui.QImage(32, 32, QtGui.QImage.Format.Format_RGB32)
@@ -389,8 +411,10 @@ def test_first_image_opens_before_full_list_is_built(tmp_path):
 def test_empty_and_missing_directory_show_distinct_status(tmp_path):
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, exif_scan_enabled=False)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, exif_scan_enabled=False),
+    )
     window = MainWindow(app, config=config)
     window.show()
     widget = window.labeling_widget.view
@@ -408,8 +432,10 @@ def test_navigation_waits_and_manual_selection_cancels(tmp_path, monkeypatch):
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False),
+    )
     window = MainWindow(app, config=config)
     window.show()
     for name, checked in (("a", False), ("b", True), ("c", "failed"), ("d", False)):
@@ -461,8 +487,10 @@ def test_rapid_attribute_search_discards_blocked_old_request(tmp_path, monkeypat
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False),
+    )
     window = MainWindow(app, config=config)
     window.show()
     for name, label in (("a", None), ("b", "old"), ("c", "new")):
@@ -522,8 +550,10 @@ def test_save_wins_against_blocked_old_worker_result(tmp_path, monkeypatch):
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False),
+    )
     window = MainWindow(app, config=config)
     window.show()
     for name in ("a", "b"):
@@ -566,8 +596,10 @@ def test_first_image_does_not_wait_for_per_file_delays(tmp_path, monkeypatch):
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    config = copy.deepcopy(load_template_config())
-    config.update(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False)
+    config = app_config.get_config(
+        str(tmp_path / "config.yaml"),
+        dict(theme="light", auto_save=False, keep_prev=False, exif_scan_enabled=False),
+    )
     window = MainWindow(app, config=config)
     window.show()
     for index in range(20):

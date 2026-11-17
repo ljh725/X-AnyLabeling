@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="5.887" timestamp="2026-11-17T20:24:31.197441+08:00" hostname="DESKTOP-RBDJ37M"><testcase classname="tests.test_staged_output_window" name="test_review_navigation_retries_unreadable_candidate" time="3.752" /></testsuite></testsuites>

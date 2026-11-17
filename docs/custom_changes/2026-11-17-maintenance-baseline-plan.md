@@ -64,3 +64,13 @@
 见[修正证据](../../reports/maintenance_baseline_20261117/FIT_FIX.md)。
 运行修订为 `cdd25660` 加本批唯一测试差异，源码树不变。
 本批为独立本地测试提交，不推送、不合入；停止快照交接失败保留。
+
+## 维护测试修正：旧窗口启动会话
+
+在 `6c9af4dc` 的完整回归记录初始化模态挂起，最小观察保留原始 No active
+configuration session 错误和堆栈。按 AGENTS 修正两个旧测试文件，使用
+get_config 返回配置与真实启动覆盖，并清理失败时遗留的本测试窗口。
+最终 15 passed / 54.30s，flake8 及定向 diff 检查通过；生产代码及写保护不变。
+中间断言失败和 0xC0000409 原生退出均保留，详见
+[启动修正证据](../../reports/maintenance_baseline_20261117/STARTUP_FIX.md)。
+本批只本地提交，随后重跑完整 Windows 回归；不推送、PR 或合入。

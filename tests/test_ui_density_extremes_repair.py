@@ -1,6 +1,5 @@
 """Regression checks for UI density and four-boundary rectangles."""
 
-import copy
 import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -10,12 +9,11 @@ from PyQt6 import QtCore, QtGui, QtTest, QtWidgets
 
 import anylabeling.resources.resources  # noqa: F401
 from anylabeling import config as app_config
-from anylabeling.views.labeling.settings.schema import load_template_config
 from anylabeling.views.mainwindow import MainWindow
 
 
 @pytest.fixture
-def window(tmp_path, monkeypatch):
+def window(tmp_path, monkeypatch, isolated_user_configuration):
     """Create a main window with isolated settings."""
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     monkeypatch.setattr(app_config, "_work_directory", str(tmp_path))
@@ -28,7 +26,8 @@ def window(tmp_path, monkeypatch):
             str(tmp_path / "settings.ini"), settings.Format.IniFormat
         )
     )
-    win = MainWindow(app, config=copy.deepcopy(load_template_config()))
+    config = app_config.get_config(str(config_file), None)
+    win = MainWindow(app, config=config)
     win.resize(2200, 1300)
     win.show()
     app.processEvents()

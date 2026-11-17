@@ -1,0 +1,12 @@
+[1m============================= test session starts =============================[0m
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+[1mcollecting ... [0mcollected 15 items
+
+tests/test_staged_output_window.py::test_output_switch_reads_current_then_background [31mFAILED[0m[31m [  6%][0m
+tests/test_staged_output_window.py::test_cancelled_switch_keeps_directory [32mPASSED[0m[31m [ 13%][0m
+tests/test_staged_output_window.py::test_close_waits_without_destroying_running_worker [32mPASSED[0m[31m [ 20%][0m
+tests/test_staged_output_window.py::test_review_navigation_retries_unreadable_candidate 
