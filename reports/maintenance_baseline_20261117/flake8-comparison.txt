@@ -1,0 +1,34 @@
+baseline cdd25660
+['C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\python.exe', '-m', 'flake8', '--stdin-display-name=tests/test_labeling/test_canvas_controls_integration.py', '-']
+exit=1
+tests/test_labeling/test_canvas_controls_integration.py:39:21: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:76:42: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:117:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:136:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:150:58: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:174:58: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:188:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:217:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:245:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:271:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:313:57: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:332:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:373:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:403:5: F811 redefinition of unused 'window' from line 16
+current efb172b9
+['C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\python.exe', '-m', 'flake8', '--stdin-display-name=tests/test_labeling/test_canvas_controls_integration.py', '-']
+exit=1
+tests/test_labeling/test_canvas_controls_integration.py:39:21: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:77:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:130:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:149:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:163:58: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:187:58: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:201:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:230:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:258:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:284:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:326:57: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:345:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:386:5: F811 redefinition of unused 'window' from line 16
+tests/test_labeling/test_canvas_controls_integration.py:416:5: F811 redefinition of unused 'window' from line 16

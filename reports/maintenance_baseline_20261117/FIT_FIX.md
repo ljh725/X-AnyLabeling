@@ -15,3 +15,7 @@ Shift modifier，没有发送启动拟合轮次需要的真实 Shift key press�
 `01efe6fe526f49a44353ffcbc5efc5e089a1e77f`。
 
 此修正不处理停止任务的交接失败；其状态仍单列保留。
+
+静态检查更正：文件级 flake8 退出 1，有 14 条导入 fixture 与同名参数造成的
+F811；用 stdin 对照 `cdd25660` 原文件也为相同 14 条，无新增类型。
+不能称 flake8 全部通过。见[原始对照](flake8-comparison.txt)。diff 空白检查通过。

@@ -1,0 +1,78 @@
+[1m============================= test session starts =============================[0m
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+[1mcollecting ... [0mcollected 36 items
+
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-edge] [32mPASSED[0m[32m [  2%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-fit] [32mPASSED[0m[32m [  5%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-edge] [32mPASSED[0m[32m [  8%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-fit] [32mPASSED[0m[32m [ 11%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_resolves_when_navigation_ends_edit[switch] [32mPASSED[0m[32m [ 13%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_resolves_when_navigation_ends_edit[close] [32mPASSED[0m[32m [ 16%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_latest_mode_request_supersedes_an_earlier_pending_switch [32mPASSED[0m[32m [ 19%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_grouping_is_one_undoable_edit_without_reloading [32mPASSED[0m[32m [ 22%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_locked_group_member_prevents_partial_group_edit [32mPASSED[0m[32m [ 25%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_merge_groups_keeps_unselected_members_and_unrelated_shapes [32mPASSED[0m[32m [ 27%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_masks] [32mPASSED[0m[32m [ 30%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_texts] [32mPASSED[0m[32m [ 33%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_labels] [32mPASSED[0m[32m [ 36%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_scores] [32mPASSED[0m[32m [ 38%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_degrees] [32mPASSED[0m[32m [ 41%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_attributes] [32mPASSED[0m[32m [ 44%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_linking] [32mPASSED[0m[32m [ 47%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_groups] [32mPASSED[0m[32m [ 50%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_sixteen_bit_switch_retains_latest_values_and_original_pixels[direct] [32mPASSED[0m[32m [ 52%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_sixteen_bit_switch_retains_latest_values_and_original_pixels[traditional] [32mPASSED[0m[32m [ 55%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_settings_mode_apply_failure_cancel_and_interleaved_keep [32mPASSED[0m[32m [ 58%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_closing_settings_cancels_deferred_field_scroll [32mPASSED[0m[32m [ 61%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_alt_wheel_geometry_history_and_saved_identity[locked] [32mPASSED[0m[32m [ 63%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_alt_wheel_geometry_history_and_saved_identity[multiple] [32mPASSED[0m[32m [ 66%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_alt_wheel_geometry_history_and_saved_identity[outside] [32mPASSED[0m[32m [ 69%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_view_boundaries_fit_navigator_and_reset_preserve_annotation[direct-size0] [32mPASSED[0m[32m [ 72%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_view_boundaries_fit_navigator_and_reset_preserve_annotation[direct-size1] [32mPASSED[0m[32m [ 75%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_view_boundaries_fit_navigator_and_reset_preserve_annotation[direct-size2] [32mPASSED[0m[32m [ 77%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_view_boundaries_fit_navigator_and_reset_preserve_annotation[traditional-size0] [32mPASSED[0m[32m [ 80%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_view_boundaries_fit_navigator_and_reset_preserve_annotation[traditional-size1] [32mPASSED[0m[32m [ 83%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_view_boundaries_fit_navigator_and_reset_preserve_annotation[traditional-size2] [32mPASSED[0m[32m [ 86%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_pan_gestures_and_mode_roundtrip_keep_shapes_and_history[space-direct] [32mPASSED[0m[32m [ 88%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_pan_gestures_and_mode_roundtrip_keep_shapes_and_history[space-traditional] [32mPASSED[0m[32m [ 91%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_pan_gestures_and_mode_roundtrip_keep_shapes_and_history[right-direct] [32mPASSED[0m[32m [ 94%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_pan_gestures_and_mode_roundtrip_keep_shapes_and_history[right-traditional] [32mPASSED[0m[32m [ 97%][0m
+tests/test_labeling/test_canvas_controls_integration.py::test_saved_controls_survive_a_real_process_restart [32mPASSED[0m[32m [100%][0m
+
+- generated xml file: D:\X-AnyLabeling-4.2.1\reports\maintenance_baseline_20261117\fit-fixture.xml -
+============================ slowest 30 durations =============================
+12.53s call     tests/test_labeling/test_canvas_controls_integration.py::test_saved_controls_survive_a_real_process_restart
+3.28s setup    tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_degrees]
+3.17s setup    tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_scores]
+3.12s setup    tests/test_labeling/test_canvas_controls_integration.py::test_sixteen_bit_switch_retains_latest_values_and_original_pixels[direct]
+3.07s setup    tests/test_labeling/test_canvas_controls_integration.py::test_sixteen_bit_switch_retains_latest_values_and_original_pixels[traditional]
+3.07s setup    tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_groups]
+3.06s setup    tests/test_labeling/test_canvas_controls_integration.py::test_locked_group_member_prevents_partial_group_edit
+3.06s setup    tests/test_labeling/test_canvas_controls_integration.py::test_merge_groups_keeps_unselected_members_and_unrelated_shapes
+3.03s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[cancel-edge]
+3.01s setup    tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_labels]
+3.00s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pending_mode_finishes_real_edit[commit-edge]
+2.99s setup    tests/test_labeling/test_canvas_controls_integration.py::test_view_boundaries_fit_navigator_and_reset_preserve_annotation[traditional-size2]
+2.97s setup    tests/test_labeling/test_canvas_controls_integration.py::test_view_boundaries_fit_navigator_and_reset_preserve_annotation[direct-size2]
+2.96s setup    tests/test_labeling/test_canvas_controls_integration.py::test_view_boundaries_fit_navigator_and_reset_preserve_annotation[direct-size1]
+2.93s setup    tests/test_labeling/test_canvas_controls_integration.py::test_view_boundaries_fit_navigator_and_reset_preserve_annotation[traditional-size1]
+2.93s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pan_gestures_and_mode_roundtrip_keep_shapes_and_history[space-traditional]
+2.92s setup    tests/test_labeling/test_canvas_controls_integration.py::test_settings_mode_apply_failure_cancel_and_interleaved_keep
+2.91s setup    tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_texts]
+2.91s setup    tests/test_labeling/test_canvas_controls_integration.py::test_alt_wheel_geometry_history_and_saved_identity[locked]
+2.90s setup    tests/test_labeling/test_canvas_controls_integration.py::test_closing_settings_cancels_deferred_field_scroll
+2.90s setup    tests/test_labeling/test_canvas_controls_integration.py::test_alt_wheel_geometry_history_and_saved_identity[outside]
+2.89s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pan_gestures_and_mode_roundtrip_keep_shapes_and_history[right-traditional]
+2.85s setup    tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_linking]
+2.83s setup    tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_masks]
+2.80s setup    tests/test_labeling/test_canvas_controls_integration.py::test_view_boundaries_fit_navigator_and_reset_preserve_annotation[direct-size0]
+2.79s setup    tests/test_labeling/test_canvas_controls_integration.py::test_display_action_uses_same_menu_toolbar_state_without_annotation_write[show_attributes]
+2.79s setup    tests/test_labeling/test_canvas_controls_integration.py::test_alt_wheel_geometry_history_and_saved_identity[multiple]
+2.79s setup    tests/test_labeling/test_canvas_controls_integration.py::test_view_boundaries_fit_navigator_and_reset_preserve_annotation[traditional-size0]
+2.79s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pan_gestures_and_mode_roundtrip_keep_shapes_and_history[space-direct]
+2.79s setup    tests/test_labeling/test_canvas_controls_integration.py::test_pan_gestures_and_mode_roundtrip_keep_shapes_and_history[right-direct]
+[32m======================= [32m[1m36 passed[0m[32m in 124.78s (0:02:04)[0m[32m ========================[0m
