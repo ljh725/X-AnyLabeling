@@ -1,0 +1,201 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 6 items
+
+.tmp/dense-review-recheck-20261117/test_followup.py::test_task_snapshot_restores_zoom_control_and_canvas_size FAILED [ 16%]
+.tmp/dense-review-recheck-20261117/test_followup.py::test_task_snapshot_restores_fit_width_mode FAILED [ 33%]
+.tmp/dense-review-recheck-20261117/test_followup.py::test_coverage_point_has_no_rendered_pixels FAILED [ 50%]
+.tmp/dense-review-recheck-20261117/test_followup.py::test_coverage_point_is_not_hittable FAILED [ 66%]
+.tmp/dense-review-recheck-20261117/test_followup.py::test_reopen_keeps_latest_current_object FAILED [ 83%]
+.tmp/dense-review-recheck-20261117/test_followup.py::test_float_keeps_original_display_mode FAILED [100%]
+
+================================== FAILURES ===================================
+__________ test_task_snapshot_restores_zoom_control_and_canvas_size ___________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x0000026A1470D310>
+open_window = <function open_window.<locals>._open at 0x0000026A14EDC860>
+
+    def test_task_snapshot_restores_zoom_control_and_canvas_size(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        widget.set_zoom(126.4)
+        app.processEvents()
+        before = (widget.zoom_widget.value(), widget.canvas.size())
+        ws.set_task(ws.TASK_COVERAGE)
+        ws.set_task(ws.TASK_CATEGORY)
+        app.processEvents()
+>       assert (widget.zoom_widget.value(), widget.canvas.size()) == before
+E       assert (25, PyQt6.QtCore.QSize(160, 871)) == (126, PyQt6.QtCore.QSize(809, 871))
+E
+E         At index 0 diff: 25 != 126
+E
+E         Full diff:
+E           (
+E         -     126,
+E         ?     - ^
+E         +     25,
+E         ?      ^
+E         -     PyQt6.QtCore.QSize(809, 871),
+E         ?                        ^ -
+E         +     PyQt6.QtCore.QSize(160, 871),
+E         ?                        ^^
+E           )
+
+.tmp\dense-review-recheck-20261117\test_followup.py:20: AssertionError
+_________________ test_task_snapshot_restores_fit_width_mode __________________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x0000026A1470D310>
+open_window = <function open_window.<locals>._open at 0x0000026A162E7060>
+
+    def test_task_snapshot_restores_fit_width_mode(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        widget.set_fit_width()
+        app.processEvents()
+        assert widget.zoom_mode == widget.FIT_WIDTH
+        ws.set_task(ws.TASK_COVERAGE)
+        ws.set_task(ws.TASK_CATEGORY)
+        app.processEvents()
+>       assert widget.zoom_mode == widget.FIT_WIDTH
+E       assert 2 == 1
+E        +  where 2 = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x0000026A14FD8050>.zoom_mode
+E        +  and   1 = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x0000026A14FD8050>.FIT_WIDTH
+
+.tmp\dense-review-recheck-20261117\test_followup.py:31: AssertionError
+_________________ test_coverage_point_has_no_rendered_pixels __________________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x0000026A1470D310>
+open_window = <function open_window.<locals>._open at 0x0000026A19444720>
+
+    def test_coverage_point_has_no_rendered_pixels(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        ws.set_task(ws.TASK_COVERAGE)
+        shape = widget._dense_review_find_shape("kp1")
+        display = widget.dense_review_display_entry("kp1")
+        before = QtGui.QImage(200, 200, QtGui.QImage.Format.Format_ARGB32)
+        before.fill(QtCore.Qt.GlobalColor.white)
+        after = before.copy()
+        painter = QtGui.QPainter(after)
+        shape.paint(painter, display_style=display.paint_style)
+        painter.end()
+>       assert after == before
+E       assert <PyQt6.QtGui.QImage object at 0x0000026A197CF3D0> == <PyQt6.QtGui.QImage object at 0x0000026A197CF1D0>
+
+.tmp\dense-review-recheck-20261117\test_followup.py:45: AssertionError
+_____________________ test_coverage_point_is_not_hittable _____________________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x0000026A1470D310>
+open_window = <function open_window.<locals>._open at 0x0000026A197AE200>
+
+    def test_coverage_point_is_not_hittable(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        ws.set_task(ws.TASK_COVERAGE)
+        shape = widget._dense_review_find_shape("kp1")
+>       assert shape not in widget.canvas._shape_hit_candidates(shape.points[0])
+E       assert <anylabeling.views.labeling.shape.Shape object at 0x0000026A1507B9B0> not in [<anylabeling.views.labeling.shape.Shape object at 0x0000026A1507B9B0>, <anylabeling.views.labeling.shape.Shape object at 0x0000026A1507B110>]
+E        +  where [<anylabeling.views.labeling.shape.Shape object at 0x0000026A1507B9B0>, <anylabeling.views.labeling.shape.Shape object at 0x0000026A1507B110>] = _shape_hit_candidates(PyQt6.QtCore.QPointF(80.0, 80.0))
+E        +    where _shape_hit_candidates = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x0000026A162C19F0>._shape_hit_candidates
+E        +      where <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x0000026A162C19F0> = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x0000026A125AC870>.canvas
+
+.tmp\dense-review-recheck-20261117\test_followup.py:52: AssertionError
+___________________ test_reopen_keeps_latest_current_object ___________________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x0000026A1470D310>
+open_window = <function open_window.<locals>._open at 0x0000026A19AA8540>
+
+    def test_reopen_keeps_latest_current_object(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        ws.set_task(ws.TASK_COVERAGE)
+        ws.set_task(ws.TASK_CATEGORY)
+        ws._navigate_to(ws._current_batch_id(), "rect2")
+        assert ws.session.current_object().shape_id == "rect2"
+        ws.close()
+        app.processEvents()
+        widget.open_dense_review()
+        app.processEvents()
+>       assert ws.session.current_object().shape_id == "rect2"
+E       AssertionError: assert 'rect1' == 'rect2'
+E
+E         - rect2
+E         ?     ^
+E         + rect1
+E         ?     ^
+
+.tmp\dense-review-recheck-20261117\test_followup.py:65: AssertionError
+___________________ test_float_keeps_original_display_mode ____________________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x0000026A1470D310>
+open_window = <function open_window.<locals>._open at 0x0000026A162982C0>
+
+    def test_float_keeps_original_display_mode(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        index = ws.display_combo.findData("original")
+        ws.display_combo.setCurrentIndex(index)
+        app.processEvents()
+        assert widget.canvas.annotation_editing_paused()
+        ws.setFloating(True)
+        app.processEvents()
+>       assert widget._dense_review_display_mode == "original"
+E       AssertionError: assert 'focus' == 'original'
+E
+E         - original
+E         + focus
+
+.tmp\dense-review-recheck-20261117\test_followup.py:76: AssertionError
+- generated xml file: D:\X-AnyLabeling-4.2.1\.tmp\dense-review-recheck-20261117\followup.xml -
+============================ slowest 30 durations =============================
+3.40s call     .tmp/dense-review-recheck-20261117/test_followup.py::test_task_snapshot_restores_zoom_control_and_canvas_size
+3.23s call     .tmp/dense-review-recheck-20261117/test_followup.py::test_task_snapshot_restores_fit_width_mode
+3.21s call     .tmp/dense-review-recheck-20261117/test_followup.py::test_coverage_point_is_not_hittable
+3.19s call     .tmp/dense-review-recheck-20261117/test_followup.py::test_reopen_keeps_latest_current_object
+3.18s call     .tmp/dense-review-recheck-20261117/test_followup.py::test_float_keeps_original_display_mode
+2.95s call     .tmp/dense-review-recheck-20261117/test_followup.py::test_coverage_point_has_no_rendered_pixels
+0.04s teardown .tmp/dense-review-recheck-20261117/test_followup.py::test_coverage_point_is_not_hittable
+0.04s teardown .tmp/dense-review-recheck-20261117/test_followup.py::test_task_snapshot_restores_zoom_control_and_canvas_size
+0.04s teardown .tmp/dense-review-recheck-20261117/test_followup.py::test_reopen_keeps_latest_current_object
+0.03s teardown .tmp/dense-review-recheck-20261117/test_followup.py::test_task_snapshot_restores_fit_width_mode
+0.03s teardown .tmp/dense-review-recheck-20261117/test_followup.py::test_coverage_point_has_no_rendered_pixels
+0.03s teardown .tmp/dense-review-recheck-20261117/test_followup.py::test_float_keeps_original_display_mode
+0.01s setup    .tmp/dense-review-recheck-20261117/test_followup.py::test_task_snapshot_restores_zoom_control_and_canvas_size
+0.00s setup    .tmp/dense-review-recheck-20261117/test_followup.py::test_reopen_keeps_latest_current_object
+0.00s setup    .tmp/dense-review-recheck-20261117/test_followup.py::test_task_snapshot_restores_fit_width_mode
+0.00s setup    .tmp/dense-review-recheck-20261117/test_followup.py::test_coverage_point_has_no_rendered_pixels
+0.00s setup    .tmp/dense-review-recheck-20261117/test_followup.py::test_float_keeps_original_display_mode
+0.00s setup    .tmp/dense-review-recheck-20261117/test_followup.py::test_coverage_point_is_not_hittable
+=========================== short test summary info ===========================
+FAILED .tmp/dense-review-recheck-20261117/test_followup.py::test_task_snapshot_restores_zoom_control_and_canvas_size - assert (25, PyQt6.QtCore.QSize(160, 871)) == (126, PyQt6.QtCore.QSize(809, 871))
+
+  At index 0 diff: 25 != 126
+
+  Full diff:
+    (
+  -     126,
+  ?     - ^
+  +     25,
+  ?      ^
+  -     PyQt6.QtCore.QSize(809, 871),
+  ?                        ^ -
+  +     PyQt6.QtCore.QSize(160, 871),
+  ?                        ^^
+    )
+FAILED .tmp/dense-review-recheck-20261117/test_followup.py::test_task_snapshot_restores_fit_width_mode - assert 2 == 1
+ +  where 2 = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x0000026A14FD8050>.zoom_mode
+ +  and   1 = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x0000026A14FD8050>.FIT_WIDTH
+FAILED .tmp/dense-review-recheck-20261117/test_followup.py::test_coverage_point_has_no_rendered_pixels - assert <PyQt6.QtGui.QImage object at 0x0000026A197CF3D0> == <PyQt6.QtGui.QImage object at 0x0000026A197CF1D0>
+FAILED .tmp/dense-review-recheck-20261117/test_followup.py::test_coverage_point_is_not_hittable - assert <anylabeling.views.labeling.shape.Shape object at 0x0000026A1507B9B0> not in [<anylabeling.views.labeling.shape.Shape object at 0x0000026A1507B9B0>, <anylabeling.views.labeling.shape.Shape object at 0x0000026A1507B110>]
+ +  where [<anylabeling.views.labeling.shape.Shape object at 0x0000026A1507B9B0>, <anylabeling.views.labeling.shape.Shape object at 0x0000026A1507B110>] = _shape_hit_candidates(PyQt6.QtCore.QPointF(80.0, 80.0))
+ +    where _shape_hit_candidates = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x0000026A162C19F0>._shape_hit_candidates
+ +      where <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x0000026A162C19F0> = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x0000026A125AC870>.canvas
+FAILED .tmp/dense-review-recheck-20261117/test_followup.py::test_reopen_keeps_latest_current_object - AssertionError: assert 'rect1' == 'rect2'
+
+  - rect2
+  ?     ^
+  + rect1
+  ?     ^
+FAILED .tmp/dense-review-recheck-20261117/test_followup.py::test_float_keeps_original_display_mode - AssertionError: assert 'focus' == 'original'
+
+  - original
+  + focus
+============================= 6 failed in 23.23s ==============================
