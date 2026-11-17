@@ -1,36 +1,35 @@
 # OpenSpec 当前状态与历史记录
 
-更新：2026-11-17。统计直接读取活动 `tasks.md`；本页无独立任务勾选。
-当前 16 个变更：11 个任务全勾待归档、3 个产品待验证/暂停、1 个维护协调、
-1 个已移交目录。合计 304/347，剩余 43 项（产品 32、维护 11）。
-任务全勾不等于交付验收；归档资格还需核对验证与依赖。
+更新：2026-11-17；逐份读取源 `tasks.md`。当前 16 个活动目录，
+合计 310/347，未勾 37 项；本页不维护第二套任务勾选。
 
 | 当前变更（源清单） | 勾选 / 总数 | 实际状态 |
 | --- | ---: | --- |
-| [add-annotation-correction-cost-statistics](changes/add-annotation-correction-cost-statistics/tasks.md) | 49/54 | 待真实 GUI、性能、双人试用与回退等验收，保留 5 项 |
-| [add-dense-annotation-review-workflow](changes/add-dense-annotation-review-workflow/tasks.md) | 61/66 | 原工作流待验收；保留 5 项，未通过不得归档 |
-| [add-keypoint-display-presets](changes/add-keypoint-display-presets/tasks.md) | 0/22 | 方案暂停，0 项实施；不自动启动 |
-| [add-shift-corner-lock-point-fit](changes/add-shift-corner-lock-point-fit/tasks.md) | 6/6 | 任务全勾，待本轮独立核对归档资格 |
-| [fix-digit-rectangle-label-save](changes/fix-digit-rectangle-label-save/tasks.md) | 10/10 | 任务全勾，待本轮独立核对归档资格 |
-| [fix-rectangle-preview-overlap](changes/fix-rectangle-preview-overlap/tasks.md) | 24/24 | 任务全勾，待本轮独立核对归档资格 |
-| [fix-user-settings-persistence](changes/fix-user-settings-persistence/tasks.md) | 27/27 | 任务全勾，待本轮独立核对归档资格 |
-| [improve-point-fit-algorithm](changes/improve-point-fit-algorithm/tasks.md) | 5/5 | 任务全勾，待本轮独立核对归档资格 |
-| [improve-rectangle-edge-adjustment](changes/improve-rectangle-edge-adjustment/tasks.md) | 6/6 | 任务全勾，待本轮独立核对归档资格 |
-| [migrate-canvas-controls-from-v430](changes/migrate-canvas-controls-from-v430/tasks.md) | 0/0 | 历史任务已移交 restore；0/0 不是完成证明 |
-| [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 7/18 | 维护实施中；候选固定与入口整理完成 |
-| [polish-inspector-dense-review-ui](changes/polish-inspector-dense-review-ui/tasks.md) | 20/20 | 任务全勾，待本轮独立核对归档资格 |
-| [restore-v430-canvas-controls](changes/restore-v430-canvas-controls/tasks.md) | 31/31 | 任务全勾，待本轮独立核对归档资格 |
-| [smooth-canvas-dragging](changes/smooth-canvas-dragging/tasks.md) | 19/19 | 任务全勾，待本轮独立核对归档资格 |
-| [staged-annotation-loading](changes/staged-annotation-loading/tasks.md) | 31/31 | 任务全勾，待本轮独立核对归档资格 |
-| [unify-shift-rectangle-point-fit](changes/unify-shift-rectangle-point-fit/tasks.md) | 8/8 | 任务全勾，待本轮独立核对归档资格 |
+| [add-annotation-correction-cost-statistics](changes/add-annotation-correction-cost-statistics/tasks.md) | 49/54 | 保留 5 项 GUI/翻译、性能、双人试用及回退验收 |
+| [add-dense-annotation-review-workflow](changes/add-dense-annotation-review-workflow/tasks.md) | 61/66 | 保留 5 项验收缺口；未通过不得归档或发布三份契约 |
+| [add-keypoint-display-presets](changes/add-keypoint-display-presets/tasks.md) | 0/22 | 方案暂停，未实施；不启动 |
+| [add-shift-corner-lock-point-fit](changes/add-shift-corner-lock-point-fit/tasks.md) | 6/6 | 任务全勾；按维护审计与独立证据决定归档 |
+| [fix-digit-rectangle-label-save](changes/fix-digit-rectangle-label-save/tasks.md) | 10/10 | 任务全勾；按维护审计与独立证据决定归档 |
+| [fix-rectangle-preview-overlap](changes/fix-rectangle-preview-overlap/tasks.md) | 24/24 | 任务全勾；按维护审计与独立证据决定归档 |
+| [fix-user-settings-persistence](changes/fix-user-settings-persistence/tasks.md) | 27/27 | 任务全勾；按维护审计与独立证据决定归档 |
+| [improve-point-fit-algorithm](changes/improve-point-fit-algorithm/tasks.md) | 5/5 | 任务全勾；按维护审计与独立证据决定归档 |
+| [improve-rectangle-edge-adjustment](changes/improve-rectangle-edge-adjustment/tasks.md) | 6/6 | 任务全勾；按维护审计与独立证据决定归档 |
+| [migrate-canvas-controls-from-v430](changes/migrate-canvas-controls-from-v430/tasks.md) | 0/0 | 仅移交；待核对 restore 重复发布 |
+| [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 13/18 | 实施中；完整回归复验进行中，已完成归档预演与三/五份契约对照 |
+| [polish-inspector-dense-review-ui](changes/polish-inspector-dense-review-ui/tasks.md) | 20/20 | 20/20 技术勾选；Ctrl+F 规格与实现不符、人工缺口，保留未归档 |
+| [restore-v430-canvas-controls](changes/restore-v430-canvas-controls/tasks.md) | 31/31 | 任务全勾；按维护审计与独立证据决定归档 |
+| [smooth-canvas-dragging](changes/smooth-canvas-dragging/tasks.md) | 19/19 | 任务全勾；按维护审计与独立证据决定归档 |
+| [staged-annotation-loading](changes/staged-annotation-loading/tasks.md) | 31/31 | 任务全勾；按维护审计与独立证据决定归档 |
+| [unify-shift-rectangle-point-fit](changes/unify-shift-rectangle-point-fit/tasks.md) | 8/8 | 任务全勾；按维护审计与独立证据决定归档 |
 
-已停止的密集复核重设计不在活动任务中：最后技术审计 33/91，58 项随用户决定
-行政关闭，五份草案未发布；保留代码及失败证据，不重启。
-见[停止决定](changes/archive/2026-11-17-redesign-dense-review-workspace/archive-decision-20261117.md)。
-Inspector 重构 55/55 为含 3 项行政关闭的历史状态，不补造人工证据；
-双屏导航 26/26 中人工项依据用户 2026-11-17 声明通过，未新增截图。
-数字提示条 CUSTOM-118 与数字矩形类别保存 CUSTOM-011 为不同工作。
-当前验证与归档结论入口：[维护候选](../docs/version-management/2026-11-17-maintenance-baseline.md)。
+当前归档与保留依据见[维护候选](../docs/version-management/2026-11-17-maintenance-baseline.md)；
+本轮归档的旧路径映射与证据边界见[归档审计](../reports/maintenance_baseline_20261117/ARCHIVES.md)。
+任务全勾、行政关闭、人工验收和代码稳定性分别判断。
+CUSTOM-118 为数字提示条，CUSTOM-011 为数字矩形类别保存。
+
+密集复核重设计已停止，最后技术审计 33/91，58 项行政关闭，五份草案未发布；
+保留部分实现及失败，不重启。Inspector 重构 55/55 含 3 项行政关闭，无新增人工证据；
+双屏导航 26/26 的人工项依据用户 2026-11-17 声明，无新增截图。
 
 ---
 
