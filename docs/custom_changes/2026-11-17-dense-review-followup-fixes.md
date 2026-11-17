@@ -44,3 +44,4 @@
 | --- | --- | --- | --- |
 | 2026-11-17 | 独立复核 `a4efb042` 的 F1–F4 修复 | 不改业务代码或测试；原样复跑前两轮十四项复现，核对持久回归和修复调用链 | 原复现 14 passed；密集复核 282 passed / 698 subtests；受影响画布十文件 286 passed / 6 subtests；Black/OpenSpec 通过，flake8 无新增；[独立复核报告](../../reports/dense_review_redesign/2026-11-17/FIX_VALIDATION.md) |
 | 2026-11-17 | 修复复核剩余四项 P2 | 三处业务模块修复、六个持久行为回归、移除恒真断言 | 专项 18 passed；密集复核 282 passed, 698 subtests passed in 454.38s；画布既有失败见报告 |
+| 2026-11-17 | 闭环基线、样本与会话生命周期任务 1.3/1.4/2.2 | `216e903f`：清空失败会话旧视图并保护无效导航；新增 300 框、1000 点和混合导航确定性样本 | 组合 28 passed；样本 9 passed；Black/Flake8/diff 检查通过；[基线与会话报告](../../reports/dense_review_redesign/2026-11-17/BASELINE_AND_SESSION.md) |

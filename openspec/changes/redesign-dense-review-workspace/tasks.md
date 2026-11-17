@@ -1,6 +1,6 @@
 # 密集复核工作区重设计任务清单
 
-状态为实施中（2026-11-17），当前 **30/91 项已勾选，61 项未勾选**。已勾选项表示有对应实现或文档工作及验证证据，详见 [PROGRESS.md](../../../reports/dense_review_redesign/2026-11-16/PROGRESS.md)、[最新独立复核](../../../reports/dense_review_redesign/2026-11-17/FIX_VALIDATION.md) 和 [逐项勾选核对](../../../reports/dense_review_redesign/2026-11-17/TASK_STATUS_SYNC.md)。未勾选项表示整条尚未闭环，可能已有部分实现；提案和文档校验不能代替功能验收。过程条款 15.3、15.5 按截至当前已实施批次登记，后续批次仍须继续执行，整个变更未完成。
+状态为实施中（2026-11-17），当前 **33/91 项已勾选，58 项未勾选**。已勾选项表示有对应实现或文档工作及验证证据，详见 [PROGRESS.md](../../../reports/dense_review_redesign/2026-11-16/PROGRESS.md)、[最新独立复核](../../../reports/dense_review_redesign/2026-11-17/FIX_VALIDATION.md) 和 [逐项勾选核对](../../../reports/dense_review_redesign/2026-11-17/TASK_STATUS_SYNC.md)。未勾选项表示整条尚未闭环，可能已有部分实现；提案和文档校验不能代替功能验收。过程条款 15.3、15.5 按截至当前已实施批次登记，后续批次仍须继续执行，整个变更未完成。
 
 依据为 [设计](design.md) 和五份 [显示](specs/dense-review-display-policy/spec.md)、[布局](specs/dense-review-workbench-layout/spec.md)、[卡片](specs/dense-review-object-cards/spec.md)、[查漏](specs/dense-review-spatial-navigation/spec.md)、[进度](specs/dense-review-progress-compatibility/spec.md) 规格。场景 ID、测试方法和人工步骤见 [验收矩阵](acceptance.md)。
 
@@ -19,15 +19,15 @@
 
 - [x] 1.1 分支、HEAD、工作区与集成目标已核对（`reports/dense_review_redesign/2026-11-16/PROGRESS.md`）
 - [x] 1.2 环境与基线退出码已记录，写保护 guard 保留
-- [ ] 1.3 在样本副本通过菜单打开工作区，复现列表禁用、滚轮无效、108 像素图块和查漏遮挡画布，记录动作与控件状态，覆盖 WL-05、OC-16。
-- [ ] 1.4 准备可复现样本清单，包含 s1274 的 6 框92点、30框多类别、300框压力、空图、遮挡小目标、长类名、孤立点、group 0、同组多框、离群点和混合不支持形状；私有样本仅在本地副本使用。
+- [x] 1.3 基线 `052239f2` 的私有样本副本与真实菜单动作已复现：有效会话三列表仍禁用、滚轮 0→0、图块 108/行高 176、独立窗口与画布重叠 1154×864；动作、样本哈希与控件状态见 [BASELINE_AND_SESSION.md](../../../reports/dense_review_redesign/2026-11-17/BASELINE_AND_SESSION.md)（WL-05、OC-16）。
+- [x] 1.4 `216e903f`；确定性样本清单覆盖 s1274 的 6 框92点、30框多类别、300框、1000点、空图、遮挡小目标、长类名、孤立点、group 0、同组多框、离群点和混合不支持形状；私有样本仅在 `.tmp` 副本使用，公共样本由 `test_samples.py` 9 项测试验证，清单见 [BASELINE_AND_SESSION.md](../../../reports/dense_review_redesign/2026-11-17/BASELINE_AND_SESSION.md)。
 - [x] 1.5 盘点显隐写入、绘制、标签、命中、快捷键、保存和撤销入口，覆盖 mask、属性、组连线、点拟合预览与 Inspector 交接；在验证记录中列明接入位置。接入盘点及未完成边界见 [TASK_STATUS_SYNC.md](../../../reports/dense_review_redesign/2026-11-17/TASK_STATUS_SYNC.md) 的任务 1.5 位置表；盘点完成不代表所有接入工作完成。
 - [x] 1.6 已建立 `reports/dense_review_redesign/2026-11-16/PROGRESS.md`，场景与测试对应关系见该记录；CUSTOM-110 原状态未改
 
 ## 2. 列表与会话启用修复
 
 - [x] 2.1 `bf75b13f`；`test_workspace_lists.py::test_empty_state_then_session_enables_all_lists`
-- [ ] 2.2 覆盖加载失败、重试成功、关闭重开和切图的启用恢复，阻止无效会话执行依赖动作，满足 WL-06。
+- [x] 2.2 `216e903f`；失败加载清空旧批次/卡片/区域并使旧图块代际失效，无效会话导航受保护；重试、关闭重开及切图恢复正确列表和目标。`test_workspace_lists.py::test_failed_load_retry_reopen_and_image_switch_restore_session`；组合回归 28 passed（WL-06）。
 - [x] 2.3 `bf75b13f`；`test_workspace_lists.py::test_wheel_and_scrollbar_move_view_without_moving_target`
 - [x] 2.4 `bf75b13f`；`test_workspace_lists.py::test_background_refresh_does_not_force_scroll_back`
 
