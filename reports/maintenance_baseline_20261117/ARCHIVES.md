@@ -54,7 +54,7 @@ DPI 原始目录 32 项、性能 summary 仍在；未移动/删除/改写这些�
 | `improve-point-fit-algorithm` | `archive/2026-11-17-improve-point-fit-algorithm` | 已归档；`4ec0a3cda47292f60b9fde377110b3c939a91401` |
 | `add-shift-corner-lock-point-fit` | `archive/2026-11-17-add-shift-corner-lock-point-fit` | 已归档；`4ec0a3cda47292f60b9fde377110b3c939a91401` |
 | `unify-shift-rectangle-point-fit` | `archive/2026-11-17-unify-shift-rectangle-point-fit` | 已归档；`4ec0a3cda47292f60b9fde377110b3c939a91401` |
-| `migrate-canvas-controls-from-v430` | `archive/2026-11-17-migrate-canvas-controls-from-v430` | 已归档，随本批提交 |
+| `migrate-canvas-controls-from-v430` | `archive/2026-11-17-migrate-canvas-controls-from-v430` | 已归档；`a5486ba700f1469dd3cde823ee41a6e888d68840` |
 
 ## 单点拟合场景语义映射
 
@@ -108,3 +108,15 @@ P2 polish 虽 20/20，但 delta 承诺 Inspector Ctrl+F 搜索，verification �
 当前 dialog 也没有该绑定；真实屏幕/部分本地化另有缺口。故保留原独立契约，
 不删需求、不把它强行并入已归档 Inspector，也不为归档扩展搜索功能。
 协调变更按源 tasks 的真实验证状态保留，不为清零而自动归档。
+
+## 分批完成后的实核
+
+11 个目录已按 9 个独立/关联批次本地归档；各批 strict 原始输出为本目录
+`archive-<name>.txt`。主目录最后 strict **26 passed / 0 failed**。
+最终 21 份主规格与独立副本逐字节一致，包含原有 7 份及本轮新增 14 份。
+[完整性实核](final-audit.json)：206 份既有变更工件中 197 份字节及 Git blob
+均不变、7 份只改导航、2 份为本协调状态更新；0 丢失、0 意外内容改写。
+当前导航及新报告 221 条本地链接，0 失效；冻结报告、历史台账和机器清单
+不计入这组链接通过数，按旧新路径表解释。配置/源码/测试相对 77f9ced5 无差异。
+首批曾提前重写后续目标，已由 `15153e76` 单独修正；原始保存点保留。
+剩余活动目录 5 个；协调变更尚待完整复验与最终汇总，不自动归档。

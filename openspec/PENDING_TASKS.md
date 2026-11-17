@@ -1,14 +1,14 @@
 # OpenSpec 当前状态与历史记录
 
 更新：2026-11-17；逐份读取源 `tasks.md`。当前 5 个活动目录，
-合计 145/180，未勾 35 项；本页不维护第二套任务勾选。
+合计 146/180，未勾 34 项；本页不维护第二套任务勾选。
 
 | 当前变更（源清单） | 勾选 / 总数 | 实际状态 |
 | --- | ---: | --- |
 | [add-annotation-correction-cost-statistics](changes/add-annotation-correction-cost-statistics/tasks.md) | 49/54 | 保留 5 项 GUI/翻译、性能、双人试用及回退验收 |
 | [add-dense-annotation-review-workflow](changes/add-dense-annotation-review-workflow/tasks.md) | 61/66 | 保留 5 项验收缺口；未通过不得归档或发布三份契约 |
 | [add-keypoint-display-presets](changes/add-keypoint-display-presets/tasks.md) | 0/22 | 方案暂停，未实施；不启动 |
-| [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 15/18 | 实施中；候选验证已记录，逐批归档与最终核对进行中 |
+| [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 16/18 | 16/18；独立归档与证据核对已完成，等待完整回归复验及最终汇总 |
 | [polish-inspector-dense-review-ui](changes/polish-inspector-dense-review-ui/tasks.md) | 20/20 | 20/20 技术勾选；Ctrl+F 规格与实现不符、人工缺口，保留未归档 |
 
 当前归档与保留依据见[维护候选](../docs/version-management/2026-11-17-maintenance-baseline.md)；

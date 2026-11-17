@@ -1,0 +1,35 @@
+{
+  "name": "tail",
+  "command": [
+    "C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\python.exe",
+    "-m",
+    "pytest",
+    "tests/test_updates",
+    "tests/test_utils",
+    "tests/test_widgets",
+    "--ignore=tests/test_widgets/test_toolbar_layout.py",
+    "--tb=short",
+    "-vv",
+    "-o",
+    "faulthandler_timeout=30",
+    "--basetemp=D:\\X-AnyLabeling-4.2.1\\.tmp\\maintenance-tail",
+    "--junitxml=D:\\X-AnyLabeling-4.2.1\\reports\\maintenance_baseline_20261117\\tail.xml"
+  ],
+  "cwd": "D:\\X-AnyLabeling-4.2.1",
+  "timeout_seconds": 300,
+  "head": "77f9ced5369729313ef10060d9c68459149785b2",
+  "source_tree": "01efe6fe526f49a44353ffcbc5efc5e089a1e77f",
+  "python": "3.12.12 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 20:05:38) [MSC v.1929 64 bit (AMD64)]",
+  "qt_platform": "offscreen",
+  "started": "2026-11-17 20:32:07+0800",
+  "packages": {
+    "pytest": "9.0.3",
+    "PyQt6": "6.10.2",
+    "onnxruntime-gpu": "1.24.3"
+  },
+  "test_tree": "b33383b8fba80fbbcd2648507a0bde66a212d0c2",
+  "runtime_diff": [],
+  "exit_code": 1,
+  "timed_out": false,
+  "elapsed_seconds": 10.92
+}

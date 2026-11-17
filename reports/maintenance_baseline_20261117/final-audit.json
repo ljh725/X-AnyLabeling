@@ -1,0 +1,26 @@
+{
+  "historical_artifacts_unchanged": 197,
+  "navigation_only": [
+    "openspec/changes/archive/2026-11-17-fix-rectangle-preview-overlap/tasks.md",
+    "openspec/changes/archive/2026-11-17-fix-user-settings-persistence/design.md",
+    "openspec/changes/archive/2026-11-17-fix-user-settings-persistence/tasks.md",
+    "openspec/changes/archive/2026-11-17-migrate-canvas-controls-from-v430/tasks.md",
+    "openspec/changes/archive/2026-11-17-restore-v430-canvas-controls/design.md",
+    "openspec/changes/archive/2026-11-17-smooth-canvas-dragging/tasks.md",
+    "openspec/changes/archive/2026-11-17-unify-shift-rectangle-point-fit/design.md"
+  ],
+  "coordinator_updated": [
+    "openspec/changes/organize-maintenance-baseline/HANDOFF.md",
+    "openspec/changes/organize-maintenance-baseline/tasks.md"
+  ],
+  "missing": [],
+  "unexpected_content_change": [],
+  "historical_git_blob_mismatch": [],
+  "current_links_checked": 221,
+  "current_broken_links": [],
+  "scope": "当前导航及新报告；冻结报告、原始日志、历史台账和机器清单不计入链接通过数，按ARCHIVES旧新映射解释。",
+  "source_tree": "01efe6fe526f49a44353ffcbc5efc5e089a1e77f",
+  "runtime_diff": [],
+  "rehearsed_main_specs_checked": 21,
+  "rehearsed_main_specs_mismatch": []
+}

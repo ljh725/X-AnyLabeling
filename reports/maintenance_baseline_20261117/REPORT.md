@@ -109,3 +109,17 @@ flake8 基线与修正后各 14 条既有 F811，退出码 1，不宣称静态�
 代码与文档 diff 空白检查通过；原始 pytest 日志/XML 则含 pytest 输出的行尾空白，
 保留原字节，不将整批 `git diff --check` 冒称为零告警；检查时将原始 .log/.xml 单列。
 未为纯文档归档重跑 Qt，后续完整复验的测试树和源码树均单独记录。
+
+## 未完成尾部的补核
+
+修正后的同一测试树 `77f9ced5` 上，updates/utils/widgets 合跑为
+**2 failed / 188 passed / 29 skipped / 30 subtests，9.86s，退出码 1**。
+见[元数据](tail.json)、[日志](tail.log)、[JUnit](tail.xml)。这不是完整合跑的替代。
+两项分别为 `test_canvas_adjustment::TestCanvasAdjustmentWidget::test_brightness_contrast_updates_are_throttled`
+的 `0 != 1`（未定责时序问题），以及 `test_defaults_and_tooltips_describe_adjustment_targets`
+要求英文包含 shapes 而现文案使用 annotation fills（断言与当前文案不一致）。
+不将这些失败删除或改成跳过，等待第二轮完整结果单独统计。
+
+规格归档及历史证据完整性已单独通过，不代表这些回归失败已解决；见
+[归档审计](ARCHIVES.md)。第二轮完整 Windows 回归以 77f9ced5 为测试起点，
+后续仅文档提交，生产/测试树均不变，3.4 在完成前仍不勾选。

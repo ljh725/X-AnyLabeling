@@ -1,0 +1,278 @@
+[1m============================= test session starts =============================[0m
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+[1mcollecting ... [0mcollected 219 items
+
+tests/test_updates/test_controller.py::test_verified_download_closes_and_arms_only_after_approval [32mPASSED[0m[32m [  0%][0m
+tests/test_updates/test_controller.py::test_unsaved_work_refusal_does_not_arm_installer [32mPASSED[0m[32m [  0%][0m
+tests/test_updates/test_controller.py::test_cancelled_download_does_not_start_installer [32mPASSED[0m[32m [  1%][0m
+tests/test_updates/test_controller.py::test_missing_helper_leaves_application_running [32mPASSED[0m[32m [  1%][0m
+tests/test_updates/test_controller.py::test_installer_startup_failure_does_not_close_application [32mPASSED[0m[32m [  2%][0m
+tests/test_updates/test_controller.py::test_delayed_installer_acknowledgement_keeps_qt_responsive [32mPASSED[0m[32m [  2%][0m
+tests/test_updates/test_controller.py::test_startup_acknowledgement_requires_matching_application_version [32mPASSED[0m[32m [  3%][0m
+tests/test_updates/test_controller.py::test_background_check_only_reveals_toolbar_indicator [32mPASSED[0m[32m [  3%][0m
+tests/test_updates/test_controller.py::test_hiding_download_panel_keeps_download_running [32mPASSED[0m[32m [  4%][0m
+tests/test_updates/test_controller.py::test_about_check_releases_modal_before_showing_error [32mPASSED[0m[32m [  4%][0m
+tests/test_updates/test_controller.py::test_hidden_update_indicator_uses_visible_header_anchor [32mPASSED[0m[32m [  5%][0m
+tests/test_updates/test_controller.py::test_about_has_changelog_and_update_entry [32mPASSED[0m[32m [  5%][0m
+tests/test_updates/test_controller.py::test_startup_acknowledgement_rejects_wrong_signed_target_version [32mPASSED[0m[32m [  5%][0m
+tests/test_updates/test_packaging.py::test_release_artifact_and_signed_manifest_round_trip[Windows-installer-X-AnyLabeling-Setup.exe] [32mPASSED[0m[32m [  6%][0m
+tests/test_updates/test_packaging.py::test_release_artifact_and_signed_manifest_round_trip[Darwin-dmg-X-AnyLabeling-macOS-unsigned.dmg] [32mPASSED[0m[32m [  6%][0m
+tests/test_updates/test_packaging.py::test_release_artifact_and_signed_manifest_round_trip[Linux-executable-X-AnyLabeling-Linux-CPU] [32mPASSED[0m[32m [  7%][0m
+tests/test_updates/test_packaging.py::test_key_generator_does_not_overwrite_or_print_private_key [32mPASSED[0m[32m [  7%][0m
+tests/test_updates/test_packaging.py::test_windows_packaging_keeps_update_files_in_version_directory [32mPASSED[0m[32m [  8%][0m
+tests/test_updates/test_updates.py::test_windows_installation_finds_versioned_and_legacy_helpers[False] [32mPASSED[0m[32m [  8%][0m
+tests/test_updates/test_updates.py::test_windows_installation_finds_versioned_and_legacy_helpers[True] [32mPASSED[0m[32m [  9%][0m
+tests/test_updates/test_updates.py::test_versioned_replacement_preserves_uninstaller_and_supports_rollback[False-False] [32mPASSED[0m[32m [  9%][0m
+tests/test_updates/test_updates.py::test_versioned_replacement_preserves_uninstaller_and_supports_rollback[False-True] [32mPASSED[0m[32m [ 10%][0m
+tests/test_updates/test_updates.py::test_versioned_replacement_preserves_uninstaller_and_supports_rollback[True-False] [32mPASSED[0m[32m [ 10%][0m
+tests/test_updates/test_updates.py::test_versioned_replacement_preserves_uninstaller_and_supports_rollback[True-True] [32mPASSED[0m[32m [ 10%][0m
+tests/test_updates/test_updates.py::test_windows_version_updates_only_the_matching_installation[X-AnyLabeling-False] [32mPASSED[0m[32m [ 11%][0m
+tests/test_updates/test_updates.py::test_windows_version_updates_only_the_matching_installation[X-AnyLabeling-True] [32mPASSED[0m[32m [ 11%][0m
+tests/test_updates/test_updates.py::test_windows_version_updates_only_the_matching_installation[X-AnyLabeling-CPU-False] [32mPASSED[0m[32m [ 12%][0m
+tests/test_updates/test_updates.py::test_windows_version_updates_only_the_matching_installation[X-AnyLabeling-CPU-True] [32mPASSED[0m[32m [ 12%][0m
+tests/test_updates/test_updates.py::test_signed_selection_and_version_matching [32mPASSED[0m[32m [ 13%][0m
+tests/test_updates/test_updates.py::test_modified_signature_is_rejected [32mPASSED[0m[32m [ 13%][0m
+tests/test_updates/test_updates.py::test_invalid_release_notes_are_rejected_before_reaching_qt [32mPASSED[0m[32m [ 14%][0m
+tests/test_updates/test_updates.py::test_invalid_signed_artifact_is_rejected[changes0] [32mPASSED[0m[32m [ 14%][0m
+tests/test_updates/test_updates.py::test_invalid_signed_artifact_is_rejected[changes1] [32mPASSED[0m[32m [ 15%][0m
+tests/test_updates/test_updates.py::test_invalid_signed_artifact_is_rejected[changes2] [32mPASSED[0m[32m [ 15%][0m
+tests/test_updates/test_updates.py::test_invalid_signed_artifact_is_rejected[changes3] [32mPASSED[0m[32m [ 15%][0m
+tests/test_updates/test_updates.py::test_invalid_signed_artifact_is_rejected[changes4] [32mPASSED[0m[32m [ 16%][0m
+tests/test_updates/test_updates.py::test_invalid_signed_artifact_is_rejected[changes5] [32mPASSED[0m[32m [ 16%][0m
+tests/test_updates/test_updates.py::test_invalid_signed_artifact_is_rejected[changes6] [32mPASSED[0m[32m [ 17%][0m
+tests/test_updates/test_updates.py::test_download_checks_digest_and_cancellation [32mPASSED[0m[32m [ 17%][0m
+tests/test_updates/test_updates.py::test_damaged_download_never_replaces_existing_file[chunks0] [32mPASSED[0m[32m [ 18%][0m
+tests/test_updates/test_updates.py::test_damaged_download_never_replaces_existing_file[chunks1] [32mPASSED[0m[32m [ 18%][0m
+tests/test_updates/test_updates.py::test_damaged_download_never_replaces_existing_file[chunks2] [32mPASSED[0m[32m [ 19%][0m
+tests/test_updates/test_updates.py::test_https_redirect_downgrade_is_rejected [32mPASSED[0m[32m [ 19%][0m
+tests/test_updates/test_updates.py::test_directory_replacement_keeps_uninstaller_and_rolls_back [32mPASSED[0m[32m [ 20%][0m
+tests/test_updates/test_updates.py::test_linux_link_switch_and_rollback [33mSKIPPED[0m[32m [ 20%][0m
+tests/test_updates/test_updates.py::test_second_rename_failure_restores_original [32mPASSED[0m[32m [ 21%][0m
+tests/test_updates/test_updates.py::test_real_helper_process_updates_or_restores_old_app[Linux-False] [33mSKIPPED[0m[32m [ 21%][0m
+tests/test_updates/test_updates.py::test_real_helper_process_updates_or_restores_old_app[Linux-True] [33mSKIPPED[0m[32m [ 21%][0m
+tests/test_updates/test_updates.py::test_real_helper_process_updates_or_restores_old_app[Darwin-False] [33mSKIPPED[0m[32m [ 22%][0m
+tests/test_updates/test_updates.py::test_real_helper_process_updates_or_restores_old_app[Darwin-True] [33mSKIPPED[0m[32m [ 22%][0m
+tests/test_updates/test_updates.py::test_child_environment_does_not_reuse_old_runtime [32mPASSED[0m[32m [ 23%][0m
+tests/test_updates/test_updates.py::test_interrupted_directory_update_can_be_recovered [32mPASSED[0m[32m [ 23%][0m
+tests/test_updates/test_updates.py::test_recovery_refuses_unrelated_backup_directory [32mPASSED[0m[32m [ 24%][0m
+tests/test_updates/test_updates.py::test_restart_preserves_relative_cli_paths [32mPASSED[0m[32m [ 24%][0m
+tests/test_updates/test_updates.py::test_windows_update_architecture_matches_interpreter_on_arm_hardware[win-amd64-x86_64] [32mPASSED[0m[32m [ 25%][0m
+tests/test_updates/test_updates.py::test_windows_update_architecture_matches_interpreter_on_arm_hardware[win-arm64-arm64] [32mPASSED[0m[32m [ 25%][0m
+tests/test_updates/test_updates.py::test_intel_macos_updates_do_not_select_apple_silicon_packages [32mPASSED[0m[32m [ 26%][0m
+tests/test_updates/test_updates.py::test_linux_single_file_uses_embedded_metadata_and_helper [33mSKIPPED[0m[32m [ 26%][0m
+tests/test_updates/test_updates.py::test_interrupted_single_file_update_can_be_recovered [32mPASSED[0m[32m [ 26%][0m
+tests/test_updates/test_updates.py::test_dmg_staging_detaches_and_preserves_existing_installation[None] [33mSKIPPED[0m[32m [ 27%][0m
+tests/test_updates/test_updates.py::test_dmg_staging_detaches_and_preserves_existing_installation[attach] [33mSKIPPED[0m[32m [ 27%][0m
+tests/test_updates/test_updates.py::test_dmg_staging_detaches_and_preserves_existing_installation[missing] [33mSKIPPED[0m[32m [ 28%][0m
+tests/test_updates/test_updates.py::test_dmg_staging_detaches_and_preserves_existing_installation[symlink] [33mSKIPPED[0m[32m [ 28%][0m
+tests/test_updates/test_updates.py::test_dmg_staging_detaches_and_preserves_existing_installation[copy] [33mSKIPPED[0m[32m [ 29%][0m
+tests/test_updates/test_updates.py::test_dmg_staging_detaches_and_preserves_existing_installation[detach] [33mSKIPPED[0m[32m [ 29%][0m
+tests/test_updates/test_windows_installer.py::test_failed_setup_restores_previous_installation[4.1.0-CUDA12-error] [33mSKIPPED[0m[32m [ 30%][0m
+tests/test_updates/test_windows_installer.py::test_failed_setup_restores_previous_installation[4.1.1-CPU-error] [33mSKIPPED[0m[32m [ 30%][0m
+tests/test_updates/test_windows_installer.py::test_failed_setup_restores_previous_installation[4.1.1-CPU-cancel] [33mSKIPPED[0m[32m [ 31%][0m
+tests/test_updates/test_windows_installer.py::test_failed_setup_restores_previous_installation[4.1.1-CPU-backup] [33mSKIPPED[0m[32m [ 31%][0m
+tests/test_updates/test_windows_installer.py::test_successful_setup_replaces_runtime_and_preserves_user_files[4.1.1-CPU] [33mSKIPPED[0m[32m [ 31%][0m
+tests/test_updates/test_windows_installer.py::test_successful_setup_replaces_runtime_and_preserves_user_files[4.1.0-CUDA12] [33mSKIPPED[0m[32m [ 32%][0m
+tests/test_updates/test_windows_installer.py::test_setup_preserves_backup_from_interrupted_install [33mSKIPPED[0m[32m [ 32%][0m
+tests/test_updates/test_windows_installer.py::test_update_staging_preserves_installed_application_and_registration[] [33mSKIPPED[0m[32m [ 33%][0m
+tests/test_updates/test_windows_installer.py::test_update_staging_preserves_installed_application_and_registration[error] [33mSKIPPED[0m[32m [ 33%][0m
+tests/test_utils/test_export.py::test_export_mask_files_only_accepts_checked_true[True-True] [32mPASSED[0m[32m [ 34%][0m
+tests/test_utils/test_export.py::test_export_mask_files_only_accepts_checked_true[False-False] [32mPASSED[0m[32m [ 34%][0m
+tests/test_utils/test_export.py::test_export_mask_files_only_accepts_checked_true[false-False] [32mPASSED[0m[32m [ 35%][0m
+tests/test_utils/test_export.py::test_export_mask_files_only_accepts_checked_true[1-False] [32mPASSED[0m[32m [ 35%][0m
+tests/test_utils/test_export.py::test_export_mask_files_only_accepts_checked_true[None-False] [32mPASSED[0m[32m [ 36%][0m
+tests/test_utils/test_export.py::test_export_mask_files_handles_images_without_labels[False-False-False] [32mPASSED[0m[32m [ 36%][0m
+tests/test_utils/test_export.py::test_export_mask_files_handles_images_without_labels[True-False-True] [32mPASSED[0m[32m [ 36%][0m
+tests/test_utils/test_export.py::test_export_mask_files_handles_images_without_labels[True-True-False] [32mPASSED[0m[32m [ 37%][0m
+tests/test_utils/test_export.py::test_export_mask_files_stops_after_cancellation [32mPASSED[0m[32m [ 37%][0m
+tests/test_utils/test_export.py::test_yolo_export_does_not_blame_last_image_for_popup_error [32mPASSED[0m[32m [ 38%][0m
+tests/test_utils/test_export.py::test_yolo_export_reports_failed_image [32mPASSED[0m[32m [ 38%][0m
+tests/test_utils/test_export.py::test_yolo_export_preserves_nested_directories[hbb] [32mPASSED[0m[32m [ 39%][0m
+tests/test_utils/test_export.py::test_yolo_export_preserves_nested_directories[obb] [32mPASSED[0m[32m [ 39%][0m
+tests/test_utils/test_export.py::test_yolo_export_preserves_nested_directories[seg] [32mPASSED[0m[32m [ 40%][0m
+tests/test_utils/test_export.py::test_yolo_export_preserves_nested_directories[pose] [32mPASSED[0m[32m [ 40%][0m
+tests/test_utils/test_export.py::test_yolo_export_rejects_conflicting_label_paths [32mPASSED[0m[32m [ 41%][0m
+tests/test_utils/test_export.py::test_yolo_export_rejects_paths_overlapping_source[.] [32mPASSED[0m[32m [ 41%][0m
+tests/test_utils/test_export.py::test_yolo_export_rejects_paths_overlapping_source[nested] [32mPASSED[0m[32m [ 42%][0m
+tests/test_utils/test_export.py::test_yolo_export_rejects_paths_overlapping_source[..] [32mPASSED[0m[32m [ 42%][0m
+tests/test_utils/test_export.py::test_yolo_export_accepts_sibling_path [32mPASSED[0m[32m [ 42%][0m
+tests/test_utils/test_export.py::test_yolo_export_error_dialog_shows_actionable_guidance[error0-Reason: Pose instance grouping is incomplete or mismatched.\nPlease ensure that each instance has one bounding box and that its bounding box and keypoints use the same numeric group ID.] [32mPASSED[0m[32m [ 43%][0m
+tests/test_utils/test_export.py::test_yolo_export_error_dialog_shows_actionable_guidance[error1-Reason: The bounding box label is not defined in the pose configuration.\nPlease ensure that the bounding box label is listed under classes in the pose YAML file.] [32mPASSED[0m[32m [ 43%][0m
+tests/test_utils/test_export.py::test_yolo_export_error_dialog_shows_actionable_guidance[error2-Reason: Unexpected error] [32mPASSED[0m[32m [ 44%][0m
+tests/test_utils/test_file_search.py::TestFileSearch::test_attribute_search_modes 
+tests/test_utils/test_file_search.py::TestFileSearch::test_attribute_search_modes [32mPASSED[0m[32m [ 44%][0m
+tests/test_utils/test_file_search.py::TestFileSearch::test_checked_status_search_modes [32mPASSED[0m[32m [ 45%][0m
+tests/test_utils/test_file_search.py::TestFileSearch::test_index_search [32mPASSED[0m[32m [ 45%][0m
+tests/test_utils/test_file_search.py::TestFileSearch::test_index_search_out_of_range [32mPASSED[0m[32m [ 46%][0m
+tests/test_utils/test_file_search.py::TestFileSearch::test_invalid_index_falls_back_to_text_search [32mPASSED[0m[32m [ 46%][0m
+tests/test_utils/test_file_search.py::TestFileSearch::test_invalid_object_review_falls_back_to_text 
+tests/test_utils/test_file_search.py::TestFileSearch::test_invalid_object_review_falls_back_to_text [32mPASSED[0m[32m [ 47%][0m
+tests/test_utils/test_file_search.py::TestFileSearch::test_object_review_search 
+tests/test_utils/test_file_search.py::TestFileSearch::test_object_review_search [32mPASSED[0m[32m [ 47%][0m
+tests/test_utils/test_file_search.py::TestFileSearch::test_regex_search [32mPASSED[0m[32m [ 47%][0m
+tests/test_utils/test_file_search.py::TestFileSearch::test_text_search [32mPASSED[0m[32m [ 48%][0m
+tests/test_utils/test_file_search.py::TestFileSearch::test_three_state_check_search_with_output_directory 
+tests/test_utils/test_file_search.py::TestFileSearch::test_three_state_check_search_with_output_directory [32mPASSED[0m[32m [ 48%][0m
+tests/test_utils/test_general.py::TestIsRectangle::test_irregular_shape [32mPASSED[0m[32m [ 49%][0m
+tests/test_utils/test_general.py::TestIsRectangle::test_lese_than_four_points [32mPASSED[0m[32m [ 49%][0m
+tests/test_utils/test_general.py::TestIsRectangle::test_more_than_four_points [32mPASSED[0m[32m [ 50%][0m
+tests/test_utils/test_general.py::TestIsRectangle::test_normal_rectangle [32mPASSED[0m[32m [ 50%][0m
+tests/test_utils/test_general.py::TestIsRectangle::test_rectangle_with_diagonal_points [32mPASSED[0m[32m [ 51%][0m
+tests/test_utils/test_general.py::TestIsRectangle::test_rectangle_with_square_shape [32mPASSED[0m[32m [ 51%][0m
+tests/test_utils/test_general.py::test_resolve_export_directory_rejects_unsafe_names[] [32mPASSED[0m[32m [ 52%][0m
+tests/test_utils/test_general.py::test_resolve_export_directory_rejects_unsafe_names[.] [32mPASSED[0m[32m [ 52%][0m
+tests/test_utils/test_general.py::test_resolve_export_directory_rejects_unsafe_names[..] [32mPASSED[0m[32m [ 52%][0m
+tests/test_utils/test_general.py::test_resolve_export_directory_rejects_unsafe_names[../outside] [32mPASSED[0m[32m [ 53%][0m
+tests/test_utils/test_general.py::test_resolve_export_directory_rejects_unsafe_names[nested/path] [32mPASSED[0m[32m [ 53%][0m
+tests/test_utils/test_general.py::test_resolve_export_directory_rejects_unsafe_names[nested\\path] [32mPASSED[0m[32m [ 54%][0m
+tests/test_utils/test_general.py::test_resolve_export_directory_preserves_safe_name [32mPASSED[0m[32m [ 54%][0m
+tests/test_utils/test_general.py::test_crop_export_rejects_label_path_traversal [32mPASSED[0m[32m [ 55%][0m
+tests/test_utils/test_general.py::test_batch_crop_rejects_label_path_traversal [32mPASSED[0m[32m [ 55%][0m
+tests/test_utils/test_general.py::test_classification_export_rejects_category_path_traversal [32mPASSED[0m[32m [ 56%][0m
+tests/test_utils/test_image.py::TestImageUtils::test_img_data_to_qimage_falls_back_to_pil [32mPASSED[0m[32m [ 56%][0m
+tests/test_utils/test_image.py::TestImageUtils::test_img_data_to_qimage_skips_pil_for_non_heif [32mPASSED[0m[32m [ 57%][0m
+tests/test_utils/test_image.py::TestImageUtils::test_supported_image_extensions_include_heif_variants [32mPASSED[0m[32m [ 57%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterPoseConfig::test_explicit_has_visible_false_is_respected [32mPASSED[0m[32m [ 57%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterPoseConfig::test_missing_classes_raises_value_error [32mPASSED[0m[32m [ 58%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterPoseConfig::test_missing_has_visible_defaults_to_true [32mPASSED[0m[32m [ 58%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterPoseExport::test_invalid_group_id_raises_pose_group_error [32mPASSED[0m[32m [ 59%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterPoseExport::test_missing_group_id_raises_pose_group_error [32mPASSED[0m[32m [ 59%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterPoseExport::test_missing_rectangle_reports_group_and_label_file [32mPASSED[0m[32m [ 60%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterPoseExport::test_unknown_box_label_reports_expected_classes [32mPASSED[0m[32m [ 60%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterPoseExport::test_valid_pose_export_is_unchanged [32mPASSED[0m[32m [ 61%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterObbBounds::test_dota_skips_rotation_shape_with_any_out_of_bounds_point [32mPASSED[0m[32m [ 61%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterObbBounds::test_yolo_obb_skips_rotation_shape_with_any_out_of_bounds_point [32mPASSED[0m[32m [ 62%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterYoloExport::test_hbb_export [32mPASSED[0m[32m [ 62%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterYoloExport::test_seg_export [32mPASSED[0m[32m [ 63%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterMaskExport::test_custom_image_to_empty_mask_supports_rgb_output [32mPASSED[0m[32m [ 63%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterMaskExport::test_custom_image_to_empty_mask_uses_source_image_size [32mPASSED[0m[32m [ 63%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterMaskExport::test_custom_to_mask_applies_priority_to_rgb_output [32mPASSED[0m[32m [ 64%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterMaskExport::test_custom_to_mask_rejects_invalid_label_priority [32mPASSED[0m[32m [ 64%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterMaskExport::test_custom_to_mask_uses_annotation_layer_order [32mPASSED[0m[32m [ 65%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterMaskExport::test_custom_to_mask_uses_label_priority_before_layer_order [32mPASSED[0m[32m [ 65%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterMaskExport::test_custom_to_mask_uses_layer_order_for_equal_priorities [32mPASSED[0m[32m [ 66%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterMaskExport::test_custom_to_mask_writes_blank_mask_for_empty_labels [32mPASSED[0m[32m [ 66%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterVocValidation::test_incomplete_geometry_is_skipped [32mPASSED[0m[32m [ 67%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterVocValidation::test_missing_geometry_is_skipped [32mPASSED[0m[32m [ 67%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterCocoRleImport::test_compressed_rle_counts_imported_as_polygon [33mSKIPPED[0m[32m [ 68%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterCocoRleImport::test_disconnected_rle_regions_share_group_id [33mSKIPPED[0m[32m [ 68%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterCocoRleImport::test_invalid_rle_fails_before_writing [33mSKIPPED[0m[32m [ 68%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterCocoRleImport::test_lossy_regions_fail_before_writing [33mSKIPPED[0m[32m [ 69%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterCocoRleImport::test_missing_dependency_fails_before_writing [33mSKIPPED[0m[32m [ 69%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterCocoRleImport::test_polygon_list_segmentation_still_works [33mSKIPPED[0m[32m [ 70%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterCocoRleImport::test_rectangle_preserves_pixels [33mSKIPPED[0m[32m [ 70%][0m
+tests/test_utils/test_label_converter.py::TestLabelConverterCocoRleImport::test_uncompressed_rle_counts_imported_as_polygon [33mSKIPPED[0m[32m [ 71%][0m
+tests/test_utils/test_qt.py::TestQtUtils::test_distance_to_line_handles_2d_points_without_numpy_warning [32mPASSED[0m[32m [ 71%][0m
+tests/test_utils/test_qt.py::TestQtUtils::test_nearest_edge_handles_line_shapes_without_numpy_warning [32mPASSED[0m[32m [ 72%][0m
+tests/test_utils/test_upload.py::test_refresh_uploaded_file_items_syncs_all_states[False] [32mPASSED[0m[32m [ 72%][0m
+tests/test_utils/test_upload.py::test_refresh_uploaded_file_items_syncs_all_states[True] [32mPASSED[0m[32m [ 73%][0m
+tests/test_utils/test_upload.py::test_yolo_upload_checks_recreated_label_item[hbb-yolo_to_custom] [32mPASSED[0m[32m [ 73%][0m
+tests/test_utils/test_upload.py::test_yolo_upload_checks_recreated_label_item[obb-yolo_obb_to_custom] [32mPASSED[0m[32m [ 73%][0m
+tests/test_utils/test_upload.py::test_yolo_upload_checks_recreated_label_item[seg-yolo_to_custom] [32mPASSED[0m[32m [ 74%][0m
+tests/test_utils/test_upload.py::test_yolo_upload_checks_recreated_label_item[pose-yolo_pose_to_custom] [32mPASSED[0m[32m [ 74%][0m
+tests/test_utils/test_visualization.py::test_qimage_to_bgr_array_drops_alpha_and_preserves_channels [32mPASSED[0m[32m [ 75%][0m
+tests/test_widgets/test_canvas_adjustment.py::TestCanvasAdjustmentWidget::test_brightness_contrast_updates_are_throttled [31mFAILED[0m[31m [ 75%][0m
+tests/test_widgets/test_canvas_adjustment.py::TestCanvasAdjustmentWidget::test_defaults_and_tooltips_describe_adjustment_targets [31mFAILED[0m[31m [ 76%][0m
+tests/test_widgets/test_canvas_adjustment.py::TestCanvasAdjustmentWidget::test_programmatic_update_cancels_pending_adjustment [32mPASSED[0m[31m [ 76%][0m
+tests/test_widgets/test_canvas_adjustment.py::TestCanvasAdjustmentWidget::test_toggle_collapses_to_button_and_restores_content [32mPASSED[0m[31m [ 77%][0m
+tests/test_widgets/test_canvas_adjustment.py::TestBrightnessContrastProcessor::test_adjusts_16_bit_grayscale_image 
+tests/test_widgets/test_canvas_adjustment.py::TestBrightnessContrastProcessor::test_adjusts_16_bit_grayscale_image [32mPASSED[0m[31m [ 77%][0m
+tests/test_widgets/test_canvas_adjustment.py::TestBrightnessContrastProcessor::test_clear_image_releases_image_resources [32mPASSED[0m[31m [ 78%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[1.0-480] [32mPASSED[0m[31m [ 78%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[1.0-720] [32mPASSED[0m[31m [ 78%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[1.0-1024] [32mPASSED[0m[31m [ 79%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[1.0-1280] [32mPASSED[0m[31m [ 79%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[1.0-1600] [32mPASSED[0m[31m [ 80%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[1.5-480] [32mPASSED[0m[31m [ 80%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[1.5-720] [32mPASSED[0m[31m [ 81%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[1.5-1024] [32mPASSED[0m[31m [ 81%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[1.5-1280] [32mPASSED[0m[31m [ 82%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[1.5-1600] [32mPASSED[0m[31m [ 82%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[2.0-480] [32mPASSED[0m[31m [ 83%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[2.0-720] [32mPASSED[0m[31m [ 83%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[2.0-1024] [32mPASSED[0m[31m [ 84%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[2.0-1280] [32mPASSED[0m[31m [ 84%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_nine_equal_cards_stay_on_one_row[2.0-1600] [32mPASSED[0m[31m [ 84%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_binding_updates_and_disabled_entries [32mPASSED[0m[31m [ 85%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_chinese_menu_and_unbound_labels [32mPASSED[0m[31m [ 85%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_click_delegates_without_selecting_an_ignored_action [32mPASSED[0m[31m [ 86%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_active_hint_uses_the_current_theme[light] [32mPASSED[0m[31m [ 86%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_active_hint_uses_the_current_theme[dark] [32mPASSED[0m[31m [ 87%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_shared_resolver_handles_legacy_entries [32mPASSED[0m[31m [ 87%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_mode_only_mapping_uses_default_label [32mPASSED[0m[31m [ 88%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_identical_inputs_skip_refresh_but_label_change_refreshes [32mPASSED[0m[31m [ 88%][0m
+tests/test_widgets/test_digit_shortcut_bar.py::test_embedded_translation_covers_digit_hints [32mPASSED[0m[31m [ 89%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_action_buttons_preserve_subtle_background_style [32mPASSED[0m[31m [ 89%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_add_button_and_editor_keep_stable_visual_style [32mPASSED[0m[31m [ 89%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_add_edit_and_cancel [32mPASSED[0m[31m [ 90%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_add_uses_next_available_default_tag [32mPASSED[0m[31m [ 90%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_batch_buttons_share_tag_flow_and_wrap [32mPASSED[0m[31m [ 91%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_batch_cancel_does_not_emit_change [32mPASSED[0m[31m [ 91%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_batch_confirmation_uses_compact_qt_question [32mPASSED[0m[31m [ 92%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_batch_delete_preserves_relative_order [32mPASSED[0m[31m [ 92%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_batch_mode_uses_strike_selection_without_leading_space [32mPASSED[0m[31m [ 93%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_chip_add_button_and_editor_share_height [32mPASSED[0m[31m [ 93%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_chip_uses_arrow_cursor_and_shows_edit_hint [32mPASSED[0m[31m [ 94%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_copy_all_button_uses_popup_component [32mPASSED[0m[31m [ 94%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_dark_theme_preserves_button_and_close_geometry [32mPASSED[0m[31m [ 94%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_drag_reorders_only_when_position_changes [32mPASSED[0m[31m [ 95%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_edit_focuses_cursor_at_end_without_selecting_text [32mPASSED[0m[31m [ 95%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_empty_edit_removes_tag [32mPASSED[0m[31m [ 96%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_flow_uses_equal_row_spacing_without_bottom_margin [32mPASSED[0m[31m [ 96%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_image_change_commits_valid_input_and_cancels_invalid_input [32mPASSED[0m[31m [ 97%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_invalid_and_duplicate_inputs_stay_editable [32mPASSED[0m[31m [ 97%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_large_tag_set_uses_bounded_internal_scroll_area [32mPASSED[0m[31m [ 98%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_long_tag_is_elided_without_tooltip [32mPASSED[0m[31m [ 98%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_minus_button_replaces_batch_delete_context_menu [32mPASSED[0m[31m [ 99%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_single_delete_requires_confirmation [32mPASSED[0m[31m [ 99%][0m
+tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_single_letter_tags_keep_rounded_corners [32mPASSED[0m[31m [100%][0m
+
+================================== FAILURES ===================================
+[31m[1m__ TestCanvasAdjustmentWidget.test_brightness_contrast_updates_are_throttled __[0m
+[1m[31mtests\test_widgets\test_canvas_adjustment.py[0m:81: in test_brightness_contrast_updates_are_throttled
+    [0m[96mself[39;49;00m.assertEqual([96mlen[39;49;00m(signal_spy), [94m1[39;49;00m)[90m[39;49;00m
+[1m[31mE   AssertionError: 0 != 1[0m
+[31m[1m_ TestCanvasAdjustmentWidget.test_defaults_and_tooltips_describe_adjustment_targets _[0m
+[1m[31mtests\test_widgets\test_canvas_adjustment.py[0m:42: in test_defaults_and_tooltips_describe_adjustment_targets
+    [0m[96mself[39;49;00m.assertIn([33m"[39;49;00m[33mshapes[39;49;00m[33m"[39;49;00m, [96mself[39;49;00m.widget.opacity_slider.toolTip())[90m[39;49;00m
+[1m[31mE   AssertionError: 'shapes' not found in 'Scale the transparency of annotation fills. Borders, vertices and label text remain fully visible.'[0m
+- generated xml file: D:\X-AnyLabeling-4.2.1\reports\maintenance_baseline_20261117\tail.xml -
+============================ slowest 30 durations =============================
+1.83s call     tests/test_updates/test_updates.py::test_interrupted_directory_update_can_be_recovered
+0.47s call     tests/test_widgets/test_image_tags_widget.py::ImageTagsWidgetTest::test_dark_theme_preserves_button_and_close_geometry
+0.39s call     tests/test_updates/test_packaging.py::test_key_generator_does_not_overwrite_or_print_private_key
+0.25s call     tests/test_updates/test_updates.py::test_interrupted_single_file_update_can_be_recovered
+0.18s call     tests/test_updates/test_updates.py::test_recovery_refuses_unrelated_backup_directory
+0.13s call     tests/test_updates/test_updates.py::test_versioned_replacement_preserves_uninstaller_and_supports_rollback[True-True]
+0.12s call     tests/test_updates/test_packaging.py::test_windows_packaging_keeps_update_files_in_version_directory
+0.12s call     tests/test_updates/test_controller.py::test_delayed_installer_acknowledgement_keeps_qt_responsive
+0.09s call     tests/test_utils/test_upload.py::test_yolo_upload_checks_recreated_label_item[obb-yolo_obb_to_custom]
+0.09s call     tests/test_utils/test_export.py::test_yolo_export_preserves_nested_directories[hbb]
+0.08s setup    tests/test_utils/test_export.py::test_yolo_export_preserves_nested_directories[pose]
+0.08s call     tests/test_updates/test_updates.py::test_versioned_replacement_preserves_uninstaller_and_supports_rollback[True-False]
+0.08s teardown tests/test_updates/test_packaging.py::test_key_generator_does_not_overwrite_or_print_private_key
+0.07s call     tests/test_utils/test_export.py::test_yolo_export_does_not_blame_last_image_for_popup_error
+0.07s call     tests/test_updates/test_updates.py::test_directory_replacement_keeps_uninstaller_and_rolls_back
+0.07s call     tests/test_updates/test_updates.py::test_versioned_replacement_preserves_uninstaller_and_supports_rollback[False-False]
+0.07s call     tests/test_utils/test_export.py::test_yolo_export_preserves_nested_directories[pose]
+0.06s setup    tests/test_utils/test_export.py::test_yolo_export_error_dialog_shows_actionable_guidance[error0-Reason: Pose instance grouping is incomplete or mismatched.\nPlease ensure that each instance has one bounding box and that its bounding box and keypoints use the same numeric group ID.]
+0.06s setup    tests/test_updates/test_updates.py::test_damaged_download_never_replaces_existing_file[chunks0]
+0.06s call     tests/test_widgets/test_canvas_adjustment.py::TestCanvasAdjustmentWidget::test_brightness_contrast_updates_are_throttled
+0.06s call     tests/test_widgets/test_canvas_adjustment.py::TestCanvasAdjustmentWidget::test_programmatic_update_cancels_pending_adjustment
+0.05s call     tests/test_updates/test_controller.py::test_verified_download_closes_and_arms_only_after_approval
+0.05s call     tests/test_updates/test_packaging.py::test_release_artifact_and_signed_manifest_round_trip[Windows-installer-X-AnyLabeling-Setup.exe]
+0.05s call     tests/test_utils/test_export.py::test_yolo_export_reports_failed_image
+0.04s call     tests/test_widgets/test_digit_shortcut_bar.py::test_chinese_menu_and_unbound_labels
+0.04s setup    tests/test_updates/test_updates.py::test_download_checks_digest_and_cancellation
+0.04s call     tests/test_updates/test_updates.py::test_damaged_download_never_replaces_existing_file[chunks1]
+0.04s call     tests/test_utils/test_file_search.py::TestFileSearch::test_object_review_search
+0.04s setup    tests/test_updates/test_controller.py::test_verified_download_closes_and_arms_only_after_approval
+0.04s call     tests/test_updates/test_controller.py::test_unsaved_work_refusal_does_not_arm_installer
+[36m[1m=========================== short test summary info ===========================[0m
+[31mFAILED[0m tests/test_widgets/test_canvas_adjustment.py::[1mTestCanvasAdjustmentWidget::test_brightness_contrast_updates_are_throttled[0m - AssertionError: 0 != 1
+[31mFAILED[0m tests/test_widgets/test_canvas_adjustment.py::[1mTestCanvasAdjustmentWidget::test_defaults_and_tooltips_describe_adjustment_targets[0m - AssertionError: 'shapes' not found in 'Scale the transparency of annotation fills. Borders, vertices and label text remain fully visible.'
+[31m======== [31m[1m2 failed[0m, [32m188 passed[0m, [33m29 skipped[0m, [32m30 subtests passed[0m[31m in 9.86s[0m[31m ========[0m
