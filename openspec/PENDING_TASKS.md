@@ -1,7 +1,7 @@
 # OpenSpec 当前状态与历史记录
 
-更新：2026-11-17；逐份读取源 `tasks.md`。当前 14 个活动目录，
-合计 260/297，未勾 37 项；本页不维护第二套任务勾选。
+更新：2026-11-17；逐份读取源 `tasks.md`。当前 13 个活动目录，
+合计 233/270，未勾 37 项；本页不维护第二套任务勾选。
 
 | 当前变更（源清单） | 勾选 / 总数 | 实际状态 |
 | --- | ---: | --- |
@@ -11,7 +11,6 @@
 | [add-shift-corner-lock-point-fit](changes/add-shift-corner-lock-point-fit/tasks.md) | 6/6 | 任务全勾；按维护审计与独立证据决定归档 |
 | [fix-digit-rectangle-label-save](changes/fix-digit-rectangle-label-save/tasks.md) | 10/10 | 任务全勾；按维护审计与独立证据决定归档 |
 | [fix-rectangle-preview-overlap](changes/fix-rectangle-preview-overlap/tasks.md) | 24/24 | 任务全勾；按维护审计与独立证据决定归档 |
-| [fix-user-settings-persistence](changes/fix-user-settings-persistence/tasks.md) | 27/27 | 任务全勾；按维护审计与独立证据决定归档 |
 | [improve-point-fit-algorithm](changes/improve-point-fit-algorithm/tasks.md) | 5/5 | 任务全勾；按维护审计与独立证据决定归档 |
 | [improve-rectangle-edge-adjustment](changes/improve-rectangle-edge-adjustment/tasks.md) | 6/6 | 任务全勾；按维护审计与独立证据决定归档 |
 | [migrate-canvas-controls-from-v430](changes/migrate-canvas-controls-from-v430/tasks.md) | 0/0 | 仅移交；待核对 restore 重复发布 |
