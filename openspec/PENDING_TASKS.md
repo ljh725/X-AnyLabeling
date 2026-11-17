@@ -1,7 +1,7 @@
 # OpenSpec 当前状态与历史记录
 
-更新：2026-11-17；逐份读取源 `tasks.md`。当前 16 个活动目录，
-合计 310/347，未勾 37 项；本页不维护第二套任务勾选。
+更新：2026-11-17；逐份读取源 `tasks.md`。当前 15 个活动目录，
+合计 291/328，未勾 37 项；本页不维护第二套任务勾选。
 
 | 当前变更（源清单） | 勾选 / 总数 | 实际状态 |
 | --- | ---: | --- |
@@ -15,10 +15,9 @@
 | [improve-point-fit-algorithm](changes/improve-point-fit-algorithm/tasks.md) | 5/5 | 任务全勾；按维护审计与独立证据决定归档 |
 | [improve-rectangle-edge-adjustment](changes/improve-rectangle-edge-adjustment/tasks.md) | 6/6 | 任务全勾；按维护审计与独立证据决定归档 |
 | [migrate-canvas-controls-from-v430](changes/migrate-canvas-controls-from-v430/tasks.md) | 0/0 | 仅移交；待核对 restore 重复发布 |
-| [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 13/18 | 实施中；完整回归复验进行中，已完成归档预演与三/五份契约对照 |
+| [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 13/18 | 实施中；候选验证已记录，逐批归档与最终核对进行中 |
 | [polish-inspector-dense-review-ui](changes/polish-inspector-dense-review-ui/tasks.md) | 20/20 | 20/20 技术勾选；Ctrl+F 规格与实现不符、人工缺口，保留未归档 |
 | [restore-v430-canvas-controls](changes/restore-v430-canvas-controls/tasks.md) | 31/31 | 任务全勾；按维护审计与独立证据决定归档 |
-| [smooth-canvas-dragging](changes/smooth-canvas-dragging/tasks.md) | 19/19 | 任务全勾；按维护审计与独立证据决定归档 |
 | [staged-annotation-loading](changes/staged-annotation-loading/tasks.md) | 31/31 | 任务全勾；按维护审计与独立证据决定归档 |
 | [unify-shift-rectangle-point-fit](changes/unify-shift-rectangle-point-fit/tasks.md) | 8/8 | 任务全勾；按维护审计与独立证据决定归档 |
 

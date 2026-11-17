@@ -44,7 +44,7 @@ DPI 原始目录 32 项、性能 summary 仍在；未移动/删除/改写这些�
 
 | 旧变更名 | 新前缀 | 实际状态 / 本地提交 |
 | --- | --- | --- |
-| `smooth-canvas-dragging` | `archive/2026-11-17-smooth-canvas-dragging` | 预演通过，未执行 |
+| `smooth-canvas-dragging` | `archive/2026-11-17-smooth-canvas-dragging` | 已归档，随本批提交 |
 | `staged-annotation-loading` | `archive/2026-11-17-staged-annotation-loading` | 预演通过，未执行 |
 | `fix-user-settings-persistence` | `archive/2026-11-17-fix-user-settings-persistence` | 预演通过，未执行 |
 | `fix-digit-rectangle-label-save` | `archive/2026-11-17-fix-digit-rectangle-label-save` | 预演通过，未执行 |

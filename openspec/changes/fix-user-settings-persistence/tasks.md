@@ -4,7 +4,7 @@
 
 六类实施后复核问题 R1—R6 已修复，并新增正式行为、fixture 生命周期及真实 MainWindow 集成回归。当前 **27/27 项完成**（2026-11-09 收尾）：7.2 已由用户完成真实终端人机验收；7.4 文档、OpenSpec strict 与差异检查通过，修复已随提交 `e4421908` 进入版本历史，按用户指示关闭，不自动归档、不改写历史、不恢复历史映射。
 
-本轮只叠加设置持久化相关修复，保留此前工作区成果。修复前记录见 [实施后复核报告](review-20261105.md)，修复后行为、执行命令和限制见 [验证记录](verification.md) 的“后续修复 R1—R6”。实施前源码及文档副本位于项目内 `.tmp/settings-followup-baseline-20261105/`。
+本轮只叠加设置持久化相关修复，保留此前工作区成果。修复前记录见 [实施后复核报告](../archive/2026-11-17-fix-user-settings-persistence/review-20261105.md)，修复后行为、执行命令和限制见 [验证记录](../archive/2026-11-17-fix-user-settings-persistence/verification.md) 的“后续修复 R1—R6”。实施前源码及文档副本位于项目内 `.tmp/settings-followup-baseline-20261105/`。
 
 ## 1. 固化反例与调用范围
 

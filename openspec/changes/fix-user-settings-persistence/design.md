@@ -1,6 +1,6 @@
 ## Context
 
-动机见 [proposal.md](proposal.md)。隔离探针已确认：保存数字映射后直接重读能够保留，但随后保存通用设置会将映射覆盖为 `null`；旧配置整份写入能够同时清空映射并还原快捷键。无法由现有日志确定用户那次普通快捷键还原的具体写入者，不能将时间先后视为密集审核直接重置的证据。
+动机见 [proposal.md](../archive/2026-11-17-fix-user-settings-persistence/proposal.md)。隔离探针已确认：保存数字映射后直接重读能够保留，但随后保存通用设置会将映射覆盖为 `null`；旧配置整份写入能够同时清空映射并还原快捷键。无法由现有日志确定用户那次普通快捷键还原的具体写入者，不能将时间先后视为密集审核直接重置的证据。
 
 现有 `SettingsController` 在主窗口启动时复制 `_working_config`，保存时整份回写并替换 `_config`；数字管理器、显示菜单、模型管理及退出路径还会各自调用 `save_config`。后者固定写工作目录 `.xanylabelingrc`，忽略文件型 `current_config_file`，直接截断文件且吞掉异常。现有部分测试已隔离 YAML/QSettings，但缺少统一约束及子进程覆盖。
 

@@ -60,8 +60,8 @@ P2「原框被键盘微调后旧拟合候选仍显示」已修复：候选关联
 
 - 2026-11-09 真实屏幕验收完成：用户在深色、浅色两种图片背景上完成创建（四方向）、框内收缩、框外扩张、取消及提交/撤销的人工观察，确认重合边不露重复实线、非重合边保留、取消无残边、提交后单次撤销恢复原框；24/24 项完成。本次未附截图文件，记录见 `evidence/real-screen-acceptance-20261109.md`。下列各条为当时历史状态。
 - 2026-11-05 补证完成：预览测试由 43 项增至 57 项，合计定向回归 149 passed、72 subtests passed；dirty 信号负向对照 14 failed、历史 `9673d3b9` 预览方法对照 2 failed（均为预期断言失败，独立进程内替换，无源码回退）。5.3、5.6 恢复勾选，6.4 记录已补齐，日志见 `evidence/`。下列复核缺口描述为补证前历史状态。
-- 2026-11-05 复核：5.3、5.6 的几何、像素及撤销断言已有通过证据，但 dirty 状态尚未直接验证；现有 43 项预览测试无法检出预览额外发出 `shape_moved` 的进程内反例，因此上述两项恢复未勾选。补齐对应 dirty/提交信号断言后再复核关闭，见 [review-20261105.md](review-20261105.md)。
-- 自动化结果与未完成项见 [verification.md](verification.md)。
+- 2026-11-05 复核：5.3、5.6 的几何、像素及撤销断言已有通过证据，但 dirty 状态尚未直接验证；现有 43 项预览测试无法检出预览额外发出 `shape_moved` 的进程内反例，因此上述两项恢复未勾选。补齐对应 dirty/提交信号断言后再复核关闭，见 [review-20261105.md](../archive/2026-11-17-fix-rectangle-preview-overlap/review-20261105.md)。
+- 自动化结果与未完成项见 [verification.md](../archive/2026-11-17-fix-rectangle-preview-overlap/verification.md)。
 - 2026-11-04 修复后定向回归：82 + 53 项通过（含新增 8 项 P2 回归）；`flake8` 通过，`black --diff` 三个改动模块均无变更，`openspec validate fix-rectangle-preview-overlap --strict` 通过。
 - （2026-11-06 前）6.1 未完成：当时仍无真实屏幕深浅背景截图与人工观察，不能用离屏结果替代；该项已于 2026-11-09 由用户完成，见顶部当前状态与 `evidence/real-screen-acceptance-20261109.md`。
 - 画布目录全量 599 通过，另有 1 个挂起用例（`test_main_window_exposes_translated_edge_toggle`，工作区并行设置持久化改动在 `label_widget.py` 弹出模态错误对话框）与 4 个失败/2 个错误（既有 `test_groups` 基线与 Windows 沙箱临时目录 ACL）不属于本项；`test_rectangle_size::test_action_switch_updates_canvas_and_config` 的失败来自并行改动新增的 `update_user_preference` 调用。

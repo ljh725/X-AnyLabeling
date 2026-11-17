@@ -100,3 +100,10 @@ restore 本机旧路径实际已按 11-10 manifest 迁移；只读 bundle verify
 独立克隆 HEAD 70975046 与回执一致，10/10 文件指纹相同，DPI/性能原材料仍在。
 未移动/删除备份，未新做人机或性能验收；修正 CUSTOM 索引的过时待验收描述。
 本地提交 `docs(maintenance): 核实归档资格与场景语义映射`；无推送、PR、合入。
+
+## 2026-11-17 维护归档批次：smooth-canvas-dragging
+
+本批标题 `docs(openspec): 同步并归档平滑拖动变更`；按 .tmp 预演的相同语义合并，检查所有源 delta，
+保留历史证据、修正当前导航、整目录归档，strict 与差异/暂存检查后本地提交。
+范围、证据和限制见[归档审计](../../reports/maintenance_baseline_20261117/ARCHIVES.md)。
+不运行新的产品测试（生产树及测试树未变），不推送、不开 PR、不合入。
