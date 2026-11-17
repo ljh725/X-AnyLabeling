@@ -20,7 +20,7 @@
 
 | 编号 | 功能 | 状态 | 记录 |
 | --- | --- | --- | --- |
-| CUSTOM-124 | 维护基线整理与 agent 执行交接 | 方案已备齐；四步整理未实施 | [说明](2026-11-17-maintenance-baseline-plan.md) · [执行入口](../../openspec/changes/organize-maintenance-baseline/HANDOFF.md) |
+| CUSTOM-124 | 维护基线整理与 agent 执行交接 | 实施中；候选已固定，四步按源任务推进 | [说明](2026-11-17-maintenance-baseline-plan.md) · [执行入口](../../openspec/changes/organize-maintenance-baseline/HANDOFF.md) |
 | CUSTOM-001 | 统计总览、标签管理器后台扫描与进度反馈 | 方案，未实施；11-02 已完成真实共享盘诊断 | [修改方案](2026-10-29-dataset-scan-progress.md) · [实测与代码分类](../../reports/tool_scan_diagnosis_20261102/REPORT.md) |
 | CUSTOM-002 | 分阶段标注加载、搜索与审核一致性 | 已有实现，历史验证见报告 | [实现归档](2026-10-30-staged-loading.md) |
 | CUSTOM-003 | 大数据集拖动响应优化 | 已实施，历史回归与用户体验确认见修复记录 | [修复记录](2026-10-30-canvas-dragging.md) |
