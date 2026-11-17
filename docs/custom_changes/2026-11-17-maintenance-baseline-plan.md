@@ -170,3 +170,11 @@ restore 本机旧路径实际已按 11-10 manifest 迁移；只读 bundle verify
 保留历史证据、修正当前导航、整目录归档，strict 与差异/暂存检查后本地提交。
 范围、证据和限制见[归档审计](../../reports/maintenance_baseline_20261117/ARCHIVES.md)。
 不运行新的产品测试（生产树及测试树未变），不推送、不开 PR、不合入。
+
+## 2026-11-17 维护归档批次：migrate-canvas-controls-from-v430
+
+上一批本地对象 `4ec0a3cda47292f60b9fde377110b3c939a91401`。
+本批标题 `docs(openspec): 核对重复契约并归档迁移脚手架`；按 .tmp 预演的相同语义合并，检查所有源 delta，
+保留历史证据、修正当前导航、整目录归档，strict 与差异/暂存检查后本地提交。
+范围、证据和限制见[归档审计](../../reports/maintenance_baseline_20261117/ARCHIVES.md)。
+不运行新的产品测试（生产树及测试树未变），不推送、不开 PR、不合入。

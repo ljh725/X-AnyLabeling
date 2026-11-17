@@ -51,10 +51,10 @@ DPI 原始目录 32 项、性能 summary 仍在；未移动/删除/改写这些�
 | `improve-rectangle-edge-adjustment` | `archive/2026-11-17-improve-rectangle-edge-adjustment` | 已归档；`9caa239e5f8bb0239e6eee3e47696687f6d33eed` |
 | `fix-rectangle-preview-overlap` | `archive/2026-11-17-fix-rectangle-preview-overlap` | 已归档；`57dc597903ab7147967a32bf75e2f301c3f43d7b` |
 | `restore-v430-canvas-controls` | `archive/2026-11-17-restore-v430-canvas-controls` | 已归档；`89e3785ec9a629974fab58d7ee8c3b86683a62ae` |
-| `improve-point-fit-algorithm` | `archive/2026-11-17-improve-point-fit-algorithm` | 已归档，随本批提交 |
-| `add-shift-corner-lock-point-fit` | `archive/2026-11-17-add-shift-corner-lock-point-fit` | 已归档，随本批提交 |
-| `unify-shift-rectangle-point-fit` | `archive/2026-11-17-unify-shift-rectangle-point-fit` | 已归档，随本批提交 |
-| `migrate-canvas-controls-from-v430` | `archive/2026-11-17-migrate-canvas-controls-from-v430` | 预演通过，未执行 |
+| `improve-point-fit-algorithm` | `archive/2026-11-17-improve-point-fit-algorithm` | 已归档；`4ec0a3cda47292f60b9fde377110b3c939a91401` |
+| `add-shift-corner-lock-point-fit` | `archive/2026-11-17-add-shift-corner-lock-point-fit` | 已归档；`4ec0a3cda47292f60b9fde377110b3c939a91401` |
+| `unify-shift-rectangle-point-fit` | `archive/2026-11-17-unify-shift-rectangle-point-fit` | 已归档；`4ec0a3cda47292f60b9fde377110b3c939a91401` |
+| `migrate-canvas-controls-from-v430` | `archive/2026-11-17-migrate-canvas-controls-from-v430` | 已归档，随本批提交 |
 
 ## 单点拟合场景语义映射
 
