@@ -56,6 +56,7 @@ CUSTOM-120 的原草案保留为设计来源。新的决策包括手动隐藏通
 
 | 日期 | 原因 | 实际改动 | 验证结果 |
 | --- | --- | --- | --- |
+| 2026-11-17 | 复核 HEAD `134462ac` 与已有未提交工作区 | 只登记复核证据，未改业务代码；发现 dock 隐藏清理、查漏刷新、重开预设、视口快照、普通文字开关及任务关联点策略共 6 项待修问题；25/91 任务已勾选，状态仍为实施中 | 密集复核 264 passed / 698 subtests；画布十文件 286 passed / 6 subtests；新增探针 8 failed；[本轮报告](../../reports/dense_review_redesign/2026-11-17/REVIEW.md) |
 | 2026-11-13 | 用户要求详细完整 OpenSpec 任务清单 | 提案、设计、五份规格、91项任务和86场景验收矩阵 | OpenSpec strict、映射、本地链接及差异检查通过；实施未开始 |
 | 2026-11-16 | 开始实施，先做显示与画布接入 | 新增 `services/dense_review/display.py` 纯解析层；`Canvas`/`Shape` 按组件强度绘制并同源命中；`ObjectReviewState` 记录 `group_id`，新增 `session.associated_ids()`；修复列表启用、隐藏/过滤失效与退出快照覆盖 | `tests/test_dense_review` 182 passed；21 项任务有对应提交与证据，详见 [PROGRESS.md](../../reports/dense_review_redesign/2026-11-16/PROGRESS.md)。人工验收与性能门槛未执行 |
 | 2026-11-16 | 实施中发现两处真实缺陷 | 手动隐藏/过滤变更未使复核显示表失效；退出复核用进入快照覆盖用户新设置 | 由 `test_display_consistency.py` 9 项真实窗口回归固定 |

@@ -1,0 +1,361 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+cachedir: .pytest_cache
+rootdir: D:\X-AnyLabeling-4.2.1
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 8 items
+
+.tmp/dense-review-audit-20261117/test_audit.py::test_coverage_does_not_change_ordinary_text_switch FAILED [ 12%]
+.tmp/dense-review-audit-20261117/test_audit.py::test_coverage_hides_associated_keypoint_symbols FAILED [ 25%]
+.tmp/dense-review-audit-20261117/test_audit.py::test_reopen_reapplies_coverage_preset FAILED [ 37%]
+.tmp/dense-review-audit-20261117/test_audit.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False] FAILED [ 50%]
+.tmp/dense-review-audit-20261117/test_audit.py::test_task_round_trip_keeps_fractional_zoom_and_mode[True] FAILED [ 62%]
+.tmp/dense-review-audit-20261117/test_audit.py::test_background_refresh_keeps_coverage_viewport FAILED [ 75%]
+.tmp/dense-review-audit-20261117/test_audit.py::test_category_does_not_promote_associated_points FAILED [ 87%]
+.tmp/dense-review-audit-20261117/test_audit.py::test_hide_dock_removes_review_overlay FAILED [100%]
+
+================================== FAILURES ===================================
+_____________ test_coverage_does_not_change_ordinary_text_switch ______________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x00000182EBA17ED0>
+open_window = <function open_window.<locals>._open at 0x00000182EBA376A0>
+
+    def test_coverage_does_not_change_ordinary_text_switch(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        widget.canvas.show_texts = False
+        ws.set_task(ws.TASK_COVERAGE)
+        ws.close()
+        app.processEvents()
+>       assert widget.canvas.show_texts is False
+E       assert True is False
+E        +  where True = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x00000182EC2E42D0>.show_texts
+E        +    where <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x00000182EC2E42D0> = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x00000182EC245D10>.canvas
+
+.tmp\dense-review-audit-20261117\test_audit.py:30: AssertionError
+_______________ test_coverage_hides_associated_keypoint_symbols _______________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x00000182EBA17ED0>
+open_window = <function open_window.<locals>._open at 0x00000182ED5CD120>
+
+    def test_coverage_hides_associated_keypoint_symbols(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        ws.set_task(ws.TASK_COVERAGE)
+        display = widget.dense_review_display_entry("kp1")
+>       assert display.style.points == 0.0
+E       AssertionError: assert 0.55 == 0.0
+E        +  where 0.55 = RoleStyle(fill=0.0, outline=1.0, outline_width=1.6, points=0.55, handles=0.0, text=0.75, text_plate=0.6, attributes=0.45, linking=0.45, mask=0.0).points
+E        +    where RoleStyle(fill=0.0, outline=1.0, outline_width=1.6, points=0.55, handles=0.0, text=0.75, text_plate=0.6, attributes=0.45, linking=0.45, mask=0.0) = ShapeDisplay(shape_id='kp1', role='current', style=RoleStyle(fill=0.0, outline=1.0, outline_width=1.6, points=0.55, handles=0.0, text=0.75, text_plate=0.6, attributes=0.45, linking=0.45, mask=0.0), drawable=True, hittable=True, label_visible=True, reason='', temporary=False, locked=False, reviewable=False).style
+
+.tmp\dense-review-audit-20261117\test_audit.py:37: AssertionError
+____________________ test_reopen_reapplies_coverage_preset ____________________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x00000182EBA17ED0>
+open_window = <function open_window.<locals>._open at 0x00000182F0746840>
+
+    def test_reopen_reapplies_coverage_preset(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        ws.set_task(ws.TASK_COVERAGE)
+        before = widget.dense_review_display_entry("rect2").style.to_dict()
+        ws.close()
+        app.processEvents()
+        widget.open_dense_review()
+        app.processEvents()
+>       assert widget.dense_review_display_entry("rect2").style.to_dict() == before
+E       AssertionError: assert {'fill': 0.0, 'outline': 0.65, 'outline_width': 1.4, 'points': 0.55, 'handles': 0.0, 'text': 0.75, 'text_plate': 0.6, 'attributes': 0.45, 'linking': 0.45, 'mask': 0.0} == {'fill': 0.0, 'outline': 0.45, 'outline_width': 1.1, 'points': 0.0, 'handles': 0.0, 'text': 0.25, 'text_plate': 0.0, 'attributes': 0.2, 'linking': 0.45, 'mask': 0.0}
+E
+E         Common items:
+E         {'fill': 0.0, 'handles': 0.0, 'linking': 0.45, 'mask': 0.0}
+E         Differing items:
+E         {'outline': 0.65} != {'outline': 0.45}
+E         {'attributes': 0.45} != {'attributes': 0.2}
+E         {'points': 0.55} != {'points': 0.0}
+E         {'outline_width': 1.4} != {'outline_width': 1.1}
+E         {'text': 0.75} != {'text': 0.25}
+E         {'text_plate': 0.6} != {'text_plate': 0.0}
+E
+E         Full diff:
+E           {
+E         -     'attributes': 0.2,
+E         ?                     ^
+E         +     'attributes': 0.45,
+E         ?                     ^^
+E               'fill': 0.0,
+E               'handles': 0.0,
+E               'linking': 0.45,
+E               'mask': 0.0,
+E         -     'outline': 0.45,
+E         ?                  ^
+E         +     'outline': 0.65,
+E         ?                  ^
+E         -     'outline_width': 1.1,
+E         ?                        ^
+E         +     'outline_width': 1.4,
+E         ?                        ^
+E         -     'points': 0.0,
+E         ?                 ^
+E         +     'points': 0.55,
+E         ?                 ^^
+E         -     'text': 0.25,
+E         ?               ^
+E         +     'text': 0.75,
+E         ?               ^
+E         -     'text_plate': 0.0,
+E         ?                     ^
+E         +     'text_plate': 0.6,
+E         ?                     ^
+E           }
+
+.tmp\dense-review-audit-20261117\test_audit.py:48: AssertionError
+_________ test_task_round_trip_keeps_fractional_zoom_and_mode[False] __________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x00000182EBA17ED0>
+open_window = <function open_window.<locals>._open at 0x00000182F0AB23E0>
+fit_window = False
+
+    @pytest.mark.parametrize("fit_window", [False, True])
+    def test_task_round_trip_keeps_fractional_zoom_and_mode(
+        app, open_window, fit_window
+    ):
+        _, widget, ws = _open(app, open_window)
+        if fit_window:
+            widget.set_fit_window(True)
+        else:
+            widget.set_zoom(126.4)
+        app.processEvents()
+        before = (widget.canvas.scale, widget.zoom_mode)
+        ws.set_task(ws.TASK_COVERAGE)
+        ws.set_task(ws.TASK_CATEGORY)
+        app.processEvents()
+>       assert (widget.canvas.scale, widget.zoom_mode) == before
+E       assert (1.26, 2) == (1.264, 2)
+E
+E         At index 0 diff: 1.26 != 1.264
+E
+E         Full diff:
+E           (
+E         -     1.264,
+E         ?         -
+E         +     1.26,
+E               2,
+E           )
+
+.tmp\dense-review-audit-20261117\test_audit.py:65: AssertionError
+__________ test_task_round_trip_keeps_fractional_zoom_and_mode[True] __________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x00000182EBA17ED0>
+open_window = <function open_window.<locals>._open at 0x00000182F0AE3E20>
+fit_window = True
+
+    @pytest.mark.parametrize("fit_window", [False, True])
+    def test_task_round_trip_keeps_fractional_zoom_and_mode(
+        app, open_window, fit_window
+    ):
+        _, widget, ws = _open(app, open_window)
+        if fit_window:
+            widget.set_fit_window(True)
+        else:
+            widget.set_zoom(126.4)
+        app.processEvents()
+        before = (widget.canvas.scale, widget.zoom_mode)
+        ws.set_task(ws.TASK_COVERAGE)
+        ws.set_task(ws.TASK_CATEGORY)
+        app.processEvents()
+>       assert (widget.canvas.scale, widget.zoom_mode) == before
+E       assert (0.1, 2) == (0.1, 0)
+E
+E         At index 1 diff: 2 != 0
+E
+E         Full diff:
+E           (
+E               0.1,
+E         -     0,
+E         ?     ^
+E         +     2,
+E         ?     ^
+E           )
+
+.tmp\dense-review-audit-20261117\test_audit.py:65: AssertionError
+_______________ test_background_refresh_keeps_coverage_viewport _______________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x00000182EBA17ED0>
+open_window = <function open_window.<locals>._open at 0x00000182F06F3C40>
+
+    def test_background_refresh_keeps_coverage_viewport(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        ws.set_task(ws.TASK_COVERAGE)
+        widget.set_zoom(75)
+        widget.canvas.pan_offset = QtCore.QPointF(17, 23)
+        before = (widget.canvas.scale, QtCore.QPointF(widget.canvas.pan_offset))
+        ws.refresh_all()
+>       assert (widget.canvas.scale, widget.canvas.pan_offset) == before
+E       assert (0.25, PyQt6.QtCore.QPointF(35.0, 7.333333333333371)) == (0.75, PyQt6.QtCore.QPointF(17.0, 23.0))
+E
+E         At index 0 diff: 0.25 != 0.75
+E
+E         Full diff:
+E           (
+E         -     0.75,
+E         ?       ^
+E         +     0.25,
+E         ?       ^
+E         -     PyQt6.QtCore.QPointF(17.0, 23.0),
+E         +     PyQt6.QtCore.QPointF(35.0, 7.333333333333371),
+E           )
+
+.tmp\dense-review-audit-20261117\test_audit.py:75: AssertionError
+______________ test_category_does_not_promote_associated_points _______________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x00000182EBA17ED0>
+open_window = <function open_window.<locals>._open at 0x00000182ED638F40>
+
+    def test_category_does_not_promote_associated_points(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        assert ws.task_id == ws.TASK_CATEGORY
+>       assert widget.dense_review_display_entry("kp1").role != "current"
+E       AssertionError: assert 'current' != 'current'
+E        +  where 'current' = ShapeDisplay(shape_id='kp1', role='current', style=RoleStyle(fill=0.0, outline=1.0, outline_width=2.0, points=1.0, handles=1.0, text=1.0, text_plate=1.0, attributes=1.0, linking=1.0, mask=1.0), drawable=True, hittable=True, label_visible=True, reason='', temporary=False, locked=False, reviewable=False).role
+E        +    where ShapeDisplay(shape_id='kp1', role='current', style=RoleStyle(fill=0.0, outline=1.0, outline_width=2.0, points=1.0, handles=1.0, text=1.0, text_plate=1.0, attributes=1.0, linking=1.0, mask=1.0), drawable=True, hittable=True, label_visible=True, reason='', temporary=False, locked=False, reviewable=False) = dense_review_display_entry('kp1')
+E        +      where dense_review_display_entry = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x00000182ED639090>.dense_review_display_entry
+
+.tmp\dense-review-audit-20261117\test_audit.py:81: AssertionError
+____________________ test_hide_dock_removes_review_overlay ____________________
+
+app = <PyQt6.QtWidgets.QApplication object at 0x00000182EBA17ED0>
+open_window = <function open_window.<locals>._open at 0x00000182F0A747C0>
+
+    def test_hide_dock_removes_review_overlay(app, open_window):
+        _, widget, ws = _open(app, open_window)
+        widget.dense_review_set_display_mode("original")
+        assert widget.canvas.dense_review_active
+        ws.hide()
+        app.processEvents()
+        assert not widget.dense_review_active()
+>       assert not widget.canvas.annotation_editing_paused()
+E       assert not True
+E        +  where True = annotation_editing_paused()
+E        +    where annotation_editing_paused = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x00000182F0A73E30>.annotation_editing_paused
+E        +      where <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x00000182F0A73E30> = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x00000182F0B0F430>.canvas
+
+.tmp\dense-review-audit-20261117\test_audit.py:91: AssertionError
+- generated xml file: D:\X-AnyLabeling-4.2.1\.tmp\dense-review-audit-20261117\probes-final.xml -
+============================ slowest 30 durations =============================
+2.88s call     .tmp/dense-review-audit-20261117/test_audit.py::test_coverage_does_not_change_ordinary_text_switch
+2.87s call     .tmp/dense-review-audit-20261117/test_audit.py::test_category_does_not_promote_associated_points
+2.86s call     .tmp/dense-review-audit-20261117/test_audit.py::test_coverage_hides_associated_keypoint_symbols
+2.83s call     .tmp/dense-review-audit-20261117/test_audit.py::test_reopen_reapplies_coverage_preset
+2.74s call     .tmp/dense-review-audit-20261117/test_audit.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False]
+2.74s call     .tmp/dense-review-audit-20261117/test_audit.py::test_background_refresh_keeps_coverage_viewport
+2.73s call     .tmp/dense-review-audit-20261117/test_audit.py::test_task_round_trip_keeps_fractional_zoom_and_mode[True]
+2.68s call     .tmp/dense-review-audit-20261117/test_audit.py::test_hide_dock_removes_review_overlay
+0.04s teardown .tmp/dense-review-audit-20261117/test_audit.py::test_coverage_hides_associated_keypoint_symbols
+0.03s teardown .tmp/dense-review-audit-20261117/test_audit.py::test_task_round_trip_keeps_fractional_zoom_and_mode[True]
+0.03s teardown .tmp/dense-review-audit-20261117/test_audit.py::test_category_does_not_promote_associated_points
+0.03s teardown .tmp/dense-review-audit-20261117/test_audit.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False]
+0.03s teardown .tmp/dense-review-audit-20261117/test_audit.py::test_hide_dock_removes_review_overlay
+0.03s teardown .tmp/dense-review-audit-20261117/test_audit.py::test_coverage_does_not_change_ordinary_text_switch
+0.03s teardown .tmp/dense-review-audit-20261117/test_audit.py::test_reopen_reapplies_coverage_preset
+0.03s teardown .tmp/dense-review-audit-20261117/test_audit.py::test_background_refresh_keeps_coverage_viewport
+0.01s setup    .tmp/dense-review-audit-20261117/test_audit.py::test_coverage_does_not_change_ordinary_text_switch
+0.00s setup    .tmp/dense-review-audit-20261117/test_audit.py::test_reopen_reapplies_coverage_preset
+0.00s setup    .tmp/dense-review-audit-20261117/test_audit.py::test_task_round_trip_keeps_fractional_zoom_and_mode[True]
+0.00s setup    .tmp/dense-review-audit-20261117/test_audit.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False]
+0.00s setup    .tmp/dense-review-audit-20261117/test_audit.py::test_background_refresh_keeps_coverage_viewport
+0.00s setup    .tmp/dense-review-audit-20261117/test_audit.py::test_hide_dock_removes_review_overlay
+0.00s setup    .tmp/dense-review-audit-20261117/test_audit.py::test_category_does_not_promote_associated_points
+0.00s setup    .tmp/dense-review-audit-20261117/test_audit.py::test_coverage_hides_associated_keypoint_symbols
+=========================== short test summary info ===========================
+FAILED .tmp/dense-review-audit-20261117/test_audit.py::test_coverage_does_not_change_ordinary_text_switch - assert True is False
+ +  where True = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x00000182EC2E42D0>.show_texts
+ +    where <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x00000182EC2E42D0> = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x00000182EC245D10>.canvas
+FAILED .tmp/dense-review-audit-20261117/test_audit.py::test_coverage_hides_associated_keypoint_symbols - AssertionError: assert 0.55 == 0.0
+ +  where 0.55 = RoleStyle(fill=0.0, outline=1.0, outline_width=1.6, points=0.55, handles=0.0, text=0.75, text_plate=0.6, attributes=0.45, linking=0.45, mask=0.0).points
+ +    where RoleStyle(fill=0.0, outline=1.0, outline_width=1.6, points=0.55, handles=0.0, text=0.75, text_plate=0.6, attributes=0.45, linking=0.45, mask=0.0) = ShapeDisplay(shape_id='kp1', role='current', style=RoleStyle(fill=0.0, outline=1.0, outline_width=1.6, points=0.55, handles=0.0, text=0.75, text_plate=0.6, attributes=0.45, linking=0.45, mask=0.0), drawable=True, hittable=True, label_visible=True, reason='', temporary=False, locked=False, reviewable=False).style
+FAILED .tmp/dense-review-audit-20261117/test_audit.py::test_reopen_reapplies_coverage_preset - AssertionError: assert {'fill': 0.0, 'outline': 0.65, 'outline_width': 1.4, 'points': 0.55, 'handles': 0.0, 'text': 0.75, 'text_plate': 0.6, 'attributes': 0.45, 'linking': 0.45, 'mask': 0.0} == {'fill': 0.0, 'outline': 0.45, 'outline_width': 1.1, 'points': 0.0, 'handles': 0.0, 'text': 0.25, 'text_plate': 0.0, 'attributes': 0.2, 'linking': 0.45, 'mask': 0.0}
+
+  Common items:
+  {'fill': 0.0, 'handles': 0.0, 'linking': 0.45, 'mask': 0.0}
+  Differing items:
+  {'outline': 0.65} != {'outline': 0.45}
+  {'attributes': 0.45} != {'attributes': 0.2}
+  {'points': 0.55} != {'points': 0.0}
+  {'outline_width': 1.4} != {'outline_width': 1.1}
+  {'text': 0.75} != {'text': 0.25}
+  {'text_plate': 0.6} != {'text_plate': 0.0}
+
+  Full diff:
+    {
+  -     'attributes': 0.2,
+  ?                     ^
+  +     'attributes': 0.45,
+  ?                     ^^
+        'fill': 0.0,
+        'handles': 0.0,
+        'linking': 0.45,
+        'mask': 0.0,
+  -     'outline': 0.45,
+  ?                  ^
+  +     'outline': 0.65,
+  ?                  ^
+  -     'outline_width': 1.1,
+  ?                        ^
+  +     'outline_width': 1.4,
+  ?                        ^
+  -     'points': 0.0,
+  ?                 ^
+  +     'points': 0.55,
+  ?                 ^^
+  -     'text': 0.25,
+  ?               ^
+  +     'text': 0.75,
+  ?               ^
+  -     'text_plate': 0.0,
+  ?                     ^
+  +     'text_plate': 0.6,
+  ?                     ^
+    }
+FAILED .tmp/dense-review-audit-20261117/test_audit.py::test_task_round_trip_keeps_fractional_zoom_and_mode[False] - assert (1.26, 2) == (1.264, 2)
+
+  At index 0 diff: 1.26 != 1.264
+
+  Full diff:
+    (
+  -     1.264,
+  ?         -
+  +     1.26,
+        2,
+    )
+FAILED .tmp/dense-review-audit-20261117/test_audit.py::test_task_round_trip_keeps_fractional_zoom_and_mode[True] - assert (0.1, 2) == (0.1, 0)
+
+  At index 1 diff: 2 != 0
+
+  Full diff:
+    (
+        0.1,
+  -     0,
+  ?     ^
+  +     2,
+  ?     ^
+    )
+FAILED .tmp/dense-review-audit-20261117/test_audit.py::test_background_refresh_keeps_coverage_viewport - assert (0.25, PyQt6.QtCore.QPointF(35.0, 7.333333333333371)) == (0.75, PyQt6.QtCore.QPointF(17.0, 23.0))
+
+  At index 0 diff: 0.25 != 0.75
+
+  Full diff:
+    (
+  -     0.75,
+  ?       ^
+  +     0.25,
+  ?       ^
+  -     PyQt6.QtCore.QPointF(17.0, 23.0),
+  +     PyQt6.QtCore.QPointF(35.0, 7.333333333333371),
+    )
+FAILED .tmp/dense-review-audit-20261117/test_audit.py::test_category_does_not_promote_associated_points - AssertionError: assert 'current' != 'current'
+ +  where 'current' = ShapeDisplay(shape_id='kp1', role='current', style=RoleStyle(fill=0.0, outline=1.0, outline_width=2.0, points=1.0, handles=1.0, text=1.0, text_plate=1.0, attributes=1.0, linking=1.0, mask=1.0), drawable=True, hittable=True, label_visible=True, reason='', temporary=False, locked=False, reviewable=False).role
+ +    where ShapeDisplay(shape_id='kp1', role='current', style=RoleStyle(fill=0.0, outline=1.0, outline_width=2.0, points=1.0, handles=1.0, text=1.0, text_plate=1.0, attributes=1.0, linking=1.0, mask=1.0), drawable=True, hittable=True, label_visible=True, reason='', temporary=False, locked=False, reviewable=False) = dense_review_display_entry('kp1')
+ +      where dense_review_display_entry = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x00000182ED639090>.dense_review_display_entry
+FAILED .tmp/dense-review-audit-20261117/test_audit.py::test_hide_dock_removes_review_overlay - assert not True
+ +  where True = annotation_editing_paused()
+ +    where annotation_editing_paused = <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x00000182F0A73E30>.annotation_editing_paused
+ +      where <anylabeling.views.labeling.widgets.canvas.Canvas object at 0x00000182F0A73E30> = <anylabeling.views.labeling.label_widget.LabelingWidget object at 0x00000182F0B0F430>.canvas
+============================= 8 failed in 26.40s ==============================
