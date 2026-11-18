@@ -1,0 +1,86 @@
+TRACE {"seconds": 0.0, "event": "source", "thread": "MainThread", "path": "D:\\X-AnyLabeling-4.2.1\\.tmp\\stabilize-maintenance-20261118\\integration\\anylabeling\\services\\auto_training\\ultralytics\\trainer.py"}
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+rootdir: D:\X-AnyLabeling-4.2.1\.tmp\stabilize-maintenance-20261118\integration
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 1 item
+
+tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately TRACE {"seconds": 0.219, "event": "stop_call", "thread": "MainThread", "child_pid": 106568, "child_exit_code": null, "worker_alive": true, "worker_stack": ["  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1032, in _bootstrap\n    self._bootstrap_inner()\n", "  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1075, in _bootstrap_inner\n    self.run()\n", "  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1012, in run\n    self._target(*self._args, **self._kwargs)\n", "  File \"D:\\X-AnyLabeling-4.2.1\\reports\\stabilize_maintenance_baseline_20261118\\observe_stop.py\", line 69, in run_worker\n    return original_worker(manager, payload_path)\n", "  File \"D:\\X-AnyLabeling-4.2.1\\.tmp\\stabilize-maintenance-20261118\\integration\\anylabeling\\services\\auto_training\\ultralytics\\trainer.py\", line 147, in _run_training\n    output = self.training_process.stdout.readline()\n"], "terminator_stacks": {}}
+TRACE {"seconds": 0.219, "event": "terminate_call", "thread": "Thread-2 (terminate)", "pid": 106568, "child_exit_code": null}
+TRACE {"seconds": 0.219, "event": "taskkill_call", "thread": "Thread-2 (terminate)", "command": ["taskkill", "/T", "/PID", "106568"]}
+TRACE {"seconds": 0.219, "event": "stop_return", "thread": "MainThread", "accepted": true, "child_pid": 106568, "child_exit_code": null, "worker_alive": true, "worker_stack": ["  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1032, in _bootstrap\n    self._bootstrap_inner()\n", "  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1075, in _bootstrap_inner\n    self.run()\n", "  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1012, in run\n    self._target(*self._args, **self._kwargs)\n", "  File \"D:\\X-AnyLabeling-4.2.1\\reports\\stabilize_maintenance_baseline_20261118\\observe_stop.py\", line 69, in run_worker\n    return original_worker(manager, payload_path)\n", "  File \"D:\\X-AnyLabeling-4.2.1\\.tmp\\stabilize-maintenance-20261118\\integration\\anylabeling\\services\\auto_training\\ultralytics\\trainer.py\", line 147, in _run_training\n    output = self.training_process.stdout.readline()\n"], "terminator_stacks": {"Thread-2 (terminate)": ["  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1032, in _bootstrap\n    self._bootstrap_inner()\n", "  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1075, in _bootstrap_inner\n    self.run()\n", "  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1012, in run\n    self._target(*self._args, **self._kwargs)\n", "  File \"D:\\X-AnyLabeling-4.2.1\\reports\\stabilize_maintenance_baseline_20261118\\observe_stop.py\", line 89, in terminate\n    return original_terminate(process)\n", "  File \"D:\\X-AnyLabeling-4.2.1\\reports\\stabilize_maintenance_baseline_20261118\\observe_stop.py\", line 42, in emit\n    print(\"TRACE \" + json.dumps({\n"]}}
+TRACE {"seconds": 0.219, "event": "join_call", "thread": "MainThread", "timeout": 3}
+TRACE {"seconds": 0.469, "event": "taskkill_return", "thread": "Thread-2 (terminate)", "returncode": 128, "forced": false, "child_exit_code": null}
+TRACE {"seconds": 3.219, "event": "join_return", "thread": "MainThread", "child_pid": 106568, "child_exit_code": null, "worker_alive": true, "worker_stack": ["  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1032, in _bootstrap\n    self._bootstrap_inner()\n", "  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1075, in _bootstrap_inner\n    self.run()\n", "  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1012, in run\n    self._target(*self._args, **self._kwargs)\n", "  File \"D:\\X-AnyLabeling-4.2.1\\reports\\stabilize_maintenance_baseline_20261118\\observe_stop.py\", line 69, in run_worker\n    return original_worker(manager, payload_path)\n", "  File \"D:\\X-AnyLabeling-4.2.1\\.tmp\\stabilize-maintenance-20261118\\integration\\anylabeling\\services\\auto_training\\ultralytics\\trainer.py\", line 147, in _run_training\n    output = self.training_process.stdout.readline()\n"], "terminator_stacks": {"Thread-2 (terminate)": ["  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1032, in _bootstrap\n    self._bootstrap_inner()\n", "  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1075, in _bootstrap_inner\n    self.run()\n", "  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\threading.py\", line 1012, in run\n    self._target(*self._args, **self._kwargs)\n", "  File \"D:\\X-AnyLabeling-4.2.1\\reports\\stabilize_maintenance_baseline_20261118\\observe_stop.py\", line 89, in terminate\n    return original_terminate(process)\n", "  File \"D:\\X-AnyLabeling-4.2.1\\.tmp\\stabilize-maintenance-20261118\\integration\\anylabeling\\services\\auto_training\\ultralytics\\environment.py\", line 187, in terminate_process_tree\n    process.wait(timeout=5)\n", "  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\subprocess.py\", line 1264, in wait\n    return self._wait(timeout=timeout)\n", "  File \"C:\\Users\\20441\\.conda\\envs\\x-anylabeling-cu12\\Lib\\subprocess.py\", line 1590, in _wait\n    result = _winapi.WaitForSingleObject(self._handle,\n"]}}
+FAILED
+
+================================== FAILURES ===================================
+__________ test_stop_training_terminates_silent_process_immediately ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000024E9AB973B0>
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/stabilize-maintenance-20261118/integration/.tmp/integration-3/test_stop_training_terminates_0')
+
+    def test_stop_training_terminates_silent_process_immediately(
+        monkeypatch, tmp_path
+    ):
+        payload_path = tmp_path / "payload.json"
+        payload_path.write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(
+            trainer,
+            "build_training_worker_command",
+            lambda *_args, **_kwargs: [
+                sys.executable,
+                "-c",
+                "import time; time.sleep(30)",
+            ],
+        )
+        manager = TrainingManager()
+        manager.is_training = True
+        events = []
+        manager.callbacks = [lambda event, data: events.append((event, data))]
+        training_thread = threading.Thread(
+            target=manager._run_training,
+            args=(str(payload_path),),
+        )
+        training_thread.start()
+
+        deadline = time.monotonic() + 3
+        while manager.training_process is None and time.monotonic() < deadline:
+            time.sleep(0.01)
+
+        process = manager.training_process
+        assert process is not None
+        assert manager.stop_training()
+        training_thread.join(timeout=3)
+
+>       assert not training_thread.is_alive()
+E       assert not True
+E        +  where True = is_alive()
+E        +    where is_alive = <Thread(Thread-1 (run_worker), started 71228)>.is_alive
+
+tests\test_auto_training\test_trainer.py:108: AssertionError
+============================== warnings summary ===============================
+C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\config\__init__.py:1309
+  C:\Users\20441\.conda\envs\x-anylabeling-cu12\Lib\site-packages\_pytest\config\__init__.py:1309: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; anyio
+    self._mark_plugins_for_rewrite(hook, disable_autoload)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================ slowest 30 durations =============================
+3.02s call     tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately
+0.02s setup    tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately
+0.00s teardown tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately
+=========================== short test summary info ===========================
+FAILED tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately - assert not True
+ +  where True = is_alive()
+ +    where is_alive = <Thread(Thread-1 (run_worker), started 71228)>.is_alive
+======================== 1 failed, 1 warning in 3.81s =========================
+TRACE {"seconds": 5.469, "event": "taskkill_call", "thread": "Thread-2 (terminate)", "command": ["taskkill", "/F", "/T", "/PID", "106568"]}
+TRACE {"seconds": 5.719, "event": "terminate_call", "thread": "Thread-1 (run_worker)", "pid": 106568, "child_exit_code": null}
+TRACE {"seconds": 5.719, "event": "taskkill_call", "thread": "Thread-1 (run_worker)", "command": ["taskkill", "/T", "/PID", "106568"]}
+TRACE {"seconds": 5.719, "event": "taskkill_return", "thread": "Thread-2 (terminate)", "returncode": 0, "forced": true, "child_exit_code": 1}
+TRACE {"seconds": 5.719, "event": "terminate_return", "thread": "Thread-2 (terminate)", "child_exit_code": 1}
+TRACE {"seconds": 5.969, "event": "taskkill_return", "thread": "Thread-1 (run_worker)", "returncode": 128, "forced": false, "child_exit_code": 1}
+TRACE {"seconds": 5.969, "event": "terminate_return", "thread": "Thread-1 (run_worker)", "child_exit_code": 1}
+TRACE {"seconds": 5.969, "event": "worker_return", "thread": "Thread-1 (run_worker)", "child_exit_code": 1, "payload_exists": false}
+TRACE {"seconds": 5.969, "event": "final", "thread": "MainThread", "pytest_exit_code": 1, "child_pid": 106568, "child_exit_code": 1, "worker_alive": false, "worker_stack": [], "terminator_stacks": {}}

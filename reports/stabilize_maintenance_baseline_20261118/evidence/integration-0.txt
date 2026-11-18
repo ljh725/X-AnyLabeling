@@ -1,0 +1,63 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\20441\.conda\envs\x-anylabeling-cu12\python.exe
+rootdir: D:\X-AnyLabeling-4.2.1\.tmp\stabilize-maintenance-20261118\integration
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 1 item
+
+tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately FAILED
+
+================================== FAILURES ===================================
+__________ test_stop_training_terminates_silent_process_immediately ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001E4582A8770>
+tmp_path = WindowsPath('D:/X-AnyLabeling-4.2.1/.tmp/stabilize-maintenance-20261118/integration/.tmp/integration-0/test_stop_training_terminates_0')
+
+    def test_stop_training_terminates_silent_process_immediately(
+        monkeypatch, tmp_path
+    ):
+        payload_path = tmp_path / "payload.json"
+        payload_path.write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(
+            trainer,
+            "build_training_worker_command",
+            lambda *_args, **_kwargs: [
+                sys.executable,
+                "-c",
+                "import time; time.sleep(30)",
+            ],
+        )
+        manager = TrainingManager()
+        manager.is_training = True
+        events = []
+        manager.callbacks = [lambda event, data: events.append((event, data))]
+        training_thread = threading.Thread(
+            target=manager._run_training,
+            args=(str(payload_path),),
+        )
+        training_thread.start()
+
+        deadline = time.monotonic() + 3
+        while manager.training_process is None and time.monotonic() < deadline:
+            time.sleep(0.01)
+
+        process = manager.training_process
+        assert process is not None
+        assert manager.stop_training()
+        training_thread.join(timeout=3)
+
+>       assert not training_thread.is_alive()
+E       assert not True
+E        +  where True = is_alive()
+E        +    where is_alive = <Thread(Thread-1 (_run_training), started 85920)>.is_alive
+
+tests\test_auto_training\test_trainer.py:108: AssertionError
+============================ slowest 30 durations =============================
+3.02s call     tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately
+0.03s setup    tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately
+0.00s teardown tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately
+=========================== short test summary info ===========================
+FAILED tests/test_auto_training/test_trainer.py::test_stop_training_terminates_silent_process_immediately - assert not True
+ +  where True = is_alive()
+ +    where is_alive = <Thread(Thread-1 (_run_training), started 85920)>.is_alive
+============================== 1 failed in 7.02s ==============================
