@@ -30,4 +30,4 @@
 
 完整旧产品可从 `20cba258f6f7fb23cb794c8e9606d537e2d5e9b6` 独立检出。只恢复 Dense Review 时，以 `959a166f` 的反向改动为起点，定向还原密集复核的入口、资源和契约。只恢复 Inspector 时，以 `651177f7` 的反向改动为起点，按仍可用的工作流恢复接线，原交接需单独核对 Dense Review 依赖。两种情况均保留 `6cba0176` 的共享写入，按恢复范围重新生成四语资源并运行受影响测试。
 
-本地交付分支为 `codex/4.2.1/remove-inspector-and-dense-review`。约定集成目标为 `codex/4.2.1-baseline-organization`。未推送、开 PR 或合入。
+交付提交 `fca3a711` 已推送至 GitHub 的 `codex/4.2.1/remove-inspector-and-dense-review`。2026-11-18 复验后，本地 `codex/4.2.1-baseline-organization` 已快进合入该提交。GitHub 集成分支本轮未推送，未创建 PR。合入起点和复验范围见[版本操作记录](../version-management/操作记录.md)。
