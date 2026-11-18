@@ -20,6 +20,7 @@
 
 | 编号 | 功能 | 状态 | 记录 |
 | --- | --- | --- | --- |
+| CUSTOM-126 | 退役 Inspector 和 Dense Review | 方案，待实施 | [定制记录](2026-11-18-remove-inspector-and-dense-review.md) · [任务](../../openspec/changes/remove-inspector-and-dense-review/tasks.md) |
 | CUSTOM-125 | 维护基线规格校正与 Windows 训练停止复核 | 规格和链接已验证。训练停止延迟已确认，修复另立变更 | [定制记录](2026-11-18-stabilize-maintenance-baseline.md) |
 | CUSTOM-124 | 维护基线整理与 agent 执行交接 | 维护整理 18/18 已实施验证；完整回归 20 失败，候选未稳定，原验收缺口保留 | [说明](2026-11-17-maintenance-baseline-plan.md) · [执行入口](../../openspec/changes/organize-maintenance-baseline/HANDOFF.md) |
 | CUSTOM-001 | 统计总览、标签管理器后台扫描与进度反馈 | 方案，未实施；11-02 已完成真实共享盘诊断 | [修改方案](2026-10-29-dataset-scan-progress.md) · [实测与代码分类](../../reports/tool_scan_diagnosis_20261102/REPORT.md) |
