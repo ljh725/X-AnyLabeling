@@ -1,24 +1,17 @@
 # OpenSpec 当前状态与历史记录
 
-更新：2026-11-17；逐份读取源 `tasks.md`。当前 5 个活动目录，
-合计 148/180，未勾 32 项；本页不维护第二套任务勾选。
+更新于 2026-11-18。当前 6 个活动目录，合计 91/123，32 项未勾。各源 `tasks.md` 保留实际状态。
 
 | 当前变更（源清单） | 勾选 / 总数 | 实际状态 |
 | --- | ---: | --- |
-| [add-annotation-correction-cost-statistics](changes/add-annotation-correction-cost-statistics/tasks.md) | 49/54 | 保留 5 项 GUI/翻译、性能、双人试用及回退验收 |
-| [add-dense-annotation-review-workflow](changes/add-dense-annotation-review-workflow/tasks.md) | 61/66 | 保留 5 项验收缺口；未通过不得归档或发布三份契约 |
-| [add-keypoint-display-presets](changes/add-keypoint-display-presets/tasks.md) | 0/22 | 方案暂停，未实施；不启动 |
-| [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 18/18 | 维护整理 18/18 完成；完整回归 20 失败，候选未稳定；本协调变更不自动归档 |
-| [polish-inspector-dense-review-ui](changes/polish-inspector-dense-review-ui/tasks.md) | 20/20 | 20/20 技术勾选；Ctrl+F 规格与实现不符、人工缺口，保留未归档 |
+| [remove-inspector-and-dense-review](changes/remove-inspector-and-dense-review/tasks.md) | 15/15 | 已实施并同步九份增量。Windows 完整范围的 14 个失败项均有基线记录。变更待归档 |
+| [add-annotation-correction-cost-statistics](changes/add-annotation-correction-cost-statistics/tasks.md) | 49/54 | 保留 5 项验收。当前范围为普通画布、统计面板的独立复核阶段及历史记录读取 |
+| [add-keypoint-display-presets](changes/add-keypoint-display-presets/tasks.md) | 0/22 | 方案暂停。适用范围为普通画布 |
+| [fix-windows-training-stop](changes/fix-windows-training-stop/tasks.md) | 0/5 | 训练停止问题已复现，修复方案待实施 |
+| [stabilize-maintenance-baseline](changes/stabilize-maintenance-baseline/tasks.md) | 9/9 | 维护规格校正及 Windows 训练停止对照完成 |
+| [organize-maintenance-baseline](changes/organize-maintenance-baseline/tasks.md) | 18/18 | 维护整理完成。原完整回归 20 个失败保留在该批次证据中 |
 
-当前归档与保留依据见[维护候选](../docs/version-management/2026-11-17-maintenance-baseline.md)；
-本轮归档的旧路径映射与证据边界见[归档审计](../reports/maintenance_baseline_20261117/ARCHIVES.md)。
-任务全勾、行政关闭、人工验收和代码稳定性分别判断。
-CUSTOM-118 为数字提示条，CUSTOM-011 为数字矩形类别保存。
-
-密集复核重设计已停止，最后技术审计 33/91，58 项行政关闭，五份草案未发布；
-保留部分实现及失败，不重启。Inspector 重构 55/55 含 3 项行政关闭，无新增人工证据；
-双屏导航 26/26 的人工项依据用户 2026-11-17 声明，无新增截图。
+[原密集复核](changes/archive/2026-11-18-add-dense-annotation-review-workflow/retirement-20261118.md)和[界面打磨](changes/archive/2026-11-18-polish-inspector-dense-review-ui/retirement-20261118.md)随产品退役封存，分别保持 61/66 和 20/20。旧增量和验收缺口随各自归档保留。[CUSTOM-126](../docs/custom_changes/2026-11-18-remove-inspector-and-dense-review.md)
 
 ---
 
@@ -61,7 +54,7 @@ CUSTOM-118 为数字提示条，CUSTOM-011 为数字矩形类别保存。
 | 变更 | 已完成 / 总数 | 剩余 | 主要待办 |
 | --- | ---: | ---: | --- |
 | [标注修正成本统计](changes/add-annotation-correction-cost-statistics/tasks.md)（`add-annotation-correction-cost-statistics`） | 1 / 54 | 53 | 开发、接入、测试和人工验收；目前仅完成实施基线记录。 |
-| [密集标注复核工作流](changes/add-dense-annotation-review-workflow/tasks.md)（`add-dense-annotation-review-workflow`） | 61 / 66 | 5 | 真实屏幕及无障碍验收、回归异常排查、双人对照试用、质量复核与交付核对。 |
+| [密集标注复核工作流](changes/archive/2026-11-18-add-dense-annotation-review-workflow/tasks.md)（`add-dense-annotation-review-workflow`） | 61 / 66 | 5 | 真实屏幕及无障碍验收、回归异常排查、双人对照试用、质量复核与交付核对。 |
 
 > 上表为 2026-11-10 数字；实际以各 `tasks.md` 为准。2026-11-17 更新的当前状态：成本统计 49/54、密集复核 61/66、关键点三层显示 0/22；Inspector 双屏导航已于 2026-11-17 26/26 归档。
 
@@ -175,24 +168,24 @@ CUSTOM-118 为数字提示条，CUSTOM-011 为数字矩形类别保存。
 
 ### 密集标注复核工作流（5 项）
 
-源清单：[`add-dense-annotation-review-workflow`](changes/add-dense-annotation-review-workflow/tasks.md)。
+源清单：[`add-dense-annotation-review-workflow`](changes/archive/2026-11-18-add-dense-annotation-review-workflow/tasks.md)。
 
 #### 7. 低成本确认与反馈
 
-- [7.8](changes/add-dense-annotation-review-workflow/tasks.md#L79) 为新增用户可见文案、快捷键提示和无障碍名称接入现有翻译流程，复核中文长类名、小窗口和键盘操作可用性。补充：四语言 `.ts` 已补齐新增文案与 `Redo` 快捷键标签，`lrelease` 重编 `.qm`；`app.py::load_translator` 源码优先磁盘 `.qm`、打包回退 `:/languages/`；`tests/test_dense_review/test_translations.py` 6 passed / 10 subtests；窄窗口长类名截图见 `images/dense_review/06-narrow-window.png`。真实屏幕字体度量、无障碍与四语言人工检查仍属 10.4。 **2026-11-04 复核：DR-05：中文和部分新增快捷键测试已通过，但日/韩工作区主体及源码/打包资源路径仍未完整覆盖；四语言真实屏幕、无障碍和键盘验收未完成。保留历史 6 passed，不将其视为本任务全部完成。** 2026-11-05 进展：本功能主体、动态状态及规则中英日韩文案与磁盘/内嵌资源测试已完成；真实屏幕、读屏、字体/DPI 与语言人工检查未执行，按 M1 保持未勾选。
+- [7.8](changes/archive/2026-11-18-add-dense-annotation-review-workflow/tasks.md#L79) 为新增用户可见文案、快捷键提示和无障碍名称接入现有翻译流程，复核中文长类名、小窗口和键盘操作可用性。补充：四语言 `.ts` 已补齐新增文案与 `Redo` 快捷键标签，`lrelease` 重编 `.qm`；`app.py::load_translator` 源码优先磁盘 `.qm`、打包回退 `:/languages/`；`tests/test_dense_review/test_translations.py` 6 passed / 10 subtests；窄窗口长类名截图见 `images/dense_review/06-narrow-window.png`。真实屏幕字体度量、无障碍与四语言人工检查仍属 10.4。 **2026-11-04 复核：DR-05：中文和部分新增快捷键测试已通过，但日/韩工作区主体及源码/打包资源路径仍未完整覆盖；四语言真实屏幕、无障碍和键盘验收未完成。保留历史 6 passed，不将其视为本任务全部完成。** 2026-11-05 进展：本功能主体、动态状态及规则中英日韩文案与磁盘/内嵌资源测试已完成；真实屏幕、读屏、字体/DPI 与语言人工检查未执行，按 M1 保持未勾选。
 
 #### 9. 故障与集成回归
 
-- [9.7](changes/add-dense-annotation-review-workflow/tasks.md#L100) 在当前工作树修订上重跑与本功能相关的密集复核、画布、标注、设置及 Inspector 定向集成回归，记录基线/工作区差异、命令、环境、通过/失败/跳过/未运行；复核历史 settings 合跑原生访问冲突，不以各文件单跑通过替代合跑结果，也不在无基线证据时归因本功能。对应 DR-09。 2026-11-05 进展：密集复核 142 passed/602 subtests；设置、Inspector 和相关标注合跑 186 passed/1 skipped/24 subtests。大范围运行及独立画布复验提前退出（0xC0000409），未生成完整 JUnit，最后记录在矩形预览键盘微调用例附近，尚未可靠定责；不能把子集通过视为整组通过。补真实隔离启动，不屏蔽持久化错误。
+- [9.7](changes/archive/2026-11-18-add-dense-annotation-review-workflow/tasks.md#L100) 在当前工作树修订上重跑与本功能相关的密集复核、画布、标注、设置及 Inspector 定向集成回归，记录基线/工作区差异、命令、环境、通过/失败/跳过/未运行；复核历史 settings 合跑原生访问冲突，不以各文件单跑通过替代合跑结果，也不在无基线证据时归因本功能。对应 DR-09。 2026-11-05 进展：密集复核 142 passed/602 subtests；设置、Inspector 和相关标注合跑 186 passed/1 skipped/24 subtests。大范围运行及独立画布复验提前退出（0xC0000409），未生成完整 JUnit，最后记录在矩形预览键盘微调用例附近，尚未可靠定责；不能把子集通过视为整组通过。补真实隔离启动，不屏蔽持久化错误。
 
 #### 10. 性能与减负验证
 
-- [10.4](changes/add-dense-annotation-review-workflow/tasks.md#L107) 用两位实际使用者、难度匹配且顺序交叉的图片组各进行至少两轮对照，记录缩放/拖动/重复访问/确认次数、总耗时及同等时长疲劳自评。DR-10：试用前固定设备、规则、难度分层和主要指标；优先使用互不重复图片组，复用须披露记忆效应；记录每人每轮原始计数及分母，空图单列每图耗时与漏标，不能按零对象归一化。
-- [10.5](changes/add-dense-annotation-review-workflow/tasks.md#L108) 由独立复核记录错类、框错误、漏标与分歧，评估速度和疲劳收益是否以质量为代价；无质量退化、两人均愿采用且主要负担指标改善才标记减负已验证。DR-10：事先约定独立复核和质量判定口径，报告错类、框错误、漏标、误检及返工的计数、分母、分歧与裁决；小样本描述不能推广为普遍收益。
+- [10.4](changes/archive/2026-11-18-add-dense-annotation-review-workflow/tasks.md#L107) 用两位实际使用者、难度匹配且顺序交叉的图片组各进行至少两轮对照，记录缩放/拖动/重复访问/确认次数、总耗时及同等时长疲劳自评。DR-10：试用前固定设备、规则、难度分层和主要指标；优先使用互不重复图片组，复用须披露记忆效应；记录每人每轮原始计数及分母，空图单列每图耗时与漏标，不能按零对象归一化。
+- [10.5](changes/archive/2026-11-18-add-dense-annotation-review-workflow/tasks.md#L108) 由独立复核记录错类、框错误、漏标与分歧，评估速度和疲劳收益是否以质量为代价；无质量退化、两人均愿采用且主要负担指标改善才标记减负已验证。DR-10：事先约定独立复核和质量判定口径，报告错类、框错误、漏标、误检及返工的计数、分母、分歧与裁决；小样本描述不能推广为普遍收益。
 
 #### 11. 文档、发布与回退
 
-- [11.3](changes/add-dense-annotation-review-workflow/tasks.md#L114) 执行OpenSpec严格验证与文档/代码差异检查，确认所有承诺有实现和证据；有未通过行为或性能项时保留未完成任务，不提前归档或宣称上线。补充：`openspec validate ... --strict` 通过；未通过/未验证项保留在原任务中。 **2026-11-04 复核：DR-10：strict 仅证明文档结构，不能证明所有承诺均有实现/证据。待本次实现缺口、当前回归、真实性能口径及人工验收逐项有结果后再完成交付核对；未完成时不归档或宣称上线。** 2026-11-05 进展：代码、逐场景映射和历史/当前证据已更新，strict 与差异检查单列；M1–M5 人工部分和 9.7 未决问题未全部关闭，保留未完成，不归档。
+- [11.3](changes/archive/2026-11-18-add-dense-annotation-review-workflow/tasks.md#L114) 执行OpenSpec严格验证与文档/代码差异检查，确认所有承诺有实现和证据；有未通过行为或性能项时保留未完成任务，不提前归档或宣称上线。补充：`openspec validate ... --strict` 通过；未通过/未验证项保留在原任务中。 **2026-11-04 复核：DR-10：strict 仅证明文档结构，不能证明所有承诺均有实现/证据。待本次实现缺口、当前回归、真实性能口径及人工验收逐项有结果后再完成交付核对；未完成时不归档或宣称上线。** 2026-11-05 进展：代码、逐场景映射和历史/当前证据已更新，strict 与差异检查单列；M1–M5 人工部分和 9.7 未决问题未全部关闭，保留未完成，不归档。
 
 ### Inspector 双屏导航简化（已归档）
 

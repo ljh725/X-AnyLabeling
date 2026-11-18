@@ -6,12 +6,14 @@
 
 ## Requirements
 
-### Requirement: Recovery preserves current annotation workflows
-恢复后的系统 MUST 同时保留五项既定画布迁移能力以及实施开始时已有的 Inspector、密集审核、数字改类、本地矩形编辑、对象身份、锁定、撤销和共享视图行为；恢复操作不得改变既有标注格式或把旧源码中的缺失功能带回当前版本。
+### Requirement: Recovery preserves supported annotation workflows
 
-#### Scenario: Continue dense review after restoration
-- **WHEN** 用户在恢复后的应用中继续已保存的密集审核，调框、数字改类、撤销并保存重开
-- **THEN** 审核状态和对象身份遵循当前工作流，五项迁移入口可使用，标注内容及原有扩展字段不因恢复而丢失
+恢复后的系统 MUST 同时保留五项既定画布迁移能力，以及当前受支持的数字改类、本地矩形编辑、对象身份、锁定、撤销和共享视图行为。恢复操作 MUST 维持标注格式与扩展字段兼容，并遵守当前版本的功能范围。
+
+#### Scenario: 恢复后继续普通标注
+
+- **WHEN** 用户在恢复后的应用中打开旧标注，调框、数字改类、撤销并保存重开
+- **THEN** 五项迁移入口可用，普通标注的对象身份、编辑结果、图片审核状态和旧扩展字段按各自规则保留
 
 ### Requirement: Delivery has verifiable recovery evidence
 交付 MUST 提供五项能力与验证结果、源码保存点、恢复来源的对照；实施前的已跟踪修改和未跟踪源码 MUST 能从独立备份恢复。未验证或未通过的项目 MUST 明确保留待完成状态，不能沿用历史通过记录宣称当前版本通过。

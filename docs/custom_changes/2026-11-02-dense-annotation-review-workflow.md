@@ -5,8 +5,8 @@
 - 创建日期、最后更新日期：2026-11-02（Asia/Shanghai）
 - 原始版本与基线提交：X-AnyLabeling 4.2.1；实现基线 `9a37c5474c390e93243e33a88e8232a19c833280`
 - 实现提交 / PR：尚未提交；当前实现位于工作区
-- OpenSpec：`openspec/changes/add-dense-annotation-review-workflow/`
-- 验证记录：[verification.md](../../openspec/changes/add-dense-annotation-review-workflow/verification.md) · [实施报告](../../reports/dense_review_workflow_20261102/REPORT.md)
+- OpenSpec：`openspec/changes/archive/2026-11-18-add-dense-annotation-review-workflow/`
+- 验证记录：[verification.md](../../openspec/changes/archive/2026-11-18-add-dense-annotation-review-workflow/verification.md) · [实施报告](../../reports/dense_review_workflow_20261102/REPORT.md)
 
 ## 问题与目标
 
@@ -88,6 +88,6 @@
 | 2026-11-02 | 修复评审 F1-F4 | 缩略图缓存按边界/上下文/源版本键控并丢弃同 ID 旧请求；连续审核撤销按剩余动作顺序；全图返回保留用户倍率；统一历史按真实顺序记录审核与内容变更 | 新增 7 项探针，`tests/test_dense_review` 70 passed；见 [评审响应](../../reports/dense_review_workflow_20261102/REVIEW-RESPONSE-20261102.md) |
 | 2026-11-02 | 修复第二轮 R2-1/R2-2 | 每条事务持有完整审核快照，重复内容不再覆盖早期确认；审核/编辑事务与快照统一保留最近100条 | 密集复核与三轮独立探针合跑 **85 passed in 44.80s**；见 [修复记录](../../reports/dense_review_workflow_20261102/ROUND2-UNDO-FIX-20261102.md) |
 | 2026-11-03 | UI 重构（P0） | 接入 `get_dialog_style()` + `get_workbench_qss()`；顶部进度条 + 单行工具条；批次改卡片；卡片流加状态色条/底板/角标并按宽度自适应列数；操作条单行化；查漏区域行渲染器 | `tests/test_dense_review` 78 passed；截图见 `reports/ui_review_20261103/`；详见 [实施记录](../../reports/ui_review_20261103/UI-IMPLEMENTATION.md) |
-| 2026-11-03 | UI 打磨（P2，`feat/ui-polish-p2`） | 查漏页新增网格示意图并与列表联动；五个快捷键改 `WindowShortcut`，按钮 tooltip 按实际绑定生成；主操作图标 | `tests/test_dense_review` 87 passed；见 [验证](../../openspec/changes/polish-inspector-dense-review-ui/verification.md) 与 [P2 实施记录](../../reports/ui_review_20261103/UI-P2-IMPLEMENTATION.md) |
+| 2026-11-03 | UI 打磨（P2，`feat/ui-polish-p2`） | 查漏页新增网格示意图并与列表联动；五个快捷键改 `WindowShortcut`，按钮 tooltip 按实际绑定生成；主操作图标 | `tests/test_dense_review` 87 passed；见 [验证](../../openspec/changes/archive/2026-11-18-polish-inspector-dense-review-ui/verification.md) 与 [P2 实施记录](../../reports/ui_review_20261103/UI-P2-IMPLEMENTATION.md) |
 | 2026-11-03 | 补齐剩余验收项 | 重做栈与统一 LIFO 历史（`Ctrl+Shift+Z`）；四语言翻译与 `load_translator` 磁盘回退；自制 7 场景样本与生成器；延迟注入、训练导出往返、翻译覆盖测试；性能基准与拖框让路（worker 解码、按 tick 限量、指针按下暂停卡片后台）；用户手册与截图 | `tests/test_dense_review` **123 passed**；`tests/test_canvas` 578 passed/1 基线失败；`tests/test_labeling` 192 passed/10 failed（8 基线+2 沙箱临时目录）；性能见 `perf_reports/dense_review/performance-20261103/`；10.2 部分达标，10.4/10.5 未做 |
-| 2026-11-05 | 按 11-04 复核补齐代码 | 在已有未提交的导航、虚拟卡片和异步比较实现上补齐逐框/暂跳跨批及保存游标顺序、查漏重开定位、图块任务/结果共同容量限制与取消、比较重试与清理；补四语言主体/动态提示及内嵌资源，修正性能终点和真实切图测量 | 完整结果与原始证据见 [实施记录](../../openspec/changes/add-dense-annotation-review-workflow/implementation-20261105.md)。当前 61/66 项勾选；最终离屏性能门槛通过，人工屏幕/质量试用和大范围 Qt 合跑问题仍保留，未归档 |
+| 2026-11-05 | 按 11-04 复核补齐代码 | 在已有未提交的导航、虚拟卡片和异步比较实现上补齐逐框/暂跳跨批及保存游标顺序、查漏重开定位、图块任务/结果共同容量限制与取消、比较重试与清理；补四语言主体/动态提示及内嵌资源，修正性能终点和真实切图测量 | 完整结果与原始证据见 [实施记录](../../openspec/changes/archive/2026-11-18-add-dense-annotation-review-workflow/implementation-20261105.md)。当前 61/66 项勾选；最终离屏性能门槛通过，人工屏幕/质量试用和大范围 Qt 合跑问题仍保留，未归档 |

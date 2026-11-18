@@ -23,12 +23,12 @@
 
 ### Modified Capabilities
 
-无。当前 `openspec/specs/` 无需修改的主规范；已有密集复核、Inspector 与保存链路保持其业务语义，新能力消费其完成或编辑事件。
+无。此变更新增独立统计契约，普通标注的保存与编辑继续沿用现有流程。
 
 ## Impact
 
 - 新增纯数据统计服务、独立存储/导出模块和 Qt 适配/UI，拟位于 `anylabeling/services/correction_metrics/` 与 `anylabeling/views/labeling/correction_metrics/`。
 - 接入 `label_widget.py` 的编辑、加载、撤销、单张 AI、保存与放弃入口，`widgets/canvas.py` 的完成事务，`editing_commands.py`，以及 `utils/batch.py` 的批量 AI 保存结果；统计不能仅监听 `set_dirty()` 或撤销快照。
 - 复用 `xanylabeling_shape_id`；向 `AutoLabelingResult` 兼容地增加可选运行来源信息，缺失时保持未知。统计使用独立 SQLite 文件，沿用既有标注 JSON/训练导出格式，预计无需新增第三方运行依赖。
-- 与 `add-dense-annotation-review-workflow`、`refactor-data-inspector-workflow` 交叉处需定向回归；两者当前仍有未完成验收项，不将其既有状态追认为通过。
+- 普通画布编辑、保存、撤销重做及模型预标注需要定向回归。既有统计库中的已退役工作台记录继续可读取。
 - 本变更当前只创建 OpenSpec 规划工件；业务代码、数据库和实际计时均尚未实施。

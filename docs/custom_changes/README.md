@@ -20,7 +20,7 @@
 
 | 编号 | 功能 | 状态 | 记录 |
 | --- | --- | --- | --- |
-| CUSTOM-126 | 退役 Inspector 和 Dense Review | 实施中 | [定制记录](2026-11-18-remove-inspector-and-dense-review.md) · [任务](../../openspec/changes/remove-inspector-and-dense-review/tasks.md) |
+| CUSTOM-126 | 退役 Inspector 和 Dense Review | 已验证退役和旧数据兼容。Windows 全量保留既有失败 | [定制记录](2026-11-18-remove-inspector-and-dense-review.md) · [任务](../../openspec/changes/remove-inspector-and-dense-review/tasks.md) |
 | CUSTOM-125 | 维护基线规格校正与 Windows 训练停止复核 | 规格和链接已验证。训练停止延迟已确认，修复另立变更 | [定制记录](2026-11-18-stabilize-maintenance-baseline.md) |
 | CUSTOM-124 | 维护基线整理与 agent 执行交接 | 维护整理 18/18 已实施验证；完整回归 20 失败，候选未稳定，原验收缺口保留 | [说明](2026-11-17-maintenance-baseline-plan.md) · [执行入口](../../openspec/changes/organize-maintenance-baseline/HANDOFF.md) |
 | CUSTOM-001 | 统计总览、标签管理器后台扫描与进度反馈 | 方案，未实施；11-02 已完成真实共享盘诊断 | [修改方案](2026-10-29-dataset-scan-progress.md) · [实测与代码分类](../../reports/tool_scan_diagnosis_20261102/REPORT.md) |
@@ -31,7 +31,7 @@
 | CUSTOM-122 | 关键点三层表达与画布符号 | 方案暂停，0/22 未实施，保留规格与验收清单 | [方案与示意图](2026-11-13-keypoint-three-layer-expression.md) · [OpenSpec 任务](../../openspec/changes/add-keypoint-display-presets/tasks.md) |
 | CUSTOM-123 | Inspector 双屏导航简化（问题队列 + F1／F2 + 保存并复查） | 已验证：代码与自动化有证据；6.3 实际双屏按用户 2026-11-17 声明通过（仓库内未附截图）；已归档 | [实施与归档记录](2026-11-17-inspector-dual-screen-archive.md) · [归档变更](../../openspec/changes/archive/2026-11-17-simplify-inspector-dual-screen-navigation/tasks.md) · [操作说明](../zh_cn/inspector.md) |
 | CUSTOM-109 | Inspector 检查与复核工作流 | 11-10 按用户决定行政关闭并归档 55/55；原代码/自动化 52/55，另 3 项无新增人工证据 | [实施记录](2026-11-02-inspector-workflow.md) · [行政归档依据](../../openspec/changes/archive/2026-11-10-refactor-data-inspector-workflow/archive-decision-20261110.md) · [操作说明](../zh_cn/inspector.md) · [验证](../../openspec/changes/archive/2026-11-10-refactor-data-inspector-workflow/verification.md) |
-| CUSTOM-110 | 密集标注复核工作流 | 11-05 已提交保存；功能/性能专项有通过证据，人工试用与完整组合回归仍待验收 | [最新实施结果](../../openspec/changes/add-dense-annotation-review-workflow/implementation-20261105.md) · [实施记录](2026-11-02-dense-annotation-review-workflow.md) · [任务](../../openspec/changes/add-dense-annotation-review-workflow/tasks.md) |
+| CUSTOM-110 | 密集标注复核工作流 | 已退役并按 61/66 封存。原验收缺口与技术证据保留 | [退役决定](../../openspec/changes/archive/2026-11-18-add-dense-annotation-review-workflow/retirement-20261118.md) · [实施记录](2026-11-02-dense-annotation-review-workflow.md) · [归档任务](../../openspec/changes/archive/2026-11-18-add-dense-annotation-review-workflow/tasks.md) |
 | CUSTOM-111 | 修正成本统计 | 任务 49/54；菜单入口已接入启用设置和右侧栏面板；语言资源、真实屏幕 GUI 回归与性能、人工试用及回退验收待完成 | [状态记录](2026-11-03-correction-cost-statistics.md) · [任务](../../openspec/changes/add-annotation-correction-cost-statistics/tasks.md) · [验证](../../openspec/changes/add-annotation-correction-cost-statistics/verification.md) |
 | CUSTOM-112～116 | v4.3.0 五项画布能力恢复（工具栏、滚轮导航、三态审核、仅填充透明度、显示参数保持） | 11-09 匹配性能与真实 DPI/双屏验收记录已完成；历史交付 bundle 本轮独立恢复 10/10 指纹一致，原路径已迁入本机归档；非新增人工验收 | [恢复记录](2026-11-04-canvas-controls-restore.md) · [最新实施结果](../../openspec/changes/archive/2026-11-17-restore-v430-canvas-controls/implementation-20261105.md) · [验证](../../openspec/changes/archive/2026-11-17-restore-v430-canvas-controls/verification.md) |
 | CUSTOM-117 | Ctrl + 左键拖拽多选（部分覆盖即选中） | 已验收并提交同步 GitHub（c58e16b6）；41 项交付专项通过，历史 225 项相关回归通过；11-06 用户实测确认 | [实现、修复与交付记录](2026-11-06-marquee-selection.md) |
@@ -52,7 +52,7 @@
 
 ## 已有相关材料
 
-[密集标注复核工作流实施记录](2026-11-02-dense-annotation-review-workflow.md)：CUSTOM-110，默认关闭的批次/卡片/空间查漏工作区，顶层 `xanylabeling_dense_review` 进度，类别与框独立确认，新增/删除/撤销和保存恢复。自动化验证通过；人工试用、性能门槛、翻译和训练导出往返未完成。证据见 [OpenSpec 验证](../../openspec/changes/add-dense-annotation-review-workflow/verification.md) 与 [实施报告](../../reports/dense_review_workflow_20261102/REPORT.md)。
+CUSTOM-110 的工作区及 `xanylabeling_dense_review` 进度历史见 [OpenSpec 验证](../../openspec/changes/archive/2026-11-18-add-dense-annotation-review-workflow/verification.md)与[实施报告](../../reports/dense_review_workflow_20261102/REPORT.md)。当前旧标注兼容范围见 [CUSTOM-126](2026-11-18-remove-inspector-and-dense-review.md)。
 
 [矩形与十字线、拟合预览共边显示调整方案](2026-11-02-rectangle-preview-overlap-plan.md)：CUSTOM-101/103 的后续显示修复，明确创建草稿共线边避让、Shift/Shift+Alt 候选橙色虚线、原框共边局部避让及恢复验证。2026-11-02 已实施并通过自动化验证；2026-11-04 修复原框几何变化后旧候选未失效的 P2，并补充真实 Canvas 事件与像素回归，见 [验证记录](../../openspec/changes/archive/2026-11-17-fix-rectangle-preview-overlap/verification.md)；真实屏幕深浅背景人工验收仍未完成。
 
