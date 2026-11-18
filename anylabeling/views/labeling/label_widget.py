@@ -3603,6 +3603,7 @@ class LabelingWidget(LabelDialog):
         ):
             self.update_navigator_shapes()
         self.update_progress_title()
+
     def _on_image_tags_changed(self, tags):
         if not self.image_path:
             return

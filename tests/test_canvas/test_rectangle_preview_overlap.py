@@ -46,7 +46,9 @@ def dirty_host(canvas):
         _config={"auto_save": False},
         update_progress_title=mock.Mock(),
     )
-    host._update_history_actions = partial(LabelingWidget._update_history_actions, host)
+    host._update_history_actions = partial(
+        LabelingWidget._update_history_actions, host
+    )
     host.set_dirty = mock.Mock(wraps=partial(LabelingWidget.set_dirty, host))
     committed = partial(LabelingWidget._on_geometry_committed, host)
     canvas.shape_moved.connect(committed)

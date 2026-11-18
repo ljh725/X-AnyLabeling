@@ -38,7 +38,6 @@ from ..shape_identity import (
     normalize_shape_identities,
 )
 
-
 CURSOR_DEFAULT = QtCore.Qt.CursorShape.ArrowCursor
 CURSOR_POINT = QtCore.Qt.CursorShape.PointingHandCursor
 CURSOR_DRAW = QtCore.Qt.CursorShape.CrossCursor
@@ -5127,8 +5126,6 @@ class Canvas(
 
         self._paint_groups(p)
 
-
-
         # Draw live brush-edit overlays on top of the regular shapes.
         self._paint_brush_overlays(p)
         self._paint_magic_wand_overlay(p)
@@ -6092,9 +6089,8 @@ class Canvas(
 
     def move_by_keyboard(self, offset):
         """Move selected shapes by an offset (using keyboard)."""
-        if (
-            self.selected_shapes
-            and self._move_selected_shapes(self.prev_point + offset)
+        if self.selected_shapes and self._move_selected_shapes(
+            self.prev_point + offset
         ):
             self.repaint()
 
