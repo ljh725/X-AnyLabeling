@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
 )
 
 from anylabeling.views.labeling import utils
-from anylabeling.services.inspection.storage import atomic_write_json
+from anylabeling.services.json_storage import atomic_write_json
 from anylabeling.views.labeling.logger import logger
 from anylabeling.views.labeling.shape import Shape
 from anylabeling.views.labeling.widgets.popup import Popup

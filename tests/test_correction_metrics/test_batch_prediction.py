@@ -18,9 +18,11 @@ pin that boundary without Qt widgets, a real model, or a real controller:
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
+from anylabeling.services import json_storage
 from anylabeling.views.labeling.utils import batch
 
 
@@ -220,6 +222,25 @@ def test_failed_write_yields_one_failed_notification_and_no_applied_one(tmp_path
     assert failed["provenance"] == PROVENANCE
     assert failed["shapes"] in ((), [], None)
     assert host._batch_failed_count == 0  # the caller owns the batch counter
+
+
+def test_failed_replace_preserves_existing_batch_label(tmp_path, monkeypatch):
+    host = FakeHost(FakeController())
+    image, label = _prepare(tmp_path, 0)
+    label = Path(label)
+    label.write_text('{"shapes": [], "extension": "old"}', encoding="utf-8")
+    previous = label.read_bytes()
+    replacements = []
+
+    def fail_replace(source, destination):
+        replacements.append((Path(source).parent, Path(destination)))
+        raise OSError("replace failed")
+
+    monkeypatch.setattr(json_storage.os, "replace", fail_replace)
+    assert batch.save_auto_labeling_result(host, image, _result(0)) is False
+    assert replacements == [(label.parent, label)]
+    assert label.read_bytes() == previous
+    assert list(label.parent.glob(".json_*.tmp")) == []
 
 
 def test_missing_prediction_is_skipped_not_applied(tmp_path):

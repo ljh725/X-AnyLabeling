@@ -15,12 +15,14 @@ that already take part in the statistics are touched).
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 pytest.importorskip("PyQt6.QtWidgets")
 
+from anylabeling.services import json_storage  # noqa: E402
 from anylabeling.views.labeling.correction_metrics.controller import (  # noqa: E402
     CorrectionMetricsController,
 )
@@ -139,6 +141,24 @@ def _controller(work, host):
     # ``start_metrics`` assigns it there, so the fake host must too.
     host.correction_metrics = controller
     return controller
+
+
+def test_failed_replace_preserves_existing_label_attributes(tmp_path, monkeypatch):
+    shapes = [synthetic.rect("c-001", "cat", (10, 10, 60, 60))]
+    image, label, labels = _scene(tmp_path, shapes)
+    host = _host(image, labels, shapes)
+    previous = label.read_bytes()
+    replacements = []
+
+    def fail_replace(source, destination):
+        replacements.append((Path(source).parent, Path(destination)))
+        raise OSError("replace failed")
+
+    monkeypatch.setattr(json_storage.os, "replace", fail_replace)
+    assert _run_modify(host, [image], _label_info({"cat": "feline"})) is False
+    assert replacements == [(label.parent, label)]
+    assert label.read_bytes() == previous
+    assert list(label.parent.glob(".json_*.tmp")) == []
 
 
 def test_one_to_one_rename_is_not_a_personal_class_change(

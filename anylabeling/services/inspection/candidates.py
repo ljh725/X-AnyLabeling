@@ -10,6 +10,8 @@ import os.path as osp
 from dataclasses import dataclass, replace
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
+from anylabeling.services.json_storage import atomic_write_json
+
 from .models import (
     CANDIDATE_SCHEMA_VERSION,
     Candidate,
@@ -21,7 +23,6 @@ from .storage import (
     RevisionConflict,
     StorageError,
     _exclusive_lock,
-    atomic_write_json,
     read_json,
 )
 

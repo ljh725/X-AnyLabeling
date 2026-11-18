@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from anylabeling.app_info import __version__
-from anylabeling.services.inspection.storage import atomic_write_json
+from anylabeling.services.json_storage import atomic_write_json
 from anylabeling.views.labeling.utils.theme import get_theme
 from anylabeling.services.auto_labeling import (
     _BATCH_PROCESSING_AUTO_GRID_MODELS,

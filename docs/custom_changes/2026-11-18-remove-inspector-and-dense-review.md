@@ -1,11 +1,11 @@
 # CUSTOM-126：退役 Inspector 和 Dense Review
 
-- 状态：方案。
+- 状态：实施中。
 - 功能分类：本地定制退役。
 - 创建日期、最后更新日期：2026-11-18（Asia/Shanghai）。
 - 起点：`ade2d67c`。工作分支：`codex/4.2.1/remove-inspector-and-dense-review`。
 - 集成目标：`codex/4.2.1-baseline-organization`。
-- 实现提交 / PR：未实施，无 PR。
+- 实现批次：公用原子 JSON 写入迁移；两项工作台等待后续批次。无 PR。
 - 工作区已有修改：`.gitignore`、`docs/development/` 和用户审计报告由原任务保留。
 
 ## 问题与目标
@@ -23,6 +23,8 @@
 ## 验证
 
 方案经 `openspec validate --all --strict` 检查，29 项通过。临时副本验证七份规格完整退役、画布规格替换和兼容规格新增的处理顺序，15 份现行主规格通过 strict。产品回归和数据往返检查属于实施阶段任务。
+
+公用写入批次在 `x-anylabeling-cu12` 通过 33 项测试，涵盖批处理、标签属性改写、锁定与 Inspector 存储。两条新增故障用例在实际替换步骤模拟失败，确认旧文件内容不变且同目录临时文件移除。详见[接线与基线](../../reports/remove_inspector_dense_review_20261118/WIRING.md)。
 
 ## 迁移与回退
 

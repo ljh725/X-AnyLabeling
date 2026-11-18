@@ -9,6 +9,8 @@ import os.path as osp
 from dataclasses import dataclass, field, replace
 from typing import Any, Mapping, Optional, Sequence
 
+from anylabeling.services.json_storage import atomic_write_json
+
 from .models import (
     REPORT_SCHEMA_VERSION,
     ActionState,
@@ -23,7 +25,7 @@ from .models import (
     stable_issue_id,
     utc_now_iso,
 )
-from .storage import atomic_write_json, read_json
+from .storage import read_json
 
 LEGACY_COLUMNS = (
     "issue_id",
