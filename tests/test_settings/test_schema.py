@@ -24,14 +24,14 @@ except Exception:
 class TestSettingsSchema(unittest.TestCase):
 
     def test_field_count(self):
-        self.assertEqual(len(SETTING_FIELDS), 153)
+        self.assertEqual(len(SETTING_FIELDS), 142)
 
     def test_shortcut_and_non_shortcut_count(self):
         shortcut_fields = [
             field for field in SETTING_FIELDS if field.primary == "Shortcuts"
         ]
-        self.assertEqual(len(shortcut_fields), 90)
-        self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 63)
+        self.assertEqual(len(shortcut_fields), 84)
+        self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 58)
 
     def test_defaults_cover_all_keys(self):
         defaults = defaults_map()
@@ -109,7 +109,7 @@ class TestSettingsSchema(unittest.TestCase):
         self.assertIn("shape.line_width", shape_keys)
         self.assertEqual(
             len(shortcut_fields),
-            90,
+            84,
         )
         for key in SETTINGS_SHORTCUT_KEYS_CORE:
             self.assertIn(key, [field.key for field in shortcut_fields])

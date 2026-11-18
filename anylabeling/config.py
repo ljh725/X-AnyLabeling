@@ -122,14 +122,6 @@ def normalize_user_config(config):
     if not isinstance(config, dict):
         return config
     normalized = copy.deepcopy(config)
-    if "dense_review" in normalized:
-        from anylabeling.services.dense_review.preferences import (
-            normalize_preferences,
-        )
-
-        normalized["dense_review"] = normalize_preferences(
-            normalized["dense_review"]
-        )
     for key, target_path in _LEGACY_KEY_MAP.items():
         if key in normalized:
             value = normalized.pop(key)

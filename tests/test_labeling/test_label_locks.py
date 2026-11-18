@@ -35,8 +35,6 @@ class TestLabelLocks(unittest.TestCase):
             self.labels.set_item_label(item, label)
         self.shapes = [Shape(label=label) for label in ("cat", "cat", "dog")]
         self.widget = SimpleNamespace(
-            dense_review_active=lambda: False,
-            _dense_review_original_visibility=None,
             unique_label_list=self.labels,
             canvas=SimpleNamespace(
                 shapes=self.shapes,

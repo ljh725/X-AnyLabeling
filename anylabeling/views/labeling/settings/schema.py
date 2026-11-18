@@ -36,7 +36,6 @@ SETTINGS_SHORTCUT_SECTIONS = (
     QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "File"),
     QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Shape"),
     QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "View"),
-    QT_TRANSLATE_NOOP(SETTINGS_TRANSLATION_CONTEXT, "Dense Review"),
 )
 
 
@@ -51,21 +50,6 @@ def _settings_translation_markers() -> None:
     QCoreApplication.translate("SettingsDialog", "Correction Cost Statistics")
     QCoreApplication.translate("SettingsDialog", "File")
     QCoreApplication.translate("SettingsDialog", "View")
-    QCoreApplication.translate("SettingsDialog", "Dense Review")
-    QCoreApplication.translate("SettingsDialog", "Open Dense Review Workspace")
-    QCoreApplication.translate(
-        "SettingsDialog", "Dense Review: Complete Batch and Next"
-    )
-    QCoreApplication.translate(
-        "SettingsDialog", "Dense Review: Complete Object and Next"
-    )
-    QCoreApplication.translate("SettingsDialog", "Dense Review: Skip Object")
-    QCoreApplication.translate(
-        "SettingsDialog", "Dense Review: Mark Difficult"
-    )
-    QCoreApplication.translate(
-        "SettingsDialog", "Dense Review: Toggle Full Image View"
-    )
     QCoreApplication.translate("SettingsDialog", "Display Label Popup")
     QCoreApplication.translate("SettingsDialog", "Auto Highlight Shape")
     QCoreApplication.translate(
@@ -545,32 +529,8 @@ def _shortcut_label(short_key: str) -> str:
         "open_settings": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Open Settings Dialog"
         ),
-        "open_dense_review": QT_TRANSLATE_NOOP(
-            SETTINGS_TRANSLATION_CONTEXT,
-            "Open Dense Review Workspace",
-        ),
         "open_correction_metrics": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Correction Cost Statistics"
-        ),
-        "dense_review_complete_batch": QT_TRANSLATE_NOOP(
-            SETTINGS_TRANSLATION_CONTEXT,
-            "Dense Review: Complete Batch and Next",
-        ),
-        "dense_review_complete_object": QT_TRANSLATE_NOOP(
-            SETTINGS_TRANSLATION_CONTEXT,
-            "Dense Review: Complete Object and Next",
-        ),
-        "dense_review_skip": QT_TRANSLATE_NOOP(
-            SETTINGS_TRANSLATION_CONTEXT,
-            "Dense Review: Skip Object",
-        ),
-        "dense_review_difficult": QT_TRANSLATE_NOOP(
-            SETTINGS_TRANSLATION_CONTEXT,
-            "Dense Review: Mark Difficult",
-        ),
-        "dense_review_toggle_view": QT_TRANSLATE_NOOP(
-            SETTINGS_TRANSLATION_CONTEXT,
-            "Dense Review: Toggle Full Image View",
         ),
         "open_vqa": QT_TRANSLATE_NOOP(
             SETTINGS_TRANSLATION_CONTEXT, "Open VQA Dialog"
@@ -1550,14 +1510,6 @@ def _shortcut_category_map() -> dict[str, tuple[str, ...]]:
             "zoom_out",
             "zoom_to_original",
         ),
-        "Dense Review": (
-            "open_dense_review",
-            "dense_review_complete_batch",
-            "dense_review_complete_object",
-            "dense_review_skip",
-            "dense_review_difficult",
-            "dense_review_toggle_view",
-        ),
     }
 
 
@@ -1604,59 +1556,7 @@ def _shortcut_fields() -> list[SettingField]:
     return fields
 
 
-def _build_fields() -> tuple[SettingField, ...]:
-    fields = _non_shortcut_fields() + _shortcut_fields()
-    fields += [
-        SettingField(
-            "dense_review.task",
-            "Dense Review Task",
-            "enum",
-            "General",
-            "Behavior",
-            "Dense Review",
-            options=("category", "box-points", "coverage"),
-        ),
-        SettingField(
-            "dense_review.image_height",
-            "Card Image Height",
-            "int",
-            "General",
-            "Behavior",
-            "Dense Review",
-            minimum=160,
-            maximum=640,
-        ),
-        SettingField(
-            "dense_review.context",
-            "Card Context",
-            "int",
-            "General",
-            "Behavior",
-            "Dense Review",
-            minimum=0,
-            maximum=150,
-        ),
-        SettingField(
-            "dense_review.batches_visible",
-            "Show Review Batches",
-            "bool",
-            "General",
-            "Behavior",
-            "Dense Review",
-        ),
-        SettingField(
-            "dense_review.cards_visible",
-            "Show Review Cards",
-            "bool",
-            "General",
-            "Behavior",
-            "Dense Review",
-        ),
-    ]
-    return tuple(fields)
-
-
-SETTING_FIELDS = _build_fields()
+SETTING_FIELDS = tuple(_non_shortcut_fields() + _shortcut_fields())
 SETTING_FIELD_MAP = {field.key: field for field in SETTING_FIELDS}
 SETTINGS_KEYS = frozenset(SETTING_FIELD_MAP.keys())
 

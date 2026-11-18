@@ -138,22 +138,19 @@ def test_touches_count_every_touch_while_unique_objects_deduplicate():
     }
 
 
-def test_review_event_is_not_a_transaction():
-    """验证 EVT-8/TIM：审核事件不计入 transactions，也不增加触达对象。"""
-    round_obj = synthetic.make_round(synthetic.unknown_origin(),
-                                     origin="unknown-existing")
-
-    assert round_obj.review_event("review-confirm", ["u-001", "u-002"],
-                                  transaction_id="review-1") is True
-    assert round_obj.review_event("review-confirm", ["u-001"],
-                                  transaction_id="review-1") is False
+def test_historical_review_events_are_not_transactions():
+    """Historical review counters stay visible without becoming edits."""
+    round_obj = synthetic.make_round(
+        synthetic.unknown_origin(), origin="unknown-existing"
+    )
+    round_obj._state["counts"] = {"review-confirm": 2, "review-undo": 1}
 
     row = round_obj.row(draft=True)
     assert row["transactions"] == 0
     assert row["touches"] == 0
     assert row["unique_objects"] == 0
     assert row["undo_count"] == 0
-    assert row["operation_counts"] == {"review-confirm": 1}
+    assert row["operation_counts"] == {"review-confirm": 2, "review-undo": 1}
     # Reviewing does not change any object.
     assert row["modified_original"] == 0
     assert row["unchanged"] == 25

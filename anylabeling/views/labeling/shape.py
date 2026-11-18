@@ -463,7 +463,6 @@ class Shape:
         fill_opacity: float = 1.0,
         *,
         outline_path: QtGui.QPainterPath | None = None,
-        display_style=None,
     ):  # noqa: max-complexity: 18
         """Paint shape using QPainter.
 
@@ -473,20 +472,7 @@ class Shape:
         fills, vertices and selection handles keep using the full geometry.
         ``None`` keeps the original outline, while an empty path strokes
         nothing.
-
-        ``display_style`` is the dense-review ``PaintStyle`` for this shape.
-        It separates the formal keypoint symbols from the rectangle edit
-        handles and lets one role dim every component at once, which plain
-        opacity cannot express (DP-03, DP-04, DP-15).
         """
-        if display_style is not None:
-            self._paint_with_display_style(
-                painter,
-                fill_opacity,
-                outline_path=outline_path,
-                display_style=display_style,
-            )
-            return
         if self.points:
             color = (
                 self.select_line_color
@@ -707,53 +693,6 @@ class Shape:
             ):
                 self._draw_quadrilateral_order(painter)
 
-    def _outline_path(self, *, edit_target: bool) -> QtGui.QPainterPath:
-        """Build the stroked outline for the current geometry.
-
-        ``edit_target`` controls whether the edit handles are emitted into
-        the separate vertex path; the caller decides that from the review
-        role so formal keypoints and rectangle handles stay distinct
-        (DP-03).
-        """
-        path = QtGui.QPainterPath()
-        if not self.points:
-            return path
-        shape_type = self.shape_type
-        if shape_type in ("rectangle", "rotation"):
-            if len(self.points) == 2:
-                path.addRect(self.get_rect_from_line(*self.points))
-            elif len(self.points) == 4:
-                path.moveTo(self.points[0])
-                for point in self.points[1:]:
-                    path.lineTo(point)
-                path.lineTo(self.points[0])
-        elif shape_type == "quadrilateral":
-            if len(self.points) == 2:
-                path.addRect(self.get_rect_from_line(*self.points))
-            elif len(self.points) >= 3:
-                path.moveTo(self.points[0])
-                for point in self.points[1:]:
-                    path.lineTo(point)
-                path.lineTo(self.points[0])
-        elif shape_type == "cuboid":
-            if len(self.points) == 8:
-                front = [0, 1, 2, 3]
-                path.moveTo(self.points[front[0]])
-                for index in front[1:]:
-                    path.lineTo(self.points[index])
-                path.lineTo(self.points[front[0]])
-        elif shape_type == "circle":
-            if len(self.points) == 2:
-                path.addEllipse(self.get_circle_rect_from_line(self.points))
-        elif shape_type == "point":
-            if len(self.points) == 1:
-                self.draw_vertex(path, 0, True)
-        else:
-            path.addPolygon(QtGui.QPolygonF(self.points))
-            if self.is_closed() or shape_type == "polygon":
-                path.closeSubpath()
-        return path
-
     def _handle_path(self) -> QtGui.QPainterPath:
         """Build the edit-handle path for the current geometry."""
         path = QtGui.QPainterPath()
@@ -767,101 +706,6 @@ class Shape:
         for index in range(len(self.points)):
             self.draw_vertex(path, index)
         return path
-
-    def _paint_with_display_style(
-        self,
-        painter: QtGui.QPainter,
-        fill_opacity: float,
-        *,
-        outline_path: QtGui.QPainterPath | None,
-        display_style,
-    ) -> None:
-        """Paint under an explicit dense-review display style.
-
-        Each component is drawn exactly once and only when its strength is
-        non-zero.  Formal keypoint symbols follow ``points_opacity`` while
-        the rectangle edit handles follow ``handles_visible``, so dimming a
-        role never leaves a stray handle or a dangling label plate
-        (DP-02, DP-03, DP-08, DP-15).
-        """
-        if not self.points:
-            return
-        base_color = (
-            self.select_line_color
-            if self.selected or self.hovered
-            else self.line_color
-        )
-        if display_style.outline_opacity > 0.0:
-            color = QtGui.QColor(base_color)
-            color.setAlphaF(
-                max(
-                    0.0,
-                    min(1.0, display_style.outline_opacity * color.alphaF()),
-                )
-            )
-            pen = QtGui.QPen(color)
-            pen.setWidthF(float(display_style.outline_width))
-            pen.setCosmetic(True)
-            if self.difficult and self.shape_type != "point":
-                pen.setStyle(QtCore.Qt.PenStyle.DashLine)
-            painter.setPen(pen)
-            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-            path = (
-                outline_path
-                if outline_path is not None
-                else self._outline_path(edit_target=False)
-            )
-            painter.drawPath(path)
-
-        if display_style.fill_opacity > 0.0 and self.fill:
-            fill_color = QtGui.QColor(
-                self.select_fill_color if self.selected else self.fill_color
-            )
-            alpha = (
-                fill_color.alphaF()
-                * display_style.fill_opacity
-                * max(0.0, min(1.0, float(fill_opacity)))
-            )
-            fill_color.setAlphaF(max(0.0, min(1.0, alpha)))
-            painter.setPen(QtCore.Qt.PenStyle.NoPen)
-            painter.fillPath(self._outline_path(edit_target=False), fill_color)
-
-        point_strength = max(0.0, min(1.0, display_style.points_opacity))
-        if point_strength > 0.0 and self.shape_type == "point":
-            symbols = QtGui.QPainterPath()
-            self.draw_vertex(symbols, 0, True)
-            previous = painter.opacity()
-            painter.setOpacity(previous * point_strength)
-            symbol_color = QtGui.QColor(self.vertex_fill_color)
-            symbol_color.setAlpha(255)
-            painter.fillPath(symbols, symbol_color)
-            symbol_pen = QtGui.QPen(QtGui.QColor(QtCore.Qt.GlobalColor.black))
-            symbol_pen.setWidthF(1.0)
-            symbol_pen.setCosmetic(True)
-            painter.strokePath(symbols, symbol_pen)
-            painter.setOpacity(previous)
-
-        if display_style.handles_visible and self.selected:
-            handles = self._handle_path()
-            if not handles.isEmpty():
-                handle_color = QtGui.QColor(self.vertex_fill_color)
-                handle_color.setAlpha(255)
-                handle_pen = QtGui.QPen(
-                    QtGui.QColor(QtCore.Qt.GlobalColor.black)
-                )
-                handle_pen.setWidthF(1.0)
-                handle_pen.setCosmetic(True)
-                painter.fillPath(handles, handle_color)
-                painter.strokePath(handles, handle_pen)
-                if self._highlight_index is not None:
-                    highlighted = QtGui.QPainterPath()
-                    self.draw_vertex(
-                        highlighted,
-                        self._highlight_index,
-                        self.shape_type == "point",
-                    )
-                    handle_pen.setWidthF(4.0)
-                    painter.strokePath(highlighted, handle_pen)
 
     def _draw_quadrilateral_order(self, painter):
         """Draw a single arrow on the first edge (0→1) to indicate vertex order."""

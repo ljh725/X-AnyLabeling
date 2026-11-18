@@ -40,15 +40,13 @@ def dirty_host(canvas):
         canvas=canvas,
         dirty=False,
         correction_metrics=None,
-        dense_review_session=None,
         actions=SimpleNamespace(
             save=mock.Mock(), undo=mock.Mock(), redo=mock.Mock()
         ),
         _config={"auto_save": False},
-        _dense_review_undo_available=lambda: canvas.is_shape_restorable,
-        _dense_review_redo_available=lambda: canvas.is_shape_redo_available,
         update_progress_title=mock.Mock(),
     )
+    host._update_history_actions = partial(LabelingWidget._update_history_actions, host)
     host.set_dirty = mock.Mock(wraps=partial(LabelingWidget.set_dirty, host))
     committed = partial(LabelingWidget._on_geometry_committed, host)
     canvas.shape_moved.connect(committed)

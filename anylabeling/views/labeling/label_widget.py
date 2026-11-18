@@ -54,36 +54,6 @@ from .utils.style import (
     get_toolbar_scroll_area_style,
 )
 from ...config import get_config
-from ...services.dense_review.config import (
-    ReviewConfigFileError,
-    config_root_for,
-    load_config as load_dense_review_config,
-    save_config as save_dense_review_config,
-)
-from ...services.dense_review.display import (
-    DisplayContext,
-    REASON_TEXT,
-    ROLE_BATCH,
-    ROLE_CURRENT,
-    RoleStyle,
-    default_role_styles,
-    resolve_all,
-)
-from ...services.dense_review.models import (
-    CoverageSettings,
-    IncompatibleReviewState,
-    ReviewConfig,
-)
-from ...services.dense_review.session import (
-    DenseReviewSession,
-    ReviewConfigError,
-)
-from ...services.dense_review.storage import (
-    DENSE_REVIEW_FIELD,
-    annotation_state,
-    image_fingerprint,
-    load_payload,
-)
 from .label_file import LabelFile, LabelFileError
 from .editing_commands import apply_field_changes, store_undo_step
 from .correction_metrics.hooks import (
@@ -268,17 +238,6 @@ class SidebarSplitter(QtWidgets.QSplitter):
         return SidebarSplitterHandle(self.orientation(), self)
 
 
-def _role_style(**overrides) -> RoleStyle:
-    """Return a role style based on the trial defaults.
-
-    Task presets only override the components they care about, so the
-    remaining strengths keep the documented D3 defaults instead of drifting.
-    """
-    base = default_role_styles()[ROLE_BATCH].to_dict()
-    base.update(overrides)
-    return RoleStyle.from_dict(base)
-
-
 class LabelingWidget(LabelDialog):
     """The main widget for labeling images"""
 
@@ -325,29 +284,6 @@ class LabelingWidget(LabelDialog):
         self._config = config
         self.label_flags = self._config["label_flags"]
         self.correction_metrics = None
-        self.dense_review_workspace = None
-        #: The real toplevel window that hosts the review dock; set by
-        #: ``LabelingWrapper`` when the widget lives inside a MainWindow.
-        self.main_window = None
-        self._dense_review_dock_registered = False
-        self.dense_review_session = None
-        self.dense_review_settings = ReviewConfig()
-        self._dense_review_annotation_path = ""
-        self._dense_review_annotation_stat = None
-        self._dense_review_image_hash = ""
-        self._dense_review_image_size = (0, 0)
-        self._dense_review_round_generation = 0
-        self._dense_review_display_mode = "all"
-        self._dense_review_hold_mode = ""
-        self._dense_review_original_visibility = None
-        self._dense_review_full_view = None
-        self._dense_review_original_view = None
-        self._dense_review_revision = 0
-        self._dense_review_temporary_ids: set[str] = set()
-        self._dense_review_temporary_image = ""
-        self._dense_review_hover_id = ""
-        self._dense_review_role_styles: dict = {}
-        self._dense_review_displays: dict = {}
         self.label_loop_count = -1
         self.label_loop_shapes = None
         self.label_loop_popup = None
@@ -1411,13 +1347,6 @@ class LabelingWidget(LabelDialog):
             icon="message-circle-question-mark",
             tip=self.tr("Open VQA dialog"),
         )
-        open_dense_review = action(
-            self.tr("Dense Review"),
-            self.open_dense_review,
-            shortcuts.get("open_dense_review"),
-            icon="list-checks",
-            tip=self.tr("Open the dense annotation review workspace"),
-        )
         from .correction_metrics.i18n import tr as metrics_text
 
         open_correction_metrics = action(
@@ -2325,7 +2254,6 @@ class LabelingWidget(LabelDialog):
             open_prev_unchecked_image=open_prev_unchecked_image,
             open_chatbot=open_chatbot,
             open_vqa=open_vqa,
-            open_dense_review=open_dense_review,
             open_correction_metrics=open_correction_metrics,
             open_pointcloud=open_pointcloud,
             open_image_classifier=open_image_classifier,
@@ -2508,7 +2436,6 @@ class LabelingWidget(LabelDialog):
             (
                 open_chatbot,
                 open_vqa,
-                open_dense_review,
                 open_correction_metrics,
                 open_pointcloud,
                 open_image_classifier,
@@ -3637,41 +3564,22 @@ class LabelingWidget(LabelDialog):
         )
         utils.add_actions(self.menus.edit, actions + self.actions.editMenu)
 
-    def _dense_review_undo_available(self):
-        session = self.dense_review_session
-        if getattr(self.canvas, "is_brush_mode", False):
-            return self.canvas.brush_can_undo()
-        if session is None:
-            return self.canvas.is_shape_restorable
-        if session.next_undo_kind() == "progress":
-            return True
-        return self.canvas.is_shape_restorable
-
-    def _dense_review_redo_available(self):
-        session = self.dense_review_session
-        if getattr(self.canvas, "is_brush_mode", False):
-            return self.canvas.brush_can_redo()
-        if session is None:
-            return self.canvas.is_shape_redo_available
-        if session.next_redo_kind() == "progress":
-            return True
-        return self.canvas.is_shape_redo_available
-
     def _update_history_actions(self):
         if getattr(self, "actions", None) is None:
             return
-        self.actions.undo.setEnabled(self._dense_review_undo_available())
-        self.actions.redo.setEnabled(self._dense_review_redo_available())
+        if getattr(self.canvas, "is_brush_mode", False):
+            self.actions.undo.setEnabled(self.canvas.brush_can_undo())
+            self.actions.redo.setEnabled(self.canvas.brush_can_redo())
+        else:
+            self.actions.undo.setEnabled(self.canvas.is_shape_restorable)
+            self.actions.redo.setEnabled(self.canvas.is_shape_redo_available)
 
     def set_dirty(self):
         if getattr(self, "correction_metrics", None) is not None:
             notify_metrics(self, "reconcile_dirty")
-        if self.dense_review_session is not None:
-            self._dense_review_sync_from_canvas()
         self.actions.save.setIcon(utils.new_icon("save"))
-        # Even if we autosave the file, we keep the ability to undo
-        self.actions.undo.setEnabled(self._dense_review_undo_available())
-        self.actions.redo.setEnabled(self._dense_review_redo_available())
+        # Even if we autosave the file, we keep the ability to undo.
+        self._update_history_actions()
 
         if self._config["auto_save"]:
             label_file = osp.splitext(self.image_path)[0] + ".json"
@@ -3894,7 +3802,6 @@ class LabelingWidget(LabelDialog):
         notify_metrics(self, "leave_image")
         self._flush_pending_brightness_contrast()
         self._remember_shape_locks()
-        self._dense_review_reset_session()
         self._zoom_animation.stop()
         self._reset_label_loop()
         self.select_loop_count = -1
@@ -4039,13 +3946,6 @@ class LabelingWidget(LabelDialog):
             self.canvas.brush_undo()
             self._update_history_actions()
             return
-        session = self.dense_review_session
-        if session is not None and session.next_undo_kind() == "progress":
-            if session.undo_progress():
-                notify_metrics(self, "review_event", "review-undo")
-                self.dense_review_after_progress_change()
-                self._update_history_actions()
-                return
         if not self.canvas.is_shape_restorable:
             self._update_history_actions()
             return
@@ -4056,8 +3956,6 @@ class LabelingWidget(LabelDialog):
             update_last_label=False,
             record_history=False,
         )
-        if session is not None:
-            session.undo_after_canvas(self.dense_review_shapes())
         notify_metrics(self, "edit", "undo")
         self._update_history_actions()
         self.set_dirty()
@@ -4068,30 +3966,6 @@ class LabelingWidget(LabelDialog):
             self.canvas.brush_redo()
             self._update_history_actions()
             return
-        session = self.dense_review_session
-        kind = session.next_redo_kind() if session is not None else "canvas"
-        if kind == "progress" and session is not None:
-            if session.redo_progress():
-                notify_metrics(self, "review_event", "review-confirm")
-                self.dense_review_after_progress_change()
-                self._update_history_actions()
-                return
-        if (
-            session is not None
-            and kind == "canvas"
-            and not self.canvas.is_shape_redo_available
-        ):
-            # The canvas snapshot was trimmed by the history cap; drop the
-            # matching marker so redo can move on to the next transaction.
-            session.drop_stale_canvas_redo()
-            if (
-                session.next_redo_kind() == "progress"
-                and session.redo_progress()
-            ):
-                notify_metrics(self, "review_event", "review-confirm")
-                self.dense_review_after_progress_change()
-                self._update_history_actions()
-                return
         if not self.canvas.is_shape_redo_available:
             self._update_history_actions()
             return
@@ -4102,8 +3976,6 @@ class LabelingWidget(LabelDialog):
             update_last_label=False,
             record_history=False,
         )
-        if session is not None:
-            session.redo_after_canvas(self.dense_review_shapes())
         notify_metrics(self, "edit", "redo")
         self._update_history_actions()
         self.set_dirty()
@@ -4475,1146 +4347,6 @@ class LabelingWidget(LabelDialog):
             )
         elif not self.filename:
             self.status(metrics_text("need_image", language), 5000)
-
-    def open_dense_review(self):
-        if self.filename is None or self.image.isNull():
-            self.error_message(
-                self.tr("No images loaded"),
-                self.tr("Please open an image before opening dense review."),
-            )
-            return
-        workspace = self._dense_review_ensure_dock()
-        ok, message = self.dense_review_start_round(force_new=False)
-        if not ok:
-            workspace._status(message)
-        # Re-open the same dock: keep a floating panel floating and never
-        # rebuild the session, card model or edit history (WL-01, WL-02).
-        if not workspace.isVisible():
-            if workspace.isFloating():
-                workspace.show()
-            else:
-                self._dense_review_register_dock(workspace)
-                workspace.show()
-        workspace.raise_()
-        if workspace.isFloating():
-            workspace.activateWindow()
-
-    def dense_review_capture_view(self) -> dict:
-        """Return a viewport snapshot for task navigation.
-
-        The contract matches the source-comparison snapshot: the *actual*
-        ``canvas.scale`` (so a fractional zoom such as 126.4% survives) and
-        ``zoom_mode`` (so a fit-to-window view stays fit) are stored next to
-        pan and both scroll positions (WL-07, R4).
-        """
-        return {
-            "image": self.filename or "",
-            "zoom": self.zoom_widget.value(),
-            "scale": float(self.canvas.scale),
-            "zoom_mode": getattr(self, "zoom_mode", self.MANUAL_ZOOM),
-            "pan": QtCore.QPointF(self.canvas.pan_offset),
-            "scroll": {
-                orientation: bar.value()
-                for orientation, bar in self.scroll_bars.items()
-            },
-        }
-
-    def dense_review_restore_view(self, snapshot) -> bool:
-        """Restore a viewport snapshot taken by the task switcher.
-
-        Only a snapshot belonging to the same image is applied; a stale one
-        from another image is ignored. Both fit modes and fractional manual
-        zoom use the complete comparison-view restoration path, including
-        controls, canvas geometry and remembered view state (WL-07, R4).
-        """
-        if not snapshot:
-            return False
-        if snapshot.get("image") != (self.filename or ""):
-            return False
-        scale = snapshot.get("scale")
-        return self._dense_review_restore_view(
-            {
-                **snapshot,
-                "zoom": (
-                    float(scale) * 100.0
-                    if scale is not None
-                    else snapshot.get("zoom", self.zoom_widget.value())
-                ),
-                "zoom_mode": snapshot.get("zoom_mode", self.MANUAL_ZOOM),
-                "pan": snapshot.get("pan", self.canvas.pan_offset),
-                "scroll": snapshot.get("scroll") or {},
-            }
-        )
-
-    def dense_review_apply_task_preset(self, task_id: str) -> None:
-        """Apply the display preset of one review task.
-
-        The presets only adjust view-only values; they never touch
-        confirmation state, object content or the edit history.  Source
-        comparison, the global switch, manual hides and filters keep their
-        existing priority (WL-07).
-        """
-        if task_id == "coverage":
-            # Dim rectangles with the source image readable; point symbols
-            # and point text start hidden for the omission pass.
-            self._dense_review_role_styles = {
-                "current": _role_style(outline=1.0, outline_width=1.6),
-                "batch": _role_style(
-                    outline=0.45,
-                    outline_width=1.1,
-                    points=0.0,
-                    text=0.25,
-                    text_plate=0.0,
-                    attributes=0.2,
-                ),
-                "other": _role_style(
-                    outline=0.25,
-                    outline_width=0.9,
-                    points=0.0,
-                    text=0.0,
-                    text_plate=0.0,
-                    attributes=0.0,
-                ),
-            }
-            # Never write the user's ordinary text switch: the review text
-            # policy lives entirely in the resolved display table, so leaving
-            # the coverage task (or closing the panel) restores whatever the
-            # user had configured (DP-18, WL-12, R5).
-            self.refresh_dense_review_display()
-            return
-        # The object tasks share the default role presets.
-        self._dense_review_role_styles = {}
-        self.refresh_dense_review_display()
-
-    def _dense_review_ensure_dock(self):
-        """Create the review dock once and return it."""
-        if self.dense_review_workspace is None:
-            from .dense_review import DenseReviewWorkspace
-
-            self.dense_review_workspace = DenseReviewWorkspace(self)
-            self.dense_review_workspace.setAttribute(
-                Qt.WidgetAttribute.WA_DeleteOnClose, False
-            )
-        return self.dense_review_workspace
-
-    def _dense_review_host_window(self):
-        """Return the real QMainWindow that should own the dock, or None."""
-        window = getattr(self, "main_window", None)
-        if window is None:
-            return None
-        if not isinstance(window, QtWidgets.QMainWindow):
-            return None
-        return window
-
-    def _dense_review_register_dock(self, workspace) -> bool:
-        """Dock the panel on the right side of the real main window.
-
-        Registration happens once; afterwards the layout (including a
-        floating position) is owned by the window's dock area, so re-opening
-        only shows the existing instance.
-        """
-        window = self._dense_review_host_window()
-        if window is None:
-            return False
-        if getattr(self, "_dense_review_dock_registered", False):
-            return True
-        window.addDockWidget(
-            QtCore.Qt.DockWidgetArea.RightDockWidgetArea, workspace
-        )
-        self._dense_review_dock_registered = True
-        return True
-
-    def dense_review_shapes(self):
-        special = {
-            AutoLabelingMode.OBJECT,
-            AutoLabelingMode.ADD,
-            AutoLabelingMode.REMOVE,
-        }
-        return [
-            shape for shape in self.canvas.shapes if shape.label not in special
-        ]
-
-    def dense_review_dataset_root(self):
-        return getattr(self, "_full_image_dir", "") or (
-            osp.dirname(self.filename) if self.filename else ""
-        )
-
-    def dense_review_config_root(self):
-        return config_root_for(
-            self.dense_review_dataset_root(),
-            self.output_dir or "",
-        )
-
-    def dense_review_available_labels(self):
-        labels = set(self._config.get("labels", ()) or ())
-        labels.update(self.label_info)
-        labels.update(shape.label for shape in self.dense_review_shapes())
-        labels.update(self.dense_review_settings.rules.rules)
-        return sorted(label for label in labels if label)
-
-    def dense_review_load_config(self):
-        root = self.dense_review_config_root()
-        if not root:
-            return ReviewConfig(), None
-        try:
-            config = load_dense_review_config(root)
-        except ReviewConfigFileError as error:
-            return ReviewConfig(), str(error)
-        self.dense_review_settings = config
-        return config, None
-
-    def dense_review_save_config(self, config):
-        root = self.dense_review_config_root()
-        if not root:
-            return False, self.tr("没有可写入复核配置的目录")
-        try:
-            path = save_dense_review_config(root, config)
-        except ReviewConfigFileError as error:
-            return False, str(error)
-        self.dense_review_settings = config.normalized()
-        return True, self.tr("复核配置已保存到 %s") % path
-
-    def dense_review_apply_config(self, config):
-        session = self.dense_review_session
-        if session is None:
-            self.dense_review_settings = config.normalized()
-            return True, self.tr("复核配置已保存；进入本轮后生效。")
-        try:
-            session.apply_config(config, self.dense_review_shapes())
-        except ReviewConfigError as error:
-            return False, str(error)
-        self.dense_review_after_progress_change()
-        return True, self.tr(
-            "复核配置已应用；批次归属如需更新，请显式重建剩余队列。"
-        )
-
-    def dense_review_image_info(self):
-        if not self._dense_review_image_hash:
-            data = self.image_data
-            if data is None and self.image_path:
-                data = LabelFile.load_image_file(self.image_path)
-            self._dense_review_image_hash = image_fingerprint(data or b"")
-        if not self.image.isNull():
-            self._dense_review_image_size = (
-                self.image.width(),
-                self.image.height(),
-            )
-        return (
-            self._dense_review_image_hash,
-            *self._dense_review_image_size,
-        )
-
-    def dense_review_image_source(self):
-        return self.image_path or self.filename or "", self.image_data
-
-    def _dense_review_sync_annotation_stat(self):
-        path = self.get_label_file() if self.filename else ""
-        self._dense_review_annotation_path = path
-        self._dense_review_annotation_stat = annotation_state(path)
-
-    def dense_review_start_round(self, force_new=False):
-        if self.filename is None or self.image.isNull():
-            return False, self.tr("请先打开图片")
-        if self.dense_review_session is not None and not force_new:
-            if self.dense_review_workspace is not None:
-                self.dense_review_workspace.refresh_all(force_cards=True)
-            return True, self.tr("继续当前内存中的复核进度")
-        config, warning = self.dense_review_load_config()
-        self.dense_review_settings = config
-        payload = None
-        if not force_new:
-            try:
-                payload = load_payload(self.other_data)
-            except IncompatibleReviewState as error:
-                self.dense_review_session = None
-                return False, str(error)
-        fingerprint, width, height = self.dense_review_image_info()
-        try:
-            session = DenseReviewSession.from_shapes(
-                config,
-                self.dense_review_shapes(),
-                fingerprint,
-                width,
-                height,
-                payload,
-            )
-        except (IncompatibleReviewState, ReviewConfigError) as error:
-            self.dense_review_session = None
-            return False, str(error)
-        self.dense_review_session = session
-        self._dense_review_round_generation += 1
-        self._dense_review_sync_annotation_stat()
-        if force_new:
-            self.other_data[DENSE_REVIEW_FIELD] = session.to_payload()
-            session.dirty = True
-            self.set_dirty()
-        message = self.tr("已开始新一轮密集复核")
-        if payload is not None:
-            if session.dirty:
-                message = self.tr(
-                    "已恢复进度；图像、规则或对象内容变化使相关确认失效。"
-                )
-            else:
-                message = self.tr("已恢复保存的密集复核进度")
-        if warning:
-            message = f"{warning}；{message}"
-        if self.dense_review_workspace is not None:
-            self.dense_review_workspace._generation += 1
-            self.dense_review_workspace.thumbnails.start_generation(
-                self.dense_review_workspace._generation
-            )
-            self.dense_review_workspace.refresh_all(force_cards=True)
-            self.dense_review_workspace._focus_current()
-        return True, message
-
-    def _dense_review_sync_from_canvas(self):
-        session = self.dense_review_session
-        if session is None:
-            return
-        session.sync_shapes(self.dense_review_shapes())
-        if self._dense_review_display_mode == "original":
-            self._dense_review_apply_original_visibility()
-        if (
-            self.dense_review_workspace is not None
-            and self.dense_review_workspace.isVisible()
-        ):
-            self.dense_review_workspace.refresh_all()
-
-    def _dense_review_prepare_save(self):
-        session = self.dense_review_session
-        if session is None:
-            return
-        session.sync_shapes(self.dense_review_shapes())
-        if session.dirty or session.has_payload:
-            self.other_data[DENSE_REVIEW_FIELD] = session.to_payload()
-
-    def _dense_review_after_save(self, filename):
-        self._dense_review_annotation_path = filename
-        self._dense_review_annotation_stat = annotation_state(filename)
-        if self.dense_review_session is not None:
-            self.dense_review_session.mark_saved()
-        if (
-            self.dense_review_workspace is not None
-            and self.dense_review_workspace.isVisible()
-        ):
-            self.dense_review_workspace.refresh_all()
-
-    def dense_review_after_progress_change(self):
-        self.set_dirty()
-
-    def _dense_review_has_progress(self):
-        if DENSE_REVIEW_FIELD in self.other_data:
-            return True
-        session = self.dense_review_session
-        return bool(
-            session is not None and (session.dirty or session.has_payload)
-        )
-
-    def _dense_review_external_conflict(self):
-        if not self._dense_review_has_progress():
-            return False
-        path = self._dense_review_annotation_path or self.get_label_file()
-        if not path or self._dense_review_annotation_stat is None:
-            return False
-        return annotation_state(path).changed_from(
-            self._dense_review_annotation_stat
-        )
-
-    def _dense_review_resolve_conflict(self):
-        if not self._dense_review_external_conflict():
-            return True
-        box = QtWidgets.QMessageBox(self)
-        box.setWindowTitle(self.tr("标注文件已在外部变化"))
-        box.setText(
-            self.tr(
-                "磁盘上的标注文件在本会话期间发生变化。"
-                "直接保存会覆盖外部修改。请明确选择处理方式。"
-            )
-        )
-        reload_button = box.addButton(
-            self.tr("重载外部文件"),
-            QtWidgets.QMessageBox.ButtonRole.AcceptRole,
-        )
-        save_button = box.addButton(
-            self.tr("保留本地并保存"),
-            QtWidgets.QMessageBox.ButtonRole.DestructiveRole,
-        )
-        cancel_button = box.addButton(
-            self.tr("取消"), QtWidgets.QMessageBox.ButtonRole.RejectRole
-        )
-        box.exec()
-        clicked = box.clickedButton()
-        if clicked is reload_button:
-            if self.filename:
-                self.load_file(self.filename)
-            return False
-        if clicked is cancel_button or clicked is None:
-            self.status(self.tr("保存已取消；未覆盖外部标注文件。"))
-            return False
-        if clicked is save_button:
-            return True
-        return False
-
-    def dense_review_exclusion_ids(self):
-        shapes = self.dense_review_shapes()
-        manual = {
-            shape.xanylabeling_shape_id
-            for shape in shapes
-            if shape in self._manually_hidden_shapes
-        }
-        label = self.label_filter_combobox.text_box.currentText()
-        gid = self.gid_filter_combobox.gid_box.currentText() or "-1"
-        filtered = set()
-        for shape in shapes:
-            visible = desired_visibility(
-                shape,
-                label=label,
-                gid=gid,
-                label_visible=self.label_info.get(shape.label, {}).get(
-                    "visible", True
-                ),
-                invert=self._invert_shape_filter,
-                manually_hidden=False,
-            )
-            if not visible:
-                filtered.add(shape.xanylabeling_shape_id)
-        return manual, filtered
-
-    def _dense_review_find_shape(self, shape_id):
-        for shape in self.dense_review_shapes():
-            if shape.xanylabeling_shape_id == shape_id:
-                return shape
-        return None
-
-    def dense_review_display_context(self, session=None) -> DisplayContext:
-        """Build the display-resolver input from the live canvas state.
-
-        Everything the resolver needs is collected here so the canvas never
-        re-derives visibility.  ``manual_hidden``/``filtered`` keep their own
-        sources and stay distinct from the review roles, which is what makes
-        "temporary show" an observation-only exception (DP-11, DP-12).
-        """
-        session = session if session is not None else self.dense_review_session
-        manual, filtered = self.dense_review_exclusion_ids()
-        label_hidden = set()
-        for shape in self.dense_review_shapes():
-            info = self.label_info.get(shape.label, {})
-            if not info.get("visible", True):
-                label_hidden.add(shape.xanylabeling_shape_id)
-        batch_ids = set()
-        current_id = ""
-        associated = set()
-        if session is not None:
-            current = session.current_object()
-            if current is not None:
-                current_id = current.shape_id
-            batch_id = session.state.current_batch
-            batch_ids = set(session.state.member_ids(batch_id))
-            associated = set(session.associated_ids(current_id))
-            workspace = self.dense_review_workspace
-            if (
-                current is not None
-                and workspace is not None
-                and hasattr(workspace, "_card_parent")
-            ):
-                parent = workspace._card_parent(current)
-                associated.update(
-                    point.shape_id for point in workspace._card_points(parent)
-                )
-                if parent is not current:
-                    associated.add(parent.shape_id)
-        return DisplayContext(
-            batch_ids=frozenset(batch_ids),
-            current_id=current_id,
-            associated_ids=frozenset(associated),
-            styles=dict(self._dense_review_role_styles),
-            global_annotations_on=self._dense_review_annotations_enabled(),
-            original_only=self._dense_review_display_mode == "original",
-            manual_hidden=frozenset(manual),
-            label_hidden=frozenset(label_hidden),
-            filtered=frozenset(filtered),
-            unsupported=frozenset(self._dense_review_unsupported_ids(session)),
-            temporary_ids=frozenset(self._active_temporary_ids()),
-            hovering_id="",
-            task_id=self.dense_review_task_id(),
-            hide_task_points=not (
-                self.dense_review_workspace is not None
-                and getattr(
-                    self.dense_review_workspace,
-                    "coverage_points_checkbox",
-                    None,
-                )
-                and self.dense_review_workspace.coverage_points_checkbox.isChecked()
-            ),
-        )
-
-    def dense_review_task_id(self) -> str:
-        """Return the active review task id, or "" outside review.
-
-        The task decides whether associated keypoints are promoted and
-        whether point symbols are suppressed (WL-07, SN-05).
-        """
-        workspace = self.dense_review_workspace
-        if workspace is None or not self.dense_review_active():
-            return ""
-        return str(getattr(workspace, "task_id", "") or "")
-
-    @staticmethod
-    def _dense_review_unsupported_ids(session) -> set:
-        if session is None:
-            return set()
-        return {
-            item.shape_id
-            for item in session.state.objects.values()
-            if not item.supported
-        }
-
-    def _dense_review_annotations_enabled(self) -> bool:
-        """Report whether the *global* annotation switch is on.
-
-        ``toggle_visibility_shapes`` stores its state in ``show_shapes``.  The
-        earlier version inferred the switch from "does any shape still have
-        ``visible`` set", which mis-reported a single manual hide (or hiding
-        every object by hand) as a global shutdown - and a global reason also
-        blocks the temporary-show exception.  Reading the real switch keeps
-        the two causes separate: manual hides and filters stay their own
-        reasons and remain temporarily revealable (DP-11, DP-12).
-        """
-        for attr in ("actions",):
-            actions = getattr(self, attr, None)
-            action = getattr(actions, "visibility_shapes_mode", None)
-            if action is not None:
-                return bool(action.isChecked())
-        return bool(self._config.get("show_shapes", True))
-
-    def dense_review_active(self) -> bool:
-        """Return whether the review overlay currently owns the canvas.
-
-        The session deliberately outlives a closed workspace so reopening
-        resumes the same round, but the *overlay* must not: a closed review
-        has to leave the ordinary canvas alone.  Activation therefore tracks
-        the visible workspace, not the session's existence
-        (DP-17, DP-18).
-        """
-        workspace = self.dense_review_workspace
-        if workspace is None:
-            return False
-        try:
-            return bool(workspace.isVisible())
-        except RuntimeError:
-            # The C++ object was already destroyed.
-            return False
-
-    def refresh_dense_review_display(self, force: bool = False) -> None:
-        """Recompute and install the review display table.
-
-        The table is rebuilt from the live session, filters and temporary
-        exceptions.  It is only installed while the workspace is actually
-        active; ordinary labelling keeps its previous behaviour untouched
-        (DP-17, DP-18).
-        """
-        canvas = getattr(self, "canvas", None)
-        if canvas is None:
-            return
-        session = self.dense_review_session
-        if session is None or not self.dense_review_active():
-            self._dense_review_display_key = None
-            self._dense_review_displays = {}
-            canvas.clear_dense_review_display()
-            return
-        context = self.dense_review_display_context(session)
-        shapes = self.dense_review_shapes()
-        key = (
-            context,
-            tuple(
-                (
-                    id(shape),
-                    shape.xanylabeling_shape_id,
-                    shape.label,
-                    shape.shape_type,
-                    shape.locked,
-                )
-                for shape in shapes
-            ),
-        )
-        if not force and key == getattr(
-            self, "_dense_review_display_key", None
-        ):
-            return
-        self._dense_review_display_key = key
-        displays = resolve_all(
-            shapes,
-            context,
-            shape_id_of=lambda shape: shape.xanylabeling_shape_id,
-            label_of=lambda shape: shape.label,
-        )
-        self._dense_review_displays = displays
-        canvas._dense_review_object_numbers = {
-            shape_id: item.display_index
-            for shape_id, item in session.state.objects.items()
-        }
-        self._dense_review_revision += 1
-        # The resolver's own ``original_only`` input is the single source of
-        # truth for "only the source image is shown", so the canvas can pause
-        # editing without scanning shape reasons (DP-13, DP-14).
-        canvas.set_dense_review_display(
-            displays,
-            self._dense_review_revision,
-            original_only=context.original_only,
-        )
-
-    # -- temporary display exceptions ----------------------------------
-
-    def _active_temporary_ids(self) -> set:
-        """Return the temporary-show set, cleared when the image changes."""
-        if self._dense_review_temporary_image != (self.filename or ""):
-            self._dense_review_temporary_ids = set()
-            self._dense_review_temporary_image = self.filename or ""
-        return self._dense_review_temporary_ids
-
-    def dense_review_temporary_ids(self) -> set:
-        """Public read-only view of the temporary-show set."""
-        return set(self._active_temporary_ids())
-
-    def dense_review_show_temporarily(self, shape_ids) -> bool:
-        """Add explicit objects to this image's temporary-show exception.
-
-        The exception only changes observation.  Confirmation eligibility
-        still follows the exclusion source, so a temporarily shown manual
-        hide stays out of the batch candidates (PC-06).
-        """
-        shape_ids = {str(item) for item in shape_ids or () if item}
-        existing = {
-            shape.xanylabeling_shape_id for shape in self.canvas.shapes
-        }
-        added = shape_ids & existing
-        if not added:
-            return False
-        self._active_temporary_ids().update(added)
-        self.refresh_dense_review_display()
-        self.canvas.update()
-        return True
-
-    def dense_review_end_temporary(self, shape_ids=None) -> bool:
-        """Remove objects (or the whole set) from the temporary exception."""
-        active = self._active_temporary_ids()
-        if not active:
-            return False
-        if shape_ids is None:
-            active.clear()
-        else:
-            active.difference_update(str(item) for item in shape_ids if item)
-        self.refresh_dense_review_display()
-        self.canvas.update()
-        return True
-
-    def dense_review_end_temporary_on_image_change(self) -> None:
-        """Drop the exception when the current image changes (DP-11)."""
-        if self._dense_review_temporary_ids:
-            self._dense_review_temporary_ids = set()
-        self._dense_review_temporary_image = self.filename or ""
-
-    def dense_review_exclusion_reason(self, shape_id: str) -> str:
-        """Return a readable exclusion reason for one object, or ""."""
-        display = self._dense_review_displays.get(shape_id)
-        if display is None:
-            return ""
-        reason = REASON_TEXT.get(display.reason)
-        if reason is None:
-            return display.reason
-        return QtCore.QCoreApplication.translate("LabelingWidget", reason)
-
-    def dense_review_display_entry(self, shape_id: str):
-        """Return the resolved display entry for one object, or ``None``."""
-        return self._dense_review_displays.get(str(shape_id))
-
-    def dense_review_set_hover(self, shape_id: str) -> None:
-        """Record the hovered object without changing the review target."""
-        shape_id = str(shape_id or "")
-        if shape_id == self._dense_review_hover_id:
-            return
-        self._dense_review_hover_id = shape_id
-        # Hover is a paint hint, not a session/role change. Never rebuild the
-        # full object table for mouse movement.
-        self.canvas.update()
-
-    def _dense_review_cancel_pending_edit(self):
-        if self.canvas.current is not None:
-            self.canvas.cancel_drawing()
-        workflow = getattr(self, "rectangle_creation", None)
-        if workflow is not None:
-            workflow.before_tool_change(True, self.canvas.create_mode)
-
-    def dense_review_focus_object(self, shape_id):
-        shape = self._dense_review_find_shape(shape_id)
-        if shape is None:
-            return
-        # An explicit target change ends any temporary show (DP-11).
-        self._reveal_auto_clears_temporary(shape_id)
-        self._dense_review_cancel_pending_edit()
-        self.canvas.select_shapes([shape])
-        # Focus mode no longer hides the background: the resolved roles keep
-        # the batch readable and only dim the unrelated objects, so the
-        # current rectangle and its associated keypoints stay visible
-        # (DP-01, DP-03).
-        rect = shape.bounding_rect()
-        if rect.width() <= 0 and rect.height() <= 0:
-            rect = QtCore.QRectF(rect.x() - 24, rect.y() - 24, 48, 48)
-        bounds = (
-            rect.x(),
-            rect.y(),
-            rect.x() + rect.width(),
-            rect.y() + rect.height(),
-        )
-        self.set_zoom(self._dense_review_zoom_for_bounds(bounds))
-        self._dense_review_center_on(
-            (bounds[0] + bounds[2]) / 2.0,
-            (bounds[1] + bounds[3]) / 2.0,
-        )
-        self.canvas.update()
-
-    def _dense_review_zoom_for_bounds(self, bounds, context=None):
-        if context is None:
-            context = 0.35
-            workspace = self.dense_review_workspace
-            if workspace is not None:
-                context = workspace.context_spin.value() / 100.0
-        viewport_width = max(1.0, self.central_widget().width() - 2.0)
-        viewport_height = max(1.0, self.central_widget().height() - 2.0)
-        box_width = max(30.0, bounds[2] - bounds[0])
-        box_height = max(30.0, bounds[3] - bounds[1])
-        area_width = box_width * (1.0 + 2.0 * context)
-        area_height = box_height * (1.0 + 2.0 * context)
-        raw = (
-            min(
-                viewport_width / area_width,
-                viewport_height / area_height,
-            )
-            * 100.0
-        )
-        levels = (
-            25,
-            33,
-            50,
-            67,
-            75,
-            100,
-            125,
-            150,
-            200,
-            250,
-            300,
-            400,
-            600,
-            800,
-        )
-        level = max(
-            (candidate for candidate in levels if candidate <= raw),
-            default=levels[0],
-        )
-        return max(
-            self.zoom_widget.minimum(),
-            min(self.zoom_widget.maximum(), level),
-        )
-
-    def _dense_review_center_on(self, x, y):
-        if self.image.isNull():
-            return
-        viewport_width = max(1.0, self.central_widget().width() - 2.0)
-        viewport_height = max(1.0, self.central_widget().height() - 2.0)
-        image_width = max(1.0, float(self.canvas.pixmap.width()))
-        image_height = max(1.0, float(self.canvas.pixmap.height()))
-        scale = max(self.canvas.scale, 1e-6)
-        horizontal = self.scroll_bars[Qt.Orientation.Horizontal]
-        vertical = self.scroll_bars[Qt.Orientation.Vertical]
-        screen_width = viewport_width / scale
-        screen_height = viewport_height / scale
-        x_scroll = int(
-            (x - screen_width / 2.0)
-            / image_width
-            * (horizontal.maximum() + horizontal.pageStep())
-        )
-        y_scroll = int(
-            (y - screen_height / 2.0)
-            / image_height
-            * (vertical.maximum() + vertical.pageStep())
-        )
-        self.set_scroll(
-            Qt.Orientation.Horizontal,
-            min(max(0, x_scroll), horizontal.maximum()),
-        )
-        self.set_scroll(
-            Qt.Orientation.Vertical,
-            min(max(0, y_scroll), vertical.maximum()),
-        )
-
-    def _reveal_auto_clears_temporary(self, shape_id):
-        """Drop the temporary-show exception when the target changes.
-
-        The exception belongs to *one* object on *one* image; navigation to
-        a different object must not leave the previous one visible
-        (DP-11, DP-12).
-        """
-        active = self._active_temporary_ids()
-        if not active:
-            return
-        if shape_id and shape_id in active:
-            return
-        active.clear()
-        self.refresh_dense_review_display()
-
-    def dense_review_begin_hold_original(self) -> bool:
-        """Show only the source image while the key stays pressed.
-
-        Holding is a *temporary* transition: the previous mode is remembered
-        so releasing restores exactly what the user was looking at, and any
-        blur, close or image switch ends it without a second press
-        (DP-13, DP-14).
-        """
-        if not self.dense_review_active():
-            return False
-        if self._dense_review_hold_mode:
-            return False
-        self._dense_review_hold_mode = self._dense_review_display_mode
-        self.dense_review_set_display_mode("original")
-        return True
-
-    def dense_review_end_hold_original(self) -> bool:
-        """Release a held comparison and restore the previous mode."""
-        if not self._dense_review_hold_mode:
-            return False
-        previous = self._dense_review_hold_mode
-        self._dense_review_hold_mode = ""
-        if self._dense_review_display_mode == "original":
-            self.dense_review_set_display_mode(previous)
-        return True
-
-    def dense_review_hold_active(self) -> bool:
-        """Return whether the comparison is currently held down."""
-        return bool(self._dense_review_hold_mode)
-
-    def dense_review_end_hold_on_blur(self) -> None:
-        """End a held comparison when the window loses focus (DP-14)."""
-        self.dense_review_end_hold_original()
-
-    def _dense_review_snapshot_view(self) -> dict:
-        """Capture the viewport so a comparison round trip is lossless."""
-        return {
-            "zoom_mode": self.zoom_mode,
-            "zoom": self.canvas.scale * 100.0,
-            "scroll": {
-                orientation: bar.value()
-                for orientation, bar in self.scroll_bars.items()
-            },
-            "pan": QtCore.QPointF(self.canvas.pan_offset),
-            "image": self.filename or "",
-        }
-
-    def _dense_review_restore_view(self, snapshot: dict) -> bool:
-        """Restore a viewport snapshot, but only for the same image.
-
-        A snapshot taken on another image must not move the new one; the
-        caller drops it in that case (DP-13, DP-14).
-        """
-        if (
-            not snapshot
-            or not self.filename
-            or self.image.isNull()
-            or snapshot["image"] != self.filename
-        ):
-            return False
-        self._zoom_animation.stop()
-        self.zoom_mode = snapshot["zoom_mode"]
-        self.actions.fit_width.setChecked(self.zoom_mode == self.FIT_WIDTH)
-        self.actions.fit_window.setChecked(self.zoom_mode == self.FIT_WINDOW)
-        zoom = snapshot["zoom"]
-        with QtCore.QSignalBlocker(self.zoom_widget):
-            self.zoom_widget.setValue(round(zoom))
-        self.canvas.scale = zoom / 100.0
-        self.canvas.adjustSize()
-        for orientation, value in snapshot["scroll"].items():
-            bar = self.scroll_bars[orientation]
-            bar.setValue(value)
-            self.scroll_values[orientation][self.filename] = bar.value()
-        self.canvas.pan_offset = QtCore.QPointF(snapshot["pan"])
-        self.pan_values[self.filename] = QtCore.QPointF(self.canvas.pan_offset)
-        self.zoom_values[self.filename] = (self.zoom_mode, zoom)
-        self.canvas.update()
-        if hasattr(self, "navigator_dialog"):
-            self.navigator_dialog.set_zoom_value(round(zoom))
-        self.update_navigator_viewport()
-        self._remember_shared_view()
-        return True
-
-    def _dense_review_end_original(self, *, restore_view=True):
-        snapshot = self._dense_review_original_view
-        self._dense_review_original_view = None
-        self._dense_review_restore_visibility()
-        if restore_view:
-            self._dense_review_restore_view(snapshot)
-
-    def dense_review_set_display_mode(self, mode):
-        if mode not in ("focus", "all", "original"):
-            return
-        previous = self._dense_review_display_mode
-        if mode == "original" and previous != "original":
-            # Entering the comparison is the shared boundary for the dropdown
-            # and the held button: cancel or finish live edits first so a
-            # later mouse release cannot commit geometry that is no longer
-            # visible (DP-13, DP-14).
-            self.canvas.suspend_active_editing()
-            self._dense_review_cancel_pending_edit()
-            self._dense_review_original_view = (
-                self._dense_review_snapshot_view()
-            )
-        if mode != "original":
-            self._dense_review_end_original()
-        self._dense_review_display_mode = mode
-        if mode == "focus":
-            if (
-                not self.canvas.selected_shapes
-                and self.dense_review_session is not None
-            ):
-                current = self.dense_review_session.current_object()
-                if current is not None:
-                    shape = self._dense_review_find_shape(current.shape_id)
-                    if shape is not None:
-                        self.canvas.select_shapes([shape])
-            # Roles decide what stays readable; the legacy background
-            # hiding would drop every non-selected batch member (DP-01).
-            self.canvas.hide_background_shapes(False)
-            self.canvas.set_hiding(False)
-        elif mode == "all":
-            self.canvas.hide_background_shapes(False)
-            self.canvas.set_hiding(False)
-        else:
-            self.canvas.hide_background_shapes(False)
-            self.canvas.set_hiding(False)
-            if self._dense_review_original_visibility is None:
-                self._dense_review_original_visibility = {
-                    shape: self.canvas.visible.get(shape, True)
-                    for shape in self.canvas.shapes
-                }
-            self._dense_review_apply_original_visibility()
-        # Rebuild after switching: "original" resolves to nothing drawable,
-        # which also removes every hit target (DP-12, DP-13).
-        self.refresh_dense_review_display()
-        self.canvas.update()
-
-    def _dense_review_apply_original_visibility(self):
-        for shape in self.canvas.shapes:
-            self.canvas.visible[shape] = False
-        self.canvas.update()
-
-    def _dense_review_restore_visibility(self):
-        """Undo the original-only overlay without overwriting user choices.
-
-        The snapshot only exists to serve the temporary "show the source
-        image" mode.  Restoring it verbatim on close would overwrite a hide
-        or filter the user changed *during* the review, which DP-17 and
-        WL-12 forbid, so visibility is recomputed from the live filter state
-        and the snapshot only says which shapes the overlay touched.
-        """
-        if self._dense_review_original_visibility is None:
-            return
-        touched = {
-            shape
-            for shape in self._dense_review_original_visibility
-            if shape in self.canvas.shapes
-        }
-        self._dense_review_original_visibility = None
-        if not touched:
-            return
-        label = self.label_filter_combobox.text_box.currentText()
-        gid = self.gid_filter_combobox.gid_box.currentText() or "-1"
-        manual_hidden = self._manually_hidden_shapes
-        for shape in touched:
-            if shape.visible is False or shape in manual_hidden:
-                self.canvas.visible[shape] = False
-                continue
-            self.canvas.visible[shape] = desired_visibility(
-                shape,
-                label=label,
-                gid=gid,
-                label_visible=self.label_info.get(shape.label, {}).get(
-                    "visible", True
-                ),
-                invert=self._invert_shape_filter,
-                manually_hidden=False,
-            )
-        self.canvas.update()
-
-    def dense_review_toggle_full_image(self):
-        self._dense_review_cancel_pending_edit()
-        if self._dense_review_full_view is None:
-            self._dense_review_full_view = {
-                "zoom_mode": self.zoom_mode,
-                "zoom": self.zoom_widget.value(),
-                "scroll": {
-                    orientation: bar.value()
-                    for orientation, bar in self.scroll_bars.items()
-                },
-                "pan": QtCore.QPointF(self.canvas.pan_offset),
-            }
-            self.set_fit_window(True)
-            self.canvas.set_hiding(False)
-            self.canvas.hide_background_shapes(False)
-            return True
-        saved = self._dense_review_full_view
-        self._dense_review_full_view = None
-        self.set_zoom(saved["zoom"])
-        self.canvas.pan_offset = QtCore.QPointF(saved["pan"])
-        for orientation, value in saved["scroll"].items():
-            self.set_scroll(orientation, value)
-        self.canvas.update()
-        return False
-
-    def dense_review_refresh_coverage_region(self, rect) -> None:
-        """Redraw the region outline without touching zoom or pan.
-
-        Used by background refreshes so the user's view inside
-        the region is preserved (R2, SN-06).
-        """
-        if self.canvas is None:
-            return
-        label = self.canvas.dense_review_region_label or "查漏区域"
-        current = self.canvas.dense_review_region
-        new_rect = tuple(float(value) for value in rect) if rect else None
-        if current == new_rect and self.canvas.dense_review_region_label:
-            return
-        self.canvas.set_dense_review_region(new_rect, label)
-
-    def dense_review_show_coverage_region(self, region_id):
-        session = self.dense_review_session
-        if session is None or session.state.coverage is None:
-            return
-        region = session.state.coverage.region(region_id)
-        if region is None:
-            return
-        self._dense_review_cancel_pending_edit()
-        label = f"{region.region_id} · 查漏区域"
-        self.canvas.set_dense_review_region(region.rect, label)
-        self.canvas.hide_background_shapes(False)
-        self.canvas.set_hiding(False)
-        self.set_zoom(self._dense_review_zoom_for_bounds(region.rect, 0.04))
-        self._dense_review_center_on(
-            (region.rect[0] + region.rect[2]) / 2.0,
-            (region.rect[1] + region.rect[3]) / 2.0,
-        )
-
-    def dense_review_workspace_closed(self):
-        self._dense_review_end_original()
-        if not self._dense_review_annotations_enabled():
-            self._sync_label_list_visibility(lambda item: False)
-        self.canvas.set_dense_review_region(None)
-        self.canvas.hide_background_shapes(False)
-        self.canvas.set_hiding(False)
-        if self._dense_review_full_view is not None:
-            self.dense_review_toggle_full_image()
-        self._dense_review_display_mode = "all"
-        # Review-only overlays end here; the ordinary painting is recomputed
-        # from the user's latest settings rather than a stale snapshot
-        # (DP-17, WL-12).
-        self._dense_review_temporary_ids = set()
-        self._dense_review_temporary_image = self.filename or ""
-        self._dense_review_hold_mode = ""
-        # ``_dense_review_role_styles`` is the *task preset*: it stays so
-        # re-opening the panel re-applies the same task policy.  It is only
-        # dropped when the round/session itself ends (see
-        # ``_dense_review_reset_session``).
-        self._dense_review_displays = {}
-        self.canvas.clear_dense_review_display()
-        if self.dense_review_workspace is not None:
-            self.dense_review_workspace._full_image = False
-
-    def dense_review_shortcut(self, key, default):
-        value = self._config.get("shortcuts", {}).get(key, default)
-        if isinstance(value, (list, tuple)):
-            value = value[0] if value else default
-        return value
-
-    def existing_shortcut_sequences(self):
-        sequences = set()
-        dense_keys = {
-            "dense_review_complete_batch",
-            "dense_review_complete_object",
-            "dense_review_skip",
-            "dense_review_difficult",
-            "dense_review_toggle_view",
-        }
-        shortcuts = self._config.get("shortcuts", {}) or {}
-        for key, value in shortcuts.items():
-            if key in dense_keys or not value:
-                continue
-            values = value if isinstance(value, (list, tuple)) else (value,)
-            for item in values:
-                if item:
-                    sequences.add(str(item))
-        return sequences
-
-    def _dense_review_reset_session(self):
-        self._dense_review_end_original(restore_view=False)
-        self._dense_review_hold_mode = ""
-        self._dense_review_display_mode = "all"
-        self._dense_review_full_view = None
-        self._dense_review_temporary_ids = set()
-        self._dense_review_displays = {}
-        if self.canvas is not None:
-            self.canvas.clear_dense_review_display()
-        self.dense_review_session = None
-        self._dense_review_annotation_path = ""
-        self._dense_review_annotation_stat = None
-        self._dense_review_image_hash = ""
-        self._dense_review_image_size = (0, 0)
-        self._dense_review_round_generation += 1
-        self.canvas.set_dense_review_region(None)
-        self.canvas.set_hiding(False)
-        if (
-            self.dense_review_workspace is not None
-            and self.dense_review_workspace.isVisible()
-        ):
-            self.dense_review_workspace.refresh_all()
-
-    def _dense_review_on_file_loaded(self):
-        # Exceptions, holds and viewport snapshots never cross images
-        # (DP-11, DP-14).
-        self._dense_review_hold_mode = ""
-        self._dense_review_end_original(restore_view=False)
-        # The comparison state itself must not survive the image switch,
-        # otherwise the reload below would immediately rebuild a snapshot
-        # for the new image (DP-14).
-        self._dense_review_display_mode = "all"
-        self.dense_review_end_temporary_on_image_change()
-        self._dense_review_image_hash = ""
-        if not self.image.isNull():
-            self._dense_review_image_size = (
-                self.image.width(),
-                self.image.height(),
-            )
-        self._dense_review_sync_annotation_stat()
-        if (
-            self.dense_review_workspace is not None
-            and self.dense_review_workspace.isVisible()
-        ):
-            ok, message = self.dense_review_start_round(force_new=False)
-            if not ok:
-                self.dense_review_workspace._status(message)
-                return
-            combo = self.dense_review_workspace.display_combo
-            mode = combo.currentData() or "focus"
-            if mode == "original":
-                # A comparison does not follow the image switch; move the
-                # control back to a normal mode so the reload cannot rebuild
-                # a snapshot for the new image (DP-14).
-                index = combo.findData("focus")
-                if index >= 0:
-                    combo.blockSignals(True)
-                    combo.setCurrentIndex(index)
-                    combo.blockSignals(False)
-                mode = "focus"
-            self.dense_review_set_display_mode(mode)
-            self.refresh_dense_review_display()
-            self.dense_review_workspace._focus_current()
 
     def open_pointcloud(self):
         if self.pointcloud_window is None:
@@ -7328,14 +6060,6 @@ class LabelingWidget(LabelDialog):
             self.scroll_area.setVisible(False)
 
     def save_attributes(self, _shapes):
-        resolve_conflict = getattr(
-            self, "_dense_review_resolve_conflict", None
-        )
-        if resolve_conflict is not None and not resolve_conflict():
-            return False
-        prepare_save = getattr(self, "_dense_review_prepare_save", None)
-        if prepare_save is not None:
-            prepare_save()
         filename = osp.splitext(self.image_path)[0] + ".json"
         if self.output_dir:
             label_file_without_path = osp.basename(filename)
@@ -7403,9 +6127,6 @@ class LabelingWidget(LabelDialog):
                     )
                     items[0].setData(Qt.ItemDataRole.UserRole + 2, "ready")
             self._refresh_attribute_search_after_save()
-            after_save = getattr(self, "_dense_review_after_save", None)
-            if after_save is not None:
-                after_save(filename)
             # disable allows next and previous image to proceed
             # self.filename = filename
             return True
@@ -7686,10 +6407,7 @@ class LabelingWidget(LabelDialog):
                     item.setCheckState(check_state)
                 shape = item.shape()
                 shape.visible = is_visible
-                self.canvas.visible[shape] = (
-                    is_visible
-                    and self._dense_review_original_visibility is None
-                )
+                self.canvas.visible[shape] = is_visible
         finally:
             self.label_list.setUpdatesEnabled(True)
             del blocker
@@ -7714,13 +6432,8 @@ class LabelingWidget(LabelDialog):
         label_info = self.label_info
         manual_hidden = self._manually_hidden_shapes
         invert = self._invert_shape_filter
-        review_active = self.dense_review_active()
-        annotations_on = (
-            not review_active or self._dense_review_annotations_enabled()
-        )
         self._sync_label_list_visibility(
-            lambda item: annotations_on
-            and desired_visibility(
+            lambda item: desired_visibility(
                 item.shape(),
                 label=label,
                 gid=gid,
@@ -7732,11 +6445,6 @@ class LabelingWidget(LabelDialog):
             )
         )
         self._sync_invert_filter_actions()
-        # Label visibility, group/label filters and invert all funnel through
-        # here, so one invalidation keeps the review roles deterministic
-        # (DP-11, DP-12).
-        if review_active:
-            self.refresh_dense_review_display()
 
     def _sync_invert_filter_actions(self):
         """Keep the invert menu entries in sync with the filter state."""
@@ -7828,21 +6536,7 @@ class LabelingWidget(LabelDialog):
             self.set_gid_filter_value("-1", block_signal=block_signal)
         del blocker
 
-    def save_labels(self, filename, *, external_change_approved=False):
-        if (
-            not external_change_approved
-            and self._dense_review_external_conflict()
-        ):
-            # Auto-save and other implicit save paths must not overwrite a
-            # file another program changed.  The explicit save entry asks the
-            # user first and then approves this one write (OpenSpec 3.9).
-            self.status(
-                self.tr(
-                    "标注文件已在外部变化，未保存；请使用保存入口明确处理冲突。"
-                )
-            )
-            return False
-        self._dense_review_prepare_save()
+    def save_labels(self, filename):
         label_file = LabelFile()
         # Get current shapes
         # Excluding auto labeling special shapes
@@ -7910,7 +6604,6 @@ class LabelingWidget(LabelDialog):
                     )
                     items[0].setData(Qt.ItemDataRole.UserRole + 2, "ready")
             self._refresh_attribute_search_after_save()
-            self._dense_review_after_save(filename)
             # disable allows next and previous image to proceed
             # self.filename = filename
             return True
@@ -8019,11 +6712,6 @@ class LabelingWidget(LabelDialog):
             self._manually_hidden_shapes.discard(shape)
         else:
             self._manually_hidden_shapes.add(shape)
-        # A manual hide is the most common user exclusion, and it has to
-        # invalidate the review table immediately; otherwise the stale table
-        # would keep painting and hitting the object (DP-11).
-        if self.dense_review_active():
-            self.refresh_dense_review_display()
         self._update_select_toggle_button_tooltip()
         if (
             hasattr(self, "navigator_dialog")
@@ -9309,7 +7997,6 @@ class LabelingWidget(LabelDialog):
         self.canvas.setFocus()
         self._sync_annotation_checked_state()
         self.update_thumbnail_display()
-        self._dense_review_on_file_loaded()
         notify_metrics(self, "enter_image")
 
         # Reveal the adjustment panel now that an image is loaded.
@@ -9535,8 +8222,6 @@ class LabelingWidget(LabelDialog):
         if self._settings_controller is not None:
             self._settings_controller.close_session()
         notify_metrics(self, "stop")
-        if self.dense_review_workspace is not None:
-            self.dense_review_workspace.shutdown()
 
         if hasattr(self, "async_exif_scanner") and self.async_exif_scanner:
             try:
@@ -9876,11 +8561,7 @@ class LabelingWidget(LabelDialog):
         return filename
 
     def _save_file(self, filename):
-        if not self._dense_review_resolve_conflict():
-            return False
-        if filename and self.save_labels(
-            filename, external_change_approved=True
-        ):
+        if filename and self.save_labels(filename):
             self.add_recent_file(filename)
             self.set_clean()
             return True
@@ -10133,11 +8814,8 @@ class LabelingWidget(LabelDialog):
     def toggle_visibility_shapes(self, value):
         """Apply the global annotation switch as one batch operation."""
         self.update_user_preference("show_shapes", bool(value))
-        if self.dense_review_active():
-            self._apply_shape_filter_visibility()
-        else:
-            self._manually_hidden_shapes.clear()
-            self._sync_label_list_visibility(lambda item: value)
+        self._manually_hidden_shapes.clear()
+        self._sync_label_list_visibility(lambda item: value)
 
     def remove_selected_point(self):
         self.canvas.remove_selected_point()

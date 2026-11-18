@@ -473,17 +473,6 @@ class CorrectionRound:
         self._persist(event=event)
         return True
 
-    def review_event(self, kind, affected_ids=(), transaction_id=None):
-        with self._lock:
-            if transaction_id and transaction_id in self._seen:
-                return False
-            event = self._event(
-                kind, "review", {}, dict.fromkeys(affected_ids), tx=transaction_id,
-                count_touches=False,
-            )
-            self._persist(event=event)
-            return True
-
     def taxonomy(self, mapping, *, comparable=True, shapes=None):
         """Apply an explicit class-system migration without a personal relabel."""
         with self._lock:

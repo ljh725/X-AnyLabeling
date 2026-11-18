@@ -146,17 +146,6 @@ canvas:
   mask:
     opacity: 80  # transparency value (0-255), 0 is fully transparent, 255 is fully opaque
 
-dense_review:
-  task: category
-  image_height: 320
-  context: 35
-  batches_visible: true
-  cards_visible: true
-  task_display:
-    category: {mode: focus, show_points: false, styles: null}
-    box-points: {mode: focus, show_points: false, styles: null}
-    coverage: {mode: all, show_points: false, styles: null}
-
 shortcuts:
   close: Ctrl+W
   open: Ctrl+I
@@ -235,13 +224,7 @@ shortcuts:
   toggle_auto_use_last_gid: Ctrl+Shift+G
   toggle_visibility_shapes: Ctrl+H
   toggle_compare_view: Ctrl+Alt+C
-  open_dense_review: Ctrl+Alt+R
   open_correction_metrics: null
-  dense_review_complete_batch: Ctrl+Return
-  dense_review_complete_object: Alt+Return
-  dense_review_skip: Alt+N
-  dense_review_difficult: Alt+X
-  dense_review_toggle_view: Alt+V
 
   auto_label: Ctrl+A
   auto_run: Ctrl+B

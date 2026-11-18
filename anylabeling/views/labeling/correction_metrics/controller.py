@@ -387,17 +387,6 @@ class CorrectionMetricsController:
         self._round.mark_gap("unidentified-geometry")
         return True
 
-    def review_event(self, kind, affected_ids=(), transaction_id=None):
-        if not self.enabled:
-            return False
-        try:
-            return self._round.review_event(
-                kind, affected_ids, transaction_id=transaction_id
-            )
-        except Exception as error:  # noqa: BLE001
-            self.degrade("review_event", error)
-            return False
-
     def reconcile_dirty(self):
         """Refresh trigger only: ``set_dirty`` is not an operation ledger."""
         return self.current_row(draft=True) is not None
