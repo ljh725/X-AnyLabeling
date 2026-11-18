@@ -118,3 +118,18 @@ P2 polish 虽 20/20，但 delta 承诺 Inspector Ctrl+F 搜索，verification �
 首批提前改未来链接的问题由 15153e76 单独修正，归档文件未丢失。
 完整运行已结束但有 20 failed（18 主 + 2 子），见 REPORT；不宣称候选稳定。
 保留 5 个活动目录，协调变更本身不自动归档，不以清零为完成标准。
+## 2026-11-18 归档证据直达
+
+以下入口对应归档前文档中的七处引用。目标均已纳入 Git，原验证页保留当时的记录。
+
+| 原引用所在文档 | 现存目标 |
+| --- | --- |
+| 11 月 6 日项目变更审计，数字矩形保存实施记录所在行的「任务」 | [数字矩形保存任务与验证范围](../../openspec/changes/archive/2026-11-17-fix-digit-rectangle-label-save/tasks.md) |
+| 矩形预览验证页，「实施与交付记录」 | [矩形预览实施与交付记录](../../docs/custom_changes/2026-11-02-rectangle-preview-overlap-plan.md) |
+| 矩形预览验证页，「矩形单点拟合」 | [矩形单点拟合用户手册](../../docs/zh_cn/rectangle_point_fit.md) |
+| 单点拟合验证页，「canvas-regression.log」 | [联合画布回归日志](../../openspec/changes/archive/2026-11-17-improve-rectangle-edge-adjustment/canvas-regression.log) |
+| 单点拟合验证页，「canvas-regression.xml」 | [联合画布回归 JUnit](../../openspec/changes/archive/2026-11-17-improve-rectangle-edge-adjustment/canvas-regression.xml) |
+| 单点拟合验证页，「边界修复回归」 | [矩形边界修复回归日志](../rect_boundary_20261030/canvas_regression.log) |
+| 画布恢复联合复核，「迁移 tasks.md」 | [画布迁移移交任务与映射](../../openspec/changes/archive/2026-11-17-migrate-canvas-controls-from-v430/tasks.md) |
+
+单点拟合验证页还引用了本机存在、未纳入 Git 的 `reports/drag_fix_20261030/regression/core_baseline.log`。可移植的历史结论见仓库内 `reports/drag_fix_20261030/regression/SUMMARY.md`。
