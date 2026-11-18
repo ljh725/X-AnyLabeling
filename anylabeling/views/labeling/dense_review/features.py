@@ -265,7 +265,6 @@ class WorkspaceFeatures:
         if self._association_image != (self.host.filename or ""):
             self._association_image = self.host.filename or ""
             self._association_owners.clear()
-            self._handoff_object_ids = ()
         current = self.session.current_object() if self.session else None
         self.child_objects.clear()
         self.association_owner.clear()
@@ -281,8 +280,7 @@ class WorkspaceFeatures:
             if obj.shape_type != "rectangle" and self._card_parent(obj) is obj
         ]
         seen = set()
-        handed_off = [self.session.object(shape_id) for shape_id in getattr(self, "_handoff_object_ids", ())]
-        for obj in [parent, *points, *loose, *(item for item in handed_off if item is not None)]:
+        for obj in [parent, *points, *loose]:
             if obj.shape_id in seen:
                 continue
             seen.add(obj.shape_id)

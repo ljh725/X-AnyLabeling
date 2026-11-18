@@ -24,19 +24,13 @@ except Exception:
 class TestSettingsSchema(unittest.TestCase):
 
     def test_field_count(self):
-        # 151 = 57 non-shortcut fields + 94 shortcut fields. The shortcut set
-        # gained ``shortcuts.redo`` with the dense-review redo stack and
-        # ``shortcuts.open_correction_metrics`` with the correction-metrics
-        # workflow entry, and ``correction_metrics_enabled`` (a General field,
-        # default off) with the statistics workflow gate. The canvas group also includes wheel navigation mode.
-        # Inspector also has configurable previous/next issue shortcuts.
-        self.assertEqual(len(SETTING_FIELDS), 157)
+        self.assertEqual(len(SETTING_FIELDS), 153)
 
     def test_shortcut_and_non_shortcut_count(self):
         shortcut_fields = [
             field for field in SETTING_FIELDS if field.primary == "Shortcuts"
         ]
-        self.assertEqual(len(shortcut_fields), 94)
+        self.assertEqual(len(shortcut_fields), 90)
         self.assertEqual(len(SETTING_FIELDS) - len(shortcut_fields), 63)
 
     def test_defaults_cover_all_keys(self):
@@ -71,8 +65,6 @@ class TestSettingsSchema(unittest.TestCase):
             "shortcuts.create_magic_wand",
             "shortcuts.quit",
             "shortcuts.open_settings",
-            "shortcuts.inspector_run",
-            "shortcuts.inspector_locate",
             "shortcuts.open_pointcloud",
             "shortcuts.toggle_image_tags",
             "shortcuts.auto_labeling_add_point",
@@ -117,7 +109,7 @@ class TestSettingsSchema(unittest.TestCase):
         self.assertIn("shape.line_width", shape_keys)
         self.assertEqual(
             len(shortcut_fields),
-            94,
+            90,
         )
         for key in SETTINGS_SHORTCUT_KEYS_CORE:
             self.assertIn(key, [field.key for field in shortcut_fields])

@@ -251,7 +251,6 @@ class Canvas(
         self._dense_review_displays = None
         self._dense_review_revision = 0
         self._dense_review_original_only = False
-        self.inspection_candidates = []
         self._hide_backround = False
         self.hide_backround = False
         self.h_shape = None
@@ -5046,7 +5045,7 @@ class Canvas(
 
         # Source-image comparison: paint only the image and the navigation
         # aids (the spatial region outline), then leave the painter balanced.
-        # Annotations, masks, inspection overlays and live edit previews all
+        # Annotations, masks and live edit previews all
         # stay off (DP-13, DP-15).
         if self.dense_review_original_only:
             self._paint_dense_review_region(p)
@@ -5404,7 +5403,6 @@ class Canvas(
 
         self._paint_dense_review_region(p)
 
-        self._paint_inspection_candidates(p)
 
         # Draw live brush-edit overlays on top of the regular shapes.
         self._paint_brush_overlays(p)
@@ -6950,53 +6948,6 @@ class Canvas(
             return 1.0
         return max(0.0, min(1.0, style.linking_opacity))
 
-    def set_inspection_candidates(self, candidates=()):
-        """Show external model candidates in a read-only overlay.
-
-        The overlay never creates, edits or deletes shapes: candidates stay
-        separate until the user explicitly accepts one.
-        """
-        self.inspection_candidates = [
-            candidate
-            for candidate in (candidates or ())
-            if getattr(candidate, "region", None)
-        ]
-        self.update()
-
-    def _paint_inspection_candidates(self, painter):
-        if not getattr(self, "inspection_candidates", None):
-            return
-        painter.save()
-        pen = QtGui.QPen(QtGui.QColor("#2f9e44"))
-        pen.setWidthF(1.5)
-        pen.setStyle(QtCore.Qt.PenStyle.DashLine)
-        painter.setPen(pen)
-        painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-        font = painter.font()
-        font.setPointSizeF(9.0)
-        painter.setFont(font)
-        for candidate in self.inspection_candidates:
-            region = getattr(candidate, "region", None)
-            if not region or len(region) < 4:
-                continue
-            left, top, right, bottom = (
-                float(region[0]),
-                float(region[1]),
-                float(region[2]),
-                float(region[3]),
-            )
-            painter.drawRect(
-                QtCore.QRectF(left, top, right - left, bottom - top)
-            )
-            painter.drawText(
-                QtCore.QPointF(left, max(0.0, top - 3.0)),
-                "{} · {}".format(
-                    getattr(candidate, "label", ""),
-                    getattr(candidate, "source", ""),
-                ),
-            )
-        painter.restore()
-
     def _paint_crosshair(self, painter) -> None:
         """Paint the native crosshair, keeping opacity local to its lines."""
         if not self._native_crosshair_enabled():
@@ -7077,7 +7028,6 @@ class Canvas(
     def reset_state(self) -> None:
         """Clear shapes and pixmap"""
         self._cancel_marquee_selection()
-        self.inspection_candidates = []
         self._rectangle_edge_cancel()
         self._point_fit_cancel_round()
         self._clear_space_pan_state()

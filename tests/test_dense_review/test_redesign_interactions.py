@@ -7,34 +7,6 @@ from PyQt6 import QtCore, QtGui, QtTest
 from .test_workspace_review_fixes import _open, app, open_window
 
 
-def test_handoff_keeps_cross_batch_objects_and_associated_point_reachable(app, open_window):
-    from dataclasses import replace
-    from anylabeling.services.inspection.handoff import HandoffRequest
-    from .test_workspace_dock_tasks import _rectangle, _point, _open_review
-    window, path = open_window([
-        _rectangle("person", "rect1", 40, 40, group_id=0),
-        _rectangle("vehicle", "rect2", 300, 40, group_id=1),
-        _point("nose", "kp1", 80, 80, group_id=0),
-    ], batches=(("person", ("person",)), ("vehicle", ("vehicle",))),
-       rules=(("person", "visible", ""), ("vehicle", "visible", "")))
-    widget, ws = _open_review(app, window, path)
-    request = HandoffRequest("issue", "family", widget.inspection_dataset_root(),
-                             widget.inspection_output_dir(), widget.inspection_current_relative_path(),
-                             object_ids=("rect1", "rect2"))
-    assert widget.inspection_handoff_to_dense_review(request)[0]
-    ws.refresh_all()
-    ws._navigate_child(ws.child_objects.findData("rect2"))
-    assert ws.session.current_object().shape_id == "rect2"
-    assert ws.session.state.current_batch == ws.session.state.batches[1].batch_id
-    assert widget.canvas.selected_shapes[0].xanylabeling_shape_id == "rect2"
-    assert widget.inspection_handoff_to_dense_review(replace(request, object_ids=("kp1",)))[0]
-    assert ws.session.current_object().shape_id == "kp1"
-    assert ws.session.state.current_batch == ws.session.state.batches[0].batch_id
-    assert not widget.inspection_handoff_to_dense_review(replace(request, object_ids=("stale",)))[0]
-    assert ws.session.current_object().shape_id == "kp1"
-    assert not widget.dirty
-
-
 @pytest.mark.parametrize("floating", [False, True])
 def test_one_shortcut_serves_canvas_and_floating_panel(app, open_window, floating):
     window, widget, ws = _open(app, open_window)

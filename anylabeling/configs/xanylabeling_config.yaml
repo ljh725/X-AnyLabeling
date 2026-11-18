@@ -236,10 +236,6 @@ shortcuts:
   toggle_visibility_shapes: Ctrl+H
   toggle_compare_view: Ctrl+Alt+C
   open_dense_review: Ctrl+Alt+R
-  inspector_run: F5
-  inspector_locate: Return
-  inspector_previous_issue: F1
-  inspector_next_issue: F2
   open_correction_metrics: null
   dense_review_complete_batch: Ctrl+Return
   dense_review_complete_object: Alt+Return
@@ -267,7 +263,3 @@ remote_server_settings:
 
 # Digit shortcuts
 digit_shortcuts: null
-
-# Independent Inspector window preferences
-inspector_auto_advance: true
-inspector_window_geometry: null

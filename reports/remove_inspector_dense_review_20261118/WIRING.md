@@ -12,3 +12,9 @@
 普通保存路径为 `LabelingWidget` → `LabelFile.save`，继续维护 `checked`、对象 ID 和其他数据。批处理通过 `utils/batch.py` 发布单个标注，标签改写通过 `LabelModifyDialog.modify_label` 发布单个标注并通知分类变更。普通画布的回归范围包括预览、矩形调整、视图恢复、选择和对象历史。
 
 移除前对照为 [11-17 Windows 完整复测](../maintenance_baseline_20261117/full-recheck-summary.json) 的 2632 通过、29 跳过、20 失败（含 2 个子测试），以及 [11-18 训练停止对照](../stabilize_maintenance_baseline_20261118/REPORT.md)。旧失败包括密集复核交接、画布筛选桩对象缺少复核属性、属性编辑测试桩、Windows 路径和临时文件行为、训练停止、属性上传和画布调节。退役与修复后的结果应按用例名比对。
+
+## Inspector 批次
+
+移除了候选叠层、独立窗口和交接。保留普通对象编辑、切图、焦点、关闭、审核、共用图标和仍有 Dense Review 消费者的通用工作台样式。移除前专属测试随服务退出。
+
+隔离的缩放和平移切图测试 1 项通过。组合运行 174 通过、1 项设置字段计数失败。将第二处仍使用 94 的快捷键数断言同步为 90 后，设置 schema 7 项复跑通过。所有 Dense Review 用例在组合运行通过，涵盖窗口开关、焦点和快捷键、空间复核、后台工作关闭。

@@ -1411,12 +1411,6 @@ class LabelingWidget(LabelDialog):
             icon="message-circle-question-mark",
             tip=self.tr("Open VQA dialog"),
         )
-        open_inspector = action(
-            self.tr("Inspector"),
-            self.open_inspector,
-            icon="scan-search",
-            tip=self.tr("Open the annotation inspection workflow"),
-        )
         open_dense_review = action(
             self.tr("Dense Review"),
             self.open_dense_review,
@@ -2331,7 +2325,6 @@ class LabelingWidget(LabelDialog):
             open_prev_unchecked_image=open_prev_unchecked_image,
             open_chatbot=open_chatbot,
             open_vqa=open_vqa,
-            open_inspector=open_inspector,
             open_dense_review=open_dense_review,
             open_correction_metrics=open_correction_metrics,
             open_pointcloud=open_pointcloud,
@@ -2515,7 +2508,6 @@ class LabelingWidget(LabelDialog):
             (
                 open_chatbot,
                 open_vqa,
-                open_inspector,
                 open_dense_review,
                 open_correction_metrics,
                 open_pointcloud,
@@ -3694,7 +3686,6 @@ class LabelingWidget(LabelDialog):
                 ):
                     self.update_navigator_shapes()
                 self.update_progress_title()
-                self._notify_inspection_edit()
                 return
         self.dirty = True
         self.actions.save.setEnabled(True)
@@ -3704,18 +3695,6 @@ class LabelingWidget(LabelDialog):
         ):
             self.update_navigator_shapes()
         self.update_progress_title()
-
-        self._notify_inspection_edit()
-
-    def _notify_inspection_edit(self):
-        """Publish committed create/field/delete/undo changes independently."""
-        inspector = getattr(self, "inspector_dialog", None)
-        if inspector is not None:
-            try:
-                inspector._on_canvas_edit()
-            except (OSError, RuntimeError, ValueError) as error:
-                logger.warning(f"Inspection result needs rechecking: {error}")
-
     def _on_image_tags_changed(self, tags):
         if not self.image_path:
             return
@@ -4435,30 +4414,6 @@ class LabelingWidget(LabelDialog):
             self.vqa_window.activateWindow()
         else:
             self.vqa_window.show()
-
-    def open_inspector(self):
-        if not self.image_list and not self.filename:
-            self.error_message(
-                self.tr("No images loaded"),
-                self.tr(
-                    "Please load an image folder before opening the Inspector."
-                ),
-            )
-            return
-        if getattr(self, "inspector_dialog", None) is None:
-            from .inspector import InspectorDialog
-
-            self.inspector_dialog = InspectorDialog(self)
-            self.inspector_dialog.setAttribute(
-                Qt.WidgetAttribute.WA_DeleteOnClose, False
-            )
-        if self.inspector_dialog.isMinimized():
-            self.inspector_dialog.showNormal()
-        if self.inspector_dialog.isVisible():
-            self.inspector_dialog.raise_()
-            self.inspector_dialog.activateWindow()
-        else:
-            self.inspector_dialog.show()
 
     def _on_geometry_committed(self):
         # The canvas only says "a geometry edit finished"; hand it its shapes
@@ -5517,7 +5472,7 @@ class LabelingWidget(LabelDialog):
     def dense_review_refresh_coverage_region(self, rect) -> None:
         """Redraw the region outline without touching zoom or pan.
 
-        Used by background refreshes so the user's inspection detail inside
+        Used by background refreshes so the user's view inside
         the region is preserved (R2, SN-06).
         """
         if self.canvas is None:
@@ -5581,10 +5536,6 @@ class LabelingWidget(LabelDialog):
     def existing_shortcut_sequences(self):
         sequences = set()
         dense_keys = {
-            "inspector_run",
-            "inspector_locate",
-            "inspector_previous_issue",
-            "inspector_next_issue",
             "dense_review_complete_batch",
             "dense_review_complete_object",
             "dense_review_skip",
@@ -5664,551 +5615,6 @@ class LabelingWidget(LabelDialog):
             self.dense_review_set_display_mode(mode)
             self.refresh_dense_review_display()
             self.dense_review_workspace._focus_current()
-
-    def inspection_dataset_root(self):
-        root = getattr(self, "_full_image_dir", "") or ""
-        if not root and self.filename:
-            root = osp.dirname(self.filename)
-        return root
-
-    def inspection_output_dir(self):
-        return self.output_dir or ""
-
-    def inspection_image_paths(self):
-        paths = list(self.image_list)
-        if self.filename and self.filename not in paths:
-            paths.append(self.filename)
-        return paths
-
-    def inspection_selected_image_paths(self):
-        items = self.file_list_widget.selectedItems()
-        return [item.text() for item in items]
-
-    def inspection_current_relative_path(self):
-        if not self.filename:
-            return ""
-        root = self.inspection_dataset_root()
-        if root:
-            try:
-                return osp.relpath(self.filename, root).replace("\\", "/")
-            except ValueError:
-                pass
-        return osp.basename(self.filename)
-
-    def inspection_current_manifest(self):
-        if not self.filename:
-            return None
-        from anylabeling.services.inspection.manifest import (
-            memory_file_snapshot,
-        )
-        from anylabeling.services.inspection.models import Manifest
-
-        shapes = [
-            item.shape().to_dict()
-            for item in self.label_list
-            if item.shape().label
-            not in (
-                AutoLabelingMode.OBJECT,
-                AutoLabelingMode.ADD,
-                AutoLabelingMode.REMOVE,
-            )
-        ]
-        image = self.image
-        snapshot = memory_file_snapshot(
-            self.filename,
-            self.inspection_current_relative_path(),
-            shapes,
-            image_width=image.width() if image is not None else 0,
-            image_height=image.height() if image is not None else 0,
-            output_dir=self.output_dir or "",
-            unsaved=bool(self.dirty),
-        )
-        return Manifest(
-            dataset_root=self.inspection_dataset_root(),
-            output_root=self.output_dir or "",
-            files=(snapshot,),
-            complete=True,
-        )
-
-    def inspection_dense_review_available(self):
-        from anylabeling.services.inspection.handoff import (
-            dense_review_available,
-        )
-
-        return dense_review_available(self)
-
-    def inspection_handoff_to_dense_review(self, request):
-        """Open the dense-review workspace on the handed-off issue context."""
-        from anylabeling.services.inspection.handoff import (
-            dense_review_available,
-            validate_handoff,
-        )
-
-        if not dense_review_available(self):
-            return False, self.tr(
-                "Dense review is unavailable; the ordinary canvas still "
-                "handles this issue."
-            )
-        reason = validate_handoff(
-            request,
-            dataset_root=self.inspection_dataset_root(),
-            output_root=self.inspection_output_dir(),
-            current_relative_path=self.inspection_current_relative_path(),
-        )
-        if reason:
-            return False, reason
-        if any(
-            object_id not in self.dense_review_shape_ids()
-            for object_id in request.object_ids
-        ):
-            return False, self.tr("交接对象已过期，请刷新检查结果。")
-        try:
-            self.open_dense_review()
-        except (ImportError, OSError, RuntimeError) as error:
-            return False, self.tr(
-                "Dense review could not be opened: %s"
-            ) % str(error)
-        workspace = getattr(self, "dense_review_workspace", None)
-        if workspace is None:
-            return False, self.tr("Dense review workspace is unavailable.")
-        object_ids = [
-            object_id
-            for object_id in request.object_ids
-            if object_id in self.dense_review_shape_ids()
-        ]
-        if object_ids:
-            workspace._handoff_object_ids = tuple(object_ids)
-            workspace._on_canvas_review_selection(
-                [self._dense_review_find_shape(object_ids[0])]
-            )
-            workspace._navigate_to(
-                workspace._current_batch_id(), object_ids[0]
-            )
-        elif request.region:
-            self.inspection_focus_region(request.region)
-            workspace._status(
-                self.tr(
-                    "This issue has no formal object; review the region on "
-                    "the canvas."
-                )
-            )
-        return True, ""
-
-    def dense_review_shape_ids(self):
-        return {
-            str(getattr(shape, "xanylabeling_shape_id", "") or "")
-            for shape in self.dense_review_shapes()
-        }
-
-    def inspection_handoff_return_context(self, family_key):
-        """Reveal the originating issue after returning from dense review."""
-        if not family_key:
-            return False
-        dialog = getattr(self, "inspector_dialog", None)
-        if dialog is None:
-            return False
-        dialog.focus_family(family_key)
-        return True
-
-    def show_inspection_candidates(self, candidates):
-        """Draw external candidates in a separate, non-editable overlay."""
-        self.canvas.set_inspection_candidates(candidates)
-
-    def clear_inspection_candidates(self):
-        self.canvas.set_inspection_candidates([])
-
-    def _inspection_resolve_image_path(self, relative_path, image_path=""):
-        raw = str(relative_path or "").replace("\\", "/")
-        if image_path and osp.isfile(str(image_path)):
-            return osp.abspath(str(image_path))
-        if not raw:
-            return None
-        if osp.isabs(raw) and osp.isfile(raw):
-            return raw
-        # Resolve files that are part of the manifest but not yet loaded in
-        # the current image list, using the complete dataset root.
-        root = self.inspection_dataset_root()
-        if root:
-            candidate = osp.join(root, raw)
-            if osp.isfile(candidate):
-                return osp.abspath(candidate)
-        paths = self.inspection_image_paths()
-        matches = []
-        for path in paths:
-            normalized = path.replace("\\", "/")
-            if normalized == raw:
-                return path
-            if normalized.endswith("/" + raw):
-                matches.append(path)
-        unique = list(dict.fromkeys(matches))
-        if len(unique) == 1:
-            return unique[0]
-        # A bare basename is only a fallback when it is unambiguous.
-        if "/" not in raw:
-            by_name = [path for path in paths if osp.basename(path) == raw]
-            unique_by_name = list(dict.fromkeys(by_name))
-            if len(unique_by_name) == 1:
-                return unique_by_name[0]
-        return None
-
-    def _inspection_file_guard(
-        self, relative_path, dataset_root="", output_dir=""
-    ):
-        """Return "" when a queue action targets the currently loaded file."""
-        from anylabeling.services.inspection.models import (
-            normalize_path,
-            output_identity,
-        )
-
-        if not relative_path:
-            return self.tr("Inspection action requires a file identity")
-        current = self.inspection_current_relative_path()
-        if not current:
-            return self.tr("No image is currently loaded")
-        if str(relative_path) != current:
-            return self.tr(
-                "Inspection target %s is not the current file %s"
-            ) % (relative_path, current)
-        if dataset_root and normalize_path(dataset_root) != normalize_path(
-            self.inspection_dataset_root()
-        ):
-            return self.tr("Inspection dataset root does not match")
-        if output_identity(output_dir) != output_identity(
-            self.inspection_output_dir()
-        ):
-            return self.tr("Inspection output directory does not match")
-        return ""
-
-    def inspection_navigate_to(
-        self, relative_path, object_ids=(), region=None, image_path=""
-    ):
-        target = self._inspection_resolve_image_path(
-            relative_path, image_path=image_path
-        )
-        if not target:
-            self.status(
-                self.tr("Cannot resolve inspection target: %s") % relative_path
-            )
-            return False
-        ids = {str(item) for item in object_ids if str(item)}
-        if region and (
-            len(region) != 4
-            or not all(
-                isinstance(value, (int, float)) and math.isfinite(value)
-                for value in region
-            )
-            or region[2] <= region[0]
-            or region[3] <= region[1]
-        ):
-            return False
-        if self.filename != target:
-            if QtGui.QImage(target).isNull():
-                return False
-            if ids:
-                import json
-
-                annotation = osp.splitext(target)[0] + ".json"
-                if self.output_dir:
-                    annotation = osp.join(
-                        self.output_dir, osp.basename(annotation)
-                    )
-                try:
-                    with open(annotation, encoding="utf-8") as stream:
-                        payload = json.load(stream)
-                    available = {
-                        str(shape.get("xanylabeling_shape_id", ""))
-                        for shape in payload.get("shapes", [])
-                    }
-                except (OSError, ValueError, TypeError):
-                    return False
-                if not ids.issubset(available):
-                    return False
-            if not self.may_continue():
-                return False
-            # Move the file-list cursor without re-entering the selection
-            # handler (that would prompt for unsaved changes twice).
-            previous_row = self.file_list_widget.currentRow()
-            row = self.fn_to_index.get(str(target))
-            if row is not None:
-                with QtCore.QSignalBlocker(self.file_list_widget):
-                    if self.file_list_widget.currentRow() != row:
-                        self.file_list_widget.setCurrentRow(row)
-            previous_file = self.filename
-            previous_shapes = list(self.canvas.shapes)
-            previous_selected = list(self.canvas.selected_shapes)
-            previous_backups = list(self.canvas.shapes_backups)
-            previous_redo = list(self.canvas.shapes_redo)
-            previous_other_data = copy.deepcopy(self.other_data)
-            previous_flags = {
-                self.flag_widget.item(i)
-                .text(): self.flag_widget.item(i)
-                .checkState()
-                == Qt.CheckState.Checked
-                for i in range(self.flag_widget.count())
-            }
-            previous_dirty = self.dirty
-            loaded = self.load_file(target)
-            actual_ids = {
-                getattr(shape, "xanylabeling_shape_id", "")
-                for shape in self.canvas.shapes
-            }
-            if (
-                not loaded
-                or osp.abspath(str(self.filename or "")) != osp.abspath(target)
-                or not ids.issubset(actual_ids)
-            ):
-                if previous_file and self.filename != previous_file:
-                    self.load_file(previous_file)
-                    self.load_shapes(previous_shapes)
-                    self.canvas.shapes_backups = previous_backups
-                    self.canvas.shapes_redo = previous_redo
-                    self.other_data = previous_other_data
-                    self.load_flags(previous_flags)
-                    self.canvas.select_shapes(previous_selected)
-                    if previous_dirty:
-                        self.set_dirty()
-                with QtCore.QSignalBlocker(self.file_list_widget):
-                    self.file_list_widget.setCurrentRow(previous_row)
-                self.status(
-                    self.tr("Failed to load inspection target: %s") % target
-                )
-                return False
-        ids = {str(item) for item in object_ids if str(item)}
-        shapes = [
-            shape
-            for shape in self.canvas.shapes
-            if getattr(shape, "xanylabeling_shape_id", "") in ids
-        ]
-        if ids and len(shapes) != len(ids):
-            self.status(
-                self.tr(
-                    "The inspected objects no longer exist; the issue "
-                    "needs rechecking."
-                )
-            )
-            return False
-        if shapes:
-            self.canvas.select_shapes(shapes)
-            self.canvas.update()
-            hidden = [shape for shape in shapes if not shape.visible]
-            if hidden:
-                self.status(
-                    self.tr(
-                        "Selected %d hidden inspected object(s); "
-                        "visibility was not changed."
-                    )
-                    % len(hidden)
-                )
-        else:
-            self.canvas.select_shapes([])
-        if region:
-            if not self.inspection_focus_region(region):
-                self.status(self.tr("The inspected region cannot be located."))
-                return False
-        return True
-
-    def inspection_focus_region(self, region):
-        """Center and zoom the canvas on a region without modifying shapes."""
-        if self.image.isNull() or not region or len(region) < 4:
-            return False
-        try:
-            values = [float(item) for item in region[:4]]
-        except (TypeError, ValueError):
-            return False
-        if not all(math.isfinite(item) for item in values):
-            return False
-        left, top, right, bottom = values
-        if right <= left or bottom <= top:
-            return False
-        width = max(1.0, right - left)
-        height = max(1.0, bottom - top)
-        viewport = self._canvas_scroll_area.viewport()
-        viewport_width = max(1.0, float(viewport.width()) - 2.0)
-        viewport_height = max(1.0, float(viewport.height()) - 2.0)
-        fit_zoom = min(
-            viewport_width / width * 100.0, viewport_height / height * 100.0
-        )
-        zoom = max(
-            float(self.zoom_widget.minimum()),
-            min(float(self.zoom_widget.maximum()), fit_zoom),
-        )
-        self.set_zoom(zoom)
-        self._dense_review_center_on(
-            (left + right) / 2.0, (top + bottom) / 2.0
-        )
-        self.canvas.update()
-        return True
-
-    def inspection_delete_shapes(
-        self, object_ids, relative_path="", dataset_root="", output_dir=""
-    ):
-        guard = self._inspection_file_guard(
-            (
-                relative_path
-                if relative_path
-                else self.inspection_current_relative_path()
-            ),
-            dataset_root,
-            output_dir,
-        )
-        if guard:
-            return False, guard
-        ids = {str(item) for item in object_ids if str(item)}
-        shapes = [
-            shape
-            for shape in self.canvas.shapes
-            if getattr(shape, "xanylabeling_shape_id", "") in ids
-        ]
-        deletable = [shape for shape in shapes if not shape.locked]
-        if not deletable:
-            return False, self.tr("No unlocked target objects to delete")
-        # Removing labels re-syncs the canvas from the label list, so the
-        # intermediate states are churn.  Collapse the whole batch into one
-        # history entry afterwards: a single undo restores every deleted box.
-        history_before = list(self.canvas.shapes_backups)
-        for shape in deletable:
-            self.canvas.delete_shape(shape)
-        self.remove_labels(deletable)
-        self.canvas.shapes_backups = history_before + [
-            [shape.copy() for shape in self.canvas.shapes]
-        ]
-        self.canvas.shapes_redo.clear()
-        self.canvas.update()
-        self.shape_selection_changed(self.canvas.selected_shapes)
-        notify_metrics(
-            self, "edit", "delete", "inspection_edit", removed=deletable
-        )
-        self.set_dirty()
-        return True, ""
-
-    def inspection_relabel_shapes(
-        self,
-        object_ids,
-        label,
-        relative_path="",
-        dataset_root="",
-        output_dir="",
-    ):
-        guard = self._inspection_file_guard(
-            (
-                relative_path
-                if relative_path
-                else self.inspection_current_relative_path()
-            ),
-            dataset_root,
-            output_dir,
-        )
-        if guard:
-            return False, guard
-        ids = {str(item) for item in object_ids if str(item)}
-        shapes = [
-            shape
-            for shape in self.canvas.shapes
-            if getattr(shape, "xanylabeling_shape_id", "") in ids
-        ]
-        if not shapes:
-            return False, self.tr("The inspected objects no longer exist")
-        changed = self._apply_field_patch(
-            shapes, {"label": label}, {"label"}, source="inspection_edit"
-        )
-        return bool(changed), ""
-
-    def inspection_accept_candidate(self, candidate, shape_id=None):
-        import math
-        from PyQt6.QtCore import QPointF
-
-        from .shape import Shape
-
-        target = self._inspection_resolve_image_path(
-            candidate.relative_path, image_path=candidate.image_path
-        )
-        if not target:
-            return False, self.tr("Cannot resolve candidate image")
-        if self.filename != target:
-            if not self.may_continue():
-                return False, self.tr("Navigation cancelled")
-            row = self.fn_to_index.get(str(target))
-            if row is not None:
-                with QtCore.QSignalBlocker(self.file_list_widget):
-                    if self.file_list_widget.currentRow() != row:
-                        self.file_list_widget.setCurrentRow(row)
-            self.load_file(target)
-            if osp.abspath(str(self.filename or "")) != osp.abspath(target):
-                return False, self.tr("Candidate image failed to load")
-        if self.inspection_current_relative_path() != str(
-            candidate.relative_path
-        ):
-            return False, self.tr(
-                "Candidate file identity does not match the loaded image"
-            )
-        if self.label_info and candidate.label not in self.label_info:
-            return (
-                False,
-                self.tr("Candidate label is not in the current label set"),
-            )
-        if (
-            self.image is None
-            or candidate.image_width != self.image.width()
-            or candidate.image_height != self.image.height()
-        ):
-            return False, self.tr("Candidate image dimensions do not match")
-        left, top, right, bottom = candidate.region
-        if (
-            not all(math.isfinite(v) for v in candidate.region)
-            or not 0 <= left < right <= candidate.image_width
-            or not 0 <= top < bottom <= candidate.image_height
-        ):
-            return False, self.tr("Candidate coordinates are invalid")
-        if candidate.orientation:
-            from anylabeling.services.inspection.manifest import (
-                image_orientation,
-            )
-
-            if candidate.orientation != image_orientation(self.filename):
-                return False, self.tr(
-                    "Candidate image orientation does not match"
-                )
-        if candidate.image_digest:
-            from anylabeling.services.inspection.manifest import file_digest
-
-            if candidate.image_digest != file_digest(
-                self.filename, content=(candidate.image_digest_kind != "stat")
-            ):
-                return False, self.tr("Candidate image contents have changed")
-        for current in self.canvas.shapes:
-            if (
-                current.attributes.get("inspection_candidate_id")
-                == candidate.candidate_id
-            ):
-                if not shape_id or current.xanylabeling_shape_id == shape_id:
-                    return True, current.xanylabeling_shape_id
-                return False, self.tr(
-                    "Candidate association is ambiguous; recheck current objects"
-                )
-            if shape_id and current.xanylabeling_shape_id == shape_id:
-                return False, self.tr(
-                    "Candidate object identity is already in use"
-                )
-        shape = Shape(
-            label=candidate.label,
-            shape_type="rectangle",
-            description=self.tr("Accepted external candidate"),
-            attributes={
-                "inspection_candidate_id": candidate.candidate_id,
-                "inspection_candidate_source": candidate.source,
-            },
-            shape_id=shape_id or Shape.new_shape_id(),
-        )
-        shape.points = [
-            QPointF(candidate.region[0], candidate.region[1]),
-            QPointF(candidate.region[2], candidate.region[3]),
-        ]
-        self.load_shapes([shape], replace=False, update_last_label=False)
-        notify_metrics(
-            self, "edit", "create", "inspection_edit", changed=[shape]
-        )
-        self.set_dirty()
-        return True, shape.xanylabeling_shape_id
 
     def open_pointcloud(self):
         if self.pointcloud_window is None:
@@ -8483,14 +7889,6 @@ class LabelingWidget(LabelDialog):
             )
             notify_metrics(self, "save_result", metrics_token, True)
             self.label_file = label_file
-            inspector = getattr(self, "inspector_dialog", None)
-            if inspector is not None and inspector._candidate_records:
-                try:
-                    inspector._on_annotation_saved()
-                except (OSError, RuntimeError, ValueError) as error:
-                    # Annotation saving has already succeeded; a sidecar
-                    # failure cannot turn it into a failed annotation save.
-                    logger.warning(f"Candidate linkage needs retry: {error}")
             if self._metadata_generation is not None and self.filename:
                 self._metadata_revisions[self.filename] = (
                     self._metadata_revisions.get(self.filename, 0) + 1

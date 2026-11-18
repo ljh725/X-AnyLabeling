@@ -10,8 +10,8 @@
 
 ## 3. 移除 Inspector
 
-- [ ] 3.1 解除 Inspector 的主窗口 action、菜单、独立窗口、问题导航和通知，以及检查、复查、外部候选处理和指向 Dense Review 的交接。核对正常切图、焦点、退出及其余快捷键。
-- [ ] 3.2 移除确认无共享消费者的 Inspector UI、服务和专属配置。记录保留的通用代码，确认启动无 Inspector 依赖，普通标注与当时仍保留的 Dense Review 可运行，独立提交本批。
+- [x] 3.1 解除 Inspector 的主窗口 action、菜单、独立窗口、问题导航和通知，以及检查、复查、外部候选处理和指向 Dense Review 的交接。核对正常切图、焦点、退出及其余快捷键。
+- [x] 3.2 移除确认无共享消费者的 Inspector UI、服务和专属配置。记录保留的通用代码，确认启动无 Inspector 依赖，普通标注与当时仍保留的 Dense Review 可运行，独立提交本批。
 
 ## 4. 移除 Dense Review
 

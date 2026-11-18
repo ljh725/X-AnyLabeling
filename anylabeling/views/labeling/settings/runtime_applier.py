@@ -642,15 +642,10 @@ class SettingsRuntimeApplier:
             self._widget.file_search.setText(value_text)
 
     def apply_shortcuts(self, key: str, value: Any) -> None:
-        inspector = getattr(self._widget, "inspector_dialog", None)
         action = self._shortcut_action_map.get(key)
-        if inspector is not None:
-            inspector._refresh_shortcuts()
         if action is None:
             return
         self._set_action_shortcut(action, value)
-        if inspector is not None:
-            inspector._refresh_shortcuts()
         if key in {"shortcuts.zoom_in", "shortcuts.zoom_out"}:
             self.update_zoom_shortcut_hint()
         self._widget.auto_labeling_widget.update_shortcut_button_texts(
